@@ -13,7 +13,8 @@ interface TopBarProps {
   searchQuery: string
   onSearchChange: (query: string) => void
   onSignOut: () => void
-  onProjectAdded: () => void
+  onProjectAdded: () => void,
+  projectName: string
 }
 
 export default function TopBar({
@@ -21,13 +22,14 @@ export default function TopBar({
   onSearchChange,
   onSignOut,
   onProjectAdded,
+  projectName,
 }: TopBarProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
   return (
     <>
       <div className="bg-slate-900 text-white shadow-lg h-16 flex items-center justify-between px-6">
-        <h1 className="text-xl font-bold">Mutech Labs - Task Manager</h1>
+        <h1 className="text-xl font-bold">{projectName} - Task Board</h1>
         <div className="flex items-center gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
