@@ -10,7 +10,7 @@ type TaskStatus = Database['public']['Tables']['tasks']['Row']['status']
 export async function createTask(formData: FormData) {
   await requireAuth()
   const supabase = await createClient()
-  
+
   const projectId = formData.get('project_id') as string
   const title = formData.get('title') as string
   const status = (formData.get('status') as TaskStatus) || 'next'
@@ -27,7 +27,9 @@ export async function createTask(formData: FormData) {
     .limit(1)
     .single()
 
-  const orderIndex = maxOrder?.order_index != null ? maxOrder.order_index + 1 : 0
+  const orderIndex = (maxOrder as any)?.order_index != null
+    ? (maxOrder as any).order_index + 1
+    : 0
 
   const { data, error } = await supabase
     .from('tasks')
@@ -39,7 +41,7 @@ export async function createTask(formData: FormData) {
       due_date: dueDate || null,
       notes: notes || null,
       order_index: orderIndex,
-    })
+    } as any)
     .select()
     .single()
 
@@ -54,7 +56,7 @@ export async function createTask(formData: FormData) {
 export async function updateTask(id: string, formData: FormData) {
   await requireAuth()
   const supabase = await createClient()
-  
+
   const title = formData.get('title') as string | null
   const projectId = formData.get('project_id') as string | null
   const status = formData.get('status') as TaskStatus | null
@@ -70,9 +72,9 @@ export async function updateTask(id: string, formData: FormData) {
   if (dueDate !== undefined) updates.due_date = dueDate || null
   if (notes !== undefined) updates.notes = notes || null
 
-  const { data, error } = await supabase
-    .from('tasks')
-    .update(updates)
+  const { data, error } = await (supabase
+    .from('tasks') as any)
+    .update(updates as any)
     .eq('id', id)
     .select()
     .single()
@@ -88,7 +90,7 @@ export async function updateTask(id: string, formData: FormData) {
 export async function deleteTask(id: string) {
   await requireAuth()
   const supabase = await createClient()
-  
+
   const { error } = await supabase
     .from('tasks')
     .delete()
@@ -122,8 +124,9 @@ export async function updateTaskOrder(
     return { error: taskError?.message || 'Task not found' }
   }
 
-  const oldIndex = task.order_index
-  const actualOldStatus = oldStatus || task.status
+  const taskData = task as any
+  const oldIndex = taskData.order_index
+  const actualOldStatus = oldStatus || taskData.status
 
   // If status changed, we need to reorder both columns
   if (actualOldStatus !== newStatus) {
@@ -145,11 +148,11 @@ export async function updateTaskOrder(
 
     // Update old column: shift tasks after oldIndex down by 1
     if (oldColumnTasks) {
-      for (const t of oldColumnTasks) {
+      for (const t of oldColumnTasks as any[]) {
         if (t.order_index > oldIndex) {
-          await supabase
-            .from('tasks')
-            .update({ order_index: t.order_index - 1 })
+          await (supabase
+            .from('tasks') as any)
+            .update({ order_index: t.order_index - 1 } as any)
             .eq('id', t.id)
         }
       }
@@ -157,11 +160,11 @@ export async function updateTaskOrder(
 
     // Update new column: shift tasks at or after newOrderIndex up by 1
     if (newColumnTasks) {
-      for (const t of newColumnTasks) {
+      for (const t of newColumnTasks as any[]) {
         if (t.order_index >= newOrderIndex) {
-          await supabase
-            .from('tasks')
-            .update({ order_index: t.order_index + 1 })
+          await (supabase
+            .from('tasks') as any)
+            .update({ order_index: t.order_index + 1 } as any)
             .eq('id', t.id)
         }
       }
@@ -178,21 +181,21 @@ export async function updateTaskOrder(
     if (columnTasks) {
       if (newOrderIndex > oldIndex) {
         // Moving down: decrement tasks between oldIndex and newOrderIndex
-        for (const t of columnTasks) {
+        for (const t of columnTasks as any[]) {
           if (t.order_index > oldIndex && t.order_index <= newOrderIndex) {
-            await supabase
-              .from('tasks')
-              .update({ order_index: t.order_index - 1 })
+            await (supabase
+              .from('tasks') as any)
+              .update({ order_index: t.order_index - 1 } as any)
               .eq('id', t.id)
           }
         }
       } else {
         // Moving up: increment tasks between newOrderIndex and oldIndex
-        for (const t of columnTasks) {
+        for (const t of columnTasks as any[]) {
           if (t.order_index >= newOrderIndex && t.order_index < oldIndex) {
-            await supabase
-              .from('tasks')
-              .update({ order_index: t.order_index + 1 })
+            await (supabase
+              .from('tasks') as any)
+              .update({ order_index: t.order_index + 1 } as any)
               .eq('id', t.id)
           }
         }
@@ -201,9 +204,9 @@ export async function updateTaskOrder(
   }
 
   // Update the task itself
-  const { error } = await supabase
-    .from('tasks')
-    .update({ status: newStatus, order_index: newOrderIndex })
+  const { error } = await (supabase
+    .from('tasks') as any)
+    .update({ status: newStatus, order_index: newOrderIndex } as any)
     .eq('id', taskId)
 
   if (error) {

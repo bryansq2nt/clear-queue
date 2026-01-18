@@ -63,15 +63,15 @@ export default function KanbanBoard({ tasks, projects, onTaskUpdate }: KanbanBoa
 
     const taskId = active.id as string
     const task = optimisticTasks.find(t => t.id === taskId)
-    
+
     if (!task) return
 
     // Check if dropped on a column or another task
     const isColumn = STATUSES.includes(over.id as Task['status'])
-    const newStatus = isColumn 
+    const newStatus = isColumn
       ? (over.id as Task['status'])
       : (optimisticTasks.find(t => t.id === over.id)?.status || task.status)
-    
+
     const columnTasks = optimisticTasks
       .filter(t => t.status === newStatus && t.id !== taskId)
       .sort((a, b) => a.order_index - b.order_index)
@@ -85,7 +85,7 @@ export default function KanbanBoard({ tasks, projects, onTaskUpdate }: KanbanBoa
       // Dropped on another task - insert at that position
       const targetTask = optimisticTasks.find(t => t.id === over.id)
       if (!targetTask) return
-      
+
       if (targetTask.status === newStatus) {
         // Same column - insert at target's position
         newOrderIndex = targetTask.order_index
@@ -115,7 +115,7 @@ export default function KanbanBoard({ tasks, projects, onTaskUpdate }: KanbanBoa
       }
       return t
     })
-    
+
     setOptimisticTasks(updated)
 
     // Server update
@@ -142,7 +142,7 @@ export default function KanbanBoard({ tasks, projects, onTaskUpdate }: KanbanBoa
           const columnTasks = optimisticTasks
             .filter(t => t.status === status)
             .sort((a, b) => a.order_index - b.order_index)
-          
+
           return (
             <Column
               key={status}
@@ -161,6 +161,7 @@ export default function KanbanBoard({ tasks, projects, onTaskUpdate }: KanbanBoa
             task={activeTask}
             project={projects.find(p => p.id === activeTask.project_id)}
             projects={projects}
+            onTaskUpdate={onTaskUpdate}
             isDragging
           />
         ) : null}
