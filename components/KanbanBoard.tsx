@@ -137,7 +137,7 @@ export default function KanbanBoard({ tasks, projects, onTaskUpdate }: KanbanBoa
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 p-6 h-full">
+      <div className="flex gap-4 p-6 min-h-full">
         {STATUSES.map(status => {
           const columnTasks = optimisticTasks
             .filter(t => t.status === status)

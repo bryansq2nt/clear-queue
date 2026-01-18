@@ -36,13 +36,14 @@ export default function TaskCard({ task, project, projects = [], onTaskUpdate, i
   }
 
   const priorityColors = {
-    1: 'bg-red-100 text-red-800',
-    2: 'bg-orange-100 text-orange-800',
-    3: 'bg-yellow-100 text-yellow-800',
-    4: 'bg-blue-100 text-blue-800',
-    5: 'bg-green-100 text-green-800',
+    5: { border: 'border-l-red-500', hover: 'hover:bg-red-50', badge: 'bg-red-100 text-red-800' }, // Highest
+    4: { border: 'border-l-orange-500', hover: 'hover:bg-orange-50', badge: 'bg-orange-100 text-orange-800' },
+    3: { border: 'border-l-yellow-500', hover: 'hover:bg-yellow-50', badge: 'bg-yellow-100 text-yellow-800' },
+    2: { border: 'border-l-blue-500', hover: 'hover:bg-blue-50', badge: 'bg-blue-100 text-blue-800' },
+    1: { border: 'border-l-green-500', hover: 'hover:bg-green-50', badge: 'bg-green-100 text-green-800' }, // Lowest
   }
 
+  const priorityStyle = priorityColors[task.priority as keyof typeof priorityColors] || priorityColors[3]
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done'
 
   return (
@@ -53,7 +54,9 @@ export default function TaskCard({ task, project, projects = [], onTaskUpdate, i
         {...attributes}
         {...listeners}
         className={cn(
-          'bg-white rounded-lg p-4 shadow-sm border border-slate-200 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow',
+          'bg-white rounded-lg p-4 shadow-sm border border-slate-200 border-l-4 cursor-grab active:cursor-grabbing transition-all',
+          priorityStyle.border,
+          priorityStyle.hover,
           (isDragging || isSortableDragging) && 'opacity-50'
         )}
         onClick={() => setIsOpen(true)}
@@ -62,8 +65,8 @@ export default function TaskCard({ task, project, projects = [], onTaskUpdate, i
           <h3 className="font-medium text-slate-900 flex-1">{task.title}</h3>
           <span
             className={cn(
-              'px-2 py-0.5 rounded text-xs font-medium',
-              priorityColors[task.priority as keyof typeof priorityColors] || priorityColors[3]
+              'px-2 py-0.5 rounded-full text-xs font-medium',
+              priorityStyle.badge
             )}
           >
             P{task.priority}

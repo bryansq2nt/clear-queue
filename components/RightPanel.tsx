@@ -17,7 +17,9 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects }: RightP
     <div className="w-80 bg-white border-l border-slate-200 p-4 overflow-y-auto">
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900 mb-3">Today</h2>
+          <div className="bg-slate-100 rounded-lg p-3 mb-3">
+            <h2 className="text-lg font-bold text-slate-900">Today</h2>
+          </div>
           <div className="space-y-2">
             {todayTasks.length === 0 ? (
               <p className="text-sm text-slate-500">No tasks due today</p>
@@ -35,7 +37,9 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects }: RightP
           </div>
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-slate-900 mb-3">Next Up</h2>
+          <div className="bg-slate-100 rounded-lg p-3 mb-3">
+            <h2 className="text-lg font-bold text-slate-900">Next Up</h2>
+          </div>
           <div className="space-y-2">
             {nextUpTasks.length === 0 ? (
               <p className="text-sm text-slate-500">No tasks in Next</p>

@@ -28,7 +28,7 @@ export default function DashboardClient() {
 
   async function loadData() {
     setLoading(true)
-    
+
     const [projectsRes, tasksRes] = await Promise.all([
       supabase.from('projects').select('*').order('created_at', { ascending: true }),
       supabase.from('tasks').select('*').order('order_index', { ascending: true }),
@@ -36,7 +36,7 @@ export default function DashboardClient() {
 
     if (projectsRes.data) setProjects(projectsRes.data)
     if (tasksRes.data) setTasks(tasksRes.data)
-    
+
     setLoading(false)
   }
 
@@ -67,38 +67,33 @@ export default function DashboardClient() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50">
-      <Sidebar
-        projects={projects}
-        selectedProject={selectedProject}
-        onSelectProject={setSelectedProject}
+    <div className="flex flex-col h-screen bg-slate-50">
+      <TopBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onSignOut={signOut}
         onProjectAdded={loadData}
       />
-      <div className="flex-1 flex flex-col">
-        <TopBar
+      <div className="flex-1 flex overflow-hidden">
+        <Sidebar
           projects={projects}
           selectedProject={selectedProject}
           selectedPriority={selectedPriority}
-          searchQuery={searchQuery}
-          onProjectChange={setSelectedProject}
+          onSelectProject={setSelectedProject}
           onPriorityChange={setSelectedPriority}
-          onSearchChange={setSearchQuery}
-          onSignOut={signOut}
         />
-        <div className="flex-1 flex overflow-hidden">
-          <div className="flex-1 overflow-auto">
-            <KanbanBoard
-              tasks={filteredTasks}
-              projects={projects}
-              onTaskUpdate={loadData}
-            />
-          </div>
-          <RightPanel
-            todayTasks={todayTasks}
-            nextUpTasks={nextUpTasks}
+        <div className="flex-1 overflow-x-auto">
+          <KanbanBoard
+            tasks={filteredTasks}
             projects={projects}
+            onTaskUpdate={loadData}
           />
         </div>
+        <RightPanel
+          todayTasks={todayTasks}
+          nextUpTasks={nextUpTasks}
+          projects={projects}
+        />
       </div>
     </div>
   )

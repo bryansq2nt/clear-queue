@@ -2,78 +2,60 @@
 
 import { Database } from '@/lib/supabase/types'
 import { Input } from './ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Button } from './ui/button'
-import { LogOut } from 'lucide-react'
+import { Search, LogOut } from 'lucide-react'
+import { useState } from 'react'
+import { AddProjectModal } from './AddProjectModal'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
 interface TopBarProps {
-  projects: Project[]
-  selectedProject: string | null
-  selectedPriority: number | null
   searchQuery: string
-  onProjectChange: (projectId: string | null) => void
-  onPriorityChange: (priority: number | null) => void
   onSearchChange: (query: string) => void
   onSignOut: () => void
+  onProjectAdded: () => void
 }
 
 export default function TopBar({
-  projects,
-  selectedProject,
-  selectedPriority,
   searchQuery,
-  onProjectChange,
-  onPriorityChange,
   onSearchChange,
   onSignOut,
+  onProjectAdded,
 }: TopBarProps) {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+
   return (
-    <div className="bg-white border-b border-slate-200 p-4 flex items-center gap-4">
-      <div className="flex-1 flex items-center gap-4">
-        <Select
-          value={selectedProject || 'all'}
-          onValueChange={(value) => onProjectChange(value === 'all' ? null : value)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by project" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Projects</SelectItem>
-            {projects.map(project => (
-              <SelectItem key={project.id} value={project.id}>
-                {project.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={selectedPriority?.toString() || 'all'}
-          onValueChange={(value) => onPriorityChange(value === 'all' ? null : parseInt(value))}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by priority" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Priorities</SelectItem>
-            <SelectItem value="5">Priority 5 (Highest)</SelectItem>
-            <SelectItem value="4">Priority 4</SelectItem>
-            <SelectItem value="3">Priority 3</SelectItem>
-            <SelectItem value="2">Priority 2</SelectItem>
-            <SelectItem value="1">Priority 1 (Lowest)</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder="Search tasks..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="max-w-sm"
-        />
+    <>
+      <div className="bg-slate-900 text-white shadow-lg h-16 flex items-center justify-between px-6">
+        <h1 className="text-xl font-bold">Mutech Labs - Task Manager</h1>
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 w-64"
+            />
+          </div>
+          <Button
+            onClick={() => setIsAddModalOpen(true)}
+            variant="default"
+            size="sm"
+            className="bg-white text-slate-900 hover:bg-slate-100"
+          >
+            Add Project
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onSignOut} className="text-white hover:bg-slate-800">
+            <LogOut className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
-      <Button variant="ghost" size="icon" onClick={onSignOut}>
-        <LogOut className="w-4 h-4" />
-      </Button>
-    </div>
+      <AddProjectModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onProjectAdded={onProjectAdded}
+      />
+    </>
   )
 }
