@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ClearQueue - Personal Task Manager",
+  title: "Mutech Labs - Project Manager",
   description: "A personal project and task management system",
 };
 
