@@ -32,9 +32,12 @@ interface KanbanBoardProps {
   tasks: Task[]
   projects: Project[]
   onTaskUpdate: () => void
+  currentProjectId?: string
 }
 
-export default function KanbanBoard({ tasks, projects, onTaskUpdate }: KanbanBoardProps) {
+export default function KanbanBoard({ tasks, projects, onTaskUpdate, currentProjectId }: KanbanBoardProps) {
+  // Get project ID from tasks if not provided
+  const projectId = currentProjectId || (tasks.length > 0 ? tasks[0].project_id : '')
   const [activeId, setActiveId] = useState<string | null>(null)
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks)
 
@@ -151,6 +154,7 @@ export default function KanbanBoard({ tasks, projects, onTaskUpdate }: KanbanBoa
               tasks={columnTasks}
               projects={projects}
               onTaskUpdate={onTaskUpdate}
+              currentProjectId={projectId}
             />
           )
         })}
@@ -160,7 +164,6 @@ export default function KanbanBoard({ tasks, projects, onTaskUpdate }: KanbanBoa
           <TaskCard
             task={activeTask}
             project={projects.find(p => p.id === activeTask.project_id)}
-            projects={projects}
             onTaskUpdate={onTaskUpdate}
             isDragging
           />

@@ -23,14 +23,11 @@ import {
   SelectValue,
 } from './ui/select'
 
-type Project = Database['public']['Tables']['projects']['Row']
-
 interface AddTaskModalProps {
   isOpen: boolean
   onClose: () => void
   onTaskAdded: () => void
-  projects: Project[]
-  defaultProjectId?: string
+  defaultProjectId: string
   defaultStatus?: Database['public']['Tables']['tasks']['Row']['status']
 }
 
@@ -38,12 +35,10 @@ export function AddTaskModal({
   isOpen,
   onClose,
   onTaskAdded,
-  projects,
   defaultProjectId,
   defaultStatus = 'next',
 }: AddTaskModalProps) {
   const [title, setTitle] = useState('')
-  const [projectId, setProjectId] = useState(defaultProjectId || '')
   const [status, setStatus] = useState<Database['public']['Tables']['tasks']['Row']['status']>(defaultStatus)
   const [priority, setPriority] = useState('3')
   const [dueDate, setDueDate] = useState('')
@@ -56,15 +51,15 @@ export function AddTaskModal({
     setIsLoading(true)
     setError(null)
 
-    if (!projectId) {
-      setError('Please select a project')
+    if (!defaultProjectId) {
+      setError('Project ID is required')
       setIsLoading(false)
       return
     }
 
     const formData = new FormData()
     formData.append('title', title)
-    formData.append('project_id', projectId)
+    formData.append('project_id', defaultProjectId)
     formData.append('status', status)
     formData.append('priority', priority)
     if (dueDate) formData.append('due_date', dueDate)
@@ -77,7 +72,6 @@ export function AddTaskModal({
       setIsLoading(false)
     } else {
       setTitle('')
-      setProjectId(defaultProjectId || '')
       setStatus(defaultStatus)
       setPriority('3')
       setDueDate('')
@@ -106,37 +100,20 @@ export function AddTaskModal({
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="project">Project *</Label>
-                <Select value={projectId} onValueChange={setProjectId} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map(project => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={status} onValueChange={(v) => setStatus(v as any)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="backlog">Backlog</SelectItem>
-                    <SelectItem value="next">Next</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="blocked">Blocked</SelectItem>
-                    <SelectItem value="done">Done</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select value={status} onValueChange={(v) => setStatus(v as any)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="backlog">Backlog</SelectItem>
+                  <SelectItem value="next">Next</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="blocked">Blocked</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

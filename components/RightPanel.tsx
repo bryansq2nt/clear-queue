@@ -29,7 +29,6 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects }: RightP
                   key={task.id}
                   task={task}
                   project={projects.find(p => p.id === task.project_id)}
-                  projects={projects}
                   onTaskUpdate={() => {}}
                 />
               ))
@@ -49,7 +48,6 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects }: RightP
                   key={task.id}
                   task={task}
                   project={projects.find(p => p.id === task.project_id)}
-                  projects={projects}
                   onTaskUpdate={() => {}}
                 />
               ))

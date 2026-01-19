@@ -24,14 +24,12 @@ import {
 } from './ui/select'
 
 type Task = Database['public']['Tables']['tasks']['Row']
-type Project = Database['public']['Tables']['projects']['Row']
 
 interface EditTaskModalProps {
   task: Task
   isOpen: boolean
   onClose: () => void
   onTaskUpdate: () => void
-  projects?: Project[]
 }
 
 export function EditTaskModal({
@@ -39,10 +37,8 @@ export function EditTaskModal({
   isOpen,
   onClose,
   onTaskUpdate,
-  projects = [],
 }: EditTaskModalProps) {
   const [title, setTitle] = useState(task.title)
-  const [projectId, setProjectId] = useState(task.project_id)
   const [status, setStatus] = useState<Task['status']>(task.status)
   const [priority, setPriority] = useState(task.priority.toString())
   const [dueDate, setDueDate] = useState(task.due_date || '')
@@ -58,7 +54,7 @@ export function EditTaskModal({
 
     const formData = new FormData()
     formData.append('title', title)
-    formData.append('project_id', projectId)
+    formData.append('project_id', task.project_id) // Use task's existing project_id
     formData.append('status', status)
     formData.append('priority', priority)
     formData.append('due_date', dueDate || '')
@@ -108,37 +104,20 @@ export function EditTaskModal({
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="project">Project *</Label>
-                <Select value={projectId} onValueChange={setProjectId} required>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map(project => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={status} onValueChange={(v) => setStatus(v as Task['status'])}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="backlog">Backlog</SelectItem>
-                    <SelectItem value="next">Next</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="blocked">Blocked</SelectItem>
-                    <SelectItem value="done">Done</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select value={status} onValueChange={(v) => setStatus(v as Task['status'])}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="backlog">Backlog</SelectItem>
+                  <SelectItem value="next">Next</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="blocked">Blocked</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

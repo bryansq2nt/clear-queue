@@ -115,6 +115,7 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
               tasks={filteredTasks}
               projects={projects}
               onTaskUpdate={loadData}
+              currentProjectId={projectId}
             />
           </div>
           <RightPanel

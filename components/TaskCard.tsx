@@ -14,12 +14,11 @@ type Project = Database['public']['Tables']['projects']['Row']
 interface TaskCardProps {
   task: Task
   project: Project | undefined
-  projects?: Project[]
   onTaskUpdate: () => void
   isDragging?: boolean
 }
 
-export default function TaskCard({ task, project, projects = [], onTaskUpdate, isDragging }: TaskCardProps) {
+export default function TaskCard({ task, project, onTaskUpdate, isDragging }: TaskCardProps) {
   const [isOpen, setIsOpen] = useState(false)
   const {
     attributes,
@@ -103,7 +102,6 @@ export default function TaskCard({ task, project, projects = [], onTaskUpdate, i
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         onTaskUpdate={onTaskUpdate}
-        projects={projects}
       />
     </>
   )

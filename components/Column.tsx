@@ -19,9 +19,10 @@ interface ColumnProps {
   tasks: Task[]
   projects: Project[]
   onTaskUpdate: () => void
+  currentProjectId?: string
 }
 
-export default function Column({ id, title, tasks, projects, onTaskUpdate }: ColumnProps) {
+export default function Column({ id, title, tasks, projects, onTaskUpdate, currentProjectId }: ColumnProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const { setNodeRef, isOver } = useDroppable({
     id,
@@ -51,7 +52,7 @@ export default function Column({ id, title, tasks, projects, onTaskUpdate }: Col
             <h2 className="text-base font-bold text-slate-800">{title}</h2>
             <p className="text-xs text-slate-600 mt-0.5">{tasks.length} tasks</p>
           </div>
-          
+
           {/* Cards Container */}
           <div
             ref={setNodeRef}
@@ -63,15 +64,14 @@ export default function Column({ id, title, tasks, projects, onTaskUpdate }: Col
           >
             <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-3">
-              {tasks.map(task => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  project={projects.find(p => p.id === task.project_id)}
-                  projects={projects}
-                  onTaskUpdate={onTaskUpdate}
-                />
-              ))}
+                {tasks.map(task => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    project={projects.find(p => p.id === task.project_id)}
+                    onTaskUpdate={onTaskUpdate}
+                  />
+                ))}
               </div>
             </SortableContext>
             {/* Add Task Button */}
@@ -85,13 +85,15 @@ export default function Column({ id, title, tasks, projects, onTaskUpdate }: Col
           </div>
         </div>
       </div>
-      <AddTaskModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onTaskAdded={onTaskUpdate}
-        projects={projects}
-        defaultStatus={id}
-      />
+      {currentProjectId && (
+        <AddTaskModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onTaskAdded={onTaskUpdate}
+          defaultProjectId={currentProjectId}
+          defaultStatus={id}
+        />
+      )}
     </>
   )
 }
