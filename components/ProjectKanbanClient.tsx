@@ -82,7 +82,7 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
   }
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <Sidebar
         projects={projects}
         selectedProject={projectId}

@@ -93,7 +93,7 @@ export default function Sidebar({
 
   return (
     <>
-      <div className="w-64 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
+      <div className="w-64 bg-white border-r border-slate-200 flex flex-col overflow-y-auto shadow-lg">
         <div className="p-4 space-y-6">
           {/* Navigation */}
           <div>

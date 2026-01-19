@@ -17,8 +17,8 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects }: RightP
     <div className="w-80 bg-white border-l border-slate-200 p-4 overflow-y-auto">
       <div className="space-y-6">
         <div>
-          <div className="bg-slate-100 rounded-lg p-3 mb-3">
-            <h2 className="text-lg font-bold text-slate-900">Today</h2>
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg px-4 py-3 mb-3 shadow-md">
+            <h2 className="text-base font-bold text-white">Today</h2>
           </div>
           <div className="space-y-2">
             {todayTasks.length === 0 ? (
@@ -37,8 +37,8 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects }: RightP
           </div>
         </div>
         <div>
-          <div className="bg-slate-100 rounded-lg p-3 mb-3">
-            <h2 className="text-lg font-bold text-slate-900">Next Up</h2>
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg px-4 py-3 mb-3 shadow-md">
+            <h2 className="text-base font-bold text-white">Next Up</h2>
           </div>
           <div className="space-y-2">
             {nextUpTasks.length === 0 ? (

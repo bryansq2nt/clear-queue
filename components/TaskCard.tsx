@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Database } from '@/lib/supabase/types'
 import { EditTaskModal } from './EditTaskModal'
 import { useState } from 'react'
-import { Calendar, Flag } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Task = Database['public']['Tables']['tasks']['Row']
@@ -35,15 +35,24 @@ export default function TaskCard({ task, project, projects = [], onTaskUpdate, i
     transition,
   }
 
-  const priorityColors = {
-    5: { border: 'border-l-red-500', hover: 'hover:bg-red-50', badge: 'bg-red-100 text-red-800' }, // Highest
-    4: { border: 'border-l-orange-500', hover: 'hover:bg-orange-50', badge: 'bg-orange-100 text-orange-800' },
-    3: { border: 'border-l-yellow-500', hover: 'hover:bg-yellow-50', badge: 'bg-yellow-100 text-yellow-800' },
-    2: { border: 'border-l-blue-500', hover: 'hover:bg-blue-50', badge: 'bg-blue-100 text-blue-800' },
-    1: { border: 'border-l-green-500', hover: 'hover:bg-green-50', badge: 'bg-green-100 text-green-800' }, // Lowest
+  // Priority-based styling
+  const priorityStyles = {
+    5: { bg: 'bg-red-50', border: 'border-l-4 border-red-500', badge: 'bg-red-500' },
+    4: { bg: 'bg-orange-50', border: 'border-l-4 border-orange-500', badge: 'bg-orange-500' },
+    3: { bg: 'bg-yellow-50', border: 'border-l-4 border-yellow-500', badge: 'bg-yellow-500' },
+    2: { bg: 'bg-blue-50', border: 'border-l-4 border-blue-500', badge: 'bg-blue-500' },
+    1: { bg: 'bg-green-50', border: 'border-l-4 border-green-500', badge: 'bg-green-500' }
   }
 
-  const priorityStyle = priorityColors[task.priority as keyof typeof priorityColors] || priorityColors[3]
+  // Done tasks always use green styling regardless of priority
+  const doneStyle = { bg: 'bg-green-50', border: 'border-l-4 border-green-500', badge: 'bg-green-500' }
+  // Blocked tasks always use red styling to draw attention
+  const blockedStyle = { bg: 'bg-red-50', border: 'border-l-4 border-red-500', badge: 'bg-red-500' }
+  const priorityStyle = task.status === 'done'
+    ? doneStyle
+    : task.status === 'blocked'
+      ? blockedStyle
+      : (priorityStyles[task.priority as keyof typeof priorityStyles] || priorityStyles[3])
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done'
 
   return (
@@ -54,41 +63,40 @@ export default function TaskCard({ task, project, projects = [], onTaskUpdate, i
         {...attributes}
         {...listeners}
         className={cn(
-          'bg-white rounded-lg p-4 shadow-sm border border-slate-200 border-l-4 cursor-grab active:cursor-grabbing transition-all',
+          'bg-white rounded-lg p-4 shadow-md hover:shadow-lg transition-all cursor-pointer group',
+          priorityStyle.bg,
           priorityStyle.border,
-          priorityStyle.hover,
           (isDragging || isSortableDragging) && 'opacity-50'
         )}
         onClick={() => setIsOpen(true)}
       >
         <div className="flex items-start justify-between mb-2">
-          <h3 className="font-medium text-slate-900 flex-1">{task.title}</h3>
-          <span
-            className={cn(
-              'px-2 py-0.5 rounded-full text-xs font-medium',
-              priorityStyle.badge
-            )}
-          >
+          <h3 className="font-semibold text-slate-800 text-sm flex-1 leading-tight">{task.title}</h3>
+          <span className={cn(
+            priorityStyle.badge,
+            'text-white text-xs px-2.5 py-1 rounded-full font-bold ml-2 flex-shrink-0'
+          )}>
             P{task.priority}
           </span>
         </div>
         {project && (
           <div className="flex items-center gap-1 mb-2">
             <div
-              className="w-3 h-3 rounded-full"
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: project.color || '#94a3b8' }}
             />
-            <span className="text-xs text-slate-600">{project.name}</span>
+            <span className="text-xs text-slate-600 font-medium">{project.name}</span>
           </div>
         )}
-        <div className="flex items-center gap-3 text-xs text-slate-500">
-          {task.due_date && (
-            <div className={cn('flex items-center gap-1', isOverdue && 'text-red-600 font-medium')}>
-              <Calendar className="w-3 h-3" />
-              {new Date(task.due_date).toLocaleDateString()}
-            </div>
-          )}
-        </div>
+        {task.due_date && (
+          <div className={cn(
+            'flex items-center gap-1 text-xs',
+            isOverdue ? 'text-red-600 font-medium' : 'text-slate-600 font-medium'
+          )}>
+            <Calendar className="w-3 h-3" />
+            {new Date(task.due_date).toLocaleDateString()}
+          </div>
+        )}
       </div>
       <EditTaskModal
         task={task}
