@@ -39,11 +39,11 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
       supabase.from('projects').select('*').order('created_at', { ascending: true }),
       supabase.from('projects').select('*').eq('id', projectId).single(),
       supabase.from('tasks').select('*').eq('project_id', projectId).order('order_index', { ascending: true }),
-    ])
+    ]) as any
 
-    if (projectsRes.data) setProjects(projectsRes.data)
-    if (projectRes.data) setCurrentProject(projectRes.data)
-    if (tasksRes.data) setTasks(tasksRes.data)
+    if (projectsRes?.data) setProjects(projectsRes.data as Project[])
+    if (projectRes?.data) setCurrentProject(projectRes.data as Project)
+    if (tasksRes?.data) setTasks(tasksRes.data as Task[])
 
     setLoading(false)
   }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { CheckCircle, AlertCircle, AlertTriangle, TrendingUp, Calendar, LayoutDashboard } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -10,6 +10,19 @@ import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 
 type Project = Database['public']['Tables']['projects']['Row']
+
+// Cast Recharts components to any to bypass React 18 type compatibility issues
+const RResponsiveContainer = ResponsiveContainer as any
+const RBarChart = BarChart as any
+const RBar = Bar as any
+const RXAxis = XAxis as any
+const RYAxis = YAxis as any
+const RCartesianGrid = CartesianGrid as any
+const RTooltip = Tooltip as any
+const RPieChart = PieChart as any
+const RPie = Pie as any
+const RCell = Cell as any
+const RLegend = Legend as any
 
 // Mock data
 const mockProjects = [
@@ -80,9 +93,11 @@ export default function AnalyticsDashboard() {
     const router = useRouter()
     const [projects, setProjects] = useState<Project[]>([])
     const [loading, setLoading] = useState(true)
+    const [mounted, setMounted] = useState(false)
     const supabase = createClient()
 
     useEffect(() => {
+        setMounted(true)
         loadProjects()
     }, [])
 
@@ -247,19 +262,21 @@ export default function AnalyticsDashboard() {
                     {/* 3. WEEKLY WORK DISTRIBUTION */}
                     <div className="bg-white rounded-lg shadow p-6">
                         <h2 className="text-xl font-bold text-slate-900 mb-4">Weekly Work Distribution</h2>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={weeklyWorkData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="project" />
-                                <YAxis />
-                                <Tooltip />
-                                <Bar dataKey="tasks" radius={[8, 8, 0, 0]}>
-                                    {weeklyWorkData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                        {mounted && (
+                            <RResponsiveContainer width="100%" height={300}>
+                                <RBarChart data={weeklyWorkData}>
+                                    <RCartesianGrid strokeDasharray="3 3" />
+                                    <RXAxis dataKey="project" />
+                                    <RYAxis />
+                                    <RTooltip />
+                                    <RBar dataKey="tasks" radius={[8, 8, 0, 0]}>
+                                        {weeklyWorkData.map((entry, index) => (
+                                            <RCell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </RBar>
+                                </RBarChart>
+                            </RResponsiveContainer>
+                        )}
                     </div>
 
                     {/* 4. MONTHLY PROGRESS */}
@@ -267,26 +284,28 @@ export default function AnalyticsDashboard() {
                         <h2 className="text-xl font-bold text-slate-900 mb-4">Monthly Progress</h2>
                         <div className="flex flex-col lg:flex-row gap-6">
                             <div className="flex-1">
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <PieChart>
-                                        <Pie
-                                            data={monthlyProgressData}
-                                            cx="50%"
-                                            cy="50%"
-                                            labelLine={false}
-                                            label={({ name, percent }: { name: string; percent: number }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                            outerRadius={100}
-                                            fill="#8884d8"
-                                            dataKey="value"
-                                        >
-                                            {monthlyProgressData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
+                                {mounted && (
+                                    <RResponsiveContainer width="100%" height={300}>
+                                        <RPieChart>
+                                            <RPie
+                                                data={monthlyProgressData}
+                                                cx="50%"
+                                                cy="50%"
+                                                labelLine={false}
+                                                label={({ name, percent }: { name: string; percent: number }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                                outerRadius={100}
+                                                fill="#8884d8"
+                                                dataKey="value"
+                                            >
+                                                {monthlyProgressData.map((entry, index) => (
+                                                    <RCell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </RPie>
+                                            <RTooltip />
+                                            <RLegend />
+                                        </RPieChart>
+                                    </RResponsiveContainer>
+                                )}
                             </div>
                             <div className="flex flex-col justify-center gap-4">
                                 <div className="text-center">

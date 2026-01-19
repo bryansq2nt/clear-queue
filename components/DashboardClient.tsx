@@ -73,6 +73,7 @@ export default function DashboardClient() {
         onSearchChange={setSearchQuery}
         onSignOut={signOut}
         onProjectAdded={loadData}
+        projectName='Dashboard'
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
