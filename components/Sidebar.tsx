@@ -1,146 +1,269 @@
 'use client'
 
+import { useState } from 'react'
 import { Database } from '@/lib/supabase/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { cn } from '@/lib/utils'
 import { useRouter, usePathname } from 'next/navigation'
-import { LayoutDashboard } from 'lucide-react'
+import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { PROJECT_CATEGORIES, getCategoryLabel } from '@/lib/constants'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu'
+import { EditProjectModal } from './EditProjectModal'
+import { archiveProject, unarchiveProject, deleteProject } from '@/app/actions/projects'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
 interface SidebarProps {
   projects: Project[]
   selectedProject: string | null
-  selectedPriority: number | null
+  selectedCategory: string | null
+  showArchived: boolean
   onSelectProject: (projectId: string | null) => void
-  onPriorityChange: (priority: number | null) => void
+  onCategoryChange: (category: string | null) => void
+  onShowArchivedChange: (show: boolean) => void
+  onProjectUpdated: () => void
 }
 
 export default function Sidebar({
   projects,
   selectedProject,
-  selectedPriority,
+  selectedCategory,
+  showArchived,
   onSelectProject,
-  onPriorityChange,
+  onCategoryChange,
+  onShowArchivedChange,
+  onProjectUpdated,
 }: SidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
+
+  // Filter projects based on selectedCategory and showArchived
+  const filteredProjects = projects.filter(p => {
+    // Filter by category if selected
+    if (selectedCategory && p.category !== selectedCategory) return false
+    // Filter out archived if toggle is off
+    if (!showArchived && p.category === 'archived') return false
+    return true
+  })
+
+  // Group filtered projects by category
+  const groupedProjects = PROJECT_CATEGORIES.reduce((acc, category) => {
+    const categoryProjects = filteredProjects.filter(p => p.category === category.key)
+    if (categoryProjects.length > 0) {
+      acc[category.key] = categoryProjects
+    }
+    return acc
+  }, {} as Record<string, Project[]>)
+
+  // Filter out archived if toggle is off
+  const visibleCategories = showArchived
+    ? PROJECT_CATEGORIES
+    : PROJECT_CATEGORIES.filter(c => c.key !== 'archived')
+
+  async function handleArchive(project: Project) {
+    if (project.category === 'archived') {
+      await unarchiveProject(project.id)
+    } else {
+      await archiveProject(project.id)
+    }
+    onProjectUpdated()
+  }
+
+  async function handleDelete(project: Project) {
+    if (!confirm(`Delete project "${project.name}" and all its tasks? This cannot be undone.`)) {
+      return
+    }
+    setIsDeleting(project.id)
+    await deleteProject(project.id)
+    setIsDeleting(null)
+    onProjectUpdated()
+    if (selectedProject === project.id) {
+      router.push('/dashboard')
+    }
+  }
 
   return (
-    <div className="w-64 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
-      <div className="p-4 space-y-6">
-        {/* Navigation */}
-        <div>
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
-            Navigation
-          </label>
-          <div className="space-y-1">
-            <Link
-              href="/dashboard"
-              className={cn(
-                'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
-                pathname === '/dashboard'
-                  ? 'bg-slate-100 text-slate-900 font-medium'
-                  : 'text-slate-600 hover:bg-slate-50'
-              )}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              Dashboard
-            </Link>
-          </div>
-        </div>
-
-        {/* Filters Section */}
-        <div className="space-y-4">
+    <>
+      <div className="w-64 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
+        <div className="p-4 space-y-6">
+          {/* Navigation */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
-              Filter by Project
+              Navigation
             </label>
-            <Select
-              value={selectedProject || 'all'}
-              onValueChange={(value) => onSelectProject(value === 'all' ? null : value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="All Projects" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
-                {projects.map(project => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
-              Filter by Priority
-            </label>
-            <Select
-              value={selectedPriority?.toString() || 'all'}
-              onValueChange={(value) => onPriorityChange(value === 'all' ? null : parseInt(value))}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="All Priorities" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priorities</SelectItem>
-                <SelectItem value="5">Priority 5 (Highest)</SelectItem>
-                <SelectItem value="4">Priority 4</SelectItem>
-                <SelectItem value="3">Priority 3</SelectItem>
-                <SelectItem value="2">Priority 2</SelectItem>
-                <SelectItem value="1">Priority 1 (Lowest)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Projects List */}
-        <div>
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
-            Projects
-          </label>
-          <div className="space-y-1">
-            <button
-              onClick={() => {
-                onSelectProject(null)
-                router.push('/dashboard')
-              }}
-              className={cn(
-                'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
-                selectedProject === null || pathname === '/dashboard'
-                  ? 'bg-slate-100 text-slate-900 font-medium'
-                  : 'text-slate-600 hover:bg-slate-50'
-              )}
-            >
-              All Projects
-            </button>
-            {projects.map(project => (
-              <button
-                key={project.id}
-                onClick={() => {
-                  onSelectProject(project.id)
-                  router.push(`/project/${project.id}`)
-                }}
+            <div className="space-y-1">
+              <Link
+                href="/dashboard"
                 className={cn(
-                  'w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2',
-                  selectedProject === project.id || pathname === `/project/${project.id}`
+                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  pathname === '/dashboard'
                     ? 'bg-slate-100 text-slate-900 font-medium'
                     : 'text-slate-600 hover:bg-slate-50'
                 )}
               >
-                <div
-                  className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: project.color || '#94a3b8' }}
-                />
-                <span className="truncate">{project.name}</span>
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </Link>
+            </div>
+          </div>
+
+          {/* Projects List - Grouped by Category */}
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
+              Projects
+            </label>
+            <div className="space-y-1">
+              <button
+                onClick={() => {
+                  onSelectProject(null)
+                  router.push('/dashboard')
+                }}
+                className={cn(
+                  'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
+                  selectedProject === null || pathname === '/dashboard'
+                    ? 'bg-slate-100 text-slate-900 font-medium'
+                    : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                All Projects
               </button>
-            ))}
+              
+              {/* Filter by Category - positioned below All Projects */}
+              <div className="px-3 py-2">
+                <Select
+                  value={selectedCategory || 'all'}
+                  onValueChange={(value) => onCategoryChange(value === 'all' ? null : value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filter by Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {PROJECT_CATEGORIES.filter(c => c.key !== 'archived' || showArchived).map(cat => (
+                      <SelectItem key={cat.key} value={cat.key}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Show Archived Toggle - positioned below category filter */}
+              <button
+                onClick={() => onShowArchivedChange(!showArchived)}
+                className={cn(
+                  'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
+                  showArchived
+                    ? 'bg-slate-100 text-slate-900 font-medium'
+                    : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                {showArchived ? '✓' : ''} Show Archived
+              </button>
+              {visibleCategories.map(category => {
+                const categoryProjects = groupedProjects[category.key] || []
+                if (categoryProjects.length === 0) return null
+
+                return (
+                  <div key={category.key} className="mt-3">
+                    <div className="text-xs font-medium text-slate-500 px-3 py-1 uppercase tracking-wide">
+                      {category.label}
+                    </div>
+                    <div className="space-y-1 mt-1">
+                      {categoryProjects.map(project => (
+                        <div
+                          key={project.id}
+                          className={cn(
+                            'group flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                            selectedProject === project.id || pathname === `/project/${project.id}`
+                              ? 'bg-slate-100 text-slate-900 font-medium'
+                              : 'text-slate-600 hover:bg-slate-50'
+                          )}
+                        >
+                          <button
+                            onClick={() => {
+                              onSelectProject(project.id)
+                              router.push(`/project/${project.id}`)
+                            }}
+                            className="flex items-center gap-2 flex-1 text-left min-w-0"
+                          >
+                            <div
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: project.color || '#94a3b8' }}
+                            />
+                            <span className="truncate flex-1 min-w-0">{project.name}</span>
+                            {project.category === 'archived' && (
+                              <span className="text-xs text-slate-400 flex-shrink-0">Archived</span>
+                            )}
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <button
+                                className="opacity-60 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition-opacity flex-shrink-0"
+                                onClick={(e) => e.stopPropagation()}
+                                title="Project options"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setEditingProject(project)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Project
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {project.category === 'archived' ? (
+                                <DropdownMenuItem onClick={() => handleArchive(project)}>
+                                  <ArchiveRestore className="w-4 h-4 mr-2" />
+                                  Unarchive
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem onClick={() => handleArchive(project)}>
+                                  <Archive className="w-4 h-4 mr-2" />
+                                  Archive
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(project)}
+                                className="text-red-600 focus:text-red-600"
+                                disabled={isDeleting === project.id}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                {isDeleting === project.id ? 'Deleting...' : 'Delete'}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+      {editingProject && (
+        <EditProjectModal
+          isOpen={!!editingProject}
+          onClose={() => setEditingProject(null)}
+          onProjectUpdated={() => {
+            onProjectUpdated()
+            setEditingProject(null)
+          }}
+          project={editingProject}
+        />
+      )}
+    </>
   )
 }

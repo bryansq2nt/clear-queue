@@ -13,6 +13,8 @@ import {
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { PROJECT_CATEGORIES } from '@/lib/constants'
 
 interface AddProjectModalProps {
   isOpen: boolean
@@ -29,6 +31,7 @@ const COLORS = [
 
 export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectModalProps) {
   const [name, setName] = useState('')
+  const [category, setCategory] = useState<string>('business')
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,6 +43,7 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
 
     const formData = new FormData()
     formData.append('name', name)
+    formData.append('category', category)
     if (selectedColor) formData.append('color', selectedColor)
 
     const result = await createProject(formData)
@@ -49,6 +53,7 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
       setIsLoading(false)
     } else {
       setName('')
+      setCategory('business')
       setSelectedColor(null)
       onProjectAdded()
       onClose()
@@ -73,6 +78,21 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
                 placeholder="My Project"
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger id="category">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROJECT_CATEGORIES.filter(c => c.key !== 'archived').map(cat => (
+                    <SelectItem key={cat.key} value={cat.key}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Color (optional)</Label>

@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
+import { PROJECT_CATEGORIES, type ProjectCategory } from '@/lib/constants'
 
 export async function createProject(formData: FormData) {
   await requireAuth()
@@ -10,10 +11,21 @@ export async function createProject(formData: FormData) {
 
   const name = formData.get('name') as string
   const color = formData.get('color') as string | null
+  const category = (formData.get('category') as string) || 'business'
+
+  // Validate category
+  const validCategories = PROJECT_CATEGORIES.map(c => c.key)
+  if (!validCategories.includes(category as ProjectCategory)) {
+    return { error: 'Invalid category' }
+  }
+
+  if (!name || name.trim().length === 0) {
+    return { error: 'Project name is required' }
+  }
 
   const { data, error } = await supabase
     .from('projects')
-    .insert({ name, color: color || null } as any)
+    .insert({ name: name.trim(), color: color || null, category } as any)
     .select()
     .single()
 
@@ -22,6 +34,120 @@ export async function createProject(formData: FormData) {
   }
 
   revalidatePath('/dashboard')
+  revalidatePath('/project')
+  return { data }
+}
+
+export async function updateProject(formData: FormData) {
+  await requireAuth()
+  const supabase = await createClient()
+
+  const id = formData.get('id') as string
+  const name = formData.get('name') as string | null
+  const color = formData.get('color') as string | null
+  const category = formData.get('category') as string | null
+
+  if (!id) {
+    return { error: 'Project ID is required' }
+  }
+
+  const updates: any = {}
+
+  if (name !== null) {
+    const trimmedName = name.trim()
+    if (trimmedName.length === 0) {
+      return { error: 'Project name cannot be empty' }
+    }
+    updates.name = trimmedName
+  }
+
+  if (color !== null) {
+    updates.color = color || null
+  }
+
+  if (category !== null) {
+    // Validate category
+    const validCategories = PROJECT_CATEGORIES.map(c => c.key)
+    if (!validCategories.includes(category as ProjectCategory)) {
+      return { error: 'Invalid category' }
+    }
+    updates.category = category
+  }
+
+  const query: any = (supabase
+    .from('projects') as any)
+    .update(updates as any)
+
+  const result: any = await query
+    .eq('id', id)
+    .select()
+    .single()
+
+  const { data, error } = result
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/project')
+  return { data }
+}
+
+export async function archiveProject(id: string) {
+  await requireAuth()
+  const supabase = await createClient()
+
+  const query: any = (supabase
+    .from('projects') as any)
+    .update({ category: 'archived' } as any)
+
+  const result: any = await query
+    .eq('id', id)
+    .select()
+    .single()
+
+  const { data, error } = result
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/project')
+  return { data }
+}
+
+export async function unarchiveProject(id: string, previousCategory?: string) {
+  await requireAuth()
+  const supabase = await createClient()
+
+  // Default to 'business' if no previous category provided
+  const category = previousCategory || 'business'
+
+  // Validate category
+  const validCategories = PROJECT_CATEGORIES.map(c => c.key)
+  if (!validCategories.includes(category as ProjectCategory)) {
+    return { error: 'Invalid category' }
+  }
+
+  const query: any = (supabase
+    .from('projects') as any)
+    .update({ category } as any)
+
+  const result: any = await query
+    .eq('id', id)
+    .select()
+    .single()
+
+  const { data, error } = result
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/project')
   return { data }
 }
 
@@ -39,5 +165,6 @@ export async function deleteProject(id: string) {
   }
 
   revalidatePath('/dashboard')
+  revalidatePath('/project')
   return { success: true }
 }

@@ -14,19 +14,25 @@ export type Database = {
           id: string
           name: string
           color: string | null
+          category: string
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
           name: string
           color?: string | null
+          category?: string
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           name?: string
           color?: string | null
+          category?: string
           created_at?: string
+          updated_at?: string
         }
       }
       tasks: {

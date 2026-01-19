@@ -16,7 +16,8 @@ export default function DashboardClient() {
   const [projects, setProjects] = useState<Project[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
-  const [selectedPriority, setSelectedPriority] = useState<number | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -42,8 +43,14 @@ export default function DashboardClient() {
 
   const filteredTasks = tasks.filter(task => {
     if (selectedProject && task.project_id !== selectedProject) return false
-    if (selectedPriority && task.priority !== selectedPriority) return false
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
+
+    // Filter out archived projects if showArchived is false
+    if (!showArchived) {
+      const taskProject = projects.find(p => p.id === task.project_id)
+      if (taskProject && taskProject.category === 'archived') return false
+    }
+
     return true
   })
 
@@ -73,15 +80,20 @@ export default function DashboardClient() {
         onSearchChange={setSearchQuery}
         onSignOut={signOut}
         onProjectAdded={loadData}
+        onProjectUpdated={loadData}
         projectName='Dashboard'
+        currentProject={null}
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
           projects={projects}
           selectedProject={selectedProject}
-          selectedPriority={selectedPriority}
+          selectedCategory={selectedCategory}
+          showArchived={showArchived}
           onSelectProject={setSelectedProject}
-          onPriorityChange={setSelectedPriority}
+          onCategoryChange={setSelectedCategory}
+          onShowArchivedChange={setShowArchived}
+          onProjectUpdated={loadData}
         />
         <div className="flex-1 overflow-x-auto">
           <KanbanBoard

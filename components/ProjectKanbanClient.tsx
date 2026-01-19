@@ -21,7 +21,8 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
   const [projects, setProjects] = useState<Project[]>([])
   const [currentProject, setCurrentProject] = useState<Project | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
-  const [selectedPriority, setSelectedPriority] = useState<number | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -49,7 +50,6 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
   }
 
   const filteredTasks = tasks.filter(task => {
-    if (selectedPriority && task.priority !== selectedPriority) return false
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
   })
@@ -86,7 +86,8 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
       <Sidebar
         projects={projects}
         selectedProject={projectId}
-        selectedPriority={selectedPriority}
+        selectedCategory={selectedCategory}
+        showArchived={showArchived}
         onSelectProject={(id) => {
           if (id) {
             router.push(`/project/${id}`)
@@ -94,7 +95,9 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
             router.push('/dashboard')
           }
         }}
-        onPriorityChange={setSelectedPriority}
+        onCategoryChange={setSelectedCategory}
+        onShowArchivedChange={setShowArchived}
+        onProjectUpdated={loadData}
       />
       <div className="flex-1 flex flex-col">
         <TopBar
@@ -102,7 +105,9 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
           onSearchChange={setSearchQuery}
           onSignOut={signOut}
           onProjectAdded={loadData}
+          onProjectUpdated={loadData}
           projectName={currentProject.name}
+          currentProject={currentProject}
         />
         <div className="flex-1 flex overflow-hidden">
           <div className="flex-1 overflow-x-auto">

@@ -6,6 +6,7 @@ import { Button } from './ui/button'
 import { Search, LogOut } from 'lucide-react'
 import { useState } from 'react'
 import { AddProjectModal } from './AddProjectModal'
+import { EditProjectModal } from './EditProjectModal'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
@@ -13,8 +14,10 @@ interface TopBarProps {
   searchQuery: string
   onSearchChange: (query: string) => void
   onSignOut: () => void
-  onProjectAdded: () => void,
+  onProjectAdded: () => void
+  onProjectUpdated: () => void
   projectName: string
+  currentProject?: Project | null
 }
 
 export default function TopBar({
@@ -22,9 +25,12 @@ export default function TopBar({
   onSearchChange,
   onSignOut,
   onProjectAdded,
+  onProjectUpdated,
   projectName,
+  currentProject,
 }: TopBarProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   return (
     <>
@@ -40,24 +46,47 @@ export default function TopBar({
               className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 w-64"
             />
           </div>
-          <Button
-            onClick={() => setIsAddModalOpen(true)}
-            variant="default"
-            size="sm"
-            className="bg-white text-slate-900 hover:bg-slate-100"
-          >
-            Add Project
-          </Button>
+          {currentProject ? (
+            <Button
+              onClick={() => setIsEditModalOpen(true)}
+              variant="default"
+              size="sm"
+              className="bg-white text-slate-900 hover:bg-slate-100"
+            >
+              Edit Project
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              variant="default"
+              size="sm"
+              className="bg-white text-slate-900 hover:bg-slate-100"
+            >
+              Add Project
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={onSignOut} className="text-white hover:bg-slate-800">
             <LogOut className="w-4 h-4" />
           </Button>
         </div>
       </div>
-      <AddProjectModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onProjectAdded={onProjectAdded}
-      />
+      {currentProject ? (
+        <EditProjectModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onProjectUpdated={() => {
+            onProjectUpdated()
+            setIsEditModalOpen(false)
+          }}
+          project={currentProject}
+        />
+      ) : (
+        <AddProjectModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onProjectAdded={onProjectAdded}
+        />
+      )}
     </>
   )
 }
