@@ -68,7 +68,7 @@ export function SelectionActionBar({ selectedCount, onDelete, onCancel, isDeleti
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete {selectedCount} {selectedCount === 1 ? 'task' : 'tasks'}?</DialogTitle>
-            <DialogDescription>This can't be undone.</DialogDescription>
+            <DialogDescription>This can&apos;t be undone.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import KanbanBoard from './KanbanBoard'
@@ -23,11 +23,7 @@ export default function DashboardClient() {
 
   const supabase = createClient()
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true)
 
     const [projectsRes, tasksRes] = await Promise.all([
@@ -39,7 +35,11 @@ export default function DashboardClient() {
     if (tasksRes.data) setTasks(tasksRes.data)
 
     setLoading(false)
-  }
+  }, [supabase])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const filteredTasks = tasks.filter(task => {
     if (selectedProject && task.project_id !== selectedProject) return false

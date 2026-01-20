@@ -102,11 +102,7 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
     setIsDeleting(false)
   }
 
-  useEffect(() => {
-    loadData()
-  }, [projectId])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true)
 
     const [projectsRes, projectRes, tasksRes] = await Promise.all([
@@ -120,7 +116,11 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
     if (tasksRes?.data) setTasks(tasksRes.data as Task[])
 
     setLoading(false)
-  }
+  }, [supabase, projectId])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const filteredTasks = tasks.filter(task => {
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
