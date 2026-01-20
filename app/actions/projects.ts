@@ -46,6 +46,7 @@ export async function updateProject(formData: FormData) {
   const name = formData.get('name') as string | null
   const color = formData.get('color') as string | null
   const category = formData.get('category') as string | null
+  const notes = formData.get('notes') as string | null
 
   if (!id) {
     return { error: 'Project ID is required' }
@@ -72,6 +73,10 @@ export async function updateProject(formData: FormData) {
       return { error: 'Invalid category' }
     }
     updates.category = category
+  }
+
+  if (notes !== null) {
+    updates.notes = notes || null
   }
 
   const query: any = (supabase

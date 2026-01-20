@@ -3,7 +3,7 @@
 import { Database } from '@/lib/supabase/types'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
-import { Search, LogOut, CheckSquare } from 'lucide-react'
+import { Search, LogOut, CheckSquare, FileText } from 'lucide-react'
 import { useState } from 'react'
 import { AddProjectModal } from './AddProjectModal'
 import { EditProjectModal } from './EditProjectModal'
@@ -35,6 +35,7 @@ export default function TopBar({
 }: TopBarProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false)
 
   return (
     <>
@@ -63,14 +64,25 @@ export default function TopBar({
               </Button>
             )}
             {currentProject ? (
-              <Button
-                onClick={() => setIsEditModalOpen(true)}
-                variant="default"
-                size="sm"
-                className="bg-white text-slate-900 hover:bg-slate-100"
-              >
-                Edit Project
-              </Button>
+              <>
+                <Button
+                  onClick={() => setIsNotesModalOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="bg-slate-800 text-white border-slate-700 hover:bg-slate-700"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Notes
+                </Button>
+                <Button
+                  onClick={() => setIsEditModalOpen(true)}
+                  variant="default"
+                  size="sm"
+                  className="bg-white text-slate-900 hover:bg-slate-100"
+                >
+                  Edit Project
+                </Button>
+              </>
             ) : (
               <Button
                 onClick={() => setIsAddModalOpen(true)}
@@ -88,15 +100,27 @@ export default function TopBar({
         </div>
       </div>
       {currentProject ? (
-        <EditProjectModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          onProjectUpdated={() => {
-            onProjectUpdated()
-            setIsEditModalOpen(false)
-          }}
-          project={currentProject}
-        />
+        <>
+          <EditProjectModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            onProjectUpdated={() => {
+              onProjectUpdated()
+              setIsEditModalOpen(false)
+            }}
+            project={currentProject}
+            defaultTab="details"
+          />
+          <EditProjectModal
+            isOpen={isNotesModalOpen}
+            onClose={() => setIsNotesModalOpen(false)}
+            onProjectUpdated={() => {
+              onProjectUpdated()
+            }}
+            project={currentProject}
+            defaultTab="notes"
+          />
+        </>
       ) : (
         <AddProjectModal
           isOpen={isAddModalOpen}
