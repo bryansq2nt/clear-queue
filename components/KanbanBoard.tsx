@@ -15,6 +15,7 @@ import Column from './Column'
 import TaskCard from './TaskCard'
 import { Database } from '@/lib/supabase/types'
 import { updateTaskOrder } from '@/app/actions/tasks'
+import { cn } from '@/lib/utils'
 
 type Task = Database['public']['Tables']['tasks']['Row']
 type Project = Database['public']['Tables']['projects']['Row']
@@ -33,18 +34,32 @@ interface KanbanBoardProps {
   projects: Project[]
   onTaskUpdate: () => void
   currentProjectId?: string
+  selectionMode?: boolean
+  selectedTaskIds?: Set<string>
+  onToggleSelection?: (taskId: string) => void
+  onEnterSelectionMode?: (taskId: string) => void
 }
 
-export default function KanbanBoard({ tasks, projects, onTaskUpdate, currentProjectId }: KanbanBoardProps) {
+export default function KanbanBoard({
+  tasks,
+  projects,
+  onTaskUpdate,
+  currentProjectId,
+  selectionMode = false,
+  selectedTaskIds = new Set(),
+  onToggleSelection,
+  onEnterSelectionMode,
+}: KanbanBoardProps) {
   // Get project ID from tasks if not provided
   const projectId = currentProjectId || (tasks.length > 0 ? tasks[0].project_id : '')
   const [activeId, setActiveId] = useState<string | null>(null)
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks)
 
+  // Disable drag sensors when in selection mode
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: selectionMode ? 9999 : 8, // Effectively disable when in selection mode
       },
     })
   )
@@ -137,14 +152,23 @@ export default function KanbanBoard({ tasks, projects, onTaskUpdate, currentProj
   return (
     <DndContext
       sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+      onDragStart={selectionMode ? undefined : handleDragStart}
+      onDragEnd={selectionMode ? undefined : handleDragEnd}
     >
-      <div className="flex gap-4 p-6 min-h-full">
+      <div className={cn("flex gap-4 p-6 min-h-full", selectionMode && "select-none")}>
         {STATUSES.map(status => {
           const columnTasks = optimisticTasks
             .filter(t => t.status === status)
             .sort((a, b) => a.order_index - b.order_index)
+            .map(task => ({
+              ...task,
+              __selectionProps: {
+                selectionMode,
+                isSelected: selectedTaskIds.has(task.id),
+                onToggleSelection,
+                onEnterSelectionMode,
+              }
+            }))
 
           return (
             <Column
@@ -166,6 +190,7 @@ export default function KanbanBoard({ tasks, projects, onTaskUpdate, currentProj
             project={projects.find(p => p.id === activeTask.project_id)}
             onTaskUpdate={onTaskUpdate}
             isDragging
+            selectionMode={false}
           />
         ) : null}
       </DragOverlay>

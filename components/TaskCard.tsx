@@ -4,8 +4,8 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Database } from '@/lib/supabase/types'
 import { EditTaskModal } from './EditTaskModal'
-import { useState } from 'react'
-import { Calendar } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Calendar, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Task = Database['public']['Tables']['tasks']['Row']
@@ -16,10 +16,26 @@ interface TaskCardProps {
   project: Project | undefined
   onTaskUpdate: () => void
   isDragging?: boolean
+  selectionMode?: boolean
+  isSelected?: boolean
+  onToggleSelection?: (taskId: string) => void
+  onEnterSelectionMode?: (taskId: string) => void
 }
 
-export default function TaskCard({ task, project, onTaskUpdate, isDragging }: TaskCardProps) {
+export default function TaskCard({
+  task,
+  project,
+  onTaskUpdate,
+  isDragging,
+  selectionMode = false,
+  isSelected = false,
+  onToggleSelection,
+  onEnterSelectionMode,
+}: TaskCardProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const hasLongPressedRef = useRef(false)
+
   const {
     attributes,
     listeners,
@@ -27,7 +43,10 @@ export default function TaskCard({ task, project, onTaskUpdate, isDragging }: Ta
     transform,
     transition,
     isDragging: isSortableDragging,
-  } = useSortable({ id: task.id })
+  } = useSortable({
+    id: task.id,
+    disabled: selectionMode || false // Disable drag when in selection mode
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -54,22 +73,122 @@ export default function TaskCard({ task, project, onTaskUpdate, isDragging }: Ta
       : (priorityStyles[task.priority as keyof typeof priorityStyles] || priorityStyles[3])
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done'
 
+  // Long-press handler
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current)
+      }
+    }
+  }, [])
+
+  function handlePointerDown(e: React.PointerEvent) {
+    if (selectionMode) return
+
+    // Check if it's a touch device or touch pointer
+    const isTouch = e.pointerType === 'touch' || 'ontouchstart' in window
+
+    if (isTouch) {
+      hasLongPressedRef.current = false
+      longPressTimerRef.current = setTimeout(() => {
+        hasLongPressedRef.current = true
+        if (onEnterSelectionMode) {
+          onEnterSelectionMode(task.id)
+        }
+      }, 350)
+    }
+  }
+
+  function handlePointerUp(e: React.PointerEvent) {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  function handlePointerMove() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  function handleMouseDown(e: React.MouseEvent) {
+    // Prevent text selection when in selection mode or when shift is pressed
+    if (selectionMode || e.shiftKey) {
+      e.preventDefault()
+    }
+  }
+
+  function handleClick(e: React.MouseEvent) {
+    // Prevent default if long-press was triggered
+    if (hasLongPressedRef.current) {
+      e.preventDefault()
+      e.stopPropagation()
+      hasLongPressedRef.current = false
+      return
+    }
+
+    if (selectionMode) {
+      // In selection mode, toggle selection
+      e.preventDefault()
+      e.stopPropagation()
+      if (onToggleSelection) {
+        onToggleSelection(task.id)
+      }
+    } else if (e.shiftKey) {
+      // Shift+click: enter selection mode and select this task
+      e.preventDefault()
+      e.stopPropagation()
+      if (onEnterSelectionMode) {
+        onEnterSelectionMode(task.id)
+      }
+    } else {
+      // Normal click: open edit modal
+      setIsOpen(true)
+    }
+  }
+
+  // Only apply drag listeners when not in selection mode
+  const dragProps = selectionMode ? {} : { ...attributes, ...listeners }
+
   return (
     <>
       <div
         ref={setNodeRef}
         style={style}
-        {...attributes}
-        {...listeners}
+        {...dragProps}
         className={cn(
-          'bg-white rounded-lg p-4 shadow-md hover:shadow-lg transition-all cursor-pointer group',
+          'bg-white rounded-lg p-4 shadow-md hover:shadow-lg transition-all cursor-pointer group relative',
           priorityStyle.bg,
           priorityStyle.border,
-          (isDragging || isSortableDragging) && 'opacity-50'
+          (isDragging || isSortableDragging) && 'opacity-50',
+          selectionMode && isSelected && 'ring-2 ring-blue-500 ring-offset-2',
+          selectionMode && !isSelected && 'ring-0',
+          selectionMode && 'select-none' // Disable text selection in selection mode
         )}
-        onClick={() => setIsOpen(true)}
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerMove={handlePointerMove}
+        onPointerCancel={handlePointerUp}
       >
-        <div className="flex items-start justify-between mb-2">
+        {/* Checkbox for selection mode */}
+        {selectionMode && (
+          <div className="absolute top-3 left-3 z-10">
+            <div className={cn(
+              'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+              isSelected
+                ? 'bg-blue-500 border-blue-500'
+                : 'bg-white border-slate-300'
+            )}>
+              {isSelected && <Check className="w-3 h-3 text-white" />}
+            </div>
+          </div>
+        )}
+
+        <div className={cn('flex items-start justify-between mb-2', selectionMode && 'pl-6')}>
           <h3 className="font-semibold text-slate-800 text-sm flex-1 leading-tight">{task.title}</h3>
           <span className={cn(
             priorityStyle.badge,

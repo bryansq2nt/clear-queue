@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CheckCircle, AlertCircle, AlertTriangle, TrendingUp, Calendar } from 'lucide-react'
+import { CheckCircle, AlertCircle, AlertTriangle, TrendingUp, Calendar, LogOut, Plus } from 'lucide-react'
 import { getCategoryLabel } from '@/lib/constants'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import Sidebar from './Sidebar'
+import { AddProjectModal } from './AddProjectModal'
+import { Button } from './ui/button'
 
 type Project = Database['public']['Tables']['projects']['Row']
 type Task = Database['public']['Tables']['tasks']['Row']
@@ -139,6 +141,7 @@ function calculateKPIs(tasks: Task[]) {
 export default function AnalyticsDashboard() {
     const pathname = usePathname()
     const router = useRouter()
+    const supabase = createClient()
     const [dashboardData, setDashboardData] = useState<{
         projects: Project[]
         tasks: Task[]
@@ -158,6 +161,7 @@ export default function AnalyticsDashboard() {
     const [showArchived, setShowArchived] = useState(false)
     const [loading, setLoading] = useState(true)
     const [mounted, setMounted] = useState(false)
+    const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false)
 
     useEffect(() => {
         setMounted(true)
@@ -226,9 +230,34 @@ export default function AnalyticsDashboard() {
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* 1. TOP NAVIGATION BAR */}
-                <div className="bg-slate-900 text-white shadow-lg h-16 flex items-center justify-between px-6">
-                    <h1 className="text-xl font-bold">Mutech Labs - Dashboard</h1>
-                    <span className="text-slate-300 text-sm">Last updated: {lastUpdated}</span>
+                <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-xl">
+                    <div className="px-6 py-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <h1 className="text-xl font-bold">Mutech Labs - Dashboard</h1>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Button
+                                onClick={() => setIsAddProjectModalOpen(true)}
+                                variant="default"
+                                size="sm"
+                                className="bg-white text-slate-900 hover:bg-slate-100"
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Create Project
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={async () => {
+                                    await supabase.auth.signOut()
+                                    router.push('/')
+                                }}
+                                className="text-white hover:bg-slate-800"
+                            >
+                                <LogOut className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -238,6 +267,29 @@ export default function AnalyticsDashboard() {
                         </div>
                     ) : (
                         <>
+
+
+                            {/* 3. KPI CARDS ROW */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {kpiData.map((kpi, index) => {
+                                    const Icon = kpi.icon
+                                    return (
+                                        <div
+                                            key={index}
+                                            className={`${kpi.color} rounded-lg shadow p-6 text-white hover:shadow-lg transition-shadow`}
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <Icon className="w-8 h-8" />
+                                                <div className="text-right">
+                                                    <div className="text-3xl font-bold">{kpi.value}</div>
+                                                    <div className="text-sm opacity-90">{kpi.label}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
                             {/* 2. PROJECT HEALTH OVERVIEW */}
                             <div className="bg-white rounded-lg shadow p-6">
                                 <h2 className="text-xl font-bold text-slate-900 mb-4">Project Health Overview</h2>
@@ -303,26 +355,6 @@ export default function AnalyticsDashboard() {
                                 </div>
                             </div>
 
-                            {/* 3. KPI CARDS ROW */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                {kpiData.map((kpi, index) => {
-                                    const Icon = kpi.icon
-                                    return (
-                                        <div
-                                            key={index}
-                                            className={`${kpi.color} rounded-lg shadow p-6 text-white hover:shadow-lg transition-shadow`}
-                                        >
-                                            <div className="flex items-center justify-between mb-2">
-                                                <Icon className="w-8 h-8" />
-                                                <div className="text-right">
-                                                    <div className="text-3xl font-bold">{kpi.value}</div>
-                                                    <div className="text-sm opacity-90">{kpi.label}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
 
                             {/* 6. BOTTOM ROW */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -399,6 +431,14 @@ export default function AnalyticsDashboard() {
                     )}
                 </div>
             </div>
+            <AddProjectModal
+                isOpen={isAddProjectModalOpen}
+                onClose={() => setIsAddProjectModalOpen(false)}
+                onProjectAdded={() => {
+                    loadDashboardData()
+                    setIsAddProjectModalOpen(false)
+                }}
+            />
         </div>
     )
 }

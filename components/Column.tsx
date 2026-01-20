@@ -64,14 +64,19 @@ export default function Column({ id, title, tasks, projects, onTaskUpdate, curre
           >
             <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-3">
-                {tasks.map(task => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    project={projects.find(p => p.id === task.project_id)}
-                    onTaskUpdate={onTaskUpdate}
-                  />
-                ))}
+                {tasks.map(task => {
+                  // Get selection props from parent if available
+                  const selectionProps = (task as any).__selectionProps || {}
+                  return (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      project={projects.find(p => p.id === task.project_id)}
+                      onTaskUpdate={onTaskUpdate}
+                      {...selectionProps}
+                    />
+                  )
+                })}
               </div>
             </SortableContext>
             {/* Add Task Button */}

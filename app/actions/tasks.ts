@@ -101,6 +101,29 @@ export async function deleteTask(id: string) {
   }
 
   revalidatePath('/dashboard')
+  revalidatePath('/project')
+  return { success: true }
+}
+
+export async function deleteTasksByIds(ids: string[]) {
+  await requireAuth()
+  const supabase = await createClient()
+
+  if (!ids || ids.length === 0) {
+    return { error: 'No task IDs provided' }
+  }
+
+  const { error } = await supabase
+    .from('tasks')
+    .delete()
+    .in('id', ids)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/project')
   return { success: true }
 }
 
@@ -214,5 +237,6 @@ export async function updateTaskOrder(
   }
 
   revalidatePath('/dashboard')
+  revalidatePath('/project')
   return { success: true }
 }
