@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Database } from '@/lib/supabase/types'
 import { EditTaskModal } from './EditTaskModal'
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { Calendar, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -19,7 +19,6 @@ interface TaskCardProps {
   selectionMode?: boolean
   isSelected?: boolean
   onToggleSelection?: (taskId: string) => void
-  onEnterSelectionMode?: (taskId: string) => void
 }
 
 export default function TaskCard({
@@ -30,11 +29,8 @@ export default function TaskCard({
   selectionMode = false,
   isSelected = false,
   onToggleSelection,
-  onEnterSelectionMode,
 }: TaskCardProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const hasLongPressedRef = useRef(false)
 
   const {
     attributes,
@@ -73,75 +69,13 @@ export default function TaskCard({
       : (priorityStyles[task.priority as keyof typeof priorityStyles] || priorityStyles[3])
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done'
 
-  // Long-press handler
-  useEffect(() => {
-    return () => {
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current)
-      }
-    }
-  }, [])
-
-  function handlePointerDown(e: React.PointerEvent) {
-    if (selectionMode) return
-
-    // Check if it's a touch device or touch pointer
-    const isTouch = e.pointerType === 'touch' || 'ontouchstart' in window
-
-    if (isTouch) {
-      hasLongPressedRef.current = false
-      longPressTimerRef.current = setTimeout(() => {
-        hasLongPressedRef.current = true
-        if (onEnterSelectionMode) {
-          onEnterSelectionMode(task.id)
-        }
-      }, 350)
-    }
-  }
-
-  function handlePointerUp(e: React.PointerEvent) {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
-  }
-
-  function handlePointerMove() {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
-  }
-
-  function handleMouseDown(e: React.MouseEvent) {
-    // Prevent text selection when in selection mode or when shift is pressed
-    if (selectionMode || e.shiftKey) {
-      e.preventDefault()
-    }
-  }
-
   function handleClick(e: React.MouseEvent) {
-    // Prevent default if long-press was triggered
-    if (hasLongPressedRef.current) {
-      e.preventDefault()
-      e.stopPropagation()
-      hasLongPressedRef.current = false
-      return
-    }
-
     if (selectionMode) {
       // In selection mode, toggle selection
       e.preventDefault()
       e.stopPropagation()
       if (onToggleSelection) {
         onToggleSelection(task.id)
-      }
-    } else if (e.shiftKey) {
-      // Shift+click: enter selection mode and select this task
-      e.preventDefault()
-      e.stopPropagation()
-      if (onEnterSelectionMode) {
-        onEnterSelectionMode(task.id)
       }
     } else {
       // Normal click: open edit modal
@@ -165,14 +99,9 @@ export default function TaskCard({
           (isDragging || isSortableDragging) && 'opacity-50',
           selectionMode && isSelected && 'ring-2 ring-blue-500 ring-offset-2',
           selectionMode && !isSelected && 'ring-0',
-          selectionMode && 'select-none' // Disable text selection in selection mode
+          selectionMode && 'select-none' // Disable text selection in selection mode only
         )}
         onClick={handleClick}
-        onMouseDown={handleMouseDown}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerMove={handlePointerMove}
-        onPointerCancel={handlePointerUp}
       >
         {/* Checkbox for selection mode */}
         {selectionMode && (

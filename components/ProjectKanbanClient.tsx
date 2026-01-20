@@ -53,11 +53,8 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
     setSelectionMode(false)
   }, [])
 
-  const enterSelectionMode = useCallback((initialId?: string) => {
+  const enterSelectionMode = useCallback(() => {
     setSelectionMode(true)
-    if (initialId) {
-      setSelectedTaskIds(new Set([initialId]))
-    }
   }, [])
 
   const exitSelectionMode = useCallback(() => {
@@ -203,7 +200,6 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
               selectionMode={selectionMode}
               selectedTaskIds={selectedTaskIds}
               onToggleSelection={toggleTaskSelection}
-              onEnterSelectionMode={enterSelectionMode}
             />
           </div>
           <RightPanel

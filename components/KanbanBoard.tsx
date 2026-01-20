@@ -37,7 +37,6 @@ interface KanbanBoardProps {
   selectionMode?: boolean
   selectedTaskIds?: Set<string>
   onToggleSelection?: (taskId: string) => void
-  onEnterSelectionMode?: (taskId: string) => void
 }
 
 export default function KanbanBoard({
@@ -48,7 +47,6 @@ export default function KanbanBoard({
   selectionMode = false,
   selectedTaskIds = new Set(),
   onToggleSelection,
-  onEnterSelectionMode,
 }: KanbanBoardProps) {
   // Get project ID from tasks if not provided
   const projectId = currentProjectId || (tasks.length > 0 ? tasks[0].project_id : '')
@@ -166,7 +164,6 @@ export default function KanbanBoard({
                 selectionMode,
                 isSelected: selectedTaskIds.has(task.id),
                 onToggleSelection,
-                onEnterSelectionMode,
               }
             }))
 
