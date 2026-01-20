@@ -54,6 +54,66 @@ Build failed during `npm run build` with TypeScript errors in `components/ui/tab
 
 ---
 
+## 2026-01-19: ESLint Config Error on Vercel Build
+
+### Context
+Deploying to Vercel after implementing Project Notes feature.
+
+### Problem
+```
+ESLint: Invalid Options: - Unknown options: useEslintrc, extensions - 'extensions' has been removed.
+Failed to compile.
+./components/EditProjectModal.tsx:144:35
+```
+
+Build failed on Vercel with ESLint configuration errors.
+
+### Root Cause
+**ESLint version incompatibility:**
+- `eslint-config-next@16.1.3` requires ESLint >= 9.0.0
+- ESLint 9 uses flat config format, but Next.js 14.2.35 with `.eslintrc.json` uses old format
+- The error "Unknown options: useEslintrc, extensions" indicates ESLint 9 is trying to use ESLint 8 options
+- Version mismatch between ESLint 9 and the config format expected by Next.js 14
+
+### Solution Implemented
+**Downgrade to compatible versions (NOT ignoring the error):**
+
+1. **Downgrade ESLint to version 8:**
+   ```bash
+   npm install eslint@^8.57.0 --save-dev
+   ```
+
+2. **Downgrade eslint-config-next to version 14 (compatible with ESLint 8):**
+   ```bash
+   npm install eslint-config-next@14.2.4 --save-dev
+   ```
+
+3. **Update package.json:**
+   ```json
+   "eslint": "^8.57.0",
+   "eslint-config-next": "^14.2.4"
+   ```
+
+This ensures:
+- ESLint 8 works with `.eslintrc.json` format (no flat config needed)
+- `eslint-config-next@14.2.4` is compatible with ESLint 8
+- No need to ignore ESLint errors - proper configuration is used
+- Builds will pass on Vercel with correct ESLint checking
+
+### Prevention
+- ✅ **DO NOT upgrade to ESLint 9** until Next.js fully supports ESLint 9 flat config format
+- ✅ Keep ESLint 8 with eslint-config-next 14.x for Next.js 14 projects
+- ✅ Check compatibility before upgrading ESLint major versions
+- ✅ Verify that Next.js version supports the ESLint version you want to use
+- ✅ Always test builds locally before deploying to catch version mismatches early
+
+### When to Upgrade
+- Wait for Next.js 15+ which may have better ESLint 9 support
+- Or wait for eslint-config-next to provide proper ESLint 9 flat config support
+- Always test builds locally before deploying
+
+---
+
 ## Development Guidelines
 
 ### Before Implementing New Features

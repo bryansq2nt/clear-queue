@@ -41,7 +41,7 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
   const [category, setCategory] = useState<string>('business')
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
   const [notes, setNotes] = useState<string>('')
-  const [activeTab, setActiveTab] = useState<'details' | 'notes'>(defaultTab)
+  const [activeTab, setActiveTab] = useState<string>(defaultTab)
   const [isLoading, setIsLoading] = useState(false)
   const [isSavingNotes, setIsSavingNotes] = useState(false)
   const [notesSaved, setNotesSaved] = useState(false)
