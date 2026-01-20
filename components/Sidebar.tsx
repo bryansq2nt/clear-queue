@@ -5,7 +5,7 @@ import { Database } from '@/lib/supabase/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { cn } from '@/lib/utils'
 import { useRouter, usePathname } from 'next/navigation'
-import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
+import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { PROJECT_CATEGORIES, getCategoryLabel } from '@/lib/constants'
 import {
@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu'
 import { EditProjectModal } from './EditProjectModal'
+import { AddProjectModal } from './AddProjectModal'
 import { archiveProject, unarchiveProject, deleteProject } from '@/app/actions/projects'
 
 type Project = Database['public']['Tables']['projects']['Row']
@@ -45,6 +46,7 @@ export default function Sidebar({
   const pathname = usePathname()
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false)
 
   // Filter projects based on selectedCategory and showArchived
   const filteredProjects = projects.filter(p => {
@@ -113,6 +115,16 @@ export default function Sidebar({
                 <LayoutDashboard className="w-4 h-4" />
                 Dashboard
               </Link>
+              <button
+                onClick={() => setIsAddProjectModalOpen(true)}
+                className={cn(
+                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Plus className="w-4 h-4" />
+                Add Project
+              </button>
             </div>
           </div>
 
@@ -136,7 +148,7 @@ export default function Sidebar({
               >
                 All Projects
               </button>
-              
+
               {/* Filter by Category - positioned below All Projects */}
               <div className="px-3 py-2">
                 <Select
@@ -264,6 +276,14 @@ export default function Sidebar({
           project={editingProject}
         />
       )}
+      <AddProjectModal
+        isOpen={isAddProjectModalOpen}
+        onClose={() => setIsAddProjectModalOpen(false)}
+        onProjectAdded={() => {
+          onProjectUpdated()
+          setIsAddProjectModalOpen(false)
+        }}
+      />
     </>
   )
 }
