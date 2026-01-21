@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { updatePositionAction } from './boards/[id]/canvas/actions'
+import { batchUpdatePositionsAction } from './boards/[id]/canvas/batch-actions'
 import {
   createConnectionAction,
   deleteConnectionAction,
@@ -29,6 +29,28 @@ interface Connection {
   type: string
 }
 
+// ⚡ Threshold para detectar drag vs click
+const DRAG_THRESHOLD = 5
+
+// ⚡ Colores para cards
+const CARD_COLORS = [
+  { bg: 'bg-red-100', border: 'border-red-300', hover: 'hover:border-red-500', text: 'text-red-900' },
+  { bg: 'bg-blue-100', border: 'border-blue-300', hover: 'hover:border-blue-500', text: 'text-blue-900' },
+  { bg: 'bg-green-100', border: 'border-green-300', hover: 'hover:border-green-500', text: 'text-green-900' },
+  { bg: 'bg-yellow-100', border: 'border-yellow-300', hover: 'hover:border-yellow-500', text: 'text-yellow-900' },
+  { bg: 'bg-purple-100', border: 'border-purple-300', hover: 'hover:border-purple-500', text: 'text-purple-900' },
+  { bg: 'bg-pink-100', border: 'border-pink-300', hover: 'hover:border-pink-500', text: 'text-pink-900' },
+  { bg: 'bg-indigo-100', border: 'border-indigo-300', hover: 'hover:border-indigo-500', text: 'text-indigo-900' },
+  { bg: 'bg-orange-100', border: 'border-orange-300', hover: 'hover:border-orange-500', text: 'text-orange-900' },
+  { bg: 'bg-teal-100', border: 'border-teal-300', hover: 'hover:border-teal-500', text: 'text-teal-900' },
+  { bg: 'bg-cyan-100', border: 'border-cyan-300', hover: 'hover:border-cyan-500', text: 'text-cyan-900' },
+  { bg: 'bg-lime-100', border: 'border-lime-300', hover: 'hover:border-lime-500', text: 'text-lime-900' },
+  { bg: 'bg-emerald-100', border: 'border-emerald-300', hover: 'hover:border-emerald-500', text: 'text-emerald-900' },
+  { bg: 'bg-rose-100', border: 'border-rose-300', hover: 'hover:border-rose-500', text: 'text-rose-900' },
+  { bg: 'bg-violet-100', border: 'border-violet-300', hover: 'hover:border-violet-500', text: 'text-violet-900' },
+  { bg: 'bg-fuchsia-100', border: 'border-fuchsia-300', hover: 'hover:border-fuchsia-500', text: 'text-fuchsia-900' },
+]
+
 export default function IdeaGraphCanvas({
   boardId,
   items,
@@ -42,47 +64,31 @@ export default function IdeaGraphCanvas({
   onNodeClick: (ideaId: string) => void
   onRefresh: () => void
 }) {
+  const router = useRouter()
+
   // World dimensions
   const WORLD_WIDTH = 2000
   const WORLD_HEIGHT = 2000
 
-  // Drag threshold - minimum pixels to move before considering it a drag
-  const DRAG_THRESHOLD = 5
-
-  // Card colors - consistent per idea ID
-  const CARD_COLORS = [
-    { bg: 'bg-red-100', border: 'border-red-300', hover: 'hover:border-red-500', text: 'text-red-900' },
-    { bg: 'bg-blue-100', border: 'border-blue-300', hover: 'hover:border-blue-500', text: 'text-blue-900' },
-    { bg: 'bg-green-100', border: 'border-green-300', hover: 'hover:border-green-500', text: 'text-green-900' },
-    { bg: 'bg-yellow-100', border: 'border-yellow-300', hover: 'hover:border-yellow-500', text: 'text-yellow-900' },
-    { bg: 'bg-purple-100', border: 'border-purple-300', hover: 'hover:border-purple-500', text: 'text-purple-900' },
-    { bg: 'bg-pink-100', border: 'border-pink-300', hover: 'hover:border-pink-500', text: 'text-pink-900' },
-    { bg: 'bg-indigo-100', border: 'border-indigo-300', hover: 'hover:border-indigo-500', text: 'text-indigo-900' },
-    { bg: 'bg-orange-100', border: 'border-orange-300', hover: 'hover:border-orange-500', text: 'text-orange-900' },
-    { bg: 'bg-teal-100', border: 'border-teal-300', hover: 'hover:border-teal-500', text: 'text-teal-900' },
-    { bg: 'bg-cyan-100', border: 'border-cyan-300', hover: 'hover:border-cyan-500', text: 'text-cyan-900' },
-    { bg: 'bg-lime-100', border: 'border-lime-300', hover: 'hover:border-lime-500', text: 'text-lime-900' },
-    { bg: 'bg-emerald-100', border: 'border-emerald-300', hover: 'hover:border-emerald-500', text: 'text-emerald-900' },
-    { bg: 'bg-rose-100', border: 'border-rose-300', hover: 'hover:border-rose-500', text: 'text-rose-900' },
-    { bg: 'bg-violet-100', border: 'border-violet-300', hover: 'hover:border-violet-500', text: 'text-violet-900' },
-    { bg: 'bg-fuchsia-100', border: 'border-fuchsia-300', hover: 'hover:border-fuchsia-500', text: 'text-fuchsia-900' },
-  ]
-
-  // Drag state
-  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null)
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null)
+  // ⚡ Estado optimista - se actualiza INMEDIATAMENTE sin esperar backend
   const [positions, setPositions] = useState<Map<string, { x: number; y: number }>>(
     new Map(items.map((item) => [item.id, { x: item.x, y: item.y }]))
   )
-  const [isSaving, setIsSaving] = useState<string | null>(null)
+
+  // Drag state
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null)
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [hasDragged, setHasDragged] = useState(false)
   const [connectionMode, setConnectionMode] = useState<string | null>(null)
+
+  // Refs
   const containerRef = useRef<HTMLDivElement>(null)
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
-  const router = useRouter()
+  const pendingUpdates = useRef<Map<string, { x: number; y: number }>>(new Map())
+  const batchTimer = useRef<NodeJS.Timeout | null>(null)
 
-  // Get color for idea based on ID (consistent)
+  // ⚡ Función para asignar color consistente
   const getColorForIdea = useCallback((ideaId: string) => {
     let hash = 0
     for (let i = 0; i < ideaId.length; i++) {
@@ -92,10 +98,59 @@ export default function IdeaGraphCanvas({
     return CARD_COLORS[index]
   }, [])
 
-  // Sync positions when items change
+  // Sync positions when items change from server
   useEffect(() => {
     setPositions(new Map(items.map((item) => [item.id, { x: item.x, y: item.y }])))
   }, [items])
+
+  // ⚡ CRÍTICO: Función de guardado con batch
+  const savePositionBatched = useCallback(
+    (itemId: string, x: number, y: number) => {
+      // Agregar a pending updates
+      pendingUpdates.current.set(itemId, { x, y })
+
+      // Cancelar timer anterior
+      if (batchTimer.current) {
+        clearTimeout(batchTimer.current)
+      }
+
+      // Crear nuevo timer que ejecuta batch save
+      batchTimer.current = setTimeout(async () => {
+        const updates = Array.from(pendingUpdates.current.entries()).map(
+          ([id, pos]) => ({ id, x: pos.x, y: pos.y })
+        )
+
+        if (updates.length === 0) return
+
+        console.log(`💾 Batch saving ${updates.length} positions...`)
+
+        try {
+          const result = await batchUpdatePositionsAction(updates)
+
+          if (result.error) {
+            console.error('Batch save failed:', result.error)
+            // Revertir posiciones en caso de error
+            updates.forEach(update => {
+              const originalItem = items.find(i => i.id === update.id)
+              if (originalItem) {
+                setPositions(prev => {
+                  const next = new Map(prev)
+                  next.set(update.id, { x: originalItem.x, y: originalItem.y })
+                  return next
+                })
+              }
+            })
+          } else {
+            console.log(`✅ Batch saved ${result.succeeded} positions`)
+            pendingUpdates.current.clear()
+          }
+        } catch (error) {
+          console.error('Batch save error:', error)
+        }
+      }, 1000) // 1 segundo después del último movimiento
+    },
+    [items]
+  )
 
   // Get current position for an item
   const getPosition = useCallback(
@@ -108,23 +163,13 @@ export default function IdeaGraphCanvas({
     [positions, items]
   )
 
-  // Create a map: ideaId -> boardItemId for quick lookup
+  // Create a map: ideaId -> boardItemId
   const ideaToItemMap = useMemo(
     () => new Map(items.map((item) => [item.idea_id, item.id])),
     [items]
   )
 
-  // Get position by idea ID (for connections)
-  const getPositionByIdeaId = useCallback(
-    (ideaId: string) => {
-      const itemId = ideaToItemMap.get(ideaId)
-      if (!itemId) return null
-      return getPosition(itemId)
-    },
-    [ideaToItemMap, getPosition]
-  )
-
-  // Get card center for connections (dynamic based on actual card size)
+  // Get card center for connections
   const getCardCenter = useCallback(
     (ideaId: string) => {
       const itemId = ideaToItemMap.get(ideaId)
@@ -134,15 +179,16 @@ export default function IdeaGraphCanvas({
       const cardElement = cardRefs.current.get(itemId)
 
       if (!cardElement) {
-        // Fallback si no hay ref todavía (usar tamaño aproximado)
         return { x: pos.x + 50, y: pos.y + 20 }
       }
 
       const rect = cardElement.getBoundingClientRect()
       const containerRect = containerRef.current?.getBoundingClientRect()
-      if (!containerRect) return { x: pos.x + 50, y: pos.y + 20 }
 
-      // Calcular posición relativa al contenedor
+      if (!containerRect) {
+        return { x: pos.x + 50, y: pos.y + 20 }
+      }
+
       return {
         x: pos.x + rect.width / 2,
         y: pos.y + rect.height / 2,
@@ -186,7 +232,7 @@ export default function IdeaGraphCanvas({
         return
       }
 
-      // CRÍTICO: Solo abrir drawer si NO se hizo drag
+      // ⚡ CRÍTICO: Solo abrir drawer si NO hicimos drag
       if (hasDragged) {
         e.preventDefault()
         e.stopPropagation()
@@ -203,23 +249,15 @@ export default function IdeaGraphCanvas({
   const handleMouseDown = useCallback(
     (e: React.MouseEvent, itemId: string) => {
       // Don't start drag if in connection mode
-      if (connectionMode) {
-        return
-      }
+      if (connectionMode) return
 
-      // Prevent default link behavior
       e.preventDefault()
       e.stopPropagation()
 
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-      const containerRect = containerRef.current?.getBoundingClientRect()
-
-      if (!containerRect) return
-
-      // Guardar posición inicial del mouse para calcular threshold
+      // ⚡ Guardar posición inicial del mouse
       setDragStartPos({ x: e.clientX, y: e.clientY })
 
-      // Calculate offset from mouse to node top-left
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
       const offsetX = e.clientX - rect.left
       const offsetY = e.clientY - rect.top
 
@@ -236,11 +274,7 @@ export default function IdeaGraphCanvas({
       e.preventDefault()
       e.stopPropagation()
 
-      if (
-        !confirm(
-          'Are you sure you want to delete this connection? This action cannot be undone.'
-        )
-      ) {
+      if (!confirm('Are you sure you want to delete this connection?')) {
         return
       }
 
@@ -255,7 +289,7 @@ export default function IdeaGraphCanvas({
     [onRefresh]
   )
 
-  // Handle mouse move
+  // ⚡ CRÍTICO: Mouse move - SOLO actualiza UI con requestAnimationFrame
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!draggingNodeId || !containerRef.current) return
@@ -267,21 +301,20 @@ export default function IdeaGraphCanvas({
           Math.pow(e.clientY - dragStartPos.y, 2)
         )
 
-        // Solo marcar como dragged si superamos el threshold
+        // Solo marcar como drag si superamos el threshold
         if (distance > DRAG_THRESHOLD) {
           setHasDragged(true)
         }
       }
 
-      // Usar requestAnimationFrame para smooth animation
+      // ⚡ OPTIMISTIC UPDATE - requestAnimationFrame para smooth rendering
       requestAnimationFrame(() => {
-        if (!containerRef.current || !draggingNodeId) return
-
+        if (!containerRef.current) return
         const containerRect = containerRef.current.getBoundingClientRect()
         const newX = e.clientX - containerRect.left - dragOffset.x
         const newY = e.clientY - containerRect.top - dragOffset.y
 
-        // Update position optimistically
+        // Actualizar posición INMEDIATAMENTE en la UI
         setPositions((prev) => {
           const next = new Map(prev)
           next.set(draggingNodeId, { x: newX, y: newY })
@@ -292,53 +325,27 @@ export default function IdeaGraphCanvas({
     [draggingNodeId, dragOffset, dragStartPos]
   )
 
-  // Handle mouse up
+  // ⚡ CRÍTICO: Mouse up - trigger debounced save
   const handleMouseUp = useCallback(
-    async (e: MouseEvent) => {
+    () => {
       if (!draggingNodeId) return
 
       const itemIdToSave = draggingNodeId
-      const wasDragging = hasDragged
       const finalPos = getPosition(itemIdToSave)
 
-      // Reset drag state immediately
+      // Reset drag state INMEDIATAMENTE - no esperar backend
       setDraggingNodeId(null)
-      setDragStartPos(null) // Limpiar posición inicial
+      setDragStartPos(null)
 
-      // Si hicimos drag, guardar posición y prevenir click
-      if (wasDragging) {
-        e.preventDefault()
-        setIsSaving(itemIdToSave)
-
-        // Persist to database
-        const result = await updatePositionAction(
-          itemIdToSave,
-          finalPos.x,
-          finalPos.y
-        )
-
-        setIsSaving(null)
-
-        if (result.error) {
-          // Revert to original position on error
-          const originalItem = items.find((i) => i.id === itemIdToSave)
-          if (originalItem) {
-            setPositions((prev) => {
-              const next = new Map(prev)
-              next.set(itemIdToSave, { x: originalItem.x, y: originalItem.y })
-              return next
-            })
-          }
-          alert(`Failed to save position: ${result.error}`)
-        } else {
-          onRefresh()
-        }
+      // Si hicimos drag, guardar con batch (en background)
+      if (hasDragged) {
+        savePositionBatched(itemIdToSave, finalPos.x, finalPos.y)
       }
 
-      // Resetear hasDragged después de un pequeño delay para prevenir clicks
-      setTimeout(() => setHasDragged(false), 100)
+      // Reset hasDragged después de un delay
+      setTimeout(() => setHasDragged(false), 50)
     },
-    [draggingNodeId, hasDragged, getPosition, items, onRefresh]
+    [draggingNodeId, hasDragged, getPosition, savePositionBatched]
   )
 
   // Set up global mouse event listeners for drag
@@ -346,7 +353,7 @@ export default function IdeaGraphCanvas({
     if (!draggingNodeId) return
 
     const handleMove = (e: MouseEvent) => handleMouseMove(e)
-    const handleUp = (e: MouseEvent) => handleMouseUp(e)
+    const handleUp = () => handleMouseUp()
 
     window.addEventListener('mousemove', handleMove)
     window.addEventListener('mouseup', handleUp)
@@ -375,12 +382,30 @@ export default function IdeaGraphCanvas({
     return () => window.removeEventListener('keydown', handleEsc)
   }, [connectionMode])
 
+  // ⚡ Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      // Limpiar batch timer
+      if (batchTimer.current) {
+        clearTimeout(batchTimer.current)
+      }
+
+      // Ejecutar save final si hay cambios pendientes
+      if (pendingUpdates.current.size > 0) {
+        const updates = Array.from(pendingUpdates.current.entries()).map(
+          ([id, pos]) => ({ id, x: pos.x, y: pos.y })
+        )
+        batchUpdatePositionsAction(updates)
+        pendingUpdates.current.clear()
+      }
+    }
+  }, [])
+
   return (
     <div
       className="flex-1 overflow-auto bg-slate-50"
       ref={containerRef}
       onClick={(e) => {
-        // Cancel connection mode if clicking on canvas
         if (connectionMode && e.target === containerRef.current) {
           setConnectionMode(null)
         }
@@ -412,9 +437,9 @@ export default function IdeaGraphCanvas({
           minHeight: WORLD_HEIGHT,
         }}
       >
-        {/* SVG for connections - rendered behind nodes */}
+        {/* SVG for connections */}
         <svg
-          className="absolute top-0 left-0"
+          className="absolute top-0 left-0 pointer-events-none"
           style={{
             width: WORLD_WIDTH,
             height: WORLD_HEIGHT,
@@ -422,44 +447,44 @@ export default function IdeaGraphCanvas({
           }}
         >
           {connections.map((conn) => {
-            const fromCenter = getCardCenter(conn.from_idea_id)
-            const toCenter = getCardCenter(conn.to_idea_id)
+            const fromPos = getCardCenter(conn.from_idea_id)
+            const toPos = getCardCenter(conn.to_idea_id)
 
-            if (!fromCenter || !toCenter) return null
+            if (!fromPos || !toPos) return null
 
             return (
               <line
                 key={conn.id}
-                x1={fromCenter.x}
-                y1={fromCenter.y}
-                x2={toCenter.x}
-                y2={toCenter.y}
+                x1={fromPos.x}
+                y1={fromPos.y}
+                x2={toPos.x}
+                y2={toPos.y}
                 stroke="#94a3b8"
                 strokeWidth={4}
                 strokeDasharray={conn.type === 'relates_to' ? '0' : '5,5'}
-                cursor="pointer"
-                onClick={(e) => handleConnectionClick(e, conn.id)}
-                className="hover:stroke-slate-600"
+                className="pointer-events-auto cursor-pointer hover:stroke-slate-600 transition-colors"
+                onClick={(e) => {
+                  const mouseEvent = e as any
+                  handleConnectionClick(mouseEvent, conn.id)
+                }}
               />
             )
           })}
         </svg>
 
-        {/* Nodes - rendered on top */}
+        {/* Nodes */}
         {items.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-muted-foreground">
-              No hay palabras en este board aún. Click "Agregar Palabra" para agregar una.
+              No ideas on this board yet. Click "Agregar Palabra" to add one.
             </p>
           </div>
         ) : (
           items.map((item) => {
             const pos = getPosition(item.id)
             const isDragging = draggingNodeId === item.id
-            const isSavingThis = isSaving === item.id
             const isConnectionSource = connectionMode === item.idea.id
-            const isConnectionTarget =
-              connectionMode && connectionMode !== item.idea.id
+            const isConnectionTarget = connectionMode && connectionMode !== item.idea.id
             const cardColor = getColorForIdea(item.idea.id)
 
             return (
@@ -471,36 +496,30 @@ export default function IdeaGraphCanvas({
                   top: 0,
                   transform: `translate(${pos.x}px, ${pos.y}px)`,
                   zIndex: isDragging ? 50 : 10,
-                  opacity: isSavingThis ? 0.7 : 1,
                   willChange: isDragging ? 'transform' : 'auto',
                   transition: isDragging ? 'none' : 'transform 0.1s ease-out',
                 }}
               >
                 <div
-                  className={`group block ${
-                    isDragging
+                  ref={(el) => {
+                    if (el) {
+                      cardRefs.current.set(item.id, el)
+                    }
+                  }}
+                  className={`group block ${isDragging
                       ? 'cursor-grabbing'
                       : connectionMode
                         ? 'cursor-pointer'
                         : 'cursor-grab'
-                  }`}
+                    }`}
                   onMouseDown={(e) => handleMouseDown(e, item.id)}
                   onClick={(e) => handleNodeClick(e, item.idea.id)}
                   onContextMenu={(e) => handleContextMenu(e, item.idea.id)}
                 >
                   <div
-                    ref={(el) => {
-                      if (el) {
-                        cardRefs.current.set(item.id, el)
-                      } else {
-                        cardRefs.current.delete(item.id)
-                      }
-                    }}
                     className={`
                       rounded-lg border-2 shadow-sm transition-all select-none
-                      px-4 py-2 
-                      inline-block
-                      min-w-fit
+                      px-4 py-2 inline-block min-w-fit
                       ${cardColor.bg} 
                       ${cardColor.border} 
                       ${cardColor.hover}
@@ -512,7 +531,6 @@ export default function IdeaGraphCanvas({
                       }
                       hover:shadow-md
                     `}
-                    title={item.idea.description || ''}
                   >
                     {isConnectionSource && (
                       <p className="text-xs text-primary font-medium mb-1 whitespace-nowrap">

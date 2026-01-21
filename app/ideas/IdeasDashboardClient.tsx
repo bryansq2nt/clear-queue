@@ -234,7 +234,7 @@ export default function IdeasDashboardClient({
                         disabled={!selectedBoardId}
                       >
                         <Plus className="w-4 h-4 mr-2" />
-                        New Idea
+                        Agregar Palabra
                       </Button>
                       <Button
                         size="sm"
