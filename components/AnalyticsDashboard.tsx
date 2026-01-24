@@ -10,6 +10,7 @@ import { Database } from '@/lib/supabase/types'
 import Sidebar from './Sidebar'
 import { AddProjectModal } from './AddProjectModal'
 import { Button } from './ui/button'
+import DashboardFocusTasksSection from './dashboard/DashboardFocusTasksSection'
 
 type Project = Database['public']['Tables']['projects']['Row']
 type Task = Database['public']['Tables']['tasks']['Row']
@@ -289,6 +290,9 @@ export default function AnalyticsDashboard() {
                                     )
                                 })}
                             </div>
+
+                            {/* DASHBOARD FOCUS TASKS SECTION */}
+                            <DashboardFocusTasksSection />
 
                             {/* 2. PROJECT HEALTH OVERVIEW */}
                             <div className="bg-white rounded-lg shadow p-6">
