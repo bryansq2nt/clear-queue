@@ -22,11 +22,11 @@ type Project = Database['public']['Tables']['projects']['Row']
 
 const STATUSES: Task['status'][] = ['backlog', 'next', 'in_progress', 'blocked', 'done']
 const STATUS_LABELS: Record<Task['status'], string> = {
-  backlog: 'Backlog',
-  next: 'Next',
-  in_progress: 'In Progress',
-  blocked: 'Blocked',
-  done: 'Done',
+  backlog: 'Ideas Pendientes',
+  next: 'Lo Siguiente',
+  in_progress: 'Trabajando en Esto',
+  blocked: 'Bloqueado',
+  done: '¡Completado!',
 }
 
 interface KanbanBoardProps {

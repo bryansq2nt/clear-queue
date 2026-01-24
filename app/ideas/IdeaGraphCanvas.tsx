@@ -382,21 +382,23 @@ export default function IdeaGraphCanvas({
     return () => window.removeEventListener('keydown', handleEsc)
   }, [connectionMode])
 
-  // ⚡ Cleanup timers on unmount
   useEffect(() => {
+    const timer = batchTimer.current
+    const updates = pendingUpdates.current
+
     return () => {
       // Limpiar batch timer
-      if (batchTimer.current) {
-        clearTimeout(batchTimer.current)
+      if (timer) {
+        clearTimeout(timer)
       }
 
       // Ejecutar save final si hay cambios pendientes
-      if (pendingUpdates.current.size > 0) {
-        const updates = Array.from(pendingUpdates.current.entries()).map(
+      if (updates.size > 0) {
+        const updateArray = Array.from(updates.entries()).map(
           ([id, pos]) => ({ id, x: pos.x, y: pos.y })
         )
-        batchUpdatePositionsAction(updates)
-        pendingUpdates.current.clear()
+        batchUpdatePositionsAction(updateArray)
+        updates.clear()
       }
     }
   }, [])
@@ -476,7 +478,7 @@ export default function IdeaGraphCanvas({
         {items.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-muted-foreground">
-              No ideas on this board yet. Click "Agregar Palabra" to add one.
+              No ideas on this board yet. Click &apos;Agregar Palabra&apos; to add one.
             </p>
           </div>
         ) : (
@@ -507,10 +509,10 @@ export default function IdeaGraphCanvas({
                     }
                   }}
                   className={`group block ${isDragging
-                      ? 'cursor-grabbing'
-                      : connectionMode
-                        ? 'cursor-pointer'
-                        : 'cursor-grab'
+                    ? 'cursor-grabbing'
+                    : connectionMode
+                      ? 'cursor-pointer'
+                      : 'cursor-grab'
                     }`}
                   onMouseDown={(e) => handleMouseDown(e, item.id)}
                   onClick={(e) => handleNodeClick(e, item.idea.id)}

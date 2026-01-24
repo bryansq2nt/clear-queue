@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -60,14 +60,9 @@ export default function IdeaDrawer({
   const [linkError, setLinkError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Load idea data when drawer opens
-  useEffect(() => {
-    if (isOpen && ideaId) {
-      loadIdeaData()
-    }
-  }, [isOpen, ideaId])
 
-  const loadIdeaData = async () => {
+
+  const loadIdeaData = useCallback(async () => {
     setLoading(true)
     try {
       const result = await loadIdeaDataAction(ideaId)
@@ -87,7 +82,13 @@ export default function IdeaDrawer({
     } finally {
       setLoading(false)
     }
-  }
+  }, [ideaId])
+
+  useEffect(() => {
+    if (isOpen && ideaId) {
+      loadIdeaData()
+    }
+  }, [isOpen, ideaId, loadIdeaData])
 
   async function handleUpdate(formData: FormData) {
     if (!idea) return
