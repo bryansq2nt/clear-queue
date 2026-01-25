@@ -212,6 +212,112 @@ export type Database = {
           updated_at?: string
         }
       }
+      budgets: {
+        Row: {
+          id: string
+          project_id: string | null
+          name: string
+          description: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id?: string | null
+          name: string
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string | null
+          name?: string
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      budget_categories: {
+        Row: {
+          id: string
+          budget_id: string
+          name: string
+          description: string | null
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          budget_id: string
+          name: string
+          description?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          budget_id?: string
+          name?: string
+          description?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+      }
+      budget_items: {
+        Row: {
+          id: string
+          category_id: string
+          name: string
+          description: string | null
+          quantity: number
+          unit_price: number
+          link: string | null
+          status: 'pending' | 'quoted' | 'acquired'
+          is_recurrent: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          category_id: string
+          name: string
+          description?: string | null
+          quantity?: number
+          unit_price?: number
+          link?: string | null
+          status?: 'pending' | 'quoted' | 'acquired'
+          is_recurrent?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          category_id?: string
+          name?: string
+          description?: string | null
+          quantity?: number
+          unit_price?: number
+          link?: string | null
+          status?: 'pending' | 'quoted' | 'acquired'
+          is_recurrent?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
+}
+
+// Helper types para budgets con totales calculados
+export type BudgetItemWithTotal = Database['public']['Tables']['budget_items']['Row'] & {
+  subtotal: number
+}
+
+export type BudgetCategoryWithItems = Database['public']['Tables']['budget_categories']['Row'] & {
+  items: BudgetItemWithTotal[]
+  category_total: number
 }
