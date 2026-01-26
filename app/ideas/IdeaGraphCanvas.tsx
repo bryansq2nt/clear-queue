@@ -197,8 +197,8 @@ export default function IdeaGraphCanvas({
       }
 
       return {
-        x: pos.x + WORLD_PADDING + rect.width / (2 * view.scale),
-        y: pos.y + WORLD_PADDING + rect.height / (2 * view.scale),
+        x: pos.x + rect.width / (2 * view.scale),
+        y: pos.y + rect.height / (2 * view.scale),
       }
     },
     [ideaToItemMap, getPosition, view.scale]
@@ -499,10 +499,10 @@ export default function IdeaGraphCanvas({
         ref={worldRef}
         className="relative"
         style={{
-          width: WORLD_TOTAL_WIDTH,
-          height: WORLD_TOTAL_HEIGHT,
-          minWidth: WORLD_TOTAL_WIDTH,
-          minHeight: WORLD_TOTAL_HEIGHT,
+          width: WORLD_WIDTH,
+          height: WORLD_HEIGHT,
+          minWidth: WORLD_WIDTH,
+          minHeight: WORLD_HEIGHT,
           transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
           transformOrigin: '0 0',
         }}
