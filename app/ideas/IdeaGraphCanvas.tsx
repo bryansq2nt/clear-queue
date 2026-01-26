@@ -69,9 +69,10 @@ export default function IdeaGraphCanvas({
   // World dimensions
   const WORLD_WIDTH = 2000
   const WORLD_HEIGHT = 2000
-  const WORLD_PADDING = 2000
-  const WORLD_TOTAL_WIDTH = WORLD_WIDTH + WORLD_PADDING * 2
-  const WORLD_TOTAL_HEIGHT = WORLD_HEIGHT + WORLD_PADDING * 2
+  // SVG padding to allow connections to render outside original bounds
+  const SVG_PADDING = 2000
+  const SVG_TOTAL_WIDTH = WORLD_WIDTH + SVG_PADDING * 2
+  const SVG_TOTAL_HEIGHT = WORLD_HEIGHT + SVG_PADDING * 2
 
   // ⚡ Estado optimista - se actualiza INMEDIATAMENTE sin esperar backend
   const [positions, setPositions] = useState<Map<string, { x: number; y: number }>>(
@@ -186,19 +187,22 @@ export default function IdeaGraphCanvas({
       const cardElement = cardRefs.current.get(itemId)
 
       if (!cardElement) {
-        return { x: pos.x + WORLD_PADDING + 50, y: pos.y + WORLD_PADDING + 20 }
+        // Add SVG padding offset to coordinates
+        return { x: pos.x + SVG_PADDING + 50, y: pos.y + SVG_PADDING + 20 }
       }
 
       const rect = cardElement.getBoundingClientRect()
       const containerRect = containerRef.current?.getBoundingClientRect()
 
       if (!containerRect) {
-        return { x: pos.x + WORLD_PADDING + 50, y: pos.y + WORLD_PADDING + 20 }
+        // Add SVG padding offset to coordinates
+        return { x: pos.x + SVG_PADDING + 50, y: pos.y + SVG_PADDING + 20 }
       }
 
+      // Add SVG padding offset to coordinates so lines render in expanded SVG area
       return {
-        x: pos.x + rect.width / (2 * view.scale),
-        y: pos.y + rect.height / (2 * view.scale),
+        x: pos.x + SVG_PADDING + rect.width / (2 * view.scale),
+        y: pos.y + SVG_PADDING + rect.height / (2 * view.scale),
       }
     },
     [ideaToItemMap, getPosition, view.scale]
@@ -511,8 +515,11 @@ export default function IdeaGraphCanvas({
         <svg
           className="absolute top-0 left-0 pointer-events-none"
           style={{
-            width: WORLD_TOTAL_WIDTH,
-            height: WORLD_TOTAL_HEIGHT,
+            width: SVG_TOTAL_WIDTH,
+            height: SVG_TOTAL_HEIGHT,
+            // Offset SVG to account for padding (so it covers expanded area)
+            left: -SVG_PADDING,
+            top: -SVG_PADDING,
             zIndex: 0,
           }}
         >
@@ -564,7 +571,7 @@ export default function IdeaGraphCanvas({
                 style={{
                   left: 0,
                   top: 0,
-                  transform: `translate(${pos.x + WORLD_PADDING}px, ${pos.y + WORLD_PADDING}px)`,
+                  transform: `translate(${pos.x}px, ${pos.y}px)`,
                   zIndex: isDragging ? 50 : 10,
                   willChange: isDragging ? 'transform' : 'auto',
                   transition: isDragging ? 'none' : 'transform 0.1s ease-out',
