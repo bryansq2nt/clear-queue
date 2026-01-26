@@ -69,6 +69,9 @@ export default function IdeaGraphCanvas({
   // World dimensions
   const WORLD_WIDTH = 2000
   const WORLD_HEIGHT = 2000
+  const WORLD_PADDING = 2000
+  const WORLD_TOTAL_WIDTH = WORLD_WIDTH + WORLD_PADDING * 2
+  const WORLD_TOTAL_HEIGHT = WORLD_HEIGHT + WORLD_PADDING * 2
 
   // ⚡ Estado optimista - se actualiza INMEDIATAMENTE sin esperar backend
   const [positions, setPositions] = useState<Map<string, { x: number; y: number }>>(
@@ -81,9 +84,13 @@ export default function IdeaGraphCanvas({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [hasDragged, setHasDragged] = useState(false)
   const [connectionMode, setConnectionMode] = useState<string | null>(null)
+  const [isPanning, setIsPanning] = useState(false)
+  const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null)
+  const [view, setView] = useState({ x: 0, y: 0, scale: 1 })
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null)
+  const worldRef = useRef<HTMLDivElement>(null)
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const pendingUpdates = useRef<Map<string, { x: number; y: number }>>(new Map())
   const batchTimer = useRef<NodeJS.Timeout | null>(null)
@@ -179,22 +186,22 @@ export default function IdeaGraphCanvas({
       const cardElement = cardRefs.current.get(itemId)
 
       if (!cardElement) {
-        return { x: pos.x + 50, y: pos.y + 20 }
+        return { x: pos.x + WORLD_PADDING + 50, y: pos.y + WORLD_PADDING + 20 }
       }
 
       const rect = cardElement.getBoundingClientRect()
       const containerRect = containerRef.current?.getBoundingClientRect()
 
       if (!containerRect) {
-        return { x: pos.x + 50, y: pos.y + 20 }
+        return { x: pos.x + WORLD_PADDING + 50, y: pos.y + WORLD_PADDING + 20 }
       }
 
       return {
-        x: pos.x + rect.width / 2,
-        y: pos.y + rect.height / 2,
+        x: pos.x + WORLD_PADDING + rect.width / (2 * view.scale),
+        y: pos.y + WORLD_PADDING + rect.height / (2 * view.scale),
       }
     },
-    [ideaToItemMap, getPosition]
+    [ideaToItemMap, getPosition, view.scale]
   )
 
   // Handle context menu (right click) to start connection
@@ -258,14 +265,14 @@ export default function IdeaGraphCanvas({
       setDragStartPos({ x: e.clientX, y: e.clientY })
 
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-      const offsetX = e.clientX - rect.left
-      const offsetY = e.clientY - rect.top
+      const offsetX = (e.clientX - rect.left) / view.scale
+      const offsetY = (e.clientY - rect.top) / view.scale
 
       setDragOffset({ x: offsetX, y: offsetY })
       setDraggingNodeId(itemId)
       setHasDragged(false)
     },
-    [connectionMode]
+    [connectionMode, view.scale]
   )
 
   // Handle click on connection line to delete
@@ -311,8 +318,8 @@ export default function IdeaGraphCanvas({
       requestAnimationFrame(() => {
         if (!containerRef.current) return
         const containerRect = containerRef.current.getBoundingClientRect()
-        const newX = e.clientX - containerRect.left - dragOffset.x
-        const newY = e.clientY - containerRect.top - dragOffset.y
+        const newX = (e.clientX - containerRect.left - view.x) / view.scale - dragOffset.x
+        const newY = (e.clientY - containerRect.top - view.y) / view.scale - dragOffset.y
 
         // Actualizar posición INMEDIATAMENTE en la UI
         setPositions((prev) => {
@@ -322,7 +329,7 @@ export default function IdeaGraphCanvas({
         })
       })
     },
-    [draggingNodeId, dragOffset, dragStartPos]
+    [draggingNodeId, dragOffset, dragStartPos, view.scale, view.x, view.y]
   )
 
   // ⚡ CRÍTICO: Mouse up - trigger debounced save
@@ -383,6 +390,39 @@ export default function IdeaGraphCanvas({
   }, [connectionMode])
 
   useEffect(() => {
+    if (!isPanning) return
+
+    const handleMove = (e: MouseEvent) => {
+      if (!panStart) return
+      const deltaX = e.clientX - panStart.x
+      const deltaY = e.clientY - panStart.y
+      setView((prev) => ({
+        ...prev,
+        x: prev.x + deltaX,
+        y: prev.y + deltaY,
+      }))
+      setPanStart({ x: e.clientX, y: e.clientY })
+    }
+
+    const handleUp = () => {
+      setIsPanning(false)
+      setPanStart(null)
+    }
+
+    window.addEventListener('mousemove', handleMove)
+    window.addEventListener('mouseup', handleUp)
+    document.body.style.cursor = 'grabbing'
+    document.body.style.userSelect = 'none'
+
+    return () => {
+      window.removeEventListener('mousemove', handleMove)
+      window.removeEventListener('mouseup', handleUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isPanning, panStart])
+
+  useEffect(() => {
     const timer = batchTimer.current
     const updates = pendingUpdates.current
 
@@ -405,10 +445,35 @@ export default function IdeaGraphCanvas({
 
   return (
     <div
-      className="flex-1 overflow-auto bg-slate-50"
+      className="flex-1 overflow-hidden bg-slate-50"
       ref={containerRef}
+      onMouseDown={(e) => {
+        if (e.button !== 0) return
+        if (draggingNodeId || connectionMode) return
+        const target = e.target as HTMLElement
+        if (target.closest('[data-idea-card="true"]')) return
+        setIsPanning(true)
+        setPanStart({ x: e.clientX, y: e.clientY })
+      }}
+      onWheel={(e) => {
+        if (!containerRef.current) return
+        e.preventDefault()
+        const rect = containerRef.current.getBoundingClientRect()
+        const cursorX = e.clientX - rect.left
+        const cursorY = e.clientY - rect.top
+        const zoomIntensity = 0.0015
+        const nextScale = Math.min(2.5, Math.max(0.4, view.scale * (1 - e.deltaY * zoomIntensity)))
+        const worldX = (cursorX - view.x) / view.scale
+        const worldY = (cursorY - view.y) / view.scale
+        const nextX = cursorX - worldX * nextScale
+        const nextY = cursorY - worldY * nextScale
+        setView({ x: nextX, y: nextY, scale: nextScale })
+      }}
       onClick={(e) => {
-        if (connectionMode && e.target === containerRef.current) {
+        if (
+          connectionMode &&
+          (e.target === containerRef.current || e.target === worldRef.current)
+        ) {
           setConnectionMode(null)
         }
       }}
@@ -431,20 +496,23 @@ export default function IdeaGraphCanvas({
       )}
 
       <div
+        ref={worldRef}
         className="relative"
         style={{
-          width: WORLD_WIDTH,
-          height: WORLD_HEIGHT,
-          minWidth: WORLD_WIDTH,
-          minHeight: WORLD_HEIGHT,
+          width: WORLD_TOTAL_WIDTH,
+          height: WORLD_TOTAL_HEIGHT,
+          minWidth: WORLD_TOTAL_WIDTH,
+          minHeight: WORLD_TOTAL_HEIGHT,
+          transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
+          transformOrigin: '0 0',
         }}
       >
         {/* SVG for connections */}
         <svg
           className="absolute top-0 left-0 pointer-events-none"
           style={{
-            width: WORLD_WIDTH,
-            height: WORLD_HEIGHT,
+            width: WORLD_TOTAL_WIDTH,
+            height: WORLD_TOTAL_HEIGHT,
             zIndex: 0,
           }}
         >
@@ -496,7 +564,7 @@ export default function IdeaGraphCanvas({
                 style={{
                   left: 0,
                   top: 0,
-                  transform: `translate(${pos.x}px, ${pos.y}px)`,
+                  transform: `translate(${pos.x + WORLD_PADDING}px, ${pos.y + WORLD_PADDING}px)`,
                   zIndex: isDragging ? 50 : 10,
                   willChange: isDragging ? 'transform' : 'auto',
                   transition: isDragging ? 'none' : 'transform 0.1s ease-out',
@@ -508,6 +576,7 @@ export default function IdeaGraphCanvas({
                       cardRefs.current.set(item.id, el)
                     }
                   }}
+                  data-idea-card="true"
                   className={`group block ${isDragging
                     ? 'cursor-grabbing'
                     : connectionMode
