@@ -140,3 +140,135 @@ This ensures:
 - This log should be updated whenever a new problem is encountered and resolved
 - Focus on root causes, not just symptoms
 - Include exact commands/steps that fixed the issue
+
+---
+
+## 2026-02-01: Supabase TypeScript "Argument of type 'any' is not assignable to parameter of type 'never'" Error
+
+### Context
+Building Todo Lists feature with Supabase database operations using TypeScript.
+
+### Problem
+```
+Type error: Argument of type 'any' is not assignable to parameter of type 'never'.
+./lib/todo/lists.ts:153:13
+  151 |   const { data, error } = await supabase
+  152 |     .from('todo_lists')
+> 153 |     .update(updateData as any)
+      |             ^
+Next.js build worker exited with code: 1
+```
+
+Build failed with TypeScript errors when calling `.insert()` and `.update()` methods on Supabase queries, even when using `as any` type assertions.
+
+### Root Cause
+**Supabase TypeScript type inference issue:**
+- When explicitly typing the Supabase client with `SupabaseClient<Database>`, TypeScript loses proper type inference through the query chain
+- The query builder methods (`.from()`, `.insert()`, `.update()`) couldn't properly infer types
+- Simply casting with `as any` on the data wasn't enough - the entire query chain needed to be typed as `any`
+- Different pattern needed compared to simple variable type assertions
+
+### Solution Implemented
+**Use the split query pattern with `any` typing (matching working files):**
+
+1. **Remove explicit `SupabaseClient<Database>` typing:**
+   ```typescript
+   // ❌ BEFORE (causes type errors):
+   const supabase: TypedSupabaseClient = await createClient()
+   
+   // ✅ AFTER (works):
+   const supabase = await createClient()
+   ```
+
+2. **Split the query chain and cast `.from()` to `any`:**
+   ```typescript
+   // ❌ BEFORE (causes "never" type error):
+   const { data, error } = await supabase
+     .from('todo_lists')
+     .update(updateData as any)
+     .eq('id', id)
+     .select()
+     .single()
+   
+   // ✅ AFTER (works):
+   const query: any = (supabase
+     .from('todo_lists') as any)
+     .update(updateData as any)
+   
+   const result: any = await query
+     .eq('id', id)
+     .select()
+     .single()
+   
+   const { data, error } = result
+   ```
+
+3. **Keep type safety for data objects:**
+   ```typescript
+   // Still use proper types when building the data objects:
+   const updateData: TodoListUpdate = {}
+   if (updates.title !== undefined) {
+     updateData.title = updates.title.trim()
+   }
+   // ... etc
+   ```
+
+4. **Apply this pattern to ALL update and insert operations:**
+   - `createTodoList` - insert with `insertData as any`
+   - `updateTodoList` - split query pattern
+   - `archiveTodoList` - split query pattern  
+   - `createTodoItem` - insert with `insertData as any`
+   - `updateTodoItem` - split query pattern
+   - `toggleTodoItem` - split query pattern
+
+### Why This Pattern Works
+- Casting `.from()` to `any` prevents TypeScript from trying to infer complex generic types
+- The `query: any` variable breaks the type inference chain
+- You still get type safety when building `insertData` and `updateData` objects
+- This is the **same pattern** used successfully in `projects.ts` and `tasks.ts`
+
+### Prevention
+- ✅ **DO NOT explicitly type Supabase client** with `SupabaseClient<Database>` in server actions/queries
+- ✅ **Use the split query pattern** for all `.update()` operations: cast `.from()` to `any`, store in `query: any`, then destructure result
+- ✅ **Use `insertData as any`** for `.insert()` operations after typing the data object
+- ✅ **Keep typed data objects** (`TodoListInsert`, `TodoListUpdate`, etc.) for type safety when building data
+- ✅ **Reference existing working files** (`projects.ts`, `tasks.ts`) for the correct pattern
+- ✅ **Test builds frequently** during development to catch type errors early
+
+### Related Files
+- `lib/todo/lists.ts` - Fixed with split query pattern
+- `lib/actions/projects.ts` - Working example to reference
+- `lib/actions/tasks.ts` - Working example to reference
+
+### Code Example (Complete Pattern)
+```typescript
+// Import types
+import { Database } from '@/lib/supabase/types'
+type TodoListUpdate = Database['public']['Tables']['todo_lists']['Update']
+
+// Function with update
+export async function updateTodoList(id: string, updates: {...}): Promise<TodoList> {
+  const supabase = await createClient()  // No explicit typing
+  
+  // Build typed data object
+  const updateData: TodoListUpdate = {}
+  if (updates.title !== undefined) {
+    updateData.title = updates.title.trim()
+  }
+  
+  // Split query pattern with 'any' casting
+  const query: any = (supabase
+    .from('todo_lists') as any)
+    .update(updateData as any)
+  
+  const result: any = await query
+    .eq('id', id)
+    .select()
+    .single()
+  
+  const { data, error } = result
+  
+  if (error) throw new Error(error.message)
+  return data
+}
+```

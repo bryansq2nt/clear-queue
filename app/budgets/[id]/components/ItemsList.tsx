@@ -15,6 +15,7 @@ interface ItemsListProps {
   categoryId: string
   budgetId: string
   onRefresh: () => void
+  onItemCreated?: (item: BudgetItem) => void
   selectionMode?: boolean
   onExitSelectionMode?: () => void
 }
@@ -24,6 +25,7 @@ export function ItemsList({
   categoryId,
   budgetId,
   onRefresh,
+  onItemCreated,
   selectionMode = false,
   onExitSelectionMode,
 }: ItemsListProps) {
@@ -32,6 +34,7 @@ export function ItemsList({
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isBulkDeleting, setIsBulkDeleting] = useState(false)
+  const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null)
 
   const allItemIds = useMemo(() => items.map((i) => i.id), [items])
   const selectedCount = selectedIds.size
@@ -41,6 +44,12 @@ export function ItemsList({
       setSelectedIds(new Set())
     }
   }, [selectionMode])
+
+  useEffect(() => {
+    if (!recentlyAddedId) return
+    const t = setTimeout(() => setRecentlyAddedId(null), 1600)
+    return () => clearTimeout(t)
+  }, [recentlyAddedId])
 
   const handleDelete = async (itemId: string) => {
     setIsDeleting(itemId)
@@ -91,7 +100,6 @@ export function ItemsList({
 
   const handleCreateModalClose = () => {
     setIsCreateModalOpen(false)
-    onRefresh()
   }
 
   const handleEditModalClose = () => {
@@ -170,6 +178,7 @@ export function ItemsList({
                 selectionMode={selectionMode}
                 selected={selectedIds.has(item.id)}
                 onToggleSelected={toggleSelected}
+                flash={item.id === recentlyAddedId}
               />
             ))}
             
@@ -192,6 +201,15 @@ export function ItemsList({
       <CreateItemModal
         isOpen={isCreateModalOpen}
         onClose={handleCreateModalClose}
+        onCreated={(item) => {
+          setIsCreateModalOpen(false)
+          setRecentlyAddedId(item.id)
+          if (onItemCreated) {
+            onItemCreated(item)
+          } else {
+            onRefresh()
+          }
+        }}
         categoryId={categoryId}
         budgetId={budgetId}
       />

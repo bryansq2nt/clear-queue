@@ -3,14 +3,23 @@
 import { useState, useEffect } from 'react'
 import { X, FolderPlus } from 'lucide-react'
 import { createCategory } from '../actions'
+import { Database } from '@/lib/supabase/types'
+
+type BudgetCategory = Database['public']['Tables']['budget_categories']['Row']
 
 interface CreateCategoryModalProps {
   isOpen: boolean
   onClose: () => void
+  onCreated?: (category: BudgetCategory) => void
   budgetId: string
 }
 
-export function CreateCategoryModal({ isOpen, onClose, budgetId }: CreateCategoryModalProps) {
+export function CreateCategoryModal({
+  isOpen,
+  onClose,
+  onCreated,
+  budgetId,
+}: CreateCategoryModalProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -33,7 +42,7 @@ export function CreateCategoryModal({ isOpen, onClose, budgetId }: CreateCategor
 
     setIsSubmitting(true)
     try {
-      await createCategory({
+      const created = await createCategory({
         budget_id: budgetId,
         name: name.trim(),
         description: description.trim() || undefined,
@@ -42,6 +51,7 @@ export function CreateCategoryModal({ isOpen, onClose, budgetId }: CreateCategor
       // Reset form
       setName('')
       setDescription('')
+      onCreated?.(created as BudgetCategory)
       onClose()
     } catch (error) {
       console.error('Error creating category:', error)

@@ -18,9 +18,10 @@ interface CategorySectionProps {
   }
   budgetId: string
   onRefresh: () => void
+  onItemCreated?: (categoryId: string, item: any) => void
 }
 
-export function CategorySection({ category, budgetId, onRefresh }: CategorySectionProps) {
+export function CategorySection({ category, budgetId, onRefresh, onItemCreated }: CategorySectionProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -202,6 +203,7 @@ export function CategorySection({ category, budgetId, onRefresh }: CategorySecti
             categoryId={category.id}
             budgetId={budgetId}
             onRefresh={onRefresh}
+            onItemCreated={(item) => onItemCreated?.(category.id, item)}
             selectionMode={isSelectingItems}
             onExitSelectionMode={() => setIsSelectingItems(false)}
           />

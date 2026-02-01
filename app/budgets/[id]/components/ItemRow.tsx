@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Edit, Trash2, ExternalLink, RefreshCw } from 'lucide-react'
 import { Database } from '@/lib/supabase/types'
 
@@ -14,6 +14,7 @@ interface ItemRowProps {
   selectionMode?: boolean
   selected?: boolean
   onToggleSelected?: (itemId: string) => void
+  flash?: boolean
 }
 
 export function ItemRow({
@@ -24,8 +25,23 @@ export function ItemRow({
   selectionMode = false,
   selected = false,
   onToggleSelected,
+  flash = false,
 }: ItemRowProps) {
   const [showMenu, setShowMenu] = useState(false)
+  // Start highlighted immediately when the row mounts with flash=true
+  const [isFlashing, setIsFlashing] = useState(flash)
+
+  useEffect(() => {
+    if (!flash) {
+      setIsFlashing(false)
+      return
+    }
+
+    // Ensure it's highlighted now, then fade out
+    setIsFlashing(true)
+    const t = setTimeout(() => setIsFlashing(false), 1600)
+    return () => clearTimeout(t)
+  }, [flash])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -51,10 +67,14 @@ export function ItemRow({
 
   return (
     <div
-      className={`group border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-colors ${
+      className={`group border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-colors duration-700 ease-out ${
         selectionMode
           ? 'hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer'
           : 'hover:bg-gray-50 dark:hover:bg-gray-900/50'
+      } ${
+        isFlashing
+          ? 'bg-emerald-200/70 dark:bg-emerald-900/35 hover:bg-emerald-200/70 dark:hover:bg-emerald-900/35'
+          : ''
       }`}
       onClick={() => {
         if (!selectionMode) return

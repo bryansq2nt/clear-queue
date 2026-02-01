@@ -3,15 +3,25 @@
 import { useState, useEffect } from 'react'
 import { X, Package } from 'lucide-react'
 import { createItem } from '../actions'
+import { Database } from '@/lib/supabase/types'
+
+type BudgetItem = Database['public']['Tables']['budget_items']['Row']
 
 interface CreateItemModalProps {
   isOpen: boolean
   onClose: () => void
+  onCreated?: (item: BudgetItem) => void
   categoryId: string
   budgetId: string
 }
 
-export function CreateItemModal({ isOpen, onClose, categoryId, budgetId }: CreateItemModalProps) {
+export function CreateItemModal({
+  isOpen,
+  onClose,
+  onCreated,
+  categoryId,
+  budgetId,
+}: CreateItemModalProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [quantity, setQuantity] = useState('1')
@@ -59,7 +69,7 @@ export function CreateItemModal({ isOpen, onClose, categoryId, budgetId }: Creat
 
     setIsSubmitting(true)
     try {
-      await createItem({
+      const created = await createItem({
         category_id: categoryId,
         name: name.trim(),
         description: description.trim() || undefined,
@@ -70,7 +80,8 @@ export function CreateItemModal({ isOpen, onClose, categoryId, budgetId }: Creat
         is_recurrent: isRecurrent,
         notes: notes.trim() || undefined,
       })
-      
+
+      onCreated?.(created as BudgetItem)
       onClose()
     } catch (error) {
       console.error('Error creating item:', error)

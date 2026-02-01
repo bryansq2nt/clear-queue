@@ -11,8 +11,11 @@ import { getBudgetWithData } from './actions'
 import { BudgetHeader } from './components/BudgetHeader'
 import { CategorySection } from './components/CategorySection'
 import { CreateCategoryModal } from './components/CreateCategoryModal'
+import { Database } from '@/lib/supabase/types'
 
 type Project = Database['public']['Tables']['projects']['Row']
+type BudgetItem = Database['public']['Tables']['budget_items']['Row']
+type BudgetCategory = Database['public']['Tables']['budget_categories']['Row']
 
 interface BudgetDetailClientProps {
   budgetId: string
@@ -57,8 +60,48 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
 
   const handleCategoryModalClose = () => {
     setIsCategoryModalOpen(false)
-    loadBudgetData() // Refresh data
   }
+
+  const handleCategoryCreated = useCallback((created: BudgetCategory) => {
+    setBudgetData((prev: any) => {
+      if (!prev) return prev
+      const nextCategory = {
+        ...created,
+        items: [],
+        category_total: 0,
+        acquired_total: 0,
+        item_count: 0,
+      }
+      const nextCategories = [...(prev.categories || []), nextCategory].sort(
+        (a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+      )
+      return { ...prev, categories: nextCategories }
+    })
+  }, [])
+
+  const handleItemCreated = useCallback((categoryId: string, item: BudgetItem) => {
+    setBudgetData((prev: any) => {
+      if (!prev) return prev
+      const nextCategories = (prev.categories || []).map((cat: any) => {
+        if (cat.id !== categoryId) return cat
+
+        const qty = Number(item.quantity) || 0
+        const price = Number(item.unit_price) || 0
+        const delta = qty * price
+        const acquiredDelta = item.status === 'acquired' ? delta : 0
+
+        const nextItems = [...(cat.items || []), item]
+        return {
+          ...cat,
+          items: nextItems,
+          item_count: (cat.item_count ?? (cat.items || []).length) + 1,
+          category_total: (Number(cat.category_total) || 0) + delta,
+          acquired_total: (Number(cat.acquired_total) || 0) + acquiredDelta,
+        }
+      })
+      return { ...prev, categories: nextCategories }
+    })
+  }, [])
 
   if (isLoading) {
     return (
@@ -210,6 +253,7 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
                     category={category}
                     budgetId={budgetId}
                     onRefresh={loadBudgetData}
+                    onItemCreated={handleItemCreated}
                   />
                 ))}
 
@@ -233,6 +277,7 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
       <CreateCategoryModal
         isOpen={isCategoryModalOpen}
         onClose={handleCategoryModalClose}
+        onCreated={handleCategoryCreated}
         budgetId={budgetId}
       />
     </div>
