@@ -16,6 +16,8 @@ interface ItemsListProps {
   budgetId: string
   onRefresh: () => void
   onItemCreated?: (item: BudgetItem) => void
+  onItemDeleted?: (item: BudgetItem) => void
+  onItemsDeleted?: (items: BudgetItem[]) => void
   selectionMode?: boolean
   onExitSelectionMode?: () => void
 }
@@ -26,6 +28,8 @@ export function ItemsList({
   budgetId,
   onRefresh,
   onItemCreated,
+  onItemDeleted,
+  onItemsDeleted,
   selectionMode = false,
   onExitSelectionMode,
 }: ItemsListProps) {
@@ -35,6 +39,7 @@ export function ItemsList({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null)
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
 
   const allItemIds = useMemo(() => items.map((i) => i.id), [items])
   const selectedCount = selectedIds.size
@@ -52,13 +57,33 @@ export function ItemsList({
   }, [recentlyAddedId])
 
   const handleDelete = async (itemId: string) => {
+    const item = items.find((i) => i.id === itemId)
+    if (!item) return
+
+    if (!confirm(`Are you sure you want to delete "${item.name}"?`)) {
+      return
+    }
+
     setIsDeleting(itemId)
+    setDeletingIds((prev) => new Set(prev).add(itemId))
     try {
       await deleteItem(itemId, budgetId)
-      onRefresh()
+      // Let the row fade out before removing from state
+      window.setTimeout(() => {
+        if (onItemDeleted) {
+          onItemDeleted(item)
+        } else {
+          onRefresh()
+        }
+      }, 520)
     } catch (error) {
       console.error('Error deleting item:', error)
       alert('Failed to delete item')
+      setDeletingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(itemId)
+        return next
+      })
     } finally {
       setIsDeleting(null)
     }
@@ -84,15 +109,33 @@ export function ItemsList({
       return
     }
 
+    const selectedItems = items.filter((i) => selectedIds.has(i.id))
+
     setIsBulkDeleting(true)
+    setDeletingIds((prev) => {
+      const next = new Set(prev)
+      ids.forEach((id) => next.add(id))
+      return next
+    })
     try {
       await deleteItems(ids, budgetId)
       clearSelection()
-      onRefresh()
-      onExitSelectionMode?.()
+      window.setTimeout(() => {
+        if (onItemsDeleted) {
+          onItemsDeleted(selectedItems)
+        } else {
+          onRefresh()
+        }
+        onExitSelectionMode?.()
+      }, 520)
     } catch (error) {
       console.error('Error deleting items:', error)
       alert('Failed to delete selected items')
+      setDeletingIds((prev) => {
+        const next = new Set(prev)
+        ids.forEach((id) => next.delete(id))
+        return next
+      })
     } finally {
       setIsBulkDeleting(false)
     }
@@ -179,6 +222,7 @@ export function ItemsList({
                 selected={selectedIds.has(item.id)}
                 onToggleSelected={toggleSelected}
                 flash={item.id === recentlyAddedId}
+                deleting={deletingIds.has(item.id)}
               />
             ))}
             

@@ -15,6 +15,7 @@ interface ItemRowProps {
   selected?: boolean
   onToggleSelected?: (itemId: string) => void
   flash?: boolean
+  deleting?: boolean
 }
 
 export function ItemRow({
@@ -26,10 +27,14 @@ export function ItemRow({
   selected = false,
   onToggleSelected,
   flash = false,
+  deleting = false,
 }: ItemRowProps) {
   const [showMenu, setShowMenu] = useState(false)
   // Start highlighted immediately when the row mounts with flash=true
   const [isFlashing, setIsFlashing] = useState(flash)
+  // Start "entering" when created so it animates in
+  const [isEntering, setIsEntering] = useState(flash)
+  const [isDeleteFading, setIsDeleteFading] = useState(false)
 
   useEffect(() => {
     if (!flash) {
@@ -39,9 +44,27 @@ export function ItemRow({
 
     // Ensure it's highlighted now, then fade out
     setIsFlashing(true)
+    // Make sure it animates in (opacity/translate) instead of appearing instantly
+    setIsEntering(true)
+    const raf = window.requestAnimationFrame(() => setIsEntering(false))
+
     const t = setTimeout(() => setIsFlashing(false), 1600)
-    return () => clearTimeout(t)
+    return () => {
+      window.cancelAnimationFrame(raf)
+      clearTimeout(t)
+    }
   }, [flash])
+
+  useEffect(() => {
+    if (!deleting) {
+      setIsDeleteFading(false)
+      return
+    }
+
+    // Start the fade-out immediately (next paint) so it feels snappy.
+    const raf = window.requestAnimationFrame(() => setIsDeleteFading(true))
+    return () => window.cancelAnimationFrame(raf)
+  }, [deleting])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -67,7 +90,7 @@ export function ItemRow({
 
   return (
     <div
-      className={`group border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-colors duration-700 ease-out ${
+      className={`group border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-[opacity,transform,background-color] duration-500 ease-in-out ${
         selectionMode
           ? 'hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer'
           : 'hover:bg-gray-50 dark:hover:bg-gray-900/50'
@@ -75,13 +98,22 @@ export function ItemRow({
         isFlashing
           ? 'bg-emerald-200/70 dark:bg-emerald-900/35 hover:bg-emerald-200/70 dark:hover:bg-emerald-900/35'
           : ''
-      }`}
+      } ${
+        deleting
+          ? '!bg-red-500/80 !dark:bg-red-800/60 !hover:bg-red-500/80 !dark:hover:bg-red-800/60'
+          : ''
+      } ${deleting && isDeleteFading ? 'opacity-0 scale-[0.96]' : ''}`}
       onClick={() => {
+        if (deleting) return
         if (!selectionMode) return
         onToggleSelected?.(item.id)
       }}
     >
-      <div className="p-4 flex items-start gap-4">
+      <div
+        className={`p-4 flex items-start gap-4 transition-[opacity,transform] duration-300 ease-out ${
+          !deleting && isEntering ? 'opacity-0 -translate-y-1' : 'opacity-100 translate-y-0'
+        }`}
+      >
         {selectionMode && (
           <div className="pt-1">
             <input
@@ -202,9 +234,7 @@ export function ItemRow({
                     onClick={(e) => {
                       e.stopPropagation()
                       setShowMenu(false)
-                      if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
-                        onDelete(item.id)
-                      }
+                      onDelete(item.id)
                     }}
                     className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
                   >

@@ -11,7 +11,6 @@ import { getBudgetWithData } from './actions'
 import { BudgetHeader } from './components/BudgetHeader'
 import { CategorySection } from './components/CategorySection'
 import { CreateCategoryModal } from './components/CreateCategoryModal'
-import { Database } from '@/lib/supabase/types'
 
 type Project = Database['public']['Tables']['projects']['Row']
 type BudgetItem = Database['public']['Tables']['budget_items']['Row']
@@ -103,6 +102,55 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
     })
   }, [])
 
+  const handleItemDeleted = useCallback((categoryId: string, item: BudgetItem) => {
+    setBudgetData((prev: any) => {
+      if (!prev) return prev
+      const qty = Number(item.quantity) || 0
+      const price = Number(item.unit_price) || 0
+      const delta = qty * price
+      const acquiredDelta = item.status === 'acquired' ? delta : 0
+
+      const nextCategories = (prev.categories || []).map((cat: any) => {
+        if (cat.id !== categoryId) return cat
+        const nextItems = (cat.items || []).filter((i: any) => i.id !== item.id)
+        return {
+          ...cat,
+          items: nextItems,
+          item_count: Math.max(0, (cat.item_count ?? (cat.items || []).length) - 1),
+          category_total: (Number(cat.category_total) || 0) - delta,
+          acquired_total: (Number(cat.acquired_total) || 0) - acquiredDelta,
+        }
+      })
+      return { ...prev, categories: nextCategories }
+    })
+  }, [])
+
+  const handleItemsDeleted = useCallback((categoryId: string, items: BudgetItem[]) => {
+    setBudgetData((prev: any) => {
+      if (!prev) return prev
+
+      const ids = new Set(items.map((i) => i.id))
+      const totalDelta = items.reduce((sum, i) => sum + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0)
+      const acquiredDelta = items
+        .filter((i) => i.status === 'acquired')
+        .reduce((sum, i) => sum + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0)
+
+      const nextCategories = (prev.categories || []).map((cat: any) => {
+        if (cat.id !== categoryId) return cat
+        const nextItems = (cat.items || []).filter((i: any) => !ids.has(i.id))
+        return {
+          ...cat,
+          items: nextItems,
+          item_count: Math.max(0, (cat.item_count ?? (cat.items || []).length) - items.length),
+          category_total: (Number(cat.category_total) || 0) - totalDelta,
+          acquired_total: (Number(cat.acquired_total) || 0) - acquiredDelta,
+        }
+      })
+
+      return { ...prev, categories: nextCategories }
+    })
+  }, [])
+
   if (isLoading) {
     return (
       <div className="flex flex-col h-screen bg-slate-50">
@@ -121,9 +169,9 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
             selectedProject={null}
             selectedCategory={null}
             showArchived={false}
-            onSelectProject={() => {}}
-            onCategoryChange={() => {}}
-            onShowArchivedChange={() => {}}
+            onSelectProject={() => { }}
+            onCategoryChange={() => { }}
+            onShowArchivedChange={() => { }}
             onProjectUpdated={loadProjects}
           />
           <div className="flex-1 overflow-y-auto p-6">
@@ -156,9 +204,9 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
             selectedProject={null}
             selectedCategory={null}
             showArchived={false}
-            onSelectProject={() => {}}
-            onCategoryChange={() => {}}
-            onShowArchivedChange={() => {}}
+            onSelectProject={() => { }}
+            onCategoryChange={() => { }}
+            onShowArchivedChange={() => { }}
             onProjectUpdated={loadProjects}
           />
           <div className="flex-1 overflow-y-auto p-6">
@@ -207,9 +255,9 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
           selectedProject={null}
           selectedCategory={null}
           showArchived={false}
-          onSelectProject={() => {}}
-          onCategoryChange={() => {}}
-          onShowArchivedChange={() => {}}
+          onSelectProject={() => { }}
+          onCategoryChange={() => { }}
+          onShowArchivedChange={() => { }}
           onProjectUpdated={loadProjects}
         />
         <div className="flex-1 overflow-y-auto p-6 max-w-7xl mx-auto w-full">
@@ -228,15 +276,15 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
                 <div className="mx-auto w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mb-6">
                   <Plus className="w-10 h-10 text-white" />
                 </div>
-                
+
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                   No categories yet
                 </h3>
-                
+
                 <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
                   Start organizing your budget by creating categories like Equipment, Establishment, or Cleaning.
                 </p>
-                
+
                 <button
                   onClick={() => setIsCategoryModalOpen(true)}
                   className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
@@ -254,6 +302,8 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
                     budgetId={budgetId}
                     onRefresh={loadBudgetData}
                     onItemCreated={handleItemCreated}
+                    onItemDeleted={handleItemDeleted}
+                    onItemsDeleted={handleItemsDeleted}
                   />
                 ))}
 
