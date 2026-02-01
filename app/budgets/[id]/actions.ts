@@ -355,3 +355,45 @@ export async function deleteItem(itemId: string, budgetId: string) {
   revalidatePath(`/budgets/${budgetId}`)
   return { success: true }
 }
+
+// ============================================
+// DELETE MULTIPLE ITEMS (within a budget)
+// ============================================
+export async function deleteItems(itemIds: string[], budgetId: string) {
+  await requireAuth()
+  const supabase = await createClient()
+
+  if (!itemIds || itemIds.length === 0) {
+    return { success: true }
+  }
+
+  // Safety: ensure we only delete items that belong to this budget (via categories)
+  const { data: categories, error: categoriesError } = await supabase
+    .from('budget_categories')
+    .select('id')
+    .eq('budget_id', budgetId)
+
+  if (categoriesError) {
+    console.error('Error fetching categories for deleteItems:', categoriesError)
+    throw new Error('Failed to delete items')
+  }
+
+  const categoryIds = (categories || []).map((c: any) => c.id).filter(Boolean)
+  if (categoryIds.length === 0) {
+    return { success: true }
+  }
+
+  const { error } = await supabase
+    .from('budget_items')
+    .delete()
+    .in('id', itemIds)
+    .in('category_id', categoryIds)
+
+  if (error) {
+    console.error('Error deleting items:', error)
+    throw new Error('Failed to delete items')
+  }
+
+  revalidatePath(`/budgets/${budgetId}`)
+  return { success: true }
+}

@@ -171,7 +171,12 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
         />
         <div className="flex-1 overflow-y-auto p-6 max-w-7xl mx-auto w-full">
           {/* Header with totals */}
-          <BudgetHeader budget={budgetData.budget} stats={stats} />
+          <BudgetHeader
+            budget={budgetData.budget}
+            projects={projects}
+            stats={stats}
+            onUpdated={loadBudgetData}
+          />
 
           {/* Categories */}
           <div className="space-y-4">

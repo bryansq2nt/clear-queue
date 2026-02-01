@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, MoreVertical, Edit, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, MoreVertical, Edit, Trash2, ListChecks } from 'lucide-react'
 import { deleteCategory } from '../actions'
 import { ItemsList } from './ItemsList'
+import { EditCategoryModal } from './EditCategoryModal'
 
 interface CategorySectionProps {
   category: {
@@ -20,9 +21,11 @@ interface CategorySectionProps {
 }
 
 export function CategorySection({ category, budgetId, onRefresh }: CategorySectionProps) {
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isSelectingItems, setIsSelectingItems] = useState(false)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -46,6 +49,17 @@ export function CategorySection({ category, budgetId, onRefresh }: CategorySecti
       alert('Failed to delete category')
       setIsDeleting(false)
     }
+  }
+
+  const openEdit = () => {
+    setShowMenu(false)
+    setIsEditOpen(true)
+  }
+
+  const toggleSelectItems = () => {
+    setShowMenu(false)
+    setIsExpanded(true)
+    setIsSelectingItems((v) => !v)
   }
 
   const progress = category.category_total > 0 
@@ -120,13 +134,22 @@ export function CategorySection({ category, budgetId, onRefresh }: CategorySecti
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      setShowMenu(false)
-                      alert('Edit category - TODO')
+                      openEdit()
                     }}
                     className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
                     <Edit className="w-4 h-4" />
                     Edit
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleSelectItems()
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <ListChecks className="w-4 h-4" />
+                    {isSelectingItems ? 'Exit multi-select' : 'Multi-select items'}
                   </button>
                   <button
                     onClick={(e) => {
@@ -163,6 +186,14 @@ export function CategorySection({ category, budgetId, onRefresh }: CategorySecti
         )}
       </div>
 
+      <EditCategoryModal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        onUpdated={onRefresh}
+        category={category}
+        budgetId={budgetId}
+      />
+
       {/* Items List - Collapsed/Expanded */}
       {isExpanded && (
         <div className="p-0">
@@ -171,6 +202,8 @@ export function CategorySection({ category, budgetId, onRefresh }: CategorySecti
             categoryId={category.id}
             budgetId={budgetId}
             onRefresh={onRefresh}
+            selectionMode={isSelectingItems}
+            onExitSelectionMode={() => setIsSelectingItems(false)}
           />
         </div>
       )}

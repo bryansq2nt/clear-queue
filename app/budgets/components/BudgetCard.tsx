@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Package, TrendingUp, Clock, MoreVertical, Trash2, Edit } from 'lucide-react'
-import { getBudgetStats, deleteBudget } from '../actions'
+import { useRouter } from 'next/navigation'
+import { Package, TrendingUp, Clock, MoreVertical, Trash2, Copy } from 'lucide-react'
+import { getBudgetStats, deleteBudget, duplicateBudget } from '../actions'
 
 interface BudgetCardProps {
   budget: {
@@ -27,6 +28,8 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
   })
   const [showMenu, setShowMenu] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isDuplicating, setIsDuplicating] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     getBudgetStats(budget.id).then(setStats)
@@ -50,6 +53,29 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
       console.error('Error deleting budget:', error)
       alert('Failed to delete budget')
       setIsDeleting(false)
+    }
+  }
+
+  const handleDuplicate = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    setIsDuplicating(true)
+    try {
+      const result = await duplicateBudget(budget.id)
+      setShowMenu(false)
+      if (onDeleted) {
+        onDeleted()
+      }
+      if (result?.budgetId) {
+        router.push(`/budgets/${result.budgetId}`)
+      } else {
+        setIsDuplicating(false)
+      }
+    } catch (error) {
+      console.error('Error duplicating budget:', error)
+      alert('Failed to duplicate budget')
+      setIsDuplicating(false)
     }
   }
 
@@ -90,17 +116,12 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
             />
             <div className="absolute top-12 right-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-30 min-w-[150px]">
               <button
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  // TODO: Implement edit in next step
-                  alert('Edit functionality coming soon')
-                  setShowMenu(false)
-                }}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={handleDuplicate}
+                disabled={isDuplicating}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 disabled:opacity-50"
               >
-                <Edit className="w-4 h-4" />
-                Edit
+                <Copy className="w-4 h-4" />
+                {isDuplicating ? 'Duplicating...' : 'Duplicate'}
               </button>
               <button
                 onClick={handleDelete}

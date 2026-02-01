@@ -2,24 +2,30 @@
 
 import { ArrowLeft, Edit2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { EditBudgetModal } from './EditBudgetModal'
 
 interface BudgetHeaderProps {
   budget: {
     id: string
     name: string
     description: string | null
+    project_id: string | null
     projects: { id: string; name: string } | null
   }
+  projects: { id: string; name: string }[]
   stats: {
     total: number
     acquired: number
     pending: number
     progress: number
   }
+  onUpdated: () => void
 }
 
-export function BudgetHeader({ budget, stats }: BudgetHeaderProps) {
+export function BudgetHeader({ budget, projects, stats, onUpdated }: BudgetHeaderProps) {
   const router = useRouter()
+  const [isEditOpen, setIsEditOpen] = useState(false)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -64,7 +70,7 @@ export function BudgetHeader({ budget, stats }: BudgetHeaderProps) {
             </div>
 
             <button
-              onClick={() => alert('Edit budget - TODO next')}
+              onClick={() => setIsEditOpen(true)}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <Edit2 className="w-5 h-5 text-gray-500" />
@@ -72,6 +78,14 @@ export function BudgetHeader({ budget, stats }: BudgetHeaderProps) {
           </div>
         </div>
       </div>
+
+      <EditBudgetModal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        onUpdated={onUpdated}
+        projects={projects}
+        budget={budget}
+      />
 
       {/* Total Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

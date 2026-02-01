@@ -11,9 +11,20 @@ interface ItemRowProps {
   budgetId: string
   onEdit: (item: BudgetItem) => void
   onDelete: (itemId: string) => void
+  selectionMode?: boolean
+  selected?: boolean
+  onToggleSelected?: (itemId: string) => void
 }
 
-export function ItemRow({ item, budgetId, onEdit, onDelete }: ItemRowProps) {
+export function ItemRow({
+  item,
+  budgetId,
+  onEdit,
+  onDelete,
+  selectionMode = false,
+  selected = false,
+  onToggleSelected,
+}: ItemRowProps) {
   const [showMenu, setShowMenu] = useState(false)
 
   const formatCurrency = (amount: number) => {
@@ -39,8 +50,30 @@ export function ItemRow({ item, budgetId, onEdit, onDelete }: ItemRowProps) {
   }
 
   return (
-    <div className="group border-b border-gray-200 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
+    <div
+      className={`group border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-colors ${
+        selectionMode
+          ? 'hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer'
+          : 'hover:bg-gray-50 dark:hover:bg-gray-900/50'
+      }`}
+      onClick={() => {
+        if (!selectionMode) return
+        onToggleSelected?.(item.id)
+      }}
+    >
       <div className="p-4 flex items-start gap-4">
+        {selectionMode && (
+          <div className="pt-1">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => onToggleSelected?.(item.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+          </div>
+        )}
+
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-4 mb-2">
@@ -112,55 +145,57 @@ export function ItemRow({ item, budgetId, onEdit, onDelete }: ItemRowProps) {
         </div>
 
         {/* Actions Menu */}
-        <div className="relative flex-shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setShowMenu(!showMenu)
-            }}
-            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-          >
-            <Edit className="w-4 h-4 text-gray-500" />
-          </button>
+        {!selectionMode && (
+          <div className="relative flex-shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowMenu(!showMenu)
+              }}
+              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+            >
+              <Edit className="w-4 h-4 text-gray-500" />
+            </button>
 
-          {showMenu && (
-            <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowMenu(false)
-                }}
-              />
-              <div className="absolute top-10 right-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-20 min-w-[160px]">
-                <button
+            {showMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
                   onClick={(e) => {
                     e.stopPropagation()
                     setShowMenu(false)
-                    onEdit(item)
                   }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                >
-                  <Edit className="w-4 h-4" />
-                  Edit
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setShowMenu(false)
-                    if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
-                      onDelete(item.id)
-                    }
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+                />
+                <div className="absolute top-10 right-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-20 min-w-[160px]">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowMenu(false)
+                      onEdit(item)
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowMenu(false)
+                      if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
+                        onDelete(item.id)
+                      }
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
