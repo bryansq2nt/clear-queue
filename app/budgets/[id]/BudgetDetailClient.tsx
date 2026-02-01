@@ -7,10 +7,12 @@ import Sidebar from '@/components/Sidebar'
 import TopBar from '@/components/TopBar'
 import { signOut } from '@/app/actions/auth'
 import { Plus } from 'lucide-react'
-import { getBudgetWithData } from './actions'
+import { getBudgetWithData, reorderCategories, reorderItems } from './actions'
 import { BudgetHeader } from './components/BudgetHeader'
 import { CategorySection } from './components/CategorySection'
 import { CreateCategoryModal } from './components/CreateCategoryModal'
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 type Project = Database['public']['Tables']['projects']['Row']
 type BudgetItem = Database['public']['Tables']['budget_items']['Row']
@@ -27,6 +29,12 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const supabase = createClient()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  )
 
   const loadProjects = useCallback(async () => {
     const { data } = await supabase
@@ -186,6 +194,74 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
     })
   }, [])
 
+  const handleItemsReordered = useCallback(
+    (categoryId: string, itemIds: string[]) => {
+      if (!budgetData?.categories) return
+
+      const prevCategories = budgetData.categories
+
+      // Optimistically reorder locally
+      setBudgetData((prev: any) => {
+        if (!prev) return prev
+        const nextCategories = (prev.categories || []).map((cat: any) => {
+          if (cat.id !== categoryId) return cat
+          const byId = new Map((cat.items || []).map((i: any) => [i.id, i]))
+          const nextItems = itemIds.map((id, idx) => {
+            const it = byId.get(id)
+            return it ? { ...it, sort_order: idx } : it
+          }).filter(Boolean)
+          return { ...cat, items: nextItems }
+        })
+        return { ...prev, categories: nextCategories }
+      })
+
+      ;(async () => {
+        try {
+          await reorderItems(budgetId, categoryId, itemIds)
+        } catch (e) {
+          console.error('Failed to reorder items:', e)
+          // revert if the save fails
+          setBudgetData((prev: any) => (prev ? { ...prev, categories: prevCategories } : prev))
+          alert('Failed to reorder items')
+        }
+      })()
+    },
+    [budgetData?.categories, budgetId]
+  )
+
+  const handleCategoryDragEnd = useCallback(
+    ({ active, over }: { active: any; over: any }) => {
+      if (!budgetData?.categories) return
+      if (!over) return
+      if (active.id === over.id) return
+
+      const prevCategories = budgetData.categories
+      const oldIndex = prevCategories.findIndex((c: any) => c.id === active.id)
+      const newIndex = prevCategories.findIndex((c: any) => c.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return
+
+      const nextCategories = arrayMove(prevCategories, oldIndex, newIndex).map((c: any, idx: number) => ({
+        ...c,
+        sort_order: idx,
+      }))
+
+      setBudgetData((prev: any) => (prev ? { ...prev, categories: nextCategories } : prev))
+
+      const nextIds = nextCategories.map((c: any) => c.id)
+      ;(async () => {
+        try {
+          await reorderCategories(budgetId, nextIds)
+        } catch (e) {
+          console.error('Failed to reorder categories:', e)
+          // revert if the save fails
+          setBudgetData((prev: any) => (prev ? { ...prev, categories: prevCategories } : prev))
+          alert('Failed to reorder categories')
+        }
+      })()
+    },
+    [budgetData?.categories, budgetId]
+  )
+
   if (isLoading) {
     return (
       <div className="flex flex-col h-screen bg-slate-50">
@@ -330,18 +406,30 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
               </div>
             ) : (
               <>
-                {budgetData.categories.map((category: any) => (
-                  <CategorySection
-                    key={category.id}
-                    category={category}
-                    budgetId={budgetId}
-                    onRefresh={loadBudgetData}
-                    onItemCreated={handleItemCreated}
-                    onItemUpdated={handleItemUpdated}
-                    onItemDeleted={handleItemDeleted}
-                    onItemsDeleted={handleItemsDeleted}
-                  />
-                ))}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleCategoryDragEnd}
+                >
+                  <SortableContext
+                    items={budgetData.categories.map((c: any) => c.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {budgetData.categories.map((category: any) => (
+                      <CategorySection
+                        key={category.id}
+                        category={category}
+                        budgetId={budgetId}
+                        onRefresh={loadBudgetData}
+                        onItemCreated={handleItemCreated}
+                        onItemUpdated={handleItemUpdated}
+                        onItemDeleted={handleItemDeleted}
+                        onItemsDeleted={handleItemsDeleted}
+                    onItemsReordered={handleItemsReordered}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
 
                 {/* Add Category Button */}
                 <button

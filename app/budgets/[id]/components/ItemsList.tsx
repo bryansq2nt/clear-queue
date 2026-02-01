@@ -7,6 +7,9 @@ import { CreateItemModal } from './CreateItemModal'
 import { EditItemModal } from './EditItemModal'
 import { deleteItem, deleteItems } from '../actions'
 import { Database } from '@/lib/supabase/types'
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 type BudgetItem = Database['public']['Tables']['budget_items']['Row']
 
@@ -19,8 +22,36 @@ interface ItemsListProps {
   onItemUpdated?: (item: BudgetItem) => void
   onItemDeleted?: (item: BudgetItem) => void
   onItemsDeleted?: (items: BudgetItem[]) => void
+  onItemsReordered?: (itemIds: string[]) => void
   selectionMode?: boolean
   onExitSelectionMode?: () => void
+}
+
+function SortableItem({
+  id,
+  disabled,
+  children,
+}: {
+  id: string
+  disabled: boolean
+  children: (opts: { setActivatorNodeRef: any; attributes: any; listeners: any }) => React.ReactNode
+}) {
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+    id,
+    disabled,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.85 : 1,
+  } as React.CSSProperties
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ setActivatorNodeRef, attributes, listeners })}
+    </div>
+  )
 }
 
 export function ItemsList({
@@ -32,6 +63,7 @@ export function ItemsList({
   onItemUpdated,
   onItemDeleted,
   onItemsDeleted,
+  onItemsReordered,
   selectionMode = false,
   onExitSelectionMode,
 }: ItemsListProps) {
@@ -46,6 +78,14 @@ export function ItemsList({
 
   const allItemIds = useMemo(() => items.map((i) => i.id), [items])
   const selectedCount = selectedIds.size
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  )
+
+  const dragEnabled = !selectionMode && deletingIds.size === 0 && !isBulkDeleting && !isDeleting
 
   useEffect(() => {
     if (!selectionMode) {
@@ -158,6 +198,23 @@ export function ItemsList({
     setEditingItem(null)
   }
 
+  const handleDragEnd = ({ active, over }: { active: any; over: any }) => {
+    if (!over) return
+    if (active.id === over.id) return
+    if (!dragEnabled) return
+
+    const oldIndex = allItemIds.indexOf(active.id)
+    const newIndex = allItemIds.indexOf(over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const nextIds = arrayMove(allItemIds, oldIndex, newIndex)
+    if (onItemsReordered) {
+      onItemsReordered(nextIds)
+    } else {
+      onRefresh()
+    }
+  }
+
   return (
     <>
       {selectionMode && (
@@ -203,6 +260,11 @@ export function ItemsList({
         </div>
       )}
 
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
       <div className="space-y-0">
         {items.length === 0 ? (
           <div className="text-center py-12">
@@ -219,21 +281,31 @@ export function ItemsList({
           </div>
         ) : (
           <>
-            {items.map((item) => (
-              <ItemRow
-                key={item.id}
-                item={item}
-                budgetId={budgetId}
-                onEdit={setEditingItem}
-                onDelete={handleDelete}
-                selectionMode={selectionMode}
-                selected={selectedIds.has(item.id)}
-                onToggleSelected={toggleSelected}
-                flash={item.id === recentlyAddedId}
-                updated={item.id === recentlyUpdatedId}
-                deleting={deletingIds.has(item.id)}
-              />
-            ))}
+            <SortableContext items={allItemIds} strategy={verticalListSortingStrategy}>
+              {items.map((item) => (
+                <SortableItem key={item.id} id={item.id} disabled={!dragEnabled}>
+                  {({ setActivatorNodeRef, attributes, listeners }) => (
+                    <ItemRow
+                      item={item}
+                      budgetId={budgetId}
+                      onEdit={setEditingItem}
+                      onDelete={handleDelete}
+                      selectionMode={selectionMode}
+                      selected={selectedIds.has(item.id)}
+                      onToggleSelected={toggleSelected}
+                      flash={item.id === recentlyAddedId}
+                      updated={item.id === recentlyUpdatedId}
+                      deleting={deletingIds.has(item.id)}
+                      dragHandle={
+                        dragEnabled
+                          ? { setActivatorNodeRef, attributes, listeners }
+                          : undefined
+                      }
+                    />
+                  )}
+                </SortableItem>
+              ))}
+            </SortableContext>
 
             {/* Add Item Button */}
             <div className="p-4 border-t border-gray-200 dark:border-gray-700">
@@ -249,6 +321,7 @@ export function ItemsList({
           </>
         )}
       </div>
+      </DndContext>
 
       {/* Create Modal */}
       <CreateItemModal

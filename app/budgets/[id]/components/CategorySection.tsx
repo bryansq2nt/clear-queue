@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, MoreVertical, Edit, Trash2, ListChecks } from 'lucide-react'
+import { ChevronDown, ChevronRight, MoreVertical, Edit, Trash2, ListChecks, GripVertical } from 'lucide-react'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { deleteCategory } from '../actions'
 import { ItemsList } from './ItemsList'
 import { EditCategoryModal } from './EditCategoryModal'
@@ -22,6 +24,7 @@ interface CategorySectionProps {
   onItemUpdated?: (categoryId: string, item: any) => void
   onItemDeleted?: (categoryId: string, item: any) => void
   onItemsDeleted?: (categoryId: string, items: any[]) => void
+  onItemsReordered?: (categoryId: string, itemIds: string[]) => void
 }
 
 export function CategorySection({
@@ -32,12 +35,29 @@ export function CategorySection({
   onItemUpdated,
   onItemDeleted,
   onItemsDeleted,
+  onItemsReordered,
 }: CategorySectionProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isSelectingItems, setIsSelectingItems] = useState(false)
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: category.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.7 : 1,
+  } as React.CSSProperties
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -79,10 +99,28 @@ export function CategorySection({
     : 0
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+    >
       {/* Category Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
         <div className="flex items-center justify-between">
+          {/* Drag handle */}
+          <button
+            ref={setActivatorNodeRef}
+            type="button"
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+            className="mr-2 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-grab active:cursor-grabbing touch-none"
+            aria-label="Drag to reorder category"
+            title="Drag to reorder"
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="flex items-center gap-3 flex-1 text-left group"
@@ -218,6 +256,7 @@ export function CategorySection({
             onItemUpdated={(item) => onItemUpdated?.(category.id, item)}
             onItemDeleted={(item) => onItemDeleted?.(category.id, item)}
             onItemsDeleted={(items) => onItemsDeleted?.(category.id, items)}
+            onItemsReordered={(itemIds) => onItemsReordered?.(category.id, itemIds)}
             selectionMode={isSelectingItems}
             onExitSelectionMode={() => setIsSelectingItems(false)}
           />

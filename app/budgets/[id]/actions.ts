@@ -60,6 +60,7 @@ export async function getBudgetWithData(budgetId: string) {
     `)
     .eq('budget_id', budgetId)
     .order('sort_order', { ascending: true })
+    .order('sort_order', { ascending: true, foreignTable: 'budget_items' })
 
   if (categoriesError) {
     console.error('Error fetching categories:', categoriesError)
@@ -260,6 +261,18 @@ export async function createItem(formData: {
 
   const budgetId = categoryData.budget_id
 
+  // Get max sort_order within category
+  const { data: maxOrder } = await supabase
+    .from('budget_items')
+    .select('sort_order')
+    .eq('category_id', formData.category_id)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .single()
+
+  const maxOrderData = maxOrder as { sort_order: number } | null
+  const nextOrder = (maxOrderData?.sort_order ?? -1) + 1
+
   const { data, error } = await supabase
     .from('budget_items')
     .insert({
@@ -272,6 +285,7 @@ export async function createItem(formData: {
       status: formData.status || 'pending',
       is_recurrent: formData.is_recurrent || false,
       notes: formData.notes || null,
+      sort_order: nextOrder,
     } as any)
     .select()
     .single()
@@ -394,6 +408,36 @@ export async function deleteItems(itemIds: string[], budgetId: string) {
     throw new Error('Failed to delete items')
   }
 
+  revalidatePath(`/budgets/${budgetId}`)
+  return { success: true }
+}
+
+// ============================================
+// REORDER ITEMS (within one category)
+// ============================================
+export async function reorderItems(budgetId: string, categoryId: string, itemIds: string[]) {
+  await requireAuth()
+  const supabase = await createClient()
+
+  // Verify category belongs to budget
+  const { data: category, error: categoryError } = await supabase
+    .from('budget_categories')
+    .select('id')
+    .eq('id', categoryId)
+    .eq('budget_id', budgetId)
+    .single()
+
+  if (categoryError || !category) {
+    console.error('Error validating category for reorderItems:', categoryError)
+    throw new Error('Invalid category')
+  }
+
+  const updates = itemIds.map((id, index) => {
+    const query: any = (supabase.from('budget_items') as any).update({ sort_order: index } as any)
+    return query.eq('id', id).eq('category_id', categoryId)
+  })
+
+  await Promise.all(updates)
   revalidatePath(`/budgets/${budgetId}`)
   return { success: true }
 }

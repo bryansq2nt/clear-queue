@@ -276,6 +276,7 @@ export type Database = {
           status: 'pending' | 'quoted' | 'acquired'
           is_recurrent: boolean
           notes: string | null
+          sort_order: number
           created_at: string
           updated_at: string
         }
@@ -290,6 +291,7 @@ export type Database = {
           status?: 'pending' | 'quoted' | 'acquired'
           is_recurrent?: boolean
           notes?: string | null
+          sort_order?: number
           created_at?: string
           updated_at?: string
         }
@@ -304,6 +306,7 @@ export type Database = {
           status?: 'pending' | 'quoted' | 'acquired'
           is_recurrent?: boolean
           notes?: string | null
+          sort_order?: number
           created_at?: string
           updated_at?: string
         }

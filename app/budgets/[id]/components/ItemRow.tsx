@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Edit, Trash2, ExternalLink, RefreshCw } from 'lucide-react'
+import { Edit, Trash2, ExternalLink, RefreshCw, GripVertical } from 'lucide-react'
 import { Database } from '@/lib/supabase/types'
 
 type BudgetItem = Database['public']['Tables']['budget_items']['Row']
@@ -17,6 +17,11 @@ interface ItemRowProps {
   flash?: boolean
   updated?: boolean
   deleting?: boolean
+  dragHandle?: {
+    setActivatorNodeRef: (node: any) => void
+    attributes: any
+    listeners: any
+  }
 }
 
 export function ItemRow({
@@ -30,6 +35,7 @@ export function ItemRow({
   flash = false,
   updated = false,
   deleting = false,
+  dragHandle,
 }: ItemRowProps) {
   const [showMenu, setShowMenu] = useState(false)
   // Start highlighted immediately when the row mounts with flash=true
@@ -118,17 +124,32 @@ export function ItemRow({
           !deleting && isEntering ? 'opacity-0 -translate-y-1' : 'opacity-100 translate-y-0'
         }`}
       >
-        {selectionMode && (
-          <div className="pt-1">
+        <div className="pt-1 flex items-start gap-2">
+          {dragHandle && !selectionMode && (
+            <button
+              ref={dragHandle.setActivatorNodeRef}
+              type="button"
+              {...dragHandle.attributes}
+              {...dragHandle.listeners}
+              onClick={(e) => e.stopPropagation()}
+              className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-grab active:cursor-grabbing touch-none"
+              aria-label="Drag to reorder item"
+              title="Drag to reorder"
+            >
+              <GripVertical className="w-4 h-4" />
+            </button>
+          )}
+
+          {selectionMode && (
             <input
               type="checkbox"
               checked={selected}
               onChange={() => onToggleSelected?.(item.id)}
               onClick={(e) => e.stopPropagation()}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Main Content */}
         <div className="flex-1 min-w-0">
