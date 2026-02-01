@@ -151,6 +151,41 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
     })
   }, [])
 
+  const handleItemUpdated = useCallback((categoryId: string, updated: BudgetItem) => {
+    setBudgetData((prev: any) => {
+      if (!prev) return prev
+
+      const nextCategories = (prev.categories || []).map((cat: any) => {
+        if (cat.id !== categoryId) return cat
+
+        const existing = (cat.items || []).find((i: any) => i.id === updated.id) as BudgetItem | undefined
+        if (!existing) {
+          // If we don't have it locally, fall back to replacing nothing.
+          return cat
+        }
+
+        const oldTotal = (Number(existing.quantity) || 0) * (Number(existing.unit_price) || 0)
+        const newTotal = (Number(updated.quantity) || 0) * (Number(updated.unit_price) || 0)
+        const deltaTotal = newTotal - oldTotal
+
+        const oldAcquired = existing.status === 'acquired' ? oldTotal : 0
+        const newAcquired = updated.status === 'acquired' ? newTotal : 0
+        const deltaAcquired = newAcquired - oldAcquired
+
+        const nextItems = (cat.items || []).map((i: any) => (i.id === updated.id ? updated : i))
+
+        return {
+          ...cat,
+          items: nextItems,
+          category_total: (Number(cat.category_total) || 0) + deltaTotal,
+          acquired_total: (Number(cat.acquired_total) || 0) + deltaAcquired,
+        }
+      })
+
+      return { ...prev, categories: nextCategories }
+    })
+  }, [])
+
   if (isLoading) {
     return (
       <div className="flex flex-col h-screen bg-slate-50">
@@ -302,6 +337,7 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
                     budgetId={budgetId}
                     onRefresh={loadBudgetData}
                     onItemCreated={handleItemCreated}
+                    onItemUpdated={handleItemUpdated}
                     onItemDeleted={handleItemDeleted}
                     onItemsDeleted={handleItemsDeleted}
                   />

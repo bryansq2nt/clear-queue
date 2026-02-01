@@ -10,11 +10,12 @@ type BudgetItem = Database['public']['Tables']['budget_items']['Row']
 interface EditItemModalProps {
   isOpen: boolean
   onClose: () => void
+  onUpdated?: (item: BudgetItem) => void
   item: BudgetItem
   budgetId: string
 }
 
-export function EditItemModal({ isOpen, onClose, item, budgetId }: EditItemModalProps) {
+export function EditItemModal({ isOpen, onClose, onUpdated, item, budgetId }: EditItemModalProps) {
   const [name, setName] = useState(item.name)
   const [description, setDescription] = useState(item.description || '')
   const [quantity, setQuantity] = useState(String(item.quantity))
@@ -62,7 +63,7 @@ export function EditItemModal({ isOpen, onClose, item, budgetId }: EditItemModal
 
     setIsSubmitting(true)
     try {
-      await updateItem(item.id, budgetId, {
+      const updated = await updateItem(item.id, budgetId, {
         name: name.trim(),
         description: description.trim() || undefined,
         quantity: qty,
@@ -73,6 +74,7 @@ export function EditItemModal({ isOpen, onClose, item, budgetId }: EditItemModal
         notes: notes.trim() || undefined,
       })
       
+      onUpdated?.(updated as BudgetItem)
       onClose()
     } catch (error) {
       console.error('Error updating item:', error)

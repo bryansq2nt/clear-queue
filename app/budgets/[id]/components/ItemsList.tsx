@@ -16,6 +16,7 @@ interface ItemsListProps {
   budgetId: string
   onRefresh: () => void
   onItemCreated?: (item: BudgetItem) => void
+  onItemUpdated?: (item: BudgetItem) => void
   onItemDeleted?: (item: BudgetItem) => void
   onItemsDeleted?: (items: BudgetItem[]) => void
   selectionMode?: boolean
@@ -28,6 +29,7 @@ export function ItemsList({
   budgetId,
   onRefresh,
   onItemCreated,
+  onItemUpdated,
   onItemDeleted,
   onItemsDeleted,
   selectionMode = false,
@@ -39,6 +41,7 @@ export function ItemsList({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null)
+  const [recentlyUpdatedId, setRecentlyUpdatedId] = useState<string | null>(null)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
 
   const allItemIds = useMemo(() => items.map((i) => i.id), [items])
@@ -55,6 +58,12 @@ export function ItemsList({
     const t = setTimeout(() => setRecentlyAddedId(null), 1600)
     return () => clearTimeout(t)
   }, [recentlyAddedId])
+
+  useEffect(() => {
+    if (!recentlyUpdatedId) return
+    const t = setTimeout(() => setRecentlyUpdatedId(null), 900)
+    return () => clearTimeout(t)
+  }, [recentlyUpdatedId])
 
   const handleDelete = async (itemId: string) => {
     const item = items.find((i) => i.id === itemId)
@@ -147,7 +156,6 @@ export function ItemsList({
 
   const handleEditModalClose = () => {
     setEditingItem(null)
-    onRefresh()
   }
 
   return (
@@ -222,10 +230,11 @@ export function ItemsList({
                 selected={selectedIds.has(item.id)}
                 onToggleSelected={toggleSelected}
                 flash={item.id === recentlyAddedId}
+                updated={item.id === recentlyUpdatedId}
                 deleting={deletingIds.has(item.id)}
               />
             ))}
-            
+
             {/* Add Item Button */}
             <div className="p-4 border-t border-gray-200 dark:border-gray-700">
               <button
@@ -263,6 +272,17 @@ export function ItemsList({
         <EditItemModal
           isOpen={!!editingItem}
           onClose={handleEditModalClose}
+          onUpdated={(updated) => {
+            setEditingItem(null)
+            // retrigger bounce even if updating same item twice quickly
+            setRecentlyUpdatedId(null)
+            window.requestAnimationFrame(() => setRecentlyUpdatedId(updated.id))
+            if (onItemUpdated) {
+              onItemUpdated(updated)
+            } else {
+              onRefresh()
+            }
+          }}
           item={editingItem}
           budgetId={budgetId}
         />

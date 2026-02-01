@@ -15,6 +15,7 @@ interface ItemRowProps {
   selected?: boolean
   onToggleSelected?: (itemId: string) => void
   flash?: boolean
+  updated?: boolean
   deleting?: boolean
 }
 
@@ -27,6 +28,7 @@ export function ItemRow({
   selected = false,
   onToggleSelected,
   flash = false,
+  updated = false,
   deleting = false,
 }: ItemRowProps) {
   const [showMenu, setShowMenu] = useState(false)
@@ -88,9 +90,11 @@ export function ItemRow({
     acquired: '✅ Acquired',
   }
 
+  const showUpdated = updated && !deleting && !isFlashing
+
   return (
     <div
-      className={`group border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-[opacity,transform,background-color] duration-500 ease-in-out ${
+      className={`group border-b border-gray-200 dark:border-gray-700 last:border-b-0 p-4 transition-[opacity,transform,background-color] duration-500 ease-in-out ${
         selectionMode
           ? 'hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer'
           : 'hover:bg-gray-50 dark:hover:bg-gray-900/50'
@@ -98,7 +102,7 @@ export function ItemRow({
         isFlashing
           ? 'bg-emerald-200/70 dark:bg-emerald-900/35 hover:bg-emerald-200/70 dark:hover:bg-emerald-900/35'
           : ''
-      } ${
+      } ${showUpdated ? 'cq-update-flash-strong' : ''} ${
         deleting
           ? '!bg-red-500/80 !dark:bg-red-800/60 !hover:bg-red-500/80 !dark:hover:bg-red-800/60'
           : ''
@@ -110,7 +114,7 @@ export function ItemRow({
       }}
     >
       <div
-        className={`p-4 flex items-start gap-4 transition-[opacity,transform] duration-300 ease-out ${
+        className={`flex items-start gap-4 transition-[opacity,transform] duration-300 ease-out ${
           !deleting && isEntering ? 'opacity-0 -translate-y-1' : 'opacity-100 translate-y-0'
         }`}
       >

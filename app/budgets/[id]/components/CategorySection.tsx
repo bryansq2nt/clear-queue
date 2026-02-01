@@ -19,6 +19,7 @@ interface CategorySectionProps {
   budgetId: string
   onRefresh: () => void
   onItemCreated?: (categoryId: string, item: any) => void
+  onItemUpdated?: (categoryId: string, item: any) => void
   onItemDeleted?: (categoryId: string, item: any) => void
   onItemsDeleted?: (categoryId: string, items: any[]) => void
 }
@@ -28,6 +29,7 @@ export function CategorySection({
   budgetId,
   onRefresh,
   onItemCreated,
+  onItemUpdated,
   onItemDeleted,
   onItemsDeleted,
 }: CategorySectionProps) {
@@ -213,6 +215,7 @@ export function CategorySection({
             budgetId={budgetId}
             onRefresh={onRefresh}
             onItemCreated={(item) => onItemCreated?.(category.id, item)}
+            onItemUpdated={(item) => onItemUpdated?.(category.id, item)}
             onItemDeleted={(item) => onItemDeleted?.(category.id, item)}
             onItemsDeleted={(items) => onItemsDeleted?.(category.id, items)}
             selectionMode={isSelectingItems}
