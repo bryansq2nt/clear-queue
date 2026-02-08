@@ -240,6 +240,58 @@ export type Database = {
           created_at?: string
         }
       }
+      notes: {
+        Row: {
+          id: string
+          owner_id: string
+          project_id: string
+          title: string
+          content: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          project_id: string
+          title: string
+          content: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          project_id?: string
+          title?: string
+          content?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      note_links: {
+        Row: {
+          id: string
+          note_id: string
+          title: string | null
+          url: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          note_id: string
+          title?: string | null
+          url: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          note_id?: string
+          title?: string | null
+          url?: string
+          created_at?: string
+        }
+      }
       business_media: {
         Row: {
           id: string

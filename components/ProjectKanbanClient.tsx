@@ -11,10 +11,12 @@ import { signOut } from '@/app/actions/auth'
 import { useRouter } from 'next/navigation'
 import { SelectionActionBar } from './SelectionActionBar'
 import { deleteTasksByIds } from '@/app/actions/tasks'
+import { getNotes } from '@/app/notes/actions'
 import { cn } from '@/lib/utils'
 
 type Project = Database['public']['Tables']['projects']['Row']
 type Task = Database['public']['Tables']['tasks']['Row']
+type Note = Database['public']['Tables']['notes']['Row']
 
 interface ProjectKanbanClientProps {
   projectId: string
@@ -31,6 +33,7 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
+  const [projectNotes, setProjectNotes] = useState<Note[]>([])
   const router = useRouter()
 
   const supabase = createClient()
@@ -109,11 +112,14 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
       supabase.from('projects').select('*').order('created_at', { ascending: true }),
       supabase.from('projects').select('*').eq('id', projectId).single(),
       supabase.from('tasks').select('*').eq('project_id', projectId).order('order_index', { ascending: true }),
-    ]) as any
+    ])
+    const notesRes = await getNotes({ projectId })
 
     if (projectsRes?.data) setProjects(projectsRes.data as Project[])
-    if (projectRes?.data) setCurrentProject(projectRes.data as Project)
+    const projectData = (projectRes as { data?: Project } | null)?.data
+    if (projectData) setCurrentProject(projectData)
     if (tasksRes?.data) setTasks(tasksRes.data as Task[])
+    setProjectNotes(notesRes)
 
     setLoading(false)
   }, [supabase, projectId])
@@ -206,6 +212,8 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
             todayTasks={todayTasks}
             nextUpTasks={nextUpTasks}
             projects={projects}
+            projectId={projectId}
+            projectNotes={projectNotes}
           />
         </div>
         {selectionMode && (

@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const protectedPrefixes = ['/dashboard', '/project', '/ideas', '/todo', '/budgets', '/clients', '/businesses']
+  const protectedPrefixes = ['/dashboard', '/project', '/ideas', '/todo', '/budgets', '/clients', '/businesses', '/notes']
   const isProtected = protectedPrefixes.some((prefix) => pathname.startsWith(prefix))
 
   if (isProtected && !user) {

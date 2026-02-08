@@ -5,7 +5,7 @@ import { Database } from '@/lib/supabase/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { cn } from '@/lib/utils'
 import { useRouter, usePathname } from 'next/navigation'
-import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus, Lightbulb, DollarSign, CheckSquare, Star, Users, Building2 } from 'lucide-react'
+import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus, Lightbulb, DollarSign, CheckSquare, Star, Users, Building2, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { PROJECT_CATEGORIES, getCategoryLabel } from '@/lib/constants'
 import {
@@ -197,6 +197,18 @@ export default function Sidebar({
               >
                 <Building2 className="w-4 h-4" />
                 Businesses
+              </Link>
+              <Link
+                href="/notes"
+                className={cn(
+                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  pathname?.startsWith('/notes')
+                    ? 'bg-slate-100 text-slate-900 font-medium'
+                    : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <FileText className="w-4 h-4" />
+                Notes
               </Link>
               <button
                 onClick={() => setIsAddProjectModalOpen(true)}

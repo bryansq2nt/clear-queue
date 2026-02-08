@@ -272,3 +272,111 @@ export async function updateTodoList(id: string, updates: {...}): Promise<TodoLi
   return data
 }
 ```
+
+---
+
+## 2026-02-08: Vercel Build — Supabase Insert/Update "parameter of type 'never'" (clients, businesses, client_links)
+
+### Context
+Deploying to Vercel after adding Clients, Businesses, and Client Links. Build passes locally with ESLint; Vercel runs **TypeScript** during `next build`, which failed.
+
+### Problem
+```
+Failed to compile.
+./app/clients/actions.ts:69:13
+
+No overload matches this call.
+  Overload 1 of 2, '(values: never, ...)' gave the following error:
+    Argument of type '{ owner_id: string; full_name: string; ... }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], ...)' ...
+```
+
+Similar errors at:
+- **Line 69** – `supabase.from('clients').insert({ ... })`
+- **Line 104** – `supabase.from('clients').update({ ... })`
+- **Line 176** – `clients` select result (e.g. `c.id`, `c.full_name`) typed as `never`
+- **Lines 236, 276** – `businesses` insert/update
+- **Lines 341, 368** – `client_links` insert/update
+
+Linter did not report these; only `next build` / `tsc` did.
+
+### Root Cause
+**Supabase client inferring `never` for certain tables:**
+- The Supabase client is typed with `createServerClient<Database>` (see `lib/supabase/server.ts`).
+- If the hand-written `Database` type in `lib/supabase/types.ts` is missing the shape the client expects (e.g. **Views**, **Enums**, **CompositeTypes**), or there is a version mismatch, the generic for `.from('table_name')` can resolve to `never` for insert/update.
+- Then `.insert(payload)` and `.update(payload)` expect `never`, so any real payload fails type-checking.
+- Select results can also be inferred as `never`, so property access (e.g. `c.id`) fails.
+
+### Solution Implemented
+
+**1. Complete the `Database` type (lib/supabase/types.ts)**
+
+Add empty `Views`, `Enums`, and `CompositeTypes` under `public` so the schema shape matches what the Supabase client expects:
+
+```typescript
+// Inside Database['public'], after Tables: { ... }:
+Views: {
+  [_ in never]: never
+}
+Enums: {
+  [_ in never]: never
+}
+CompositeTypes: {
+  [_ in never]: never
+}
+```
+
+**2. Cast insert/update payloads to `never` in actions (app/clients/actions.ts)**
+
+Keep type safety by building the payload with the correct `Insert`/`Update` type, then pass it to Supabase as `never` so the client accepts it:
+
+```typescript
+// Build payload with proper type (type safety preserved)
+const insertPayload: Database['public']['Tables']['clients']['Insert'] = {
+  owner_id: user.id,
+  full_name,
+  phone: (formData.get('phone') as string)?.trim() || null,
+  // ... rest of fields
+}
+
+// Cast to never so Supabase client accepts it
+const { data, error } = await supabase
+  .from('clients')
+  .insert(insertPayload as never)
+  .select()
+  .single()
+```
+
+Apply the same pattern for:
+- **clients**: insert + update
+- **businesses**: insert + update
+- **client_links**: insert + update
+
+**3. Type select results when they infer as `never`**
+
+If a select (e.g. from `clients`) is inferred as `never[]`, cast the result before use:
+
+```typescript
+const { data: clientsData } = await supabase
+  .from('clients')
+  .select('id, full_name')
+  .in('id', clientIds)
+
+const clientsList = (clientsData || []) as { id: string; full_name: string }[]
+// Now use clientsList in .reduce() or similar
+```
+
+### Why This Works
+- The payload is still built with `Database['...']['Insert']` or `Update`, so your code stays type-safe.
+- Casting to `never` only satisfies the client’s broken generic; runtime behavior is unchanged.
+- Adding `Views`/`Enums`/`CompositeTypes` can fix inference for other projects; if it doesn’t, the `as never` pattern still unblocks the build.
+
+### Prevention
+- ✅ After adding new tables to `lib/supabase/types.ts`, ensure `Views`, `Enums`, and `CompositeTypes` exist under `public`.
+- ✅ Run **`npx tsc --noEmit`** (or `npm run build`) locally before pushing; that matches what Vercel runs and catches these errors.
+- ✅ For new Supabase insert/update in server actions, if you see “parameter of type 'never'”, use: typed payload variable + `insert(payload as never)` or `update(payload as never)`.
+- ✅ Prefer regenerating types with `npx supabase gen types typescript` when possible so the schema matches the client.
+
+### Related
+- **2026-02-01** (this file): Different Supabase fix using split query + `.from('...') as any` in `lib/todo/lists.ts`. Use that pattern if `as never` on the payload is not enough or if the file already uses the split-query style.
+- **Files changed:** `lib/supabase/types.ts` (Views/Enums/CompositeTypes), `app/clients/actions.ts` (payload variables + `as never`, clients list cast).
