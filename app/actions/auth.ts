@@ -60,6 +60,26 @@ export async function signUp(formData: FormData) {
   return { success: true, message: 'Check your email to confirm your account.' }
 }
 
+export async function requestPasswordReset(formData: FormData) {
+  const email = formData.get('email') as string
+  if (!email?.trim()) {
+    return { error: 'Email is required' }
+  }
+
+  const supabase = await createClient()
+  const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/reset-password`
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo,
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true, message: 'Check your email for a link to reset your password.' }
+}
+
 export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
