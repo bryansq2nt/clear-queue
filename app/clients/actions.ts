@@ -64,22 +64,23 @@ export async function createClientAction(formData: FormData): Promise<{ error?: 
   const full_name = (formData.get('full_name') as string)?.trim()
   if (!full_name) return { error: 'Full name is required' }
 
+  const insertPayload: Database['public']['Tables']['clients']['Insert'] = {
+    owner_id: user.id,
+    full_name,
+    phone: (formData.get('phone') as string)?.trim() || null,
+    email: (formData.get('email') as string)?.trim() || null,
+    gender: (formData.get('gender') as string)?.trim() || null,
+    address_line1: (formData.get('address_line1') as string)?.trim() || null,
+    address_line2: (formData.get('address_line2') as string)?.trim() || null,
+    city: (formData.get('city') as string)?.trim() || null,
+    state: (formData.get('state') as string)?.trim() || null,
+    postal_code: (formData.get('postal_code') as string)?.trim() || null,
+    preferences: (formData.get('preferences') as string)?.trim() || null,
+    notes: (formData.get('notes') as string)?.trim() || null,
+  }
   const { data, error } = await supabase
     .from('clients')
-    .insert({
-      owner_id: user.id,
-      full_name,
-      phone: (formData.get('phone') as string)?.trim() || null,
-      email: (formData.get('email') as string)?.trim() || null,
-      gender: (formData.get('gender') as string)?.trim() || null,
-      address_line1: (formData.get('address_line1') as string)?.trim() || null,
-      address_line2: (formData.get('address_line2') as string)?.trim() || null,
-      city: (formData.get('city') as string)?.trim() || null,
-      state: (formData.get('state') as string)?.trim() || null,
-      postal_code: (formData.get('postal_code') as string)?.trim() || null,
-      preferences: (formData.get('preferences') as string)?.trim() || null,
-      notes: (formData.get('notes') as string)?.trim() || null,
-    } as Database['public']['Tables']['clients']['Insert'])
+    .insert(insertPayload as never)
     .select()
     .single()
 
@@ -99,21 +100,22 @@ export async function updateClientAction(
   const full_name = (formData.get('full_name') as string)?.trim()
   if (!full_name) return { error: 'Full name is required' }
 
+  const updatePayload: Database['public']['Tables']['clients']['Update'] = {
+    full_name,
+    phone: (formData.get('phone') as string)?.trim() || null,
+    email: (formData.get('email') as string)?.trim() || null,
+    gender: (formData.get('gender') as string)?.trim() || null,
+    address_line1: (formData.get('address_line1') as string)?.trim() || null,
+    address_line2: (formData.get('address_line2') as string)?.trim() || null,
+    city: (formData.get('city') as string)?.trim() || null,
+    state: (formData.get('state') as string)?.trim() || null,
+    postal_code: (formData.get('postal_code') as string)?.trim() || null,
+    preferences: (formData.get('preferences') as string)?.trim() || null,
+    notes: (formData.get('notes') as string)?.trim() || null,
+  }
   const { data, error } = await supabase
     .from('clients')
-    .update({
-      full_name,
-      phone: (formData.get('phone') as string)?.trim() || null,
-      email: (formData.get('email') as string)?.trim() || null,
-      gender: (formData.get('gender') as string)?.trim() || null,
-      address_line1: (formData.get('address_line1') as string)?.trim() || null,
-      address_line2: (formData.get('address_line2') as string)?.trim() || null,
-      city: (formData.get('city') as string)?.trim() || null,
-      state: (formData.get('state') as string)?.trim() || null,
-      postal_code: (formData.get('postal_code') as string)?.trim() || null,
-      preferences: (formData.get('preferences') as string)?.trim() || null,
-      notes: (formData.get('notes') as string)?.trim() || null,
-    } as Database['public']['Tables']['clients']['Update'])
+    .update(updatePayload as never)
     .eq('id', id)
     .select()
     .single()
@@ -167,11 +169,12 @@ export async function getBusinesses(search?: string): Promise<BusinessWithClient
   const { data: businessList, error } = await query
   if (error || !businessList?.length) return (businessList as BusinessWithClient[]) || []
   const clientIds = [...new Set((businessList as Business[]).map((b) => b.client_id))]
-  const { data: clients } = await supabase
+  const { data: clientsData } = await supabase
     .from('clients')
     .select('id, full_name')
     .in('id', clientIds)
-  const nameByClientId = (clients || []).reduce(
+  const clientsList = (clientsData || []) as { id: string; full_name: string }[]
+  const nameByClientId = clientsList.reduce(
     (acc, c) => {
       acc[c.id] = c.full_name
       return acc
@@ -231,24 +234,25 @@ export async function createBusinessAction(
   const email = (formData.get('email') as string)?.trim() || null
   const social_links = parseSocialLinks(formData)
 
+  const businessInsertPayload: Database['public']['Tables']['businesses']['Insert'] = {
+    owner_id: user.id,
+    client_id: clientId,
+    name,
+    tagline: (formData.get('tagline') as string)?.trim() || null,
+    description: (formData.get('description') as string)?.trim() || null,
+    email,
+    address_line1: (formData.get('address_line1') as string)?.trim() || null,
+    address_line2: (formData.get('address_line2') as string)?.trim() || null,
+    city: (formData.get('city') as string)?.trim() || null,
+    state: (formData.get('state') as string)?.trim() || null,
+    postal_code: (formData.get('postal_code') as string)?.trim() || null,
+    website: (formData.get('website') as string)?.trim() || null,
+    social_links: Object.keys(social_links).length ? social_links : {},
+    notes: (formData.get('notes') as string)?.trim() || null,
+  }
   const { data, error } = await supabase
     .from('businesses')
-    .insert({
-      owner_id: user.id,
-      client_id: clientId,
-      name,
-      tagline: (formData.get('tagline') as string)?.trim() || null,
-      description: (formData.get('description') as string)?.trim() || null,
-      email,
-      address_line1: (formData.get('address_line1') as string)?.trim() || null,
-      address_line2: (formData.get('address_line2') as string)?.trim() || null,
-      city: (formData.get('city') as string)?.trim() || null,
-      state: (formData.get('state') as string)?.trim() || null,
-      postal_code: (formData.get('postal_code') as string)?.trim() || null,
-      website: (formData.get('website') as string)?.trim() || null,
-      social_links: Object.keys(social_links).length ? social_links : {},
-      notes: (formData.get('notes') as string)?.trim() || null,
-    } as Database['public']['Tables']['businesses']['Insert'])
+    .insert(businessInsertPayload as never)
     .select()
     .single()
 
@@ -271,22 +275,23 @@ export async function updateBusinessAction(
   const email = (formData.get('email') as string)?.trim() || null
   const social_links = parseSocialLinks(formData)
 
+  const businessUpdatePayload: Database['public']['Tables']['businesses']['Update'] = {
+    name,
+    tagline: (formData.get('tagline') as string)?.trim() || null,
+    description: (formData.get('description') as string)?.trim() || null,
+    email,
+    address_line1: (formData.get('address_line1') as string)?.trim() || null,
+    address_line2: (formData.get('address_line2') as string)?.trim() || null,
+    city: (formData.get('city') as string)?.trim() || null,
+    state: (formData.get('state') as string)?.trim() || null,
+    postal_code: (formData.get('postal_code') as string)?.trim() || null,
+    website: (formData.get('website') as string)?.trim() || null,
+    social_links: Object.keys(social_links).length ? social_links : {},
+    notes: (formData.get('notes') as string)?.trim() || null,
+  }
   const { data, error } = await supabase
     .from('businesses')
-    .update({
-      name,
-      tagline: (formData.get('tagline') as string)?.trim() || null,
-      description: (formData.get('description') as string)?.trim() || null,
-      email,
-      address_line1: (formData.get('address_line1') as string)?.trim() || null,
-      address_line2: (formData.get('address_line2') as string)?.trim() || null,
-      city: (formData.get('city') as string)?.trim() || null,
-      state: (formData.get('state') as string)?.trim() || null,
-      postal_code: (formData.get('postal_code') as string)?.trim() || null,
-      website: (formData.get('website') as string)?.trim() || null,
-      social_links: Object.keys(social_links).length ? social_links : {},
-      notes: (formData.get('notes') as string)?.trim() || null,
-    } as Database['public']['Tables']['businesses']['Update'])
+    .update(businessUpdatePayload as never)
     .eq('id', id)
     .select()
     .single()
@@ -336,14 +341,15 @@ export async function createClientLinkAction(
   const url = (formData.get('url') as string)?.trim()
   if (!url) return { error: 'URL is required' }
 
+  const linkInsertPayload: Database['public']['Tables']['client_links']['Insert'] = {
+    client_id: clientId,
+    url,
+    label: (formData.get('label') as string)?.trim() || null,
+    sort_order: 0,
+  }
   const { data, error } = await supabase
     .from('client_links')
-    .insert({
-      client_id: clientId,
-      url,
-      label: (formData.get('label') as string)?.trim() || null,
-      sort_order: 0,
-    } as Database['public']['Tables']['client_links']['Insert'])
+    .insert(linkInsertPayload as never)
     .select()
     .single()
 
@@ -363,12 +369,13 @@ export async function updateClientLinkAction(
   const url = (formData.get('url') as string)?.trim()
   if (!url) return { error: 'URL is required' }
 
+  const linkUpdatePayload: Database['public']['Tables']['client_links']['Update'] = {
+    url,
+    label: (formData.get('label') as string)?.trim() || null,
+  }
   const { data, error } = await supabase
     .from('client_links')
-    .update({
-      url,
-      label: (formData.get('label') as string)?.trim() || null,
-    } as Database['public']['Tables']['client_links']['Update'])
+    .update(linkUpdatePayload as never)
     .eq('id', id)
     .select()
     .single()
