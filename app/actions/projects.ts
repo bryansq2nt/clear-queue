@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, getUser } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 import { PROJECT_CATEGORIES, type ProjectCategory } from '@/lib/constants'
 
@@ -172,4 +172,50 @@ export async function deleteProject(id: string) {
   revalidatePath('/dashboard')
   revalidatePath('/project')
   return { success: true }
+}
+
+export async function getFavoriteProjectIds(): Promise<{ data?: string[]; error?: string }> {
+  const user = await getUser()
+  if (!user) return { data: [] }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('project_favorites')
+    .select('project_id')
+    .eq('user_id', user.id)
+
+  if (error) return { error: error.message }
+  return { data: (data || []).map((row: { project_id: string }) => row.project_id) }
+}
+
+export async function addProjectFavorite(projectId: string): Promise<{ error?: string }> {
+  const user = await getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('project_favorites')
+    .insert({ user_id: user.id, project_id: projectId } as any)
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard')
+  revalidatePath('/project')
+  return {}
+}
+
+export async function removeProjectFavorite(projectId: string): Promise<{ error?: string }> {
+  const user = await getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('project_favorites')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('project_id', projectId)
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard')
+  revalidatePath('/project')
+  return {}
 }

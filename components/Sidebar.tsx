@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Database } from '@/lib/supabase/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { cn } from '@/lib/utils'
 import { useRouter, usePathname } from 'next/navigation'
-import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus, Lightbulb, DollarSign, CheckSquare } from 'lucide-react'
+import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus, Lightbulb, DollarSign, CheckSquare, Star } from 'lucide-react'
 import Link from 'next/link'
 import { PROJECT_CATEGORIES, getCategoryLabel } from '@/lib/constants'
 import {
@@ -17,7 +17,7 @@ import {
 } from './ui/dropdown-menu'
 import { EditProjectModal } from './EditProjectModal'
 import { AddProjectModal } from './AddProjectModal'
-import { archiveProject, unarchiveProject, deleteProject } from '@/app/actions/projects'
+import { archiveProject, unarchiveProject, deleteProject, getFavoriteProjectIds, addProjectFavorite, removeProjectFavorite } from '@/app/actions/projects'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
@@ -47,6 +47,29 @@ export default function Sidebar({
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false)
+  const [favoriteProjectIds, setFavoriteProjectIds] = useState<Set<string>>(new Set())
+
+  const loadFavorites = useCallback(async () => {
+    const { data } = await getFavoriteProjectIds()
+    setFavoriteProjectIds(new Set(data || []))
+  }, [])
+
+  useEffect(() => {
+    loadFavorites()
+  }, [loadFavorites])
+
+  async function handleToggleFavorite(projectId: string, isFavorite: boolean) {
+    if (isFavorite) {
+      const { error } = await removeProjectFavorite(projectId)
+      if (!error) setFavoriteProjectIds(prev => { const n = new Set(prev); n.delete(projectId); return n })
+    } else {
+      const { error } = await addProjectFavorite(projectId)
+      if (!error) setFavoriteProjectIds(prev => new Set(prev).add(projectId))
+    }
+    onProjectUpdated()
+  }
+
+  const favoriteProjects = projects.filter(p => favoriteProjectIds.has(p.id))
 
   // Filter projects based on selectedCategory and showArchived
   const filteredProjects = projects.filter(p => {
@@ -164,6 +187,88 @@ export default function Sidebar({
             </div>
           </div>
 
+          {/* Favorite Projects */}
+          {favoriteProjects.length > 0 && (
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
+                Favorites
+              </label>
+              <div className="space-y-1">
+                {favoriteProjects.map(project => (
+                    <div
+                      key={project.id}
+                      className={cn(
+                        'group flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                        selectedProject === project.id || pathname === `/project/${project.id}`
+                          ? 'bg-slate-100 text-slate-900 font-medium'
+                          : 'text-slate-600 hover:bg-slate-50'
+                      )}
+                    >
+                      <button
+                        onClick={() => {
+                          onSelectProject(project.id)
+                          router.push(`/project/${project.id}`)
+                        }}
+                        className="flex items-center gap-2 flex-1 text-left min-w-0"
+                      >
+                        <div
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: project.color || '#94a3b8' }}
+                        />
+                        <span className="truncate flex-1 min-w-0">{project.name}</span>
+                        {project.category === 'archived' && (
+                          <span className="text-xs text-slate-400 flex-shrink-0">Archived</span>
+                        )}
+                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="opacity-60 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition-opacity flex-shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                            title="Project options"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleToggleFavorite(project.id, true)}>
+                            <Star className="w-4 h-4 mr-2 fill-amber-400 text-amber-500" />
+                            Remove from favorites
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setEditingProject(project)}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit Project
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {project.category === 'archived' ? (
+                            <DropdownMenuItem onClick={() => handleArchive(project)}>
+                              <ArchiveRestore className="w-4 h-4 mr-2" />
+                              Unarchive
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => handleArchive(project)}>
+                              <Archive className="w-4 h-4 mr-2" />
+                              Archive
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(project)}
+                            className="text-red-600 focus:text-red-600"
+                            disabled={isDeleting === project.id}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            {isDeleting === project.id ? 'Deleting...' : 'Delete'}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Projects List - Grouped by Category */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
@@ -264,6 +369,20 @@ export default function Sidebar({
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleToggleFavorite(project.id, favoriteProjectIds.has(project.id))}>
+                                {favoriteProjectIds.has(project.id) ? (
+                                  <>
+                                    <Star className="w-4 h-4 mr-2 fill-amber-400 text-amber-500" />
+                                    Remove from favorites
+                                  </>
+                                ) : (
+                                  <>
+                                    <Star className="w-4 h-4 mr-2" />
+                                    Add to favorites
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => setEditingProject(project)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit Project

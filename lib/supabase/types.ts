@@ -76,6 +76,23 @@ export type Database = {
           updated_at?: string
         }
       }
+      project_favorites: {
+        Row: {
+          user_id: string
+          project_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          project_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          project_id?: string
+          created_at?: string
+        }
+      }
       ideas: {
         Row: {
           id: string
