@@ -17,6 +17,8 @@ export type Database = {
           category: string
           notes: string | null
           owner_id: string
+          client_id: string | null
+          business_id: string | null
           created_at: string
           updated_at: string
         }
@@ -27,6 +29,8 @@ export type Database = {
           category?: string
           notes?: string | null
           owner_id: string
+          client_id?: string | null
+          business_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -37,6 +41,8 @@ export type Database = {
           category?: string
           notes?: string | null
           owner_id?: string
+          client_id?: string | null
+          business_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -93,6 +99,170 @@ export type Database = {
         Update: {
           user_id?: string
           project_id?: string
+          created_at?: string
+        }
+      }
+      clients: {
+        Row: {
+          id: string
+          owner_id: string
+          full_name: string
+          phone: string | null
+          email: string | null
+          gender: string | null
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          state: string | null
+          postal_code: string | null
+          preferences: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          full_name: string
+          phone?: string | null
+          email?: string | null
+          gender?: string | null
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          state?: string | null
+          postal_code?: string | null
+          preferences?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          full_name?: string
+          phone?: string | null
+          email?: string | null
+          gender?: string | null
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          state?: string | null
+          postal_code?: string | null
+          preferences?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      businesses: {
+        Row: {
+          id: string
+          owner_id: string
+          client_id: string
+          name: string
+          tagline: string | null
+          description: string | null
+          email: string | null
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          state: string | null
+          postal_code: string | null
+          website: string | null
+          social_links: Json
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          client_id: string
+          name: string
+          tagline?: string | null
+          description?: string | null
+          email?: string | null
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          state?: string | null
+          postal_code?: string | null
+          website?: string | null
+          social_links?: Json
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          client_id?: string
+          name?: string
+          tagline?: string | null
+          description?: string | null
+          email?: string | null
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          state?: string | null
+          postal_code?: string | null
+          website?: string | null
+          social_links?: Json
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      client_links: {
+        Row: {
+          id: string
+          client_id: string
+          url: string
+          label: string | null
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          client_id: string
+          url: string
+          label?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          client_id?: string
+          url?: string
+          label?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+      }
+      business_media: {
+        Row: {
+          id: string
+          business_id: string
+          store_path: string
+          caption: string | null
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          store_path: string
+          caption?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          store_path?: string
+          caption?: string | null
+          sort_order?: number
           created_at?: string
         }
       }

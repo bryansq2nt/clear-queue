@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { updateProject, deleteProject } from '@/app/actions/projects'
+import { getClients, getBusinessesByClientId } from '@/app/clients/actions'
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,8 @@ import { PROJECT_CATEGORIES } from '@/lib/constants'
 import { Database } from '@/lib/supabase/types'
 
 type Project = Database['public']['Tables']['projects']['Row']
+type Client = Database['public']['Tables']['clients']['Row']
+type Business = Database['public']['Tables']['businesses']['Row']
 
 interface EditProjectModalProps {
   isOpen: boolean
@@ -41,6 +44,10 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
   const [category, setCategory] = useState<string>('business')
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
   const [notes, setNotes] = useState<string>('')
+  const [clientId, setClientId] = useState<string>('')
+  const [businessId, setBusinessId] = useState<string>('')
+  const [clients, setClients] = useState<Client[]>([])
+  const [businesses, setBusinesses] = useState<Business[]>([])
   const [activeTab, setActiveTab] = useState<string>(defaultTab)
   const [isLoading, setIsLoading] = useState(false)
   const [isSavingNotes, setIsSavingNotes] = useState(false)
@@ -49,15 +56,33 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   useEffect(() => {
+    if (isOpen) getClients().then(setClients)
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!clientId) {
+      setBusinesses([])
+      setBusinessId('')
+      return
+    }
+    getBusinessesByClientId(clientId).then((list) => {
+      setBusinesses(list)
+      setBusinessId((prev) => (list.some((b) => b.id === prev) ? prev : ''))
+    })
+  }, [clientId])
+
+  useEffect(() => {
     if (project) {
       setName(project.name)
       setCategory(project.category || 'business')
       setSelectedColor(project.color)
       setNotes(project.notes || '')
+      setClientId(project.client_id || '')
+      setBusinessId(project.business_id || '')
       setError(null)
       setShowDeleteConfirm(false)
       setNotesSaved(false)
-      setActiveTab(defaultTab) // Reset to default tab when modal opens
+      setActiveTab(defaultTab)
     }
   }, [project, isOpen, defaultTab])
 
@@ -74,6 +99,8 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
     formData.append('category', category)
     if (selectedColor !== null) formData.append('color', selectedColor || '')
     formData.append('notes', notes || '')
+    formData.append('client_id', clientId || '')
+    formData.append('business_id', businessId || '')
 
     const result = await updateProject(formData)
 
@@ -113,10 +140,12 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
 
     const formData = new FormData()
     formData.append('id', project.id)
-    formData.append('name', project.name) // Keep existing name
-    formData.append('category', project.category) // Keep existing category
-    formData.append('color', project.color || '') // Keep existing color
+    formData.append('name', project.name)
+    formData.append('category', project.category)
+    formData.append('color', project.color || '')
     formData.append('notes', notes || '')
+    formData.append('client_id', project.client_id || '')
+    formData.append('business_id', project.business_id || '')
 
     const result = await updateProject(formData)
 
@@ -174,6 +203,40 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-client">Client (optional)</Label>
+                    <Select value={clientId || 'none'} onValueChange={(v) => setClientId(v === 'none' ? '' : v)}>
+                      <SelectTrigger id="edit-client">
+                        <SelectValue placeholder="Select client" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No client</SelectItem>
+                        {clients.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {clientId && (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-business">Business (optional)</Label>
+                      <Select value={businessId || 'none'} onValueChange={(v) => setBusinessId(v === 'none' ? '' : v)}>
+                        <SelectTrigger id="edit-business">
+                          <SelectValue placeholder="Select business" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No business</SelectItem>
+                          {businesses.map((b) => (
+                            <SelectItem key={b.id} value={b.id}>
+                              {b.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Color (optional)</Label>
                     <div className="grid grid-cols-10 gap-2">

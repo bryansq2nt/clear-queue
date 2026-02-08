@@ -23,9 +23,19 @@ export async function createProject(formData: FormData) {
     return { error: 'Project name is required' }
   }
 
+  const client_id = (formData.get('client_id') as string)?.trim() || null
+  const business_id = (formData.get('business_id') as string)?.trim() || null
+
   const { data, error } = await supabase
     .from('projects')
-    .insert({ name: name.trim(), color: color || null, category, owner_id: user.id } as any)
+    .insert({
+      name: name.trim(),
+      color: color || null,
+      category,
+      owner_id: user.id,
+      client_id: client_id || null,
+      business_id: business_id || null,
+    } as any)
     .select()
     .single()
 
@@ -47,12 +57,21 @@ export async function updateProject(formData: FormData) {
   const color = formData.get('color') as string | null
   const category = formData.get('category') as string | null
   const notes = formData.get('notes') as string | null
+  const client_id = formData.get('client_id') as string | null
+  const business_id = formData.get('business_id') as string | null
 
   if (!id) {
     return { error: 'Project ID is required' }
   }
 
   const updates: any = {}
+
+  if (client_id !== undefined) {
+    updates.client_id = client_id?.trim() || null
+  }
+  if (business_id !== undefined) {
+    updates.business_id = business_id?.trim() || null
+  }
 
   if (name !== null) {
     const trimmedName = name.trim()

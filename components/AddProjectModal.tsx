@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createProject } from '@/app/actions/projects'
+import { getClients, getBusinessesByClientId } from '@/app/clients/actions'
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,10 @@ import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { PROJECT_CATEGORIES } from '@/lib/constants'
+import type { Database } from '@/lib/supabase/types'
+
+type Client = Database['public']['Tables']['clients']['Row']
+type Business = Database['public']['Tables']['businesses']['Row']
 
 interface AddProjectModalProps {
   isOpen: boolean
@@ -33,8 +38,28 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
   const [name, setName] = useState('')
   const [category, setCategory] = useState<string>('business')
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
+  const [clientId, setClientId] = useState<string>('')
+  const [businessId, setBusinessId] = useState<string>('')
+  const [clients, setClients] = useState<Client[]>([])
+  const [businesses, setBusinesses] = useState<Business[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isOpen) getClients().then(setClients)
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!clientId) {
+      setBusinesses([])
+      setBusinessId('')
+      return
+    }
+    getBusinessesByClientId(clientId).then((list) => {
+      setBusinesses(list)
+      setBusinessId((prev) => (list.some((b) => b.id === prev) ? prev : ''))
+    })
+  }, [clientId])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -45,6 +70,8 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
     formData.append('name', name)
     formData.append('category', category)
     if (selectedColor) formData.append('color', selectedColor)
+    if (clientId) formData.append('client_id', clientId)
+    if (businessId) formData.append('business_id', businessId)
 
     const result = await createProject(formData)
 
@@ -55,6 +82,8 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
       setName('')
       setCategory('business')
       setSelectedColor(null)
+      setClientId('')
+      setBusinessId('')
       onProjectAdded()
       onClose()
     }
@@ -94,6 +123,40 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="client">Client (optional)</Label>
+              <Select value={clientId || 'none'} onValueChange={(v) => setClientId(v === 'none' ? '' : v)}>
+                <SelectTrigger id="client">
+                  <SelectValue placeholder="Select client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No client</SelectItem>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {clientId && (
+              <div className="space-y-2">
+                <Label htmlFor="business">Business (optional)</Label>
+                <Select value={businessId || 'none'} onValueChange={(v) => setBusinessId(v === 'none' ? '' : v)}>
+                  <SelectTrigger id="business">
+                    <SelectValue placeholder="Select business" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No business</SelectItem>
+                    {businesses.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Color (optional)</Label>
               <div className="grid grid-cols-10 gap-2">
