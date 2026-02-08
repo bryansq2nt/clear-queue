@@ -2,24 +2,42 @@
 
 import { useState, useEffect } from 'react'
 import { X, Building2 } from 'lucide-react'
-import { createBusinessAction } from '../actions'
+import { createBusinessAction, getClients } from '../actions'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Database } from '@/lib/supabase/types'
+
+type Client = Database['public']['Tables']['clients']['Row']
 
 interface CreateBusinessModalProps {
-  clientId: string
+  /** When set (e.g. from client detail page), client is fixed and dropdown is hidden. When undefined (e.g. from businesses list), show client dropdown. */
+  clientId?: string
   isOpen: boolean
   onClose: () => void
   onCreated?: () => void
 }
 
-export function CreateBusinessModal({ clientId, isOpen, onClose, onCreated }: CreateBusinessModalProps) {
+export function CreateBusinessModal({ clientId: fixedClientId, isOpen, onClose, onCreated }: CreateBusinessModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [clients, setClients] = useState<Client[]>([])
+  const [selectedClientId, setSelectedClientId] = useState<string>('')
+
+  const showClientDropdown = fixedClientId === undefined
+
+  useEffect(() => {
+    if (isOpen && showClientDropdown) getClients().then(setClients)
+  }, [isOpen, showClientDropdown])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    const clientId = fixedClientId ?? selectedClientId
+    if (!clientId) {
+      setError('Please select a client.')
+      return
+    }
     setError(null)
     const form = e.currentTarget
     const formData = new FormData(form)
@@ -31,6 +49,7 @@ export function CreateBusinessModal({ clientId, isOpen, onClose, onCreated }: Cr
       return
     }
     form.reset()
+    setSelectedClientId('')
     onClose()
     onCreated?.()
   }
@@ -65,6 +84,23 @@ export function CreateBusinessModal({ clientId, isOpen, onClose, onCreated }: Cr
           {error && (
             <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>
           )}
+          {showClientDropdown && (
+            <div>
+              <Label htmlFor="b-client">Client *</Label>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId} required>
+                <SelectTrigger id="b-client">
+                  <SelectValue placeholder="Select client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label htmlFor="b-name">Name *</Label>
             <Input id="b-name" name="name" required placeholder="Business name" />
@@ -78,8 +114,8 @@ export function CreateBusinessModal({ clientId, isOpen, onClose, onCreated }: Cr
             <Textarea id="b-description" name="description" rows={2} placeholder="Optional" />
           </div>
           <div>
-            <Label htmlFor="b-email">Business email *</Label>
-            <Input id="b-email" name="email" type="email" required placeholder="contact@business.com" />
+            <Label htmlFor="b-email">Business email</Label>
+            <Input id="b-email" name="email" type="email" placeholder="contact@business.com (optional)" />
           </div>
           <div>
             <Label htmlFor="b-website">Website</Label>

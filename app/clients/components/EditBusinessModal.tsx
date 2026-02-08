@@ -89,8 +89,8 @@ export function EditBusinessModal({ business, isOpen, onClose, onUpdated }: Edit
             <Textarea id="eb-description" name="description" rows={2} defaultValue={business.description ?? ''} />
           </div>
           <div>
-            <Label htmlFor="eb-email">Business email *</Label>
-            <Input id="eb-email" name="email" type="email" required defaultValue={business.email ?? ''} placeholder="contact@business.com" />
+            <Label htmlFor="eb-email">Business email</Label>
+            <Input id="eb-email" name="email" type="email" defaultValue={business.email ?? ''} placeholder="contact@business.com (optional)" />
           </div>
           <div>
             <Label htmlFor="eb-website">Website</Label>

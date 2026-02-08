@@ -149,6 +149,41 @@ export type SocialLinks = {
   youtube?: string
 }
 
+/** All businesses for the current user, with client name (for list view). */
+export type BusinessWithClient = Business & { client_name: string | null }
+
+export async function getBusinesses(search?: string): Promise<BusinessWithClient[]> {
+  const user = await requireAuth()
+  const supabase = await createClient()
+  let query = supabase
+    .from('businesses')
+    .select('*')
+    .eq('owner_id', user.id)
+    .order('name', { ascending: true })
+  if (search?.trim()) {
+    const term = `%${search.trim()}%`
+    query = query.or(`name.ilike.${term},tagline.ilike.${term}`)
+  }
+  const { data: businessList, error } = await query
+  if (error || !businessList?.length) return (businessList as BusinessWithClient[]) || []
+  const clientIds = [...new Set((businessList as Business[]).map((b) => b.client_id))]
+  const { data: clients } = await supabase
+    .from('clients')
+    .select('id, full_name')
+    .in('id', clientIds)
+  const nameByClientId = (clients || []).reduce(
+    (acc, c) => {
+      acc[c.id] = c.full_name
+      return acc
+    },
+    {} as Record<string, string>
+  )
+  return (businessList as Business[]).map((b) => ({
+    ...b,
+    client_name: nameByClientId[b.client_id] ?? null,
+  })) as BusinessWithClient[]
+}
+
 export async function getBusinessesByClientId(clientId: string): Promise<Business[]> {
   await requireAuth()
   const supabase = await createClient()
@@ -193,9 +228,7 @@ export async function createBusinessAction(
   const name = (formData.get('name') as string)?.trim()
   if (!name) return { error: 'Business name is required' }
 
-  const email = (formData.get('email') as string)?.trim()
-  if (!email) return { error: 'Business email is required' }
-
+  const email = (formData.get('email') as string)?.trim() || null
   const social_links = parseSocialLinks(formData)
 
   const { data, error } = await supabase
@@ -206,7 +239,7 @@ export async function createBusinessAction(
       name,
       tagline: (formData.get('tagline') as string)?.trim() || null,
       description: (formData.get('description') as string)?.trim() || null,
-      email: email || null,
+      email,
       address_line1: (formData.get('address_line1') as string)?.trim() || null,
       address_line2: (formData.get('address_line2') as string)?.trim() || null,
       city: (formData.get('city') as string)?.trim() || null,
@@ -235,9 +268,7 @@ export async function updateBusinessAction(
   const name = (formData.get('name') as string)?.trim()
   if (!name) return { error: 'Business name is required' }
 
-  const email = (formData.get('email') as string)?.trim()
-  if (!email) return { error: 'Business email is required' }
-
+  const email = (formData.get('email') as string)?.trim() || null
   const social_links = parseSocialLinks(formData)
 
   const { data, error } = await supabase
@@ -246,7 +277,7 @@ export async function updateBusinessAction(
       name,
       tagline: (formData.get('tagline') as string)?.trim() || null,
       description: (formData.get('description') as string)?.trim() || null,
-      email: email || null,
+      email,
       address_line1: (formData.get('address_line1') as string)?.trim() || null,
       address_line2: (formData.get('address_line2') as string)?.trim() || null,
       city: (formData.get('city') as string)?.trim() || null,
