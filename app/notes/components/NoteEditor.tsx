@@ -83,7 +83,7 @@ export function NoteEditor({
     setProjectId(initialNote.project_id || preselectedProjectId || '')
     setLinks(initialLinks)
     lastSavedRef.current = initialNote
-  }, [initialNote.title, initialNote.content, initialNote.project_id, initialLinks, preselectedProjectId])
+  }, [initialNote, initialLinks, preselectedProjectId])
 
   const hasChanges = useCallback(() => {
     const t = title.trim()
