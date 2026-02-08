@@ -6,7 +6,7 @@ import { Database } from '@/lib/supabase/types'
 import Sidebar from '@/components/Sidebar'
 import TopBar from '@/components/TopBar'
 import { signOut } from '@/app/actions/auth'
-import TodoShell from '@/components/todo/TodoShell'
+import TodoDashboardClient from './TodoDashboardClient'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
@@ -41,14 +41,14 @@ export default function TodoPageClient() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col h-screen bg-slate-50 dark:bg-gray-950">
       <TopBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onSignOut={signOut}
+        onSignOut={() => signOut()}
         onProjectAdded={loadProjects}
         onProjectUpdated={loadProjects}
-        projectName="To-do List"
+        projectName="To-do"
         currentProject={null}
       />
       <div className="flex-1 flex overflow-hidden">
@@ -62,7 +62,9 @@ export default function TodoPageClient() {
           onShowArchivedChange={() => {}}
           onProjectUpdated={loadProjects}
         />
-        <TodoShell />
+        <div className="flex-1 overflow-y-auto p-6">
+          <TodoDashboardClient />
+        </div>
       </div>
     </div>
   )

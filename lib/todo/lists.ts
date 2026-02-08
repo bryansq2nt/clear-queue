@@ -67,6 +67,24 @@ export async function getTodoLists(options?: {
 }
 
 /**
+ * Get a single todo list by ID
+ */
+export async function getTodoListById(listId: string): Promise<TodoList | null> {
+  const ownerId = await getUserIdOrThrow()
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('todo_lists')
+    .select('*')
+    .eq('id', listId)
+    .eq('owner_id', ownerId)
+    .single()
+
+  if (error || !data) return null
+  return data as TodoList
+}
+
+/**
  * Create a new todo list
  */
 export async function createTodoList(input: {
@@ -250,6 +268,30 @@ export async function getTodoItems(listId: string): Promise<TodoItem[]> {
     .from('todo_items')
     .select('*')
     .eq('list_id', listId)
+    .eq('owner_id', ownerId)
+    .order('position', { ascending: true })
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    throw new Error(`Failed to fetch todo items: ${error.message}`)
+  }
+
+  return data || []
+}
+
+/**
+ * Get all items for multiple lists (e.g. all lists of a project)
+ */
+export async function getTodoItemsByListIds(listIds: string[]): Promise<TodoItem[]> {
+  if (listIds.length === 0) return []
+
+  const ownerId = await getUserIdOrThrow()
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('todo_items')
+    .select('*')
+    .in('list_id', listIds)
     .eq('owner_id', ownerId)
     .order('position', { ascending: true })
     .order('created_at', { ascending: false })
