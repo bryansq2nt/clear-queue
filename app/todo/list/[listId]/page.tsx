@@ -17,6 +17,9 @@ export default async function TodoListPage({
   }
 
   const { list, items, projectName } = result.data
+  if (!list) {
+    notFound()
+  }
 
   return (
     <ListBoardClient
