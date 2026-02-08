@@ -93,7 +93,7 @@ export default function TopBar({
                 Add Project
               </Button>
             )}
-            <Button variant="ghost" size="icon" onClick={onSignOut} className="text-white hover:bg-slate-800">
+            <Button variant="ghost" size="icon" onClick={() => onSignOut()} className="text-white hover:bg-slate-800">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>

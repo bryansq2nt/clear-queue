@@ -16,6 +16,7 @@ export type Database = {
           color: string | null
           category: string
           notes: string | null
+          owner_id: string
           created_at: string
           updated_at: string
         }
@@ -25,6 +26,7 @@ export type Database = {
           color?: string | null
           category?: string
           notes?: string | null
+          owner_id: string
           created_at?: string
           updated_at?: string
         }
@@ -34,6 +36,7 @@ export type Database = {
           color?: string | null
           category?: string
           notes?: string | null
+          owner_id?: string
           created_at?: string
           updated_at?: string
         }
@@ -235,6 +238,7 @@ export type Database = {
           project_id: string | null
           name: string
           description: string | null
+          owner_id: string
           created_at: string
           updated_at: string
         }
@@ -243,6 +247,7 @@ export type Database = {
           project_id?: string | null
           name: string
           description?: string | null
+          owner_id: string
           created_at?: string
           updated_at?: string
         }
@@ -251,6 +256,7 @@ export type Database = {
           project_id?: string | null
           name?: string
           description?: string | null
+          owner_id?: string
           created_at?: string
           updated_at?: string
         }

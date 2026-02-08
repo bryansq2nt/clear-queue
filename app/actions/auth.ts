@@ -3,8 +3,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL
-
 export async function signIn(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
@@ -20,12 +18,46 @@ export async function signIn(formData: FormData) {
     return { error: error.message }
   }
 
-  if (data.user?.email !== ADMIN_EMAIL) {
-    await supabase.auth.signOut()
-    return { error: 'Not authorized' }
+  if (data.user) {
+    redirect('/dashboard')
   }
 
-  redirect('/dashboard')
+  return { error: 'Sign in failed' }
+}
+
+export async function signUp(formData: FormData) {
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+
+  if (!email?.trim() || !password) {
+    return { error: 'Email and password are required' }
+  }
+
+  if (password.length < 6) {
+    return { error: 'Password must be at least 6 characters' }
+  }
+
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.auth.signUp({
+    email: email.trim(),
+    password,
+    options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || ''}/dashboard` },
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  if (data.user && !data.user.identities?.length) {
+    return { error: 'An account with this email already exists. Sign in instead.' }
+  }
+
+  if (data.session) {
+    redirect('/dashboard')
+  }
+
+  return { success: true, message: 'Check your email to confirm your account.' }
 }
 
 export async function signOut() {

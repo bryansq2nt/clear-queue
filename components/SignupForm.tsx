@@ -1,25 +1,34 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
-import { signIn } from '@/app/actions/auth'
+import { signUp } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import Link from 'next/link'
 
-export default function LoginForm() {
+export default function SignupForm() {
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   async function handleSubmit(formData: FormData) {
     setIsLoading(true)
     setError(null)
-    
-    const result = await signIn(formData)
-    
+    setSuccess(null)
+
+    const result = await signUp(formData)
+
     if (result?.error) {
       setError(result.error)
       setIsLoading(false)
+      return
+    }
+
+    if (result?.success && result?.message) {
+      setSuccess(result.message)
+      setIsLoading(false)
+      return
     }
   }
 
@@ -28,6 +37,11 @@ export default function LoginForm() {
       {error && (
         <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
           {error}
+        </div>
+      )}
+      {success && (
+        <div className="bg-green-50 text-green-800 text-sm p-3 rounded-md">
+          {success}
         </div>
       )}
       <div className="space-y-2">
@@ -47,16 +61,18 @@ export default function LoginForm() {
           name="password"
           type="password"
           required
+          minLength={6}
           placeholder="••••••••"
         />
+        <p className="text-xs text-muted-foreground">At least 6 characters</p>
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? 'Signing in...' : 'Sign In'}
+        {isLoading ? 'Creating account...' : 'Sign Up'}
       </Button>
       <p className="text-center text-sm text-slate-600">
-        Don&apos;t have an account?{' '}
-        <Link href="/signup" className="font-medium text-primary hover:underline">
-          Sign up
+        Already have an account?{' '}
+        <Link href="/" className="font-medium text-primary hover:underline">
+          Sign in
         </Link>
       </p>
     </form>

@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { PROJECT_CATEGORIES, type ProjectCategory } from '@/lib/constants'
 
 export async function createProject(formData: FormData) {
-  await requireAuth()
+  const user = await requireAuth()
   const supabase = await createClient()
 
   const name = formData.get('name') as string
@@ -25,7 +25,7 @@ export async function createProject(formData: FormData) {
 
   const { data, error } = await supabase
     .from('projects')
-    .insert({ name: name.trim(), color: color || null, category } as any)
+    .insert({ name: name.trim(), color: color || null, category, owner_id: user.id } as any)
     .select()
     .single()
 

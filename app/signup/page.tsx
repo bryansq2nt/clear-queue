@@ -1,12 +1,8 @@
 import { redirect } from 'next/navigation'
 import { getUser } from '@/lib/auth'
-import LoginForm from '@/components/LoginForm'
+import SignupForm from '@/components/SignupForm'
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: { error?: string }
-}) {
+export default async function SignupPage() {
   const user = await getUser()
 
   if (user) {
@@ -18,14 +14,9 @@ export default async function Home({
       <div className="w-full max-w-md p-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-slate-900 mb-2">Mutech Labs<br />Task Manager</h1>
-          <p className="text-slate-600">Sign in to your account</p>
+          <p className="text-slate-600">Create your account</p>
         </div>
-        {searchParams.error === 'unauthorized' && (
-          <div className="mb-4 bg-destructive/10 text-destructive text-sm p-3 rounded-md">
-            Please sign in to continue.
-          </div>
-        )}
-        <LoginForm />
+        <SignupForm />
       </div>
     </div>
   )

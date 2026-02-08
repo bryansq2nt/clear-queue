@@ -161,7 +161,7 @@ export async function createBudget(formData: {
   description?: string
   project_id?: string
 }) {
-  await requireAuth()
+  const user = await requireAuth()
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -170,6 +170,7 @@ export async function createBudget(formData: {
       name: formData.name,
       description: formData.description || null,
       project_id: formData.project_id || null,
+      owner_id: user.id,
     } as any)
     .select()
     .single()

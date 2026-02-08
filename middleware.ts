@@ -33,20 +33,15 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isAdmin = user?.email === process.env.ADMIN_EMAIL
+  const pathname = request.nextUrl.pathname
+  const protectedPrefixes = ['/dashboard', '/project', '/ideas', '/todo', '/budgets']
+  const isProtected = protectedPrefixes.some((prefix) => pathname.startsWith(prefix))
 
-  // Protect dashboard routes
-  if (request.nextUrl.pathname.startsWith('/dashboard')) {
-    if (!user) {
-      return NextResponse.redirect(new URL('/', request.url))
-    }
-    if (!isAdmin) {
-      return NextResponse.redirect(new URL('/?error=unauthorized', request.url))
-    }
+  if (isProtected && !user) {
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // Redirect authenticated admins away from login page
-  if (request.nextUrl.pathname === '/' && user && isAdmin) {
+  if ((pathname === '/' || pathname === '/signup') && user) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
