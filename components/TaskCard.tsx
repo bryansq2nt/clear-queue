@@ -126,20 +126,15 @@ export default function TaskCard({
             P{task.priority}
           </span>
         </div>
-        {project && (
-          <div className="flex items-center gap-1 mb-2">
-            <div
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: project.color || '#94a3b8' }}
-            />
-            <span className="text-xs text-slate-600 font-medium">{project.name}</span>
-          </div>
-        )}
+
+
+
         {task.due_date && (
           <div className={cn(
             'flex items-center gap-1 text-xs',
             isOverdue ? 'text-red-600 font-medium' : 'text-slate-600 font-medium'
           )}>
+            Due on:
             <Calendar className="w-3 h-3" />
             {new Date(task.due_date).toLocaleDateString()}
           </div>

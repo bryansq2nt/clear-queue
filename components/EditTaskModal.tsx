@@ -89,9 +89,17 @@ export function EditTaskModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Task</DialogTitle>
-          <DialogDescription>Update task details</DialogDescription>
+        <DialogHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1.5">
+            <DialogTitle>Edit Task</DialogTitle>
+            <DialogDescription>Update task details</DialogDescription>
+          </div>
+          <p className="text-xs text-muted-foreground shrink-0 pt-0.5 pr-8">
+            Created {new Date(task.created_at).toLocaleDateString()}
+            {task.updated_at && (
+              <> · Updated {new Date(task.updated_at).toLocaleDateString()}</>
+            )}
+          </p>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
