@@ -7,7 +7,10 @@ import { Database } from '@/lib/supabase/types'
 
 type Billing = Database['public']['Tables']['billings']['Row']
 
-export async function getBillings(): Promise<(Billing & { projects: { id: string; name: string } | null })[]> {
+export async function getBillings(): Promise<(Billing & {
+  projects: { id: string; name: string } | null
+  clients: { id: string; full_name: string } | null
+})[]> {
   await requireAuth()
   const supabase = await createClient()
 
@@ -20,6 +23,7 @@ export async function getBillings(): Promise<(Billing & { projects: { id: string
 
   const billings = data as Billing[]
   const projectIds = [...new Set(billings.map(b => b.project_id).filter((id): id is string => !!id))]
+  const clientIds = [...new Set(billings.map(b => b.client_id).filter((id): id is string => !!id))]
 
   let projectsMap: Record<string, { id: string; name: string }> = {}
   if (projectIds.length) {
@@ -27,25 +31,38 @@ export async function getBillings(): Promise<(Billing & { projects: { id: string
       .from('projects')
       .select('id, name')
       .in('id', projectIds)
-
     projectsMap = ((projects || []) as { id: string; name: string }[]).reduce((acc, p) => {
       acc[p.id] = p
       return acc
     }, {} as Record<string, { id: string; name: string }>)
   }
 
+  let clientsMap: Record<string, { id: string; full_name: string }> = {}
+  if (clientIds.length) {
+    const { data: clients } = await supabase
+      .from('clients')
+      .select('id, full_name')
+      .in('id', clientIds)
+    clientsMap = ((clients || []) as { id: string; full_name: string }[]).reduce((acc, c) => {
+      acc[c.id] = c
+      return acc
+    }, {} as Record<string, { id: string; full_name: string }>)
+  }
+
   return billings.map((billing) => ({
     ...billing,
     projects: billing.project_id ? projectsMap[billing.project_id] || null : null,
+    clients: billing.client_id ? clientsMap[billing.client_id] || null : null,
   }))
 }
 
 export async function createBilling(formData: {
   title: string
+  client_id?: string | null
   client_name?: string
   amount: number
   currency?: string
-  project_id?: string
+  project_id?: string | null
   due_date?: string
   notes?: string
 }) {
@@ -57,7 +74,8 @@ export async function createBilling(formData: {
     .insert({
       owner_id: user.id,
       title: formData.title,
-      client_name: formData.client_name || null,
+      client_id: formData.client_id || null,
+      client_name: formData.client_id ? null : (formData.client_name || null),
       amount: formData.amount,
       currency: formData.currency || 'USD',
       project_id: formData.project_id || null,

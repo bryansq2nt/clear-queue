@@ -57,6 +57,18 @@ export async function getProjectsByClientId(clientId: string) {
   return (data || []) as { id: string; name: string; color: string | null; category: string }[]
 }
 
+export async function getProjectsWithoutClient() {
+  await requireAuth()
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('projects')
+    .select('id, name, color, category')
+    .is('client_id', null)
+    .order('name', { ascending: true })
+  if (error) return []
+  return (data || []) as { id: string; name: string; color: string | null; category: string }[]
+}
+
 export async function createClientAction(formData: FormData): Promise<{ error?: string; data?: Client }> {
   const user = await requireAuth()
   const supabase = await createClient()

@@ -459,6 +459,7 @@ export type Database = {
         Row: {
           id: string
           owner_id: string
+          client_id: string | null
           project_id: string | null
           title: string
           client_name: string | null
@@ -474,6 +475,7 @@ export type Database = {
         Insert: {
           id?: string
           owner_id: string
+          client_id?: string | null
           project_id?: string | null
           title: string
           client_name?: string | null
@@ -489,6 +491,7 @@ export type Database = {
         Update: {
           id?: string
           owner_id?: string
+          client_id?: string | null
           project_id?: string | null
           title?: string
           client_name?: string | null

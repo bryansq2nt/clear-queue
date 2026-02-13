@@ -5,7 +5,7 @@ import { Database } from '@/lib/supabase/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { cn } from '@/lib/utils'
 import { useRouter, usePathname } from 'next/navigation'
-import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus, Lightbulb, DollarSign, CheckSquare, Star, Users, Building2, FileText, ReceiptText } from 'lucide-react'
+import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus, Lightbulb, DollarSign, CheckSquare, Star, Users, Building2, FileText, Receipt } from 'lucide-react'
 import Link from 'next/link'
 import { PROJECT_CATEGORIES, getCategoryLabel } from '@/lib/constants'
 import {
@@ -207,7 +207,7 @@ export default function Sidebar({
                     : 'text-slate-600 hover:bg-slate-50'
                 )}
               >
-                <ReceiptText className="w-4 h-4" />
+                <Receipt className="w-4 h-4" />
                 Billings
               </Link>
               <Link
