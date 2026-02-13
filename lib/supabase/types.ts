@@ -454,6 +454,54 @@ export type Database = {
           updated_at?: string
         }
       }
+
+      billings: {
+        Row: {
+          id: string
+          owner_id: string
+          project_id: string | null
+          title: string
+          client_name: string | null
+          amount: number
+          currency: string
+          status: 'pending' | 'paid' | 'overdue' | 'cancelled'
+          due_date: string | null
+          paid_at: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          project_id?: string | null
+          title: string
+          client_name?: string | null
+          amount: number
+          currency?: string
+          status?: 'pending' | 'paid' | 'overdue' | 'cancelled'
+          due_date?: string | null
+          paid_at?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          project_id?: string | null
+          title?: string
+          client_name?: string | null
+          amount?: number
+          currency?: string
+          status?: 'pending' | 'paid' | 'overdue' | 'cancelled'
+          due_date?: string | null
+          paid_at?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       budgets: {
         Row: {
           id: string
