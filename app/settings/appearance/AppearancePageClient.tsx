@@ -72,14 +72,16 @@ export default function AppearancePageClient() {
     loadPrefs()
   }, [loadPrefs])
 
+  // Only apply theme from form after preferences have loaded (avoids flashing default theme on navigate)
   useEffect(() => {
+    if (prefs === null) return
     applyTheme({
       theme_mode: form.theme_mode,
       primary_color: form.primary_color,
       secondary_color: form.secondary_color,
       third_color: form.third_color,
     })
-  }, [form.theme_mode, form.primary_color, form.secondary_color, form.third_color])
+  }, [prefs, form.theme_mode, form.primary_color, form.secondary_color, form.third_color])
 
   async function handleThemeModeClick(mode: ThemeMode) {
     setForm((f) => ({ ...f, theme_mode: mode }))
@@ -218,7 +220,7 @@ export default function AppearancePageClient() {
   }
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground">{t('settings.appearance')}</h1>
         <p className="text-muted-foreground mt-1">{t('settings.appearance_subtitle')}</p>

@@ -1,5 +1,5 @@
-import ProfilePageClient from './ProfilePageClient'
+import { redirect } from 'next/navigation'
 
 export default function ProfileSettingsPage() {
-  return <ProfilePageClient />
+  redirect('/profile')
 }

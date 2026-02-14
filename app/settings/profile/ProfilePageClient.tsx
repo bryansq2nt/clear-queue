@@ -139,7 +139,7 @@ export default function ProfilePageClient() {
   }
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground">{t('profile.title')}</h1>
         <p className="text-muted-foreground mt-1">{t('profile.subtitle')}</p>

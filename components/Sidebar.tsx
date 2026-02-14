@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Database } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
 import { useRouter, usePathname } from 'next/navigation'
-import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus, Lightbulb, DollarSign, CheckSquare, Star, Users, Building2, FileText, Receipt, Settings, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus, Lightbulb, DollarSign, CheckSquare, Star, Users, Building2, FileText, Receipt, Settings, User, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import Link from 'next/link'
 import {
   DropdownMenu,
@@ -282,7 +282,21 @@ export default function Sidebar({
                 {!isCollapsed && t('sidebar.notes')}
               </Link>
               <Link
-                href="/settings/profile"
+                href="/profile"
+                className={cn(
+                  'w-full flex items-center rounded-md text-sm transition-colors',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2',
+                  pathname === '/profile'
+                    ? 'bg-accent text-foreground font-medium'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                )}
+                title={isCollapsed ? t('sidebar.profile') : undefined}
+              >
+                <User className="w-4 h-4 flex-shrink-0" />
+                {!isCollapsed && t('sidebar.profile')}
+              </Link>
+              <Link
+                href="/settings/appearance"
                 className={cn(
                   'w-full flex items-center rounded-md text-sm transition-colors',
                   isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2',

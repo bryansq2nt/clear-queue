@@ -10,7 +10,7 @@ import { signOut } from '@/app/actions/auth'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
-export default function SettingsLayoutClient({
+export default function ProfileLayoutClient({
   children,
 }: {
   children: React.ReactNode
@@ -37,7 +37,7 @@ export default function SettingsLayoutClient({
         onSignOut={() => signOut()}
         onProjectAdded={loadProjects}
         onProjectUpdated={loadProjects}
-        projectName={t('settings.appearance')}
+        projectName={t('settings.profile')}
         currentProject={null}
         onOpenSidebar={() => setSidebarOpen(true)}
         minimal
