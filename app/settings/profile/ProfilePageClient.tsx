@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import {
   getProfileWithAvatar,
   updateProfile,
@@ -159,9 +160,9 @@ export default function ProfilePageClient() {
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-foreground mb-4">{t('profile.avatar')}</h2>
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-full bg-muted overflow-hidden flex items-center justify-center">
+            <div className="relative w-20 h-20 rounded-full bg-muted overflow-hidden flex items-center justify-center">
               {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <Image src={avatarUrl} alt="Avatar" fill className="object-cover" unoptimized />
               ) : (
                 <span className="text-2xl text-muted-foreground font-medium">
                   {form.display_name?.charAt(0)?.toUpperCase() ?? '?'}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import { useI18n } from '@/components/I18nProvider'
 import { getPreferences, updatePreferences } from './actions'
 import { uploadUserAsset, deleteUserAsset, getAssetSignedUrl } from '@/app/settings/profile/actions'
@@ -258,9 +259,9 @@ export default function AppearancePageClient() {
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-foreground mb-4">{t('settings.company_logo')}</h2>
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-lg bg-muted overflow-hidden flex items-center justify-center border border-border">
+            <div className="relative w-20 h-20 rounded-lg bg-muted overflow-hidden flex items-center justify-center border border-border">
               {companyLogoUrl ? (
-                <img src={companyLogoUrl} alt={t('settings.company_logo')} className="w-full h-full object-contain" />
+                <Image src={companyLogoUrl} alt={t('settings.company_logo')} fill className="object-contain" unoptimized />
               ) : (
                 <span className="text-sm text-muted-foreground">{t('settings.no_logo')}</span>
               )}
@@ -299,9 +300,9 @@ export default function AppearancePageClient() {
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-foreground mb-4">{t('settings.cover_image')}</h2>
           <div className="flex items-center gap-4">
-            <div className="w-full max-w-xs h-24 rounded-lg bg-muted overflow-hidden flex items-center justify-center border border-border">
+            <div className="relative w-full max-w-xs h-24 rounded-lg bg-muted overflow-hidden flex items-center justify-center border border-border">
               {coverImageUrl ? (
-                <img src={coverImageUrl} alt={t('settings.cover_image')} className="w-full h-full object-cover" />
+                <Image src={coverImageUrl} alt={t('settings.cover_image')} fill className="object-cover" unoptimized />
               ) : (
                 <span className="text-sm text-muted-foreground">{t('settings.no_cover')}</span>
               )}
