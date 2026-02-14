@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Layout, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react'
+import { Layout, Plus, MoreVertical, Edit, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { deleteBoardAction } from './boards/actions'
 
@@ -32,6 +32,7 @@ export default function BoardsSidebar({
   onCancelNewBoard,
   onStartCreateBoard,
   onEditBoard,
+  onClose,
 }: {
   boards: Board[]
   selectedBoardId: string | null
@@ -44,6 +45,7 @@ export default function BoardsSidebar({
   onCancelNewBoard: () => void
   onStartCreateBoard: () => void
   onEditBoard: (boardId: string) => void
+  onClose?: () => void
 }) {
   const { t } = useI18n()
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -67,12 +69,23 @@ export default function BoardsSidebar({
   }
 
   return (
-    <div className="w-64 bg-card border-r border-border flex flex-col overflow-y-auto">
-      <div className="p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+    <div className="w-72 h-full bg-card border-r border-border flex flex-col overflow-hidden shadow-xl">
+      <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide truncate min-w-0">
             {t('ideas.boards_heading')}
           </h3>
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground flex-shrink-0"
+              title={t('common.close')}
+              aria-label={t('common.close')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          ) : null}
         </div>
 
         <div className="space-y-1">
@@ -124,7 +137,6 @@ export default function BoardsSidebar({
           )}
         </div>
 
-        {/* New Board button or inline form */}
         {isCreatingBoard ? (
           <div className="space-y-2 pt-2 border-t border-border">
             <Input

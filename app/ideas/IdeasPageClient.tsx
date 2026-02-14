@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
-import Sidebar from '@/components/Sidebar'
-import TopBar from '@/components/TopBar'
-import { signOut } from '@/app/actions/auth'
+import { AppShell } from '@/components/AppShell'
+import { useI18n } from '@/components/I18nProvider'
 import IdeasDashboardClient from './IdeasDashboardClient'
 
 type Project = Database['public']['Tables']['projects']['Row']
@@ -21,8 +21,9 @@ export default function IdeasPageClient({
   initialIdeas,
   initialProjects = [],
 }: IdeasPageClientProps) {
+  const { t } = useI18n()
+  const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
-  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
@@ -51,33 +52,25 @@ export default function IdeasPageClient({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <TopBar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onSignOut={signOut}
-        onProjectAdded={loadProjects}
-        onProjectUpdated={loadProjects}
-        projectName="Idea Graph"
-        currentProject={null}
+    <AppShell
+      title={t('sidebar.idea_graph')}
+      projects={projects}
+      selectedProject={null}
+      selectedCategory={null}
+      showArchived={false}
+      onSelectProject={(id) => {
+        if (id) router.push(`/project/${id}`)
+        else router.push('/dashboard')
+      }}
+      onCategoryChange={() => {}}
+      onShowArchivedChange={() => {}}
+      onProjectUpdated={loadProjects}
+    >
+      <IdeasDashboardClient
+        initialBoards={initialBoards}
+        initialIdeas={initialIdeas}
+        initialProjects={initialProjects}
       />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          projects={projects}
-          selectedProject={null}
-          selectedCategory={null}
-          showArchived={false}
-          onSelectProject={() => {}}
-          onCategoryChange={() => {}}
-          onShowArchivedChange={() => {}}
-          onProjectUpdated={loadProjects}
-        />
-        <IdeasDashboardClient
-          initialBoards={initialBoards}
-          initialIdeas={initialIdeas}
-          initialProjects={initialProjects}
-        />
-      </div>
-    </div>
+    </AppShell>
   )
 }

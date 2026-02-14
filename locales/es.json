@@ -2,6 +2,7 @@
   "common": {
     "save": "Guardar",
     "cancel": "Cancelar",
+    "close": "Cerrar",
     "delete": "Eliminar",
     "edit": "Editar",
     "remove": "Quitar",
@@ -141,6 +142,9 @@
   },
   "ideas": {
     "title": "Ideas",
+    "boards_heading": "Tableros",
+    "open_boards_list": "Ver lista de tableros",
+    "edit_board": "Editar tablero",
     "select_board": "Seleccionar Tablero",
     "new_board": "Nuevo Tablero",
     "add_word": "Agregar Palabra",
@@ -155,7 +159,16 @@
     "created": "Creado",
     "updated": "Actualizado",
     "no_ideas_board_detail": "Aún no hay ideas en este tablero. Agréguelas desde la página de detalle del tablero.",
-    "select_board_or_create": "Selecciona un tablero de la barra lateral o crea uno nuevo para comenzar."
+    "select_board_or_create": "Selecciona un tablero de la barra lateral o crea uno nuevo para comenzar.",
+    "board_name_placeholder": "Nombre del tablero...",
+    "board_description_placeholder": "Descripción (opcional)",
+    "link_board_to_project": "Vincular a proyecto",
+    "no_project": "Sin proyecto",
+    "idea_details": "Detalles de la idea",
+    "title_label": "Título *",
+    "description_label": "Descripción",
+    "new_word_placeholder": "Nueva palabra...",
+    "delete_idea_confirm": "¿Eliminar esta idea? Esta acción no se puede deshacer."
   },
   "todo": {
     "title": "Lista de Tareas",

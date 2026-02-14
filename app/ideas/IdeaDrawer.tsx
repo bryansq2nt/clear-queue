@@ -110,11 +110,7 @@ export default function IdeaDrawer({
   async function handleDelete() {
     if (!idea) return
 
-    if (
-      !confirm(
-        'Are you sure you want to delete this idea? This action cannot be undone.'
-      )
-    ) {
+    if (!confirm(t('ideas.delete_idea_confirm'))) {
       return
     }
 

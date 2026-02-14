@@ -2,6 +2,7 @@
   "common": {
     "save": "Save",
     "cancel": "Cancel",
+    "close": "Close",
     "delete": "Delete",
     "edit": "Edit",
     "remove": "Remove",
@@ -171,6 +172,7 @@
   "ideas": {
     "title": "Idea Graph",
     "boards_heading": "Boards",
+    "open_boards_list": "View boards list",
     "no_boards_yet": "No boards yet. Create one to get started.",
     "delete_board_confirm": "Delete this board? This will not delete the ideas, only the board view.",
     "delete_board_title": "Delete board",
