@@ -82,15 +82,15 @@ export function CreateBusinessModal({ clientId: fixedClientId, isOpen, onClose, 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3">
           {error && (
-            <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>
+            <div className="bg-destructive/10 text-destructive text-sm p-2.5 rounded-md">{error}</div>
           )}
           {showClientDropdown && (
             <div>
-              <Label htmlFor="b-client">{t('businesses.client_label')}</Label>
+              <Label htmlFor="b-client" className="text-sm">{t('businesses.client_label')}</Label>
               <Select value={selectedClientId} onValueChange={setSelectedClientId} required>
-                <SelectTrigger id="b-client">
+                <SelectTrigger id="b-client" className="mt-1 h-9">
                   <SelectValue placeholder={t('businesses.select_client')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -104,64 +104,58 @@ export function CreateBusinessModal({ clientId: fixedClientId, isOpen, onClose, 
             </div>
           )}
           <div>
-            <Label htmlFor="b-name">{t('businesses.name_label')}</Label>
-            <Input id="b-name" name="name" required placeholder={t('businesses.business_name_placeholder')} />
+            <Label htmlFor="b-name" className="text-sm">{t('businesses.name_label')}</Label>
+            <Input id="b-name" name="name" required placeholder={t('businesses.business_name_placeholder')} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="b-tagline">{t('businesses.tagline_label')}</Label>
-            <Input id="b-tagline" name="tagline" placeholder={t('businesses.tagline_placeholder')} />
+            <Label htmlFor="b-tagline" className="text-sm">{t('businesses.tagline_label')}</Label>
+            <Input id="b-tagline" name="tagline" placeholder={t('businesses.tagline_placeholder')} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="b-description">{t('businesses.description_label')}</Label>
-            <Textarea id="b-description" name="description" rows={2} placeholder={t('businesses.optional_placeholder')} />
+            <Label htmlFor="b-description" className="text-sm">{t('businesses.description_label')}</Label>
+            <Textarea id="b-description" name="description" rows={2} placeholder={t('businesses.optional_placeholder')} className="mt-1 text-sm" />
           </div>
           <div>
-            <Label htmlFor="b-email">{t('businesses.business_email_label')}</Label>
-            <Input id="b-email" name="email" type="email" placeholder={t('businesses.business_email_placeholder')} />
+            <Label htmlFor="b-email" className="text-sm">{t('businesses.business_email_label')}</Label>
+            <Input id="b-email" name="email" type="email" placeholder={t('businesses.business_email_placeholder')} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="b-website">{t('businesses.website_label')}</Label>
-            <Input id="b-website" name="website" type="url" placeholder={t('businesses.website_placeholder')} />
+            <Label htmlFor="b-website" className="text-sm">{t('businesses.website_label')}</Label>
+            <Input id="b-website" name="website" type="url" placeholder={t('businesses.website_placeholder')} className="mt-1 h-9" />
           </div>
           <div>
-            <Label className="mb-2 block">{t('businesses.social_links_label')}</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <Label className="text-sm block mb-1">{t('businesses.social_links_label')}</Label>
+            <div className="space-y-2">
               {['instagram', 'facebook', 'tiktok', 'youtube'].map((k) => (
-                <Input
-                  key={k}
-                  name={`social_${k}`}
-                  placeholder={k.charAt(0).toUpperCase() + k.slice(1)}
-                />
+                <Input key={k} name={`social_${k}`} placeholder={k.charAt(0).toUpperCase() + k.slice(1)} className="h-9" />
               ))}
             </div>
           </div>
           <div>
-            <Label htmlFor="b-address_line1">{t('businesses.address_line1_label')}</Label>
-            <Input id="b-address_line1" name="address_line1" />
+            <Label htmlFor="b-address_line1" className="text-sm">{t('businesses.address_line1_label')}</Label>
+            <Input id="b-address_line1" name="address_line1" className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="b-address_line2">{t('businesses.address_line2_label')}</Label>
-            <Input id="b-address_line2" name="address_line2" />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="b-city">{t('businesses.city_label')}</Label>
-              <Input id="b-city" name="city" />
-            </div>
-            <div>
-              <Label htmlFor="b-state">{t('businesses.state_label')}</Label>
-              <Input id="b-state" name="state" />
-            </div>
-            <div>
-              <Label htmlFor="b-postal_code">{t('businesses.postal_code_label')}</Label>
-              <Input id="b-postal_code" name="postal_code" />
-            </div>
+            <Label htmlFor="b-address_line2" className="text-sm">{t('businesses.address_line2_label')}</Label>
+            <Input id="b-address_line2" name="address_line2" className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="b-notes">{t('businesses.notes_label')}</Label>
-            <Textarea id="b-notes" name="notes" rows={2} />
+            <Label htmlFor="b-city" className="text-sm">{t('businesses.city_label')}</Label>
+            <Input id="b-city" name="city" className="mt-1 h-9" />
           </div>
-          <div className="flex gap-3 pt-4">
+          <div>
+            <Label htmlFor="b-state" className="text-sm">{t('businesses.state_label')}</Label>
+            <Input id="b-state" name="state" className="mt-1 h-9" />
+          </div>
+          <div>
+            <Label htmlFor="b-postal_code" className="text-sm">{t('businesses.postal_code_label')}</Label>
+            <Input id="b-postal_code" name="postal_code" className="mt-1 h-9" />
+          </div>
+          <div>
+            <Label htmlFor="b-notes" className="text-sm">{t('businesses.notes_label')}</Label>
+            <Textarea id="b-notes" name="notes" rows={2} className="mt-1 text-sm" />
+          </div>
+          <div className="flex gap-2 pt-3">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
               {t('common.cancel')}
             </button>

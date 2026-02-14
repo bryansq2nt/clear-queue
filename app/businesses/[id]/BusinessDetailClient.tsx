@@ -6,9 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useI18n } from '@/components/I18nProvider'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
-import Sidebar from '@/components/Sidebar'
-import TopBar from '@/components/TopBar'
-import { signOut } from '@/app/actions/auth'
+import { DetailLayout } from '@/components/DetailLayout'
 import { getBusinessById, deleteBusinessAction } from '@/app/clients/actions'
 import { EditBusinessModal } from '@/app/clients/components/EditBusinessModal'
 import {
@@ -107,92 +105,62 @@ export default function BusinessDetailClient({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <TopBar
-        searchQuery=""
-        onSearchChange={() => {}}
-        onSignOut={() => signOut()}
-        onProjectAdded={loadProjects}
-        onProjectUpdated={loadProjects}
-        projectName={business.name}
-        currentProject={null}
-      />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          projects={projectsList}
-          selectedProject={null}
-          selectedCategory={null}
-          showArchived={false}
-          onSelectProject={() => {}}
-          onCategoryChange={() => {}}
-          onShowArchivedChange={() => {}}
-          onProjectUpdated={loadProjects}
-        />
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="mb-6">
-            <Link
-              href="/businesses"
-              className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {t('businesses.back_to_businesses')}
-            </Link>
-          </div>
-
-          <div className="flex items-start justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                {business.name}
-              </h1>
-              {business.tagline && (
-                <p className="text-slate-600 dark:text-slate-400 mt-1">{business.tagline}</p>
-              )}
-              {clientName && (
-                <Link
-                  href={`/clients/${business.client_id}`}
-                  className="flex items-center gap-1.5 mt-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                >
-                  <User className="w-4 h-4" />
-                  {clientName}
-                </Link>
-              )}
-              {(business.email || business.website) && (
-                <div className="flex flex-wrap gap-4 mt-2 text-slate-600 dark:text-slate-400">
-                  {business.email && (
-                    <EmailAction email={business.email} />
-                  )}
-                  {business.website && (
-                    <a
-                      href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      <Globe className="w-4 h-4" />
-                      {business.website}
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setEditModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent text-foreground"
+    <DetailLayout
+      backHref="/businesses"
+      backLabel={t('businesses.back_to_businesses')}
+      title={business.name}
+      actions={
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setEditModalOpen(true)}
+            className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg hover:bg-accent text-foreground text-sm font-medium"
+          >
+            <Edit className="w-4 h-4" />
+            {t('common.edit')}
+          </button>
+          <button
+            onClick={handleDelete}
+            className="inline-flex items-center gap-2 px-3 py-2 border border-destructive/50 text-destructive rounded-lg hover:bg-destructive/10 text-sm font-medium"
+          >
+            {t('common.delete')}
+          </button>
+        </div>
+      }
+      contentClassName="p-4 sm:p-6"
+    >
+      <div className="flex flex-col gap-6">
+        {business.tagline && (
+          <p className="text-muted-foreground">{business.tagline}</p>
+        )}
+        {clientName && (
+          <Link
+            href={`/clients/${business.client_id}`}
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+          >
+            <User className="w-4 h-4" />
+            {clientName}
+          </Link>
+        )}
+        {(business.email || business.website) && (
+          <div className="flex flex-wrap gap-4 text-muted-foreground">
+            {business.email && (
+              <EmailAction email={business.email} />
+            )}
+            {business.website && (
+              <a
+                href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-primary hover:underline"
               >
-                <Edit className="w-4 h-4" />
-                {t('common.edit')}
-              </button>
-              <button
-                onClick={handleDelete}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400"
-              >
-                {t('common.delete')}
-              </button>
-            </div>
+                <Globe className="w-4 h-4" />
+                {business.website}
+              </a>
+            )}
           </div>
+        )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
             <section className="bg-card rounded-lg shadow-sm border border-border p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
@@ -247,7 +215,6 @@ export default function BusinessDetailClient({
                 <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{business.notes}</p>
               </section>
             )}
-          </div>
         </div>
       </div>
 
@@ -261,7 +228,7 @@ export default function BusinessDetailClient({
           router.refresh()
         }}
       />
-    </div>
+    </DetailLayout>
   )
 }
 

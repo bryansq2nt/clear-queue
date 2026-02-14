@@ -1,14 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
-import Sidebar from '@/components/Sidebar'
-import TopBar from '@/components/TopBar'
-import { signOut } from '@/app/actions/auth'
+import { useI18n } from '@/components/I18nProvider'
+import { DetailLayout } from '@/components/DetailLayout'
 import { NoteEditor } from '../components/NoteEditor'
 
-type Project = Database['public']['Tables']['projects']['Row']
 type NoteLink = Database['public']['Tables']['note_links']['Row']
 
 interface NoteDetailClientProps {
@@ -22,52 +18,21 @@ export default function NoteDetailClient({
   initialNote,
   initialLinks,
 }: NoteDetailClientProps) {
-  const [projects, setProjects] = useState<Project[]>([])
-
-  const loadProjects = useCallback(async () => {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('projects')
-      .select('*')
-      .order('name')
-    if (data) setProjects(data as Project[])
-  }, [])
-
-  useEffect(() => {
-    loadProjects()
-  }, [loadProjects])
+  const { t } = useI18n()
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <TopBar
-        searchQuery=""
-        onSearchChange={() => {}}
-        onSignOut={() => signOut()}
-        onProjectAdded={loadProjects}
-        onProjectUpdated={loadProjects}
-        projectName={initialNote.title || 'Note'}
-        currentProject={null}
+    <DetailLayout
+      backHref="/notes"
+      backLabel={t('notes.back_to_notes')}
+      title={initialNote.title || t('notes.title')}
+      contentClassName="p-4 sm:p-6"
+    >
+      <NoteEditor
+        mode="edit"
+        noteId={noteId}
+        initialNote={initialNote}
+        initialLinks={initialLinks}
       />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          projects={projects}
-          selectedProject={null}
-          selectedCategory={null}
-          showArchived={false}
-          onSelectProject={() => {}}
-          onCategoryChange={() => {}}
-          onShowArchivedChange={() => {}}
-          onProjectUpdated={loadProjects}
-        />
-        <div className="flex-1 overflow-y-auto p-6">
-          <NoteEditor
-            mode="edit"
-            noteId={noteId}
-            initialNote={initialNote}
-            initialLinks={initialLinks}
-          />
-        </div>
-      </div>
-    </div>
+    </DetailLayout>
   )
 }

@@ -24,6 +24,7 @@ export default function BusinessesPageClient() {
   const [isLoading, setIsLoading] = useState(true)
   const [editingBusiness, setEditingBusiness] = useState<Business | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const supabase = createClient()
 
   const loadProjects = useCallback(async () => {
@@ -59,6 +60,7 @@ export default function BusinessesPageClient() {
         onProjectUpdated={loadProjects}
         projectName={t('businesses.title')}
         currentProject={null}
+        onOpenSidebar={() => setSidebarOpen(true)}
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
@@ -70,11 +72,13 @@ export default function BusinessesPageClient() {
           onCategoryChange={() => {}}
           onShowArchivedChange={() => {}}
           onProjectUpdated={loadProjects}
+          mobileOpen={sidebarOpen}
+          onMobileClose={() => setSidebarOpen(false)}
         />
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
                 {t('businesses.title')}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
@@ -97,6 +101,7 @@ export default function BusinessesPageClient() {
               {t('businesses.no_businesses_yet')}
             </p>
           ) : (
+            <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {businesses.map((b) => (
                 <BusinessCard
@@ -109,6 +114,15 @@ export default function BusinessesPageClient() {
                 />
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              aria-label={t('businesses.add_business')}
+              className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
+            >
+              <Plus className="h-6 w-6" />
+            </button>
+            </>
           )}
         </div>
       </div>

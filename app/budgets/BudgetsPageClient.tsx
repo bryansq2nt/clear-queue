@@ -22,6 +22,7 @@ export default function BudgetsPageClient() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const supabase = createClient()
 
   const loadProjects = useCallback(async () => {
@@ -75,6 +76,7 @@ export default function BudgetsPageClient() {
           onProjectUpdated={loadProjects}
           projectName={t('budgets.title')}
           currentProject={null}
+          onOpenSidebar={() => setSidebarOpen(true)}
         />
         <div className="flex-1 flex overflow-hidden">
           <Sidebar
@@ -86,6 +88,8 @@ export default function BudgetsPageClient() {
             onCategoryChange={() => { }}
             onShowArchivedChange={() => { }}
             onProjectUpdated={loadProjects}
+            mobileOpen={sidebarOpen}
+            onMobileClose={() => setSidebarOpen(false)}
           />
           <div className="flex-1 overflow-y-auto p-6">
             <div className="animate-pulse space-y-4">
@@ -112,6 +116,7 @@ export default function BudgetsPageClient() {
         onProjectUpdated={loadProjects}
         projectName={t('budgets.title')}
         currentProject={null}
+        onOpenSidebar={() => setSidebarOpen(true)}
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
@@ -123,12 +128,14 @@ export default function BudgetsPageClient() {
           onCategoryChange={() => { }}
           onShowArchivedChange={() => { }}
           onProjectUpdated={loadProjects}
+          mobileOpen={sidebarOpen}
+          onMobileClose={() => setSidebarOpen(false)}
         />
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
                 {t('budgets.title')}
               </h1>
               <p className="text-muted-foreground mt-2">
@@ -183,7 +190,15 @@ export default function BudgetsPageClient() {
         </div>
       </div>
 
-      {/* Modal */}
+      <button
+        type="button"
+        onClick={() => setIsModalOpen(true)}
+        aria-label={t('budgets.new_budget')}
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
+
       <CreateBudgetModal
         isOpen={isModalOpen}
         onClose={handleModalClose}

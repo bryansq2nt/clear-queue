@@ -101,10 +101,9 @@ export function CreateCategoryModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Name */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {t('budgets.category_name_label')}
             </label>
             <input
@@ -112,28 +111,26 @@ export function CreateCategoryModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('budgets.category_name_placeholder')}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              className="w-full h-9 px-3 border border-input rounded-md bg-background text-foreground focus:ring-2 focus:ring-ring"
               required
               autoFocus
             />
           </div>
 
-          {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {t('budgets.description_optional')}
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('budgets.category_description_placeholder')}
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+              rows={2}
+              className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background text-foreground focus:ring-2 focus:ring-ring resize-none"
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-2 pt-3">
             <button
               type="button"
               onClick={onClose}

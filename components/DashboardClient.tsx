@@ -20,6 +20,7 @@ export default function DashboardClient() {
   const [showArchived, setShowArchived] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const supabase = createClient()
 
@@ -81,8 +82,9 @@ export default function DashboardClient() {
         onSignOut={signOut}
         onProjectAdded={loadData}
         onProjectUpdated={loadData}
-        projectName='Dashboard'
+        projectName="Dashboard"
         currentProject={null}
+        onOpenSidebar={() => setSidebarOpen(true)}
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
@@ -94,6 +96,8 @@ export default function DashboardClient() {
           onCategoryChange={setSelectedCategory}
           onShowArchivedChange={setShowArchived}
           onProjectUpdated={loadData}
+          mobileOpen={sidebarOpen}
+          onMobileClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 overflow-x-auto">
           <KanbanBoard

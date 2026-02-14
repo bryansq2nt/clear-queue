@@ -5,10 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
-import Sidebar from '@/components/Sidebar'
-import TopBar from '@/components/TopBar'
+import { DetailLayout } from '@/components/DetailLayout'
 import { useI18n } from '@/components/I18nProvider'
-import { signOut } from '@/app/actions/auth'
 import {
   ArrowLeft,
   Phone,
@@ -21,6 +19,7 @@ import {
   Copy,
   Send,
   Link2,
+  Plus,
 } from 'lucide-react'
 import {
   getProjectsByClientId,
@@ -234,70 +233,40 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
     : null
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <TopBar
-        searchQuery=""
-        onSearchChange={() => {}}
-        onSignOut={() => signOut()}
-        onProjectAdded={loadSidebarProjects}
-        onProjectUpdated={loadSidebarProjects}
-        projectName={client.full_name}
-        currentProject={null}
-      />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          projects={projectsList}
-          selectedProject={null}
-          selectedCategory={null}
-          showArchived={false}
-          onSelectProject={() => {}}
-          onCategoryChange={() => {}}
-          onShowArchivedChange={() => {}}
-          onProjectUpdated={loadSidebarProjects}
-        />
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="mb-6">
-            <Link
-              href="/clients"
-              className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {t('clients.back_to_clients')}
-            </Link>
+    <DetailLayout
+      backHref="/clients"
+      backLabel={t('clients.back_to_clients')}
+      title={client.full_name}
+      actions={
+        <button
+          onClick={() => setEditModalOpen(true)}
+          className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg hover:bg-accent text-foreground text-sm font-medium"
+        >
+          <Edit className="w-4 h-4" />
+          {t('common.edit')}
+        </button>
+      }
+      contentClassName="p-4 sm:p-6"
+    >
+      <div className="flex flex-col gap-6">
+        {(client.phone || client.email) && (
+          <div className="flex flex-wrap gap-4 text-muted-foreground">
+            {client.phone && (
+              <a
+                href={`tel:${client.phone.replace(/\s/g, '')}`}
+                className="flex items-center gap-1.5 hover:text-foreground"
+              >
+                <Phone className="w-4 h-4" />
+                {client.phone}
+              </a>
+            )}
+            {client.email && (
+              <EmailAction email={client.email} />
+            )}
           </div>
+        )}
 
-          <div className="flex items-start justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                {client.full_name}
-              </h1>
-              {(client.phone || client.email) && (
-                <div className="flex flex-wrap gap-4 mt-2 text-slate-600 dark:text-slate-400">
-                  {client.phone && (
-                    <a
-                      href={`tel:${client.phone.replace(/\s/g, '')}`}
-                      className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white"
-                    >
-                      <Phone className="w-4 h-4" />
-                      {client.phone}
-                    </a>
-                  )}
-                  {client.email && (
-                    <EmailAction email={client.email} />
-                  )}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => setEditModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent text-foreground"
-            >
-              <Edit className="w-4 h-4" />
-              {t('common.edit')}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
             {/* Details */}
             <section className="bg-card rounded-lg shadow-sm border border-border p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -519,9 +488,17 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
                 <p className="text-sm text-gray-500 dark:text-gray-400">{t('clients.no_notes_or_preferences')}</p>
               )}
             </section>
-          </div>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setIsCreateBusinessOpen(true)}
+        aria-label={t('businesses.add_business')}
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       <EditClientModal
         client={client}
@@ -549,6 +526,6 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
           setEditingBusiness(null)
         }}
       />
-    </div>
+    </DetailLayout>
   )
 }

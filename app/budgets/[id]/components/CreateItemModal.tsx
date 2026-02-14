@@ -131,10 +131,9 @@ export function CreateItemModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Name */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {t('budgets.item_name_label')}
             </label>
             <input
@@ -142,15 +141,14 @@ export function CreateItemModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('budgets.item_name_placeholder')}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              className="w-full h-9 px-3 border border-input rounded-md bg-background text-foreground focus:ring-2 focus:ring-ring"
               required
               autoFocus
             />
           </div>
 
-          {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {t('budgets.description_optional')}
             </label>
             <textarea
@@ -158,41 +156,38 @@ export function CreateItemModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('budgets.brief_description_placeholder')}
               rows={2}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+              className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background text-foreground focus:ring-2 focus:ring-ring resize-none"
             />
           </div>
 
-          {/* Quantity and Unit Price */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {t('budgets.quantity_label')}
-              </label>
-              <input
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                min="0.01"
-                step="0.01"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                required
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              {t('budgets.quantity_label')}
+            </label>
+            <input
+              type="number"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              min="0.01"
+              step="0.01"
+              className="w-full h-9 px-3 border border-input rounded-md bg-background text-foreground focus:ring-2 focus:ring-ring"
+              required
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {t('budgets.unit_price_label')}
-              </label>
-              <input
-                type="number"
-                value={unitPrice}
-                onChange={(e) => setUnitPrice(e.target.value)}
-                min="0"
-                step="0.01"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                required
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              {t('budgets.unit_price_label')}
+            </label>
+            <input
+              type="number"
+              value={unitPrice}
+              onChange={(e) => setUnitPrice(e.target.value)}
+              min="0"
+              step="0.01"
+              className="w-full h-9 px-3 border border-input rounded-md bg-background text-foreground focus:ring-2 focus:ring-ring"
+              required
+            />
           </div>
 
           {/* Link */}
@@ -239,22 +234,20 @@ export function CreateItemModal({
             </label>
           </div>
 
-          {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {t('budgets.notes_optional')}
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={t('budgets.additional_notes_placeholder')}
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+              rows={2}
+              className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background text-foreground focus:ring-2 focus:ring-ring resize-none"
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-2 pt-3">
             <button
               type="button"
               onClick={onClose}

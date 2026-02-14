@@ -83,46 +83,26 @@ export function EditClientModal({ client, isOpen, onClose, onUpdated }: EditClie
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3">
           {error && (
-            <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>
+            <div className="bg-destructive/10 text-destructive text-sm p-2.5 rounded-md">{error}</div>
           )}
           <div>
-            <Label htmlFor="edit-full_name">{t('clients.full_name')}</Label>
-            <Input
-              id="edit-full_name"
-              name="full_name"
-              defaultValue={client.full_name}
-              required
-              placeholder={t('clients.full_name_placeholder')}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="edit-phone">{t('clients.phone')}</Label>
-              <Input
-                id="edit-phone"
-                name="phone"
-                type="tel"
-                defaultValue={client.phone ?? ''}
-                placeholder="+1 234 567 8900"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-email">{t('auth.email')}</Label>
-              <Input
-                id="edit-email"
-                name="email"
-                type="email"
-                defaultValue={client.email ?? ''}
-                placeholder="jane@example.com"
-              />
-            </div>
+            <Label htmlFor="edit-full_name" className="text-sm">{t('clients.full_name')}</Label>
+            <Input id="edit-full_name" name="full_name" defaultValue={client.full_name} required placeholder={t('clients.full_name_placeholder')} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="edit-gender">{t('clients.gender')}</Label>
+            <Label htmlFor="edit-phone" className="text-sm">{t('clients.phone')}</Label>
+            <Input id="edit-phone" name="phone" type="tel" defaultValue={client.phone ?? ''} placeholder="+1 234 567 8900" className="mt-1 h-9" />
+          </div>
+          <div>
+            <Label htmlFor="edit-email" className="text-sm">{t('auth.email')}</Label>
+            <Input id="edit-email" name="email" type="email" defaultValue={client.email ?? ''} placeholder="jane@example.com" className="mt-1 h-9" />
+          </div>
+          <div>
+            <Label htmlFor="edit-gender" className="text-sm">{t('clients.gender')}</Label>
             <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger id="edit-gender">
+              <SelectTrigger id="edit-gender" className="mt-1 h-9">
                 <SelectValue placeholder={t('common.select')} />
               </SelectTrigger>
               <SelectContent>
@@ -133,49 +113,34 @@ export function EditClientModal({ client, isOpen, onClose, onUpdated }: EditClie
             </Select>
           </div>
           <div>
-            <Label htmlFor="edit-address_line1">{t('clients.address_line1')}</Label>
-            <Input
-              id="edit-address_line1"
-              name="address_line1"
-              defaultValue={client.address_line1 ?? ''}
-            />
+            <Label htmlFor="edit-address_line1" className="text-sm">{t('clients.address_line1')}</Label>
+            <Input id="edit-address_line1" name="address_line1" defaultValue={client.address_line1 ?? ''} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="edit-address_line2">{t('clients.address_line2')}</Label>
-            <Input
-              id="edit-address_line2"
-              name="address_line2"
-              defaultValue={client.address_line2 ?? ''}
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="edit-city">{t('clients.city')}</Label>
-              <Input id="edit-city" name="city" defaultValue={client.city ?? ''} />
-            </div>
-            <div>
-              <Label htmlFor="edit-state">{t('clients.state')}</Label>
-              <Input id="edit-state" name="state" defaultValue={client.state ?? ''} />
-            </div>
-            <div>
-              <Label htmlFor="edit-postal_code">{t('clients.postal_code')}</Label>
-              <Input id="edit-postal_code" name="postal_code" defaultValue={client.postal_code ?? ''} />
-            </div>
+            <Label htmlFor="edit-address_line2" className="text-sm">{t('clients.address_line2')}</Label>
+            <Input id="edit-address_line2" name="address_line2" defaultValue={client.address_line2 ?? ''} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="edit-preferences">{t('clients.preferences')}</Label>
-            <Textarea
-              id="edit-preferences"
-              name="preferences"
-              rows={2}
-              defaultValue={client.preferences ?? ''}
-            />
+            <Label htmlFor="edit-city" className="text-sm">{t('clients.city')}</Label>
+            <Input id="edit-city" name="city" defaultValue={client.city ?? ''} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="edit-notes">{t('clients.notes')}</Label>
-            <Textarea id="edit-notes" name="notes" rows={3} defaultValue={client.notes ?? ''} />
+            <Label htmlFor="edit-state" className="text-sm">{t('clients.state')}</Label>
+            <Input id="edit-state" name="state" defaultValue={client.state ?? ''} className="mt-1 h-9" />
           </div>
-          <div className="flex gap-3 pt-4">
+          <div>
+            <Label htmlFor="edit-postal_code" className="text-sm">{t('clients.postal_code')}</Label>
+            <Input id="edit-postal_code" name="postal_code" defaultValue={client.postal_code ?? ''} className="mt-1 h-9" />
+          </div>
+          <div>
+            <Label htmlFor="edit-preferences" className="text-sm">{t('clients.preferences')}</Label>
+            <Textarea id="edit-preferences" name="preferences" rows={2} defaultValue={client.preferences ?? ''} className="mt-1 text-sm" />
+          </div>
+          <div>
+            <Label htmlFor="edit-notes" className="text-sm">{t('clients.notes')}</Label>
+            <Textarea id="edit-notes" name="notes" rows={2} defaultValue={client.notes ?? ''} className="mt-1 text-sm" />
+          </div>
+          <div className="flex gap-2 pt-3">
             <button
               type="button"
               onClick={onClose}

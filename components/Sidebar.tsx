@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Database } from '@/lib/supabase/types'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { cn } from '@/lib/utils'
 import { useRouter, usePathname } from 'next/navigation'
-import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus, Lightbulb, DollarSign, CheckSquare, Star, Users, Building2, FileText, Receipt, Settings } from 'lucide-react'
+import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus, Lightbulb, DollarSign, CheckSquare, Star, Users, Building2, FileText, Receipt, Settings, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import Link from 'next/link'
-import { PROJECT_CATEGORIES, getCategoryLabel } from '@/lib/constants'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +29,11 @@ interface SidebarProps {
   onCategoryChange: (category: string | null) => void
   onShowArchivedChange: (show: boolean) => void
   onProjectUpdated: () => void
+  mobileOpen?: boolean
+  onMobileClose?: () => void
 }
+
+const SIDEBAR_MOBILE_BREAKPOINT = 768
 
 export default function Sidebar({
   projects,
@@ -42,6 +44,8 @@ export default function Sidebar({
   onCategoryChange,
   onShowArchivedChange,
   onProjectUpdated,
+  mobileOpen = true,
+  onMobileClose,
 }: SidebarProps) {
   const { t } = useI18n()
   const router = useRouter()
@@ -50,6 +54,35 @@ export default function Sidebar({
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false)
   const [favoriteProjectIds, setFavoriteProjectIds] = useState<Set<string>>(new Set())
+  const [isMobile, setIsMobile] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+  const SIDEBAR_STORAGE_KEY = 'sidebar-collapsed'
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+      if (stored === 'true') setCollapsed(true)
+    } catch (_) {}
+  }, [])
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed))
+    } catch (_) {}
+  }, [collapsed])
+  const toggleCollapsed = () => setCollapsed((c) => !c)
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${SIDEBAR_MOBILE_BREAKPOINT - 1}px)`)
+    const handler = () => setIsMobile(mq.matches)
+    setIsMobile(mq.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  const isDrawerMode = isMobile && onMobileClose != null
+  const isDrawerOpen = isDrawerMode ? mobileOpen : true
+  const canCollapse = !isMobile
+  const isCollapsed = canCollapse && collapsed
 
   const loadFavorites = useCallback(async () => {
     const { data } = await getFavoriteProjectIds()
@@ -72,29 +105,6 @@ export default function Sidebar({
   }
 
   const favoriteProjects = projects.filter(p => favoriteProjectIds.has(p.id))
-
-  // Filter projects based on selectedCategory and showArchived
-  const filteredProjects = projects.filter(p => {
-    // Filter by category if selected
-    if (selectedCategory && p.category !== selectedCategory) return false
-    // Filter out archived if toggle is off
-    if (!showArchived && p.category === 'archived') return false
-    return true
-  })
-
-  // Group filtered projects by category
-  const groupedProjects = PROJECT_CATEGORIES.reduce((acc, category) => {
-    const categoryProjects = filteredProjects.filter(p => p.category === category.key)
-    if (categoryProjects.length > 0) {
-      acc[category.key] = categoryProjects
-    }
-    return acc
-  }, {} as Record<string, Project[]>)
-
-  // Filter out archived if toggle is off
-  const visibleCategories = showArchived
-    ? PROJECT_CATEGORIES
-    : PROJECT_CATEGORIES.filter(c => c.key !== 'archived')
 
   async function handleArchive(project: Project) {
     if (project.category === 'archived') {
@@ -120,137 +130,184 @@ export default function Sidebar({
 
   return (
     <>
-      <div className="w-64 bg-card border-r border-border flex flex-col overflow-y-auto shadow-lg">
-        <div className="p-4 space-y-6">
-          {/* Navigation */}
+      {isDrawerMode && isDrawerOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          aria-hidden
+          onClick={onMobileClose}
+        />
+      )}
+      <div
+        className={cn(
+          'bg-card border-r border-border flex flex-col overflow-hidden shadow-lg transition-[width] duration-200 ease-out flex-shrink-0 h-full',
+          isDrawerMode ? 'fixed inset-y-0 left-0 z-50 w-64' : 'relative',
+          !isDrawerMode && (isCollapsed ? 'w-16' : 'w-64'),
+          isDrawerMode && (isDrawerOpen ? 'translate-x-0' : '-translate-x-full')
+        )}
+      >
+        <div className={cn('flex flex-col min-h-0 flex-1 h-full', isCollapsed ? 'p-2 space-y-2' : 'p-4 space-y-6')}>
+          {isDrawerMode && isDrawerOpen && onMobileClose && (
+            <div className="flex items-center justify-end -mt-1 -mr-1 mb-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={onMobileClose}
+                className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                aria-label={t('sidebar.navigation')}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
-              {t('sidebar.navigation')}
-            </label>
-            <div className="space-y-1">
+            {!isCollapsed && (
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
+                {t('sidebar.navigation')}
+              </label>
+            )}
+            <div className={cn('space-y-1', isCollapsed && 'flex flex-col items-center')}>
               <Link
                 href="/dashboard"
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  'w-full flex items-center rounded-md text-sm transition-colors',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2',
                   pathname === '/dashboard'
                     ? 'bg-accent text-foreground font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
+                title={isCollapsed ? t('sidebar.dashboard') : undefined}
               >
-                <LayoutDashboard className="w-4 h-4" />
-                {t('sidebar.dashboard')}
+                <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
+                {!isCollapsed && t('sidebar.dashboard')}
               </Link>
               <Link
                 href="/ideas"
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  'w-full flex items-center rounded-md text-sm transition-colors',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2',
                   pathname?.startsWith('/ideas')
                     ? 'bg-accent text-foreground font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
+                title={isCollapsed ? t('sidebar.idea_graph') : undefined}
               >
-                <Lightbulb className="w-4 h-4" />
-                {t('sidebar.idea_graph')}
+                <Lightbulb className="w-4 h-4 flex-shrink-0" />
+                {!isCollapsed && t('sidebar.idea_graph')}
               </Link>
               <Link
                 href="/todo"
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  'w-full flex items-center rounded-md text-sm transition-colors',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2',
                   pathname?.startsWith('/todo')
                     ? 'bg-accent text-foreground font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
+                title={isCollapsed ? t('sidebar.todo_list') : undefined}
               >
-                <CheckSquare className="w-4 h-4" />
-                {t('sidebar.todo_list')}
+                <CheckSquare className="w-4 h-4 flex-shrink-0" />
+                {!isCollapsed && t('sidebar.todo_list')}
               </Link>
               <Link
                 href="/budgets"
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  'w-full flex items-center rounded-md text-sm transition-colors',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2',
                   pathname?.startsWith('/budgets')
                     ? 'bg-accent text-foreground font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
+                title={isCollapsed ? t('sidebar.budgets') : undefined}
               >
-                <DollarSign className="w-4 h-4" />
-                {t('sidebar.budgets')}
+                <DollarSign className="w-4 h-4 flex-shrink-0" />
+                {!isCollapsed && t('sidebar.budgets')}
               </Link>
               <Link
                 href="/clients"
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  'w-full flex items-center rounded-md text-sm transition-colors',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2',
                   pathname?.startsWith('/clients')
                     ? 'bg-accent text-foreground font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
+                title={isCollapsed ? t('sidebar.clients') : undefined}
               >
-                <Users className="w-4 h-4" />
-                {t('sidebar.clients')}
+                <Users className="w-4 h-4 flex-shrink-0" />
+                {!isCollapsed && t('sidebar.clients')}
               </Link>
               <Link
                 href="/businesses"
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  'w-full flex items-center rounded-md text-sm transition-colors',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2',
                   pathname?.startsWith('/businesses')
                     ? 'bg-accent text-foreground font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
+                title={isCollapsed ? t('sidebar.businesses') : undefined}
               >
-                <Building2 className="w-4 h-4" />
-                {t('sidebar.businesses')}
+                <Building2 className="w-4 h-4 flex-shrink-0" />
+                {!isCollapsed && t('sidebar.businesses')}
               </Link>
               <Link
                 href="/billings"
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  'w-full flex items-center rounded-md text-sm transition-colors',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2',
                   pathname?.startsWith('/billings')
                     ? 'bg-accent text-foreground font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
+                title={isCollapsed ? 'Billings' : undefined}
               >
-                <Receipt className="w-4 h-4" />
-                Billings
+                <Receipt className="w-4 h-4 flex-shrink-0" />
+                {!isCollapsed && 'Billings'}
               </Link>
               <Link
                 href="/notes"
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  'w-full flex items-center rounded-md text-sm transition-colors',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2',
                   pathname?.startsWith('/notes')
                     ? 'bg-accent text-foreground font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
+                title={isCollapsed ? t('sidebar.notes') : undefined}
               >
-                <FileText className="w-4 h-4" />
-                {t('sidebar.notes')}
+                <FileText className="w-4 h-4 flex-shrink-0" />
+                {!isCollapsed && t('sidebar.notes')}
               </Link>
               <Link
                 href="/settings/profile"
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  'w-full flex items-center rounded-md text-sm transition-colors',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2',
                   pathname?.startsWith('/settings')
                     ? 'bg-accent text-foreground font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
+                title={isCollapsed ? t('sidebar.settings') : undefined}
               >
-                <Settings className="w-4 h-4" />
-                {t('sidebar.settings')}
+                <Settings className="w-4 h-4 flex-shrink-0" />
+                {!isCollapsed && t('sidebar.settings')}
               </Link>
               <button
                 onClick={() => setIsAddProjectModalOpen(true)}
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
-                  'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  'w-full flex items-center rounded-md text-sm transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2'
                 )}
+                title={isCollapsed ? t('sidebar.add_project') : undefined}
               >
-                <Plus className="w-4 h-4" />
-                {t('sidebar.add_project')}
+                <Plus className="w-4 h-4 flex-shrink-0" />
+                {!isCollapsed && t('sidebar.add_project')}
               </button>
             </div>
           </div>
 
-          {/* Favorite Projects */}
-          {favoriteProjects.length > 0 && (
+          {/* Favorite Projects - hidden when collapsed */}
+          {favoriteProjects.length > 0 && !isCollapsed && (
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
                 {t('sidebar.favorites')}
@@ -331,155 +388,31 @@ export default function Sidebar({
             </div>
           )}
 
-          {/* Projects List - Grouped by Category */}
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
-              {t('sidebar.projects')}
-            </label>
-            <div className="space-y-1">
-              <button
-                onClick={() => {
-                  onSelectProject(null)
-                  router.push('/dashboard')
-                }}
-                className={cn(
-                  'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
-                  selectedProject === null || pathname === '/dashboard'
-                    ? 'bg-accent text-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )}
-              >
-                {t('sidebar.all_projects')}
-              </button>
-
-              {/* Filter by Category - positioned below All Projects */}
-              <div className="px-3 py-2">
-                <Select
-                  value={selectedCategory || 'all'}
-                  onValueChange={(value) => onCategoryChange(value === 'all' ? null : value)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Filter by Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t('sidebar.all_categories')}</SelectItem>
-                    {PROJECT_CATEGORIES.filter(c => c.key !== 'archived' || showArchived).map(cat => (
-                      <SelectItem key={cat.key} value={cat.key}>
-                        {cat.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Show Archived Toggle - positioned below category filter */}
-              <button
-                onClick={() => onShowArchivedChange(!showArchived)}
-                className={cn(
-                  'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
-                  showArchived
-                    ? 'bg-accent text-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )}
-              >
-                {showArchived ? '✓' : ''} {t('projects.show_archived')}
-              </button>
-              {visibleCategories.map(category => {
-                const categoryProjects = groupedProjects[category.key] || []
-                if (categoryProjects.length === 0) return null
-
-                return (
-                  <div key={category.key} className="mt-3">
-                    <div className="text-xs font-medium text-muted-foreground px-3 py-1 uppercase tracking-wide">
-                      {category.label}
-                    </div>
-                    <div className="space-y-1 mt-1">
-                      {categoryProjects.map(project => (
-                        <div
-                          key={project.id}
-                          className={cn(
-                            'group flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
-                            selectedProject === project.id || pathname === `/project/${project.id}`
-                              ? 'bg-accent text-foreground font-medium'
-                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                          )}
-                        >
-                          <button
-                            onClick={() => {
-                              onSelectProject(project.id)
-                              router.push(`/project/${project.id}`)
-                            }}
-                            className="flex items-center gap-2 flex-1 text-left min-w-0"
-                          >
-                            <div
-                              className="w-3 h-3 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: project.color || '#94a3b8' }}
-                            />
-                            <span className="truncate flex-1 min-w-0">{project.name}</span>
-                            {project.category === 'archived' && (
-                          <span className="text-xs text-muted-foreground flex-shrink-0">{t('dashboard.archived')}</span>
-                        )}
-                          </button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <button
-                                className="opacity-60 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition-opacity flex-shrink-0"
-                                onClick={(e) => e.stopPropagation()}
-                                title={t('sidebar.project_options')}
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleToggleFavorite(project.id, favoriteProjectIds.has(project.id))}>
-                                {favoriteProjectIds.has(project.id) ? (
-                                  <>
-                                    <Star className="w-4 h-4 mr-2 fill-amber-400 text-amber-500" />
-                                    {t('sidebar.remove_from_favorites')}
-                                  </>
-                                ) : (
-                                  <>
-                                    <Star className="w-4 h-4 mr-2" />
-                                    {t('sidebar.add_to_favorites')}
-                                  </>
-                                )}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setEditingProject(project)}>
-                                <Edit className="w-4 h-4 mr-2" />
-                                {t('sidebar.edit_project')}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {project.category === 'archived' ? (
-                                <DropdownMenuItem onClick={() => handleArchive(project)}>
-                                  <ArchiveRestore className="w-4 h-4 mr-2" />
-                                  {t('sidebar.unarchive')}
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem onClick={() => handleArchive(project)}>
-                                  <Archive className="w-4 h-4 mr-2" />
-                                  {t('sidebar.archive')}
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(project)}
-                                className="text-red-600 focus:text-red-600"
-                                disabled={isDeleting === project.id}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                {isDeleting === project.id ? t('projects.deleting') : t('common.delete')}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
           </div>
+
+          {canCollapse && (
+            <div className="mt-auto pt-4 border-t border-border flex-shrink-0">
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleCollapsed(); }}
+                className={cn(
+                  'w-full flex items-center rounded-md text-sm transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2'
+                )}
+                aria-label={isCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
+                title={isCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
+              >
+                {isCollapsed ? (
+                  <PanelLeftOpen className="w-4 h-4 flex-shrink-0" />
+                ) : (
+                  <>
+                    <PanelLeftClose className="w-4 h-4 flex-shrink-0" />
+                    {t('sidebar.collapse')}
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
       {editingProject && (

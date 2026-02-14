@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/components/I18nProvider'
 import { Plus, List, Trash2, Archive, ArchiveRestore } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TodoList } from '@/lib/todo/lists'
@@ -32,6 +33,7 @@ export default function TodoListsPanel({
   showArchived,
   onShowArchivedChange,
 }: TodoListsPanelProps) {
+  const { t } = useI18n()
   const [projects, setProjects] = useState<Project[]>([])
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -82,10 +84,6 @@ export default function TodoListsPanel({
 
   const handleDelete = async (listId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!confirm('Delete this list? All items will be deleted too.')) {
-      return
-    }
-
     setDeletingId(listId)
     const result = await deleteTodoListAction(listId)
     setDeletingId(null)

@@ -4,19 +4,19 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import KanbanBoard from './KanbanBoard'
-import Sidebar from './Sidebar'
 import TopBar from './TopBar'
-import RightPanel from './RightPanel'
+import { ProjectResourcesPanel } from './ProjectResourcesPanel'
 import { signOut } from '@/app/actions/auth'
 import { useRouter } from 'next/navigation'
 import { SelectionActionBar } from './SelectionActionBar'
+import { AddTaskModal } from './AddTaskModal'
 import { deleteTasksByIds } from '@/app/actions/tasks'
-import { getNotes } from '@/app/notes/actions'
 import { cn } from '@/lib/utils'
+import { Plus, FolderOpen } from 'lucide-react'
+import { useI18n } from '@/components/I18nProvider'
 
 type Project = Database['public']['Tables']['projects']['Row']
 type Task = Database['public']['Tables']['tasks']['Row']
-type Note = Database['public']['Tables']['notes']['Row']
 
 interface ProjectKanbanClientProps {
   projectId: string
@@ -33,8 +33,10 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
-  const [projectNotes, setProjectNotes] = useState<Note[]>([])
+  const [resourcesPanelOpen, setResourcesPanelOpen] = useState(true)
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
   const router = useRouter()
+  const { t } = useI18n()
 
   const supabase = createClient()
 
@@ -113,13 +115,11 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
       supabase.from('projects').select('*').eq('id', projectId).single(),
       supabase.from('tasks').select('*').eq('project_id', projectId).order('order_index', { ascending: true }),
     ])
-    const notesRes = await getNotes({ projectId })
 
     if (projectsRes?.data) setProjects(projectsRes.data as Project[])
     const projectData = (projectRes as { data?: Project } | null)?.data
     if (projectData) setCurrentProject(projectData)
     if (tasksRes?.data) setTasks(tasksRes.data as Task[])
-    setProjectNotes(notesRes)
 
     setLoading(false)
   }, [supabase, projectId])
@@ -132,17 +132,6 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
   })
-
-  const today = new Date().toISOString().split('T')[0]
-  const todayTasks = filteredTasks.filter(task => {
-    if (!task.due_date) return false
-    return task.due_date <= today && task.status !== 'done'
-  })
-
-  const nextUpTasks = filteredTasks
-    .filter(task => task.status === 'next')
-    .sort((a, b) => b.priority - a.priority)
-    .slice(0, 5)
 
   if (loading) {
     return (
@@ -161,24 +150,8 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar
-        projects={projects}
-        selectedProject={projectId}
-        selectedCategory={selectedCategory}
-        showArchived={showArchived}
-        onSelectProject={(id) => {
-          if (id) {
-            router.push(`/project/${id}`)
-          } else {
-            router.push('/dashboard')
-          }
-        }}
-        onCategoryChange={setSelectedCategory}
-        onShowArchivedChange={setShowArchived}
-        onProjectUpdated={loadData}
-      />
-      <div className="flex-1 flex flex-col">
+    <div className="flex flex-col h-screen bg-background">
+      <div className="flex-1 flex flex-col min-h-0">
         <TopBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -195,6 +168,9 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
               enterSelectionMode()
             }
           }}
+          resourcesInSidebar
+          backHref="/dashboard"
+          backLabel={t('sidebar.dashboard')}
         />
         <div className="flex-1 flex overflow-hidden">
           <div className={cn("flex-1 overflow-x-auto", selectionMode && "pb-20")}>
@@ -208,13 +184,25 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
               onToggleSelection={toggleTaskSelection}
             />
           </div>
-          <RightPanel
-            todayTasks={todayTasks}
-            nextUpTasks={nextUpTasks}
-            projects={projects}
-            projectId={projectId}
-            projectNotes={projectNotes}
-          />
+          <div className="hidden lg:flex flex-shrink-0">
+            {resourcesPanelOpen ? (
+              <ProjectResourcesPanel
+                projectId={projectId}
+                projectName={currentProject.name}
+                onCollapse={() => setResourcesPanelOpen(false)}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setResourcesPanelOpen(true)}
+                className="w-10 flex-shrink-0 bg-card border-l border-border flex flex-col items-center justify-center py-4 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                aria-label={t('resources.title')}
+                title={t('resources.title')}
+              >
+                <FolderOpen className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
         {selectionMode && (
           <SelectionActionBar
@@ -224,6 +212,28 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
             isDeleting={isDeleting}
           />
         )}
+
+        {!selectionMode && (
+          <button
+            type="button"
+            onClick={() => setIsAddTaskOpen(true)}
+            aria-label={t('kanban.add_task')}
+            className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
+          >
+            <Plus className="h-6 w-6" />
+          </button>
+        )}
+
+        <AddTaskModal
+          isOpen={isAddTaskOpen}
+          onClose={() => setIsAddTaskOpen(false)}
+          onTaskAdded={() => {
+            loadData()
+            setIsAddTaskOpen(false)
+          }}
+          defaultProjectId={projectId}
+          defaultStatus="next"
+        />
       </div>
     </div>
   )

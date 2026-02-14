@@ -74,70 +74,63 @@ export function EditBusinessModal({ business, isOpen, onClose, onUpdated }: Edit
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3">
           {error && (
-            <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>
+            <div className="bg-destructive/10 text-destructive text-sm p-2.5 rounded-md">{error}</div>
           )}
           <div>
-            <Label htmlFor="eb-name">{t('businesses.name_label')}</Label>
-            <Input id="eb-name" name="name" defaultValue={business.name} required />
+            <Label htmlFor="eb-name" className="text-sm">{t('businesses.name_label')}</Label>
+            <Input id="eb-name" name="name" defaultValue={business.name} required className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="eb-tagline">{t('businesses.tagline_label')}</Label>
-            <Input id="eb-tagline" name="tagline" defaultValue={business.tagline ?? ''} />
+            <Label htmlFor="eb-tagline" className="text-sm">{t('businesses.tagline_label')}</Label>
+            <Input id="eb-tagline" name="tagline" defaultValue={business.tagline ?? ''} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="eb-description">{t('businesses.description_label')}</Label>
-            <Textarea id="eb-description" name="description" rows={2} defaultValue={business.description ?? ''} />
+            <Label htmlFor="eb-description" className="text-sm">{t('businesses.description_label')}</Label>
+            <Textarea id="eb-description" name="description" rows={2} defaultValue={business.description ?? ''} className="mt-1 text-sm" />
           </div>
           <div>
-            <Label htmlFor="eb-email">{t('businesses.business_email_label')}</Label>
-            <Input id="eb-email" name="email" type="email" defaultValue={business.email ?? ''} placeholder={t('businesses.business_email_placeholder')} />
+            <Label htmlFor="eb-email" className="text-sm">{t('businesses.business_email_label')}</Label>
+            <Input id="eb-email" name="email" type="email" defaultValue={business.email ?? ''} placeholder={t('businesses.business_email_placeholder')} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="eb-website">{t('businesses.website_label')}</Label>
-            <Input id="eb-website" name="website" type="url" defaultValue={business.website ?? ''} />
+            <Label htmlFor="eb-website" className="text-sm">{t('businesses.website_label')}</Label>
+            <Input id="eb-website" name="website" type="url" defaultValue={business.website ?? ''} className="mt-1 h-9" />
           </div>
           <div>
-            <Label className="mb-2 block">{t('businesses.social_links_label')}</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <Label className="text-sm block mb-1">{t('businesses.social_links_label')}</Label>
+            <div className="space-y-2">
               {(['instagram', 'facebook', 'tiktok', 'youtube'] as const).map((k) => (
-                <Input
-                  key={k}
-                  name={`social_${k}`}
-                  defaultValue={social[k] ?? ''}
-                  placeholder={k.charAt(0).toUpperCase() + k.slice(1)}
-                />
+                <Input key={k} name={`social_${k}`} defaultValue={social[k] ?? ''} placeholder={k.charAt(0).toUpperCase() + k.slice(1)} className="h-9" />
               ))}
             </div>
           </div>
           <div>
-            <Label htmlFor="eb-address_line1">{t('businesses.address_line1_label')}</Label>
-            <Input id="eb-address_line1" name="address_line1" defaultValue={business.address_line1 ?? ''} />
+            <Label htmlFor="eb-address_line1" className="text-sm">{t('businesses.address_line1_label')}</Label>
+            <Input id="eb-address_line1" name="address_line1" defaultValue={business.address_line1 ?? ''} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="eb-address_line2">{t('businesses.address_line2_label')}</Label>
-            <Input id="eb-address_line2" name="address_line2" defaultValue={business.address_line2 ?? ''} />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="eb-city">{t('businesses.city_label')}</Label>
-              <Input id="eb-city" name="city" defaultValue={business.city ?? ''} />
-            </div>
-            <div>
-              <Label htmlFor="eb-state">{t('businesses.state_label')}</Label>
-              <Input id="eb-state" name="state" defaultValue={business.state ?? ''} />
-            </div>
-            <div>
-              <Label htmlFor="eb-postal_code">{t('businesses.postal_code_label')}</Label>
-              <Input id="eb-postal_code" name="postal_code" defaultValue={business.postal_code ?? ''} />
-            </div>
+            <Label htmlFor="eb-address_line2" className="text-sm">{t('businesses.address_line2_label')}</Label>
+            <Input id="eb-address_line2" name="address_line2" defaultValue={business.address_line2 ?? ''} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="eb-notes">{t('businesses.notes_label')}</Label>
-            <Textarea id="eb-notes" name="notes" rows={2} defaultValue={business.notes ?? ''} />
+            <Label htmlFor="eb-city" className="text-sm">{t('businesses.city_label')}</Label>
+            <Input id="eb-city" name="city" defaultValue={business.city ?? ''} className="mt-1 h-9" />
           </div>
-          <div className="flex gap-3 pt-4">
+          <div>
+            <Label htmlFor="eb-state" className="text-sm">{t('businesses.state_label')}</Label>
+            <Input id="eb-state" name="state" defaultValue={business.state ?? ''} className="mt-1 h-9" />
+          </div>
+          <div>
+            <Label htmlFor="eb-postal_code" className="text-sm">{t('businesses.postal_code_label')}</Label>
+            <Input id="eb-postal_code" name="postal_code" defaultValue={business.postal_code ?? ''} className="mt-1 h-9" />
+          </div>
+          <div>
+            <Label htmlFor="eb-notes" className="text-sm">{t('businesses.notes_label')}</Label>
+            <Textarea id="eb-notes" name="notes" rows={2} defaultValue={business.notes ?? ''} className="mt-1 text-sm" />
+          </div>
+          <div className="flex gap-2 pt-3">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
               {t('common.cancel')}
             </button>

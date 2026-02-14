@@ -74,28 +74,26 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3">
           {error && (
-            <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>
+            <div className="bg-destructive/10 text-destructive text-sm p-2.5 rounded-md">{error}</div>
           )}
           <div>
-            <Label htmlFor="full_name">{t('clients.full_name')}</Label>
-            <Input id="full_name" name="full_name" required placeholder={t('clients.full_name_placeholder')} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="phone">{t('clients.phone')}</Label>
-              <Input id="phone" name="phone" type="tel" placeholder="+1 234 567 8900" />
-            </div>
-            <div>
-              <Label htmlFor="email">{t('auth.email')}</Label>
-              <Input id="email" name="email" type="email" placeholder="jane@example.com" />
-            </div>
+            <Label htmlFor="full_name" className="text-sm">{t('clients.full_name')}</Label>
+            <Input id="full_name" name="full_name" required placeholder={t('clients.full_name_placeholder')} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="gender">{t('clients.gender')}</Label>
+            <Label htmlFor="phone" className="text-sm">{t('clients.phone')}</Label>
+            <Input id="phone" name="phone" type="tel" placeholder="+1 234 567 8900" className="mt-1 h-9" />
+          </div>
+          <div>
+            <Label htmlFor="email" className="text-sm">{t('auth.email')}</Label>
+            <Input id="email" name="email" type="email" placeholder="jane@example.com" className="mt-1 h-9" />
+          </div>
+          <div>
+            <Label htmlFor="gender" className="text-sm">{t('clients.gender')}</Label>
             <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger id="gender">
+              <SelectTrigger id="gender" className="mt-1 h-9">
                 <SelectValue placeholder={t('common.select')} />
               </SelectTrigger>
               <SelectContent>
@@ -106,36 +104,34 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
             </Select>
           </div>
           <div>
-            <Label htmlFor="address_line1">{t('clients.address_line1')}</Label>
-            <Input id="address_line1" name="address_line1" placeholder={t('clients.address_placeholder')} />
+            <Label htmlFor="address_line1" className="text-sm">{t('clients.address_line1')}</Label>
+            <Input id="address_line1" name="address_line1" placeholder={t('clients.address_placeholder')} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="address_line2">{t('clients.address_line2')}</Label>
-            <Input id="address_line2" name="address_line2" placeholder={t('clients.apt_placeholder')} />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="city">{t('clients.city')}</Label>
-              <Input id="city" name="city" />
-            </div>
-            <div>
-              <Label htmlFor="state">{t('clients.state')}</Label>
-              <Input id="state" name="state" />
-            </div>
-            <div>
-              <Label htmlFor="postal_code">{t('clients.postal_code')}</Label>
-              <Input id="postal_code" name="postal_code" />
-            </div>
+            <Label htmlFor="address_line2" className="text-sm">{t('clients.address_line2')}</Label>
+            <Input id="address_line2" name="address_line2" placeholder={t('clients.apt_placeholder')} className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="preferences">{t('clients.preferences')}</Label>
-            <Textarea id="preferences" name="preferences" rows={2} placeholder={t('clients.optional')} />
+            <Label htmlFor="city" className="text-sm">{t('clients.city')}</Label>
+            <Input id="city" name="city" className="mt-1 h-9" />
           </div>
           <div>
-            <Label htmlFor="notes">{t('clients.notes')}</Label>
-            <Textarea id="notes" name="notes" rows={3} placeholder={t('clients.optional')} />
+            <Label htmlFor="state" className="text-sm">{t('clients.state')}</Label>
+            <Input id="state" name="state" className="mt-1 h-9" />
           </div>
-          <div className="flex gap-3 pt-4">
+          <div>
+            <Label htmlFor="postal_code" className="text-sm">{t('clients.postal_code')}</Label>
+            <Input id="postal_code" name="postal_code" className="mt-1 h-9" />
+          </div>
+          <div>
+            <Label htmlFor="preferences" className="text-sm">{t('clients.preferences')}</Label>
+            <Textarea id="preferences" name="preferences" rows={2} placeholder={t('clients.optional')} className="mt-1 text-sm" />
+          </div>
+          <div>
+            <Label htmlFor="notes" className="text-sm">{t('clients.notes')}</Label>
+            <Textarea id="notes" name="notes" rows={2} placeholder={t('clients.optional')} className="mt-1 text-sm" />
+          </div>
+          <div className="flex gap-2 pt-3">
             <button
               type="button"
               onClick={onClose}

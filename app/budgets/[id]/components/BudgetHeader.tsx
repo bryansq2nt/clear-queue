@@ -22,9 +22,11 @@ interface BudgetHeaderProps {
     progress: number
   }
   onUpdated: () => void
+  /** When true, back button and h1 are omitted (used inside DetailLayout) */
+  compact?: boolean
 }
 
-export function BudgetHeader({ budget, projects, stats, onUpdated }: BudgetHeaderProps) {
+export function BudgetHeader({ budget, projects, stats, onUpdated, compact }: BudgetHeaderProps) {
   const { t, formatCurrency: formatCurr } = useI18n()
   const router = useRouter()
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -37,49 +39,68 @@ export function BudgetHeader({ budget, projects, stats, onUpdated }: BudgetHeade
     }).format(amount)
   }
 
+  const editButton = (
+    <button
+      onClick={() => setIsEditOpen(true)}
+      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+      aria-label={t('common.edit')}
+    >
+      <Edit2 className="w-5 h-5 text-gray-500" />
+    </button>
+  )
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
-      {/* Back button + Title */}
-      <div className="flex items-start justify-between mb-6">
-        <div className="flex-1">
-          <button
-            onClick={() => router.push('/budgets')}
-            className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            {t('budgets.back_to_budgets')}
-          </button>
-
-          <div className="flex items-start gap-4">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                {budget.name}
-              </h1>
-              
-              {budget.description && (
-                <p className="text-gray-600 dark:text-gray-400">
-                  {budget.description}
-                </p>
-              )}
-
-              {budget.projects && (
-                <div className="mt-3">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                    📁 {budget.projects.name}
-                  </span>
-                </div>
-              )}
-            </div>
-
+    <div className="bg-card rounded-lg shadow-sm border border-border p-4 sm:p-6 mb-4 sm:mb-6">
+      {!compact && (
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex-1">
             <button
-              onClick={() => setIsEditOpen(true)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              onClick={() => router.push('/budgets')}
+              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
             >
-              <Edit2 className="w-5 h-5 text-gray-500" />
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              {t('budgets.back_to_budgets')}
             </button>
+
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
+                  {budget.name}
+                </h1>
+                {budget.description && (
+                  <p className="text-muted-foreground">
+                    {budget.description}
+                  </p>
+                )}
+                {budget.projects && (
+                  <div className="mt-3">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary">
+                      📁 {budget.projects.name}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {editButton}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {compact && (
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="min-w-0 flex-1">
+            {budget.description && (
+              <p className="text-sm text-muted-foreground">{budget.description}</p>
+            )}
+            {budget.projects && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary mt-2">
+                📁 {budget.projects.name}
+              </span>
+            )}
+          </div>
+          {editButton}
+        </div>
+      )}
 
       <EditBudgetModal
         isOpen={isEditOpen}

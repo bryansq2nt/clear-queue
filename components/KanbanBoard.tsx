@@ -22,6 +22,19 @@ type Task = Database['public']['Tables']['tasks']['Row']
 type Project = Database['public']['Tables']['projects']['Row']
 
 const STATUSES: Task['status'][] = ['backlog', 'next', 'in_progress', 'blocked', 'done']
+const LARGE_SCREEN_BREAKPOINT = 1024
+
+function useIsLargeScreen() {
+  const [isLarge, setIsLarge] = useState(typeof window !== 'undefined' ? window.innerWidth >= LARGE_SCREEN_BREAKPOINT : true)
+  useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${LARGE_SCREEN_BREAKPOINT}px)`)
+    const handler = () => setIsLarge(mql.matches)
+    handler()
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [])
+  return isLarge
+}
 
 interface KanbanBoardProps {
   tasks: Task[]
@@ -43,10 +56,20 @@ export default function KanbanBoard({
   onToggleSelection,
 }: KanbanBoardProps) {
   const { t } = useI18n()
+  const isLargeScreen = useIsLargeScreen()
   // Get project ID from tasks if not provided
   const projectId = currentProjectId || (tasks.length > 0 ? tasks[0].project_id : '')
   const [activeId, setActiveId] = useState<string | null>(null)
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks)
+  const [openSections, setOpenSections] = useState<Set<Task['status']>>(() => new Set(STATUSES))
+  const toggleSection = (status: Task['status']) => {
+    setOpenSections(prev => {
+      const next = new Set(prev)
+      if (next.has(status)) next.delete(status)
+      else next.add(status)
+      return next
+    })
+  }
 
   // Disable drag sensors when in selection mode
   const sensors = useSensors(
@@ -148,7 +171,11 @@ export default function KanbanBoard({
       onDragStart={selectionMode ? undefined : handleDragStart}
       onDragEnd={selectionMode ? undefined : handleDragEnd}
     >
-      <div className={cn("flex gap-4 p-6 min-h-full", selectionMode && "select-none")}>
+      <div className={cn(
+          "flex p-6 min-h-full",
+          isLargeScreen ? "flex-row gap-4" : "flex-col gap-0",
+          selectionMode && "select-none"
+        )}>
         {STATUSES.map(status => {
           const columnTasks = optimisticTasks
             .filter(t => t.status === status)
@@ -171,6 +198,9 @@ export default function KanbanBoard({
               projects={projects}
               onTaskUpdate={onTaskUpdate}
               currentProjectId={projectId}
+              accordion={!isLargeScreen}
+              isExpanded={openSections.has(status)}
+              onToggle={() => toggleSection(status)}
             />
           )
         })}

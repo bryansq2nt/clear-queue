@@ -6,9 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
-import Sidebar from '@/components/Sidebar'
-import TopBar from '@/components/TopBar'
-import { signOut } from '@/app/actions/auth'
+import { DetailLayout } from '@/components/DetailLayout'
 import {
   createTodoItemAction,
   toggleTodoItemAction,
@@ -179,40 +177,48 @@ export default function ListBoardClient({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <TopBar
-        searchQuery=""
-        onSearchChange={() => {}}
-        onSignOut={() => signOut()}
-        onProjectAdded={loadProjects}
-        onProjectUpdated={loadProjects}
-        projectName={listTitle}
-        currentProject={null}
-      />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          projects={projects}
-          selectedProject={null}
-          selectedCategory={null}
-          showArchived={false}
-          onSelectProject={() => {}}
-          onCategoryChange={() => {}}
-          onShowArchivedChange={() => {}}
-          onProjectUpdated={loadProjects}
-        />
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-5xl mx-auto w-full px-6 py-6">
-            <div className="sticky top-0 z-10 -mx-6 px-6 py-3 bg-background/95 backdrop-blur border-b border-border space-y-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <Link
-                  href="/todo"
-                  className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  {t('todo.back_to_todo')}
-                </Link>
-              </div>
-              <div className="flex flex-wrap items-center gap-4">
+    <DetailLayout
+      backHref="/todo"
+      backLabel={t('todo.back_to_todo')}
+      title={listTitle}
+      actions={
+        <>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground hidden sm:inline">{t('todo.project_label')}</span>
+            <Select
+              value={projectId ?? 'none'}
+              onValueChange={handleProjectChange}
+              disabled={savingProject}
+            >
+              <SelectTrigger className="w-[140px] sm:w-[180px] h-9">
+                <SelectValue placeholder={t('billings.no_project')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t('billings.no_project')}</SelectItem>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <button
+            type="button"
+            onClick={handleDeleteList}
+            disabled={deletingList}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/50 text-destructive px-3 py-1.5 text-sm font-medium hover:bg-destructive/10 disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            {t('todo.delete_list')}
+          </button>
+        </>
+      }
+      contentClassName="px-4 sm:px-6 py-4"
+    >
+      <div className="max-w-5xl mx-auto w-full">
+        <div className="border-b border-border pb-4 mb-4">
+          <div className="flex flex-wrap items-center gap-4">
                 {editingTitle ? (
                   <input
                     type="text"
@@ -239,40 +245,11 @@ export default function ListBoardClient({
                     {listTitle}
                   </button>
                 )}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-500 dark:text-slate-400">{t('todo.project_label')}</span>
-                  <Select
-                    value={projectId ?? 'none'}
-                    onValueChange={handleProjectChange}
-                    disabled={savingProject}
-                  >
-                    <SelectTrigger className="w-[180px] h-9">
-                      <SelectValue placeholder={t('billings.no_project')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">{t('billings.no_project')}</SelectItem>
-                      {projects.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDeleteList}
-                  disabled={deletingList}
-                  className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  {t('todo.delete_list')}
-                </button>
               </div>
             </div>
 
-            {error && (
-              <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>
+        {error && (
+              <p className="mt-3 text-sm text-destructive">{error}</p>
             )}
 
             <form onSubmit={handleAddTask} className="mt-6">
@@ -315,10 +292,8 @@ export default function ListBoardClient({
                 </ul>
               )}
             </div>
-          </div>
-        </div>
       </div>
-    </div>
+    </DetailLayout>
   )
 }
 

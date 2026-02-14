@@ -55,6 +55,7 @@ function NotesPageContent() {
   const [notes, setNotes] = useState<Note[]>([])
   const [projectFilter, setProjectFilter] = useState<string>(projectIdFromUrl || 'all')
   const [isLoading, setIsLoading] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -115,6 +116,7 @@ function NotesPageContent() {
         onProjectUpdated={loadProjects}
         projectName={t('notes.title')}
         currentProject={null}
+        onOpenSidebar={() => setSidebarOpen(true)}
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
@@ -126,6 +128,8 @@ function NotesPageContent() {
           onCategoryChange={() => {}}
           onShowArchivedChange={() => {}}
           onProjectUpdated={loadProjects}
+          mobileOpen={sidebarOpen}
+          onMobileClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 overflow-y-auto p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -180,6 +184,7 @@ function NotesPageContent() {
               </button>
             </div>
           ) : (
+            <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {notes.map((note) => (
                 <div
@@ -234,6 +239,15 @@ function NotesPageContent() {
                 </div>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => router.push('/notes/new')}
+              aria-label={t('notes.new_note')}
+              className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
+            >
+              <Plus className="h-6 w-6" />
+            </button>
+            </>
           )}
         </div>
       </div>

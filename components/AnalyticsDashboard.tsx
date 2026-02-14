@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useI18n } from '@/components/I18nProvider'
-import { CheckCircle, AlertCircle, AlertTriangle, TrendingUp, Calendar, LogOut, Plus } from 'lucide-react'
+import { CheckCircle, AlertCircle, AlertTriangle, TrendingUp, Calendar, Menu } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import Sidebar from './Sidebar'
-import { AddProjectModal } from './AddProjectModal'
-import { Button } from './ui/button'
 import DashboardFocusTasksSection from './dashboard/DashboardFocusTasksSection'
 
 type Project = Database['public']['Tables']['projects']['Row']
@@ -163,7 +161,7 @@ export default function AnalyticsDashboard() {
     const [showArchived, setShowArchived] = useState(false)
     const [loading, setLoading] = useState(true)
     const [mounted, setMounted] = useState(false)
-    const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false)
+    const [sidebarOpen, setSidebarOpen] = useState(false)
 
     useEffect(() => {
         setMounted(true)
@@ -227,38 +225,24 @@ export default function AnalyticsDashboard() {
                 onProjectUpdated={() => {
                     loadDashboardData()
                 }}
+                mobileOpen={sidebarOpen}
+                onMobileClose={() => setSidebarOpen(false)}
             />
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* 1. TOP NAVIGATION BAR */}
                 <div className="bg-primary text-primary-foreground shadow-xl">
-                    <div className="px-6 py-4 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <h1 className="text-xl font-bold">Mutech Labs - {t('dashboard.title')}</h1>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <Button
-                                onClick={() => setIsAddProjectModalOpen(true)}
-                                variant="default"
-                                size="sm"
-                                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-                            >
-                                <Plus className="w-4 h-4 mr-2" />
-                                {t('dashboard.create_project')}
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={async () => {
-                                    await supabase.auth.signOut()
-                                    router.push('/')
-                                }}
-                                className="text-primary-foreground hover:bg-primary/80"
-                            >
-                                <LogOut className="w-4 h-4" />
-                            </Button>
-                        </div>
+                    <div className="px-4 md:px-6 py-4 flex items-center gap-2 min-w-0">
+                        <button
+                            type="button"
+                            onClick={() => setSidebarOpen(true)}
+                            className="md:hidden flex-shrink-0 p-2 rounded-lg hover:bg-primary-foreground/10 focus:outline-none focus:ring-2 focus:ring-primary-foreground/50"
+                            aria-label={t('sidebar.navigation')}
+                        >
+                            <Menu className="w-5 h-5" />
+                        </button>
+                        <h1 className="text-xl font-bold truncate min-w-0">Mutech Labs - {t('dashboard.title')}</h1>
                     </div>
                 </div>
 
@@ -271,20 +255,20 @@ export default function AnalyticsDashboard() {
                         <>
 
 
-                            {/* 3. KPI CARDS ROW */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {/* 3. KPI CARDS ROW - 2x2 on mobile/tablet, 4 in a row on large */}
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                                 {kpiData.map((kpi, index) => {
                                     const Icon = kpi.icon
                                     return (
                                         <div
                                             key={index}
-                                            className={`${kpi.color} rounded-lg shadow p-6 text-white hover:shadow-lg transition-shadow`}
+                                            className={`${kpi.color} rounded-lg shadow p-4 sm:p-6 text-white hover:shadow-lg transition-shadow`}
                                         >
-                                            <div className="flex items-center justify-between mb-2">
-                                                <Icon className="w-8 h-8" />
-                                                <div className="text-right">
-                                                    <div className="text-3xl font-bold">{kpi.value}</div>
-                                                    <div className="text-sm opacity-90">{kpi.label}</div>
+                                            <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2">
+                                                <Icon className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
+                                                <div className="text-right min-w-0">
+                                                    <div className="text-2xl sm:text-3xl font-bold">{kpi.value}</div>
+                                                    <div className="text-xs sm:text-sm opacity-90 truncate">{kpi.label}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -294,72 +278,6 @@ export default function AnalyticsDashboard() {
 
                             {/* DASHBOARD FOCUS TASKS SECTION */}
                             <DashboardFocusTasksSection />
-
-                            {/* 2. PROJECT HEALTH OVERVIEW */}
-                            <div className="bg-card rounded-lg shadow p-6 border border-border">
-                                <h2 className="text-xl font-bold text-foreground mb-4">{t('dashboard.project_health_overview')}</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {dashboardData.projectHealthData.map((project) => (
-                                        <div
-                                            key={project.id}
-                                            onClick={() => router.push(`/project/${project.id}`)}
-                                            className="border border-border rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer bg-background hover:bg-accent/50"
-                                        >
-                                            <div className="flex items-center justify-between mb-3">
-                                                <div className="flex items-center gap-2">
-                                                    <div
-                                                        className="w-4 h-4 rounded-full"
-                                                        style={{ backgroundColor: project.color }}
-                                                    />
-                                                    <h3 className="font-semibold text-foreground">{project.name}</h3>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-muted-foreground">{t(`categories.${project.category}`)}</span>
-                                                    {project.category === 'archived' && (
-                                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                                                            {t('dashboard.archived')}
-                                                        </span>
-                                                    )}
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${healthBadges[project.health as keyof typeof healthBadges]}`}>
-                                                        {t(`dashboard.health_${project.health.toLowerCase()}`)}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
-                                                <div>
-                                                    <span className="text-muted-foreground">{t('dashboard.total')}:</span>
-                                                    <span className="font-semibold ml-1">{project.total}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground">{t('dashboard.critical')}:</span>
-                                                    <span className="font-semibold ml-1 text-red-600 dark:text-red-400">{project.critical}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground">{t('dashboard.blocked')}:</span>
-                                                    <span className="font-semibold ml-1 text-orange-600 dark:text-orange-400">{project.blocked}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground">{t('dashboard.completed_label')}:</span>
-                                                    <span className="font-semibold ml-1 text-green-600 dark:text-green-400">{project.completed}</span>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                                                    <span>{t('dashboard.progress')}</span>
-                                                    <span>{project.completion}%</span>
-                                                </div>
-                                                <div className="w-full bg-muted rounded-full h-2">
-                                                    <div
-                                                        className="bg-blue-600 h-2 rounded-full transition-all"
-                                                        style={{ width: `${project.completion}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
 
                             {/* 6. BOTTOM ROW */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -436,14 +354,6 @@ export default function AnalyticsDashboard() {
                     )}
                 </div>
             </div>
-            <AddProjectModal
-                isOpen={isAddProjectModalOpen}
-                onClose={() => setIsAddProjectModalOpen(false)}
-                onProjectAdded={() => {
-                    loadDashboardData()
-                    setIsAddProjectModalOpen(false)
-                }}
-            />
         </div>
     )
 }

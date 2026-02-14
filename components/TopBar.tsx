@@ -3,57 +3,93 @@
 import { Database } from '@/lib/supabase/types'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
-import { Search, LogOut, CheckSquare, FileText } from 'lucide-react'
+import Link from 'next/link'
+import { Search, LogOut, CheckSquare, FileText, FolderOpen, Menu, ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import { AddProjectModal } from './AddProjectModal'
 import { EditProjectModal } from './EditProjectModal'
+import { ProjectResourcesModal } from './ProjectResourcesModal'
 import { useI18n } from '@/components/I18nProvider'
+import { cn } from '@/lib/utils'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
 interface TopBarProps {
-  searchQuery: string
-  onSearchChange: (query: string) => void
+  searchQuery?: string
+  onSearchChange?: (query: string) => void
   onSignOut: () => void
-  onProjectAdded: () => void
-  onProjectUpdated: () => void
+  onProjectAdded?: () => void
+  onProjectUpdated?: () => void
   projectName: string
   currentProject?: Project | null
   selectionMode?: boolean
   onToggleSelectionMode?: () => void
+  onOpenSidebar?: () => void
+  resourcesInSidebar?: boolean
+  /** Detail view: back link + title only, no sidebar menu, no task search */
+  backHref?: string
+  backLabel?: string
+  /** Optional actions (e.g. Edit, Delete) shown in header when in detail view */
+  actions?: React.ReactNode
 }
 
 export default function TopBar({
-  searchQuery,
-  onSearchChange,
+  searchQuery = '',
+  onSearchChange = () => {},
   onSignOut,
-  onProjectAdded,
-  onProjectUpdated,
+  onProjectAdded = () => {},
+  onProjectUpdated = () => {},
   projectName,
   currentProject,
   selectionMode = false,
   onToggleSelectionMode,
+  onOpenSidebar,
+  resourcesInSidebar = false,
+  backHref,
+  backLabel,
+  actions,
 }: TopBarProps) {
+  const isDetailView = !!backHref
   const { t } = useI18n()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false)
+  const [isResourcesModalOpen, setIsResourcesModalOpen] = useState(false)
 
   return (
     <>
-      <div className="bg-primary text-primary-foreground shadow-xl">
-        <div className="px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold">{projectName} - {t('topbar.task_board')}</h1>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-primary-foreground/70" />
-              <Input
-                placeholder={t('topbar.search_tasks')}
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-10 bg-primary/80 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/60 w-64"
-              />
-            </div>
+      <div className="bg-primary text-primary-foreground shadow-xl flex-shrink-0">
+        <div className="px-4 md:px-6 py-3 md:py-4 flex flex-col gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            {backHref && backLabel && (
+              <Link
+                href={backHref}
+                className="flex-shrink-0 inline-flex items-center gap-1.5 text-sm text-primary-foreground/90 hover:text-primary-foreground py-1 pr-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline truncate max-w-[120px]">{backLabel}</span>
+              </Link>
+            )}
+            {onOpenSidebar && !backHref && (
+              <button
+                type="button"
+                onClick={onOpenSidebar}
+                className="md:hidden flex-shrink-0 p-2 rounded-lg hover:bg-primary-foreground/10 focus:outline-none focus:ring-2 focus:ring-primary-foreground/50"
+                aria-label={t('sidebar.navigation')}
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+            <h1 className="text-base md:text-xl font-bold truncate min-w-0 flex-1">
+              {backHref ? projectName : `${projectName} – ${t('topbar.task_board')}`}
+            </h1>
+            {isDetailView && actions != null && (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {actions}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
             {onToggleSelectionMode && (
               <Button
                 onClick={onToggleSelectionMode}
@@ -61,19 +97,31 @@ export default function TopBar({
                 size="sm"
                 className={selectionMode ? "bg-primary-foreground text-primary hover:bg-primary-foreground/90" : "bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"}
               >
-                <CheckSquare className="w-4 h-4 mr-2" />
-                {selectionMode ? t('topbar.cancel_selection') : t('topbar.select')}
+                <CheckSquare className="w-4 h-4 md:mr-2" />
+                <span className="hidden md:inline">{selectionMode ? t('topbar.cancel_selection') : t('topbar.select')}</span>
               </Button>
             )}
             {currentProject ? (
               <>
+                <Button
+                  onClick={() => setIsResourcesModalOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90",
+                    resourcesInSidebar && "lg:hidden"
+                  )}
+                >
+                  <FolderOpen className="w-4 h-4 md:mr-2" />
+                  {t('resources.title')}
+                </Button>
                 <Button
                   onClick={() => setIsNotesModalOpen(true)}
                   variant="outline"
                   size="sm"
                   className="bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"
                 >
-                  <FileText className="w-4 h-4 mr-2" />
+                  <FileText className="w-4 h-4 md:mr-2" />
                   {t('sidebar.notes')}
                 </Button>
                 <Button
@@ -85,7 +133,7 @@ export default function TopBar({
                   {t('topbar.edit_project')}
                 </Button>
               </>
-            ) : (
+            ) : !isDetailView ? (
               <Button
                 onClick={() => setIsAddModalOpen(true)}
                 variant="default"
@@ -94,11 +142,22 @@ export default function TopBar({
               >
                 {t('topbar.add_project')}
               </Button>
-            )}
-            <Button variant="ghost" size="icon" onClick={() => onSignOut()} className="text-primary-foreground hover:bg-primary/80">
+            ) : null}
+            <Button variant="ghost" size="icon" onClick={() => onSignOut()} className="text-primary-foreground hover:bg-primary/80" aria-label="Sign out">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
+          {!isDetailView && (
+            <div className="relative min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-foreground/70" />
+              <Input
+                placeholder={t('topbar.search_tasks')}
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="pl-10 bg-primary/80 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/60 w-full max-w-md"
+              />
+            </div>
+          )}
         </div>
       </div>
       {currentProject ? (
@@ -121,6 +180,12 @@ export default function TopBar({
             }}
             project={currentProject}
             defaultTab="notes"
+          />
+          <ProjectResourcesModal
+            isOpen={isResourcesModalOpen}
+            onClose={() => setIsResourcesModalOpen(false)}
+            projectId={currentProject.id}
+            projectName={currentProject.name}
           />
         </>
       ) : (

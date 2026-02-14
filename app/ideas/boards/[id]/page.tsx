@@ -3,7 +3,6 @@ import { getBoardById, listBoardItems } from '@/lib/idea-graph/boards'
 import { listIdeas } from '@/lib/idea-graph/ideas'
 import { deleteBoardAction, addIdeaToBoardAction } from '../actions'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import BoardDetailClient from './BoardDetailClient'
 
 export default async function BoardDetailPage({
@@ -32,21 +31,10 @@ export default async function BoardDetailPage({
   }))
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <div className="mb-4">
-        <Link
-          href="/ideas/boards"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← Back to Boards
-        </Link>
-      </div>
-
-      <BoardDetailClient
-        board={board}
-        boardItems={itemsWithIdeas}
-        availableIdeas={allIdeas}
-      />
-    </div>
+    <BoardDetailClient
+      board={board}
+      boardItems={itemsWithIdeas}
+      availableIdeas={allIdeas}
+    />
   )
 }

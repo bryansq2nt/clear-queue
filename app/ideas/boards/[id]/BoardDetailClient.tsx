@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DetailLayout } from '@/components/DetailLayout'
+import { useI18n } from '@/components/I18nProvider'
 import { deleteBoardAction, addIdeaToBoardAction } from '../actions'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -38,6 +40,7 @@ export default function BoardDetailClient({
   boardItems: BoardItem[]
   availableIdeas: Idea[]
 }) {
+  const { t } = useI18n()
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -85,26 +88,30 @@ export default function BoardDetailClient({
   )
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-lg border p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{board.name}</h1>
-            {board.description && (
-              <p className="text-muted-foreground whitespace-pre-wrap">
-                {board.description}
-              </p>
-            )}
-          </div>
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={isDeleting}
-          >
-            {isDeleting ? 'Deleting...' : 'Delete Board'}
-          </Button>
+    <DetailLayout
+      backHref="/ideas/boards"
+      backLabel={t('ideas.back_to_boards')}
+      title={board.name}
+      actions={
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={handleDelete}
+          disabled={isDeleting}
+        >
+          {isDeleting ? t('common.loading') : t('common.delete')}
+        </Button>
+      }
+      contentClassName="p-4 sm:p-6 max-w-4xl mx-auto"
+    >
+      <div className="space-y-6">
+      {board.description && (
+        <div className="bg-card rounded-lg border border-border p-4">
+          <p className="text-muted-foreground whitespace-pre-wrap text-sm">
+            {board.description}
+          </p>
         </div>
+      )}
         <div className="text-sm text-muted-foreground">
           <p>Created: {new Date(board.created_at).toLocaleString()}</p>
           {board.updated_at !== board.created_at && (
@@ -189,7 +196,7 @@ export default function BoardDetailClient({
       </div>
 
       {/* Board Items */}
-      <div className="bg-white rounded-lg border p-6">
+      <div className="bg-card rounded-lg border border-border p-4 sm:p-6">
         <h2 className="text-xl font-semibold mb-4">Board items</h2>
         {boardItems.length === 0 ? (
           <p className="text-muted-foreground">
@@ -237,6 +244,6 @@ export default function BoardDetailClient({
           </div>
         )}
       </div>
-    </div>
+    </DetailLayout>
   )
 }

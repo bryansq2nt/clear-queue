@@ -4,9 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useI18n } from '@/components/I18nProvider'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
-import Sidebar from '@/components/Sidebar'
-import TopBar from '@/components/TopBar'
-import { signOut } from '@/app/actions/auth'
+import { DetailLayout } from '@/components/DetailLayout'
 import { Plus } from 'lucide-react'
 import { getBudgetWithData, reorderCategories, reorderItems } from './actions'
 import { BudgetHeader } from './components/BudgetHeader'
@@ -266,69 +264,33 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-screen bg-background">
-        <TopBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onSignOut={signOut}
-          onProjectAdded={loadProjects}
-          onProjectUpdated={loadProjects}
-          projectName={budgetData?.budget?.name || 'Budget'}
-          currentProject={null}
-        />
-        <div className="flex-1 flex overflow-hidden">
-          <Sidebar
-            projects={projects}
-            selectedProject={null}
-            selectedCategory={null}
-            showArchived={false}
-            onSelectProject={() => { }}
-            onCategoryChange={() => { }}
-            onShowArchivedChange={() => { }}
-            onProjectUpdated={loadProjects}
-          />
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="animate-pulse space-y-4">
-              <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-              <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-              <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-            </div>
-          </div>
+      <DetailLayout
+        backHref="/budgets"
+        backLabel={t('budgets.back_to_budgets')}
+        title={t('budgets.title')}
+        contentClassName="p-4 sm:p-6"
+      >
+        <div className="animate-pulse space-y-4">
+          <div className="h-48 bg-muted rounded-lg" />
+          <div className="h-32 bg-muted rounded-lg" />
+          <div className="h-32 bg-muted rounded-lg" />
         </div>
-      </div>
+      </DetailLayout>
     )
   }
 
   if (!budgetData) {
     return (
-      <div className="flex flex-col h-screen bg-background">
-        <TopBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onSignOut={signOut}
-          onProjectAdded={loadProjects}
-          onProjectUpdated={loadProjects}
-          projectName="Budget"
-          currentProject={null}
-        />
-        <div className="flex-1 flex overflow-hidden">
-          <Sidebar
-            projects={projects}
-            selectedProject={null}
-            selectedCategory={null}
-            showArchived={false}
-            onSelectProject={() => { }}
-            onCategoryChange={() => { }}
-            onShowArchivedChange={() => { }}
-            onProjectUpdated={loadProjects}
-          />
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
-              <p className="text-red-800 dark:text-red-400">Budget not found</p>
-            </div>
-          </div>
+      <DetailLayout
+        backHref="/budgets"
+        backLabel={t('budgets.back_to_budgets')}
+        title={t('budgets.title')}
+        contentClassName="p-4 sm:p-6"
+      >
+        <div className="bg-destructive/10 border border-destructive rounded-lg p-6 text-center">
+          <p className="text-destructive">Budget not found</p>
         </div>
-      </div>
+      </DetailLayout>
     )
   }
 
@@ -352,38 +314,23 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <TopBar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onSignOut={signOut}
-        onProjectAdded={loadProjects}
-        onProjectUpdated={loadProjects}
-        projectName={budgetData.budget.name}
-        currentProject={null}
-      />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
+    <>
+      <DetailLayout
+        backHref="/budgets"
+        backLabel={t('budgets.back_to_budgets')}
+        title={budgetData.budget.name}
+        contentClassName="p-4 sm:p-6 max-w-7xl mx-auto w-full"
+      >
+        <BudgetHeader
+          budget={budgetData.budget}
           projects={projects}
-          selectedProject={null}
-          selectedCategory={null}
-          showArchived={false}
-          onSelectProject={() => { }}
-          onCategoryChange={() => { }}
-          onShowArchivedChange={() => { }}
-          onProjectUpdated={loadProjects}
+          stats={stats}
+          onUpdated={loadBudgetData}
+          compact
         />
-        <div className="flex-1 overflow-y-auto p-6 max-w-7xl mx-auto w-full">
-          {/* Header with totals */}
-          <BudgetHeader
-            budget={budgetData.budget}
-            projects={projects}
-            stats={stats}
-            onUpdated={loadBudgetData}
-          />
 
-          {/* Categories */}
-          <div className="space-y-4">
+        {/* Categories */}
+        <div className="space-y-4 mt-4">
             {budgetData.categories.length === 0 ? (
               <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
                 <div className="mx-auto w-20 h-20 bg-primary rounded-full flex items-center justify-center mb-6">
@@ -445,17 +392,24 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
                 </button>
               </>
             )}
-          </div>
         </div>
-      </div>
 
-      {/* Create Category Modal */}
+        <button
+          type="button"
+          onClick={() => setIsCategoryModalOpen(true)}
+          aria-label={t('budgets.add_category')}
+          className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      </DetailLayout>
+
       <CreateCategoryModal
         isOpen={isCategoryModalOpen}
         onClose={handleCategoryModalClose}
         onCreated={handleCategoryCreated}
         budgetId={budgetId}
       />
-    </div>
+    </>
   )
 }

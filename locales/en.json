@@ -93,7 +93,9 @@
     "favorites": "Favorites",
     "projects": "Projects",
     "all_projects": "All Projects",
-    "all_categories": "All Categories"
+    "all_categories": "All Categories",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar"
   },
   "settings": {
     "title": "Settings",
@@ -268,6 +270,7 @@
     "blocked": "Blocked",
     "done": "Done",
     "tasks_count": "{count} tasks",
+    "tasks_count_one": "1 task",
     "add_task": "Add task"
   },
   "right_panel": {
@@ -279,6 +282,19 @@
     "no_notes": "No notes yet",
     "view_all": "View all",
     "add_note": "Add Note"
+  },
+  "resources": {
+    "title": "Resources",
+    "subtitle": "Budgets, notes, ideas, and lists",
+    "subtitle_project": "Resources for {name}",
+    "no_budgets": "No budgets",
+    "no_notes": "No notes",
+    "no_ideas": "No idea boards",
+    "no_todo_lists": "No todo lists",
+    "open_budget": "Open budget",
+    "open_note": "Open note",
+    "open_board": "Open board",
+    "open_list": "Open list"
   },
   "clients": {
     "title": "Clients",

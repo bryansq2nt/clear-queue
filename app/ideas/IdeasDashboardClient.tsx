@@ -67,6 +67,8 @@ export default function IdeasDashboardClient({
   const [isCreatingIdea, setIsCreatingIdea] = useState(false)
   const [isCreatingBoard, setIsCreatingBoard] = useState(false)
   const [isEditingBoard, setIsEditingBoard] = useState(false)
+  const [isSavingBoard, setIsSavingBoard] = useState(false)
+  const [boardEditError, setBoardEditError] = useState<string | null>(null)
   const [newBoardName, setNewBoardName] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -172,18 +174,29 @@ export default function IdeasDashboardClient({
     ? boards.find((b) => b.id === selectedBoardId)
     : null
 
-  const handleUpdateBoard = async (formData: FormData) => {
+  const handleUpdateBoard = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     if (!selectedBoardId) return
+    setBoardEditError(null)
+    setIsSavingBoard(true)
+    const form = e.currentTarget
+    const formData = new FormData(form)
     formData.set('id', selectedBoardId)
-    const result = await updateBoardAction(formData)
-    if (result.data) {
-      setBoards((prev) =>
-        prev.map((b) =>
-          b.id === selectedBoardId ? { ...b, ...result.data } : b
+    try {
+      const result = await updateBoardAction(formData)
+      if (result.data) {
+        setBoards((prev) =>
+          prev.map((b) =>
+            b.id === selectedBoardId ? { ...b, ...result.data } : b
+          )
         )
-      )
-      setIsEditingBoard(false)
-      router.refresh()
+        setIsEditingBoard(false)
+        router.refresh()
+      } else {
+        setBoardEditError(result.error ?? t('common.error'))
+      }
+    } finally {
+      setIsSavingBoard(false)
     }
   }
 
@@ -217,7 +230,7 @@ export default function IdeasDashboardClient({
           <div className="flex items-center justify-between gap-4 flex-wrap">
             {isEditingBoard && selectedBoard ? (
               <form
-                action={handleUpdateBoard}
+                onSubmit={handleUpdateBoard}
                 className="flex flex-wrap items-end gap-3 flex-1 min-w-0"
               >
                 <input type="hidden" name="id" value={selectedBoard.id} />
@@ -256,18 +269,23 @@ export default function IdeasDashboardClient({
                     {t('ideas.link_board_to_project')}
                   </span>
                 </div>
-                <div className="flex gap-2">
-                  <Button type="submit" size="sm">
-                    {t('common.save')}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setIsEditingBoard(false)}
-                  >
-                    {t('common.cancel')}
-                  </Button>
+                <div className="flex flex-col gap-1 w-full">
+                  <div className="flex gap-2">
+                    <Button type="submit" size="sm" disabled={isSavingBoard}>
+                      {isSavingBoard ? t('common.loading') : t('common.save')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { setIsEditingBoard(false); setBoardEditError(null) }}
+                    >
+                      {t('common.cancel')}
+                    </Button>
+                  </div>
+                  {boardEditError && (
+                    <p className="text-sm text-destructive">{boardEditError}</p>
+                  )}
                 </div>
               </form>
             ) : (
