@@ -380,7 +380,11 @@
   },
   "notes": {
     "title": "Notas",
-    "back_to_notes": "Volver a Notas"
+    "back_to_notes": "Volver a Notas",
+    "link_project": "Vincular proyecto",
+    "project_placeholder": "Proyecto",
+    "yesterday": "Ayer",
+    "days_ago": "hace {count} días"
   },
   "businesses": {
     "title": "Empresas",

@@ -118,8 +118,8 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
 
   return (
     <>
-    <Link href={`/budgets/${budget.id}`}>
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition-all hover:border-primary/50 cursor-pointer relative group">
+    <Link href={`/budgets/${budget.id}`} className="h-full min-h-0 flex">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition-all hover:border-primary/50 cursor-pointer relative group flex flex-col w-full min-h-0">
         {/* Menu button */}
         <button
           onClick={(e) => {
@@ -182,29 +182,29 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
           </>
         )}
 
-        {/* Budget name */}
-        <h3 className="text-lg font-semibold text-foreground mb-1 pr-8">
-          {budget.name}
-        </h3>
+        {/* Top: title, description, badge */}
+        <div className="flex-shrink-0">
+          <h3 className="text-lg font-semibold text-foreground mb-1 pr-8 line-clamp-2">
+            {budget.name}
+          </h3>
 
-        {/* Description */}
-        {budget.description && (
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-            {budget.description}
-          </p>
-        )}
+          {budget.description && (
+            <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+              {budget.description}
+            </p>
+          )}
 
-        {/* Project badge */}
-        {budget.projects && (
-          <div className="mb-4">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-              {budget.projects.name}
-            </span>
-          </div>
-        )}
+          {budget.projects && (
+            <div className="mb-4">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                {budget.projects.name}
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-3 gap-4 mb-4 flex-shrink-0">
           <div>
             <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
               <Package className="w-3 h-3" />
@@ -236,8 +236,11 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
           </div>
         </div>
 
+        {/* Spacer so total + progress stick to bottom */}
+        <div className="flex-1 min-h-2" />
+
         {/* Total amount */}
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('budgets.total_budget')}</div>
@@ -257,7 +260,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
         </div>
 
         {/* Progress bar */}
-        <div className="mt-4">
+        <div className="mt-4 flex-shrink-0">
           <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-500"

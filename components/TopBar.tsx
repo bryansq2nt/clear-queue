@@ -33,6 +33,8 @@ interface TopBarProps {
   actions?: React.ReactNode
   /** Minimal header: only menu + title, no Add Project / logout / search (e.g. for Clients list) */
   minimal?: boolean
+  /** When true, show sidebar menu button on all screen sizes (e.g. when sidebar is overlay-only) */
+  showSidebarButtonAlways?: boolean
 }
 
 export default function TopBar({
@@ -51,6 +53,7 @@ export default function TopBar({
   backLabel,
   actions,
   minimal = false,
+  showSidebarButtonAlways = false,
 }: TopBarProps) {
   const isDetailView = !!backHref
   const { t } = useI18n()
@@ -64,20 +67,23 @@ export default function TopBar({
       <div className="bg-primary text-primary-foreground shadow-xl flex-shrink-0">
         <div className="px-4 md:px-6 py-3 md:py-4 flex flex-col gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            {backHref && backLabel && (
+            {backHref && (
               <Link
                 href={backHref}
                 className="flex-shrink-0 inline-flex items-center gap-1.5 text-sm text-primary-foreground/90 hover:text-primary-foreground py-1 pr-2"
+                aria-label={backLabel?.trim() ? undefined : t('common.back')}
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline truncate max-w-[120px]">{backLabel}</span>
+                {backLabel?.trim() ? (
+                  <span className="hidden sm:inline truncate max-w-[120px]">{backLabel}</span>
+                ) : null}
               </Link>
             )}
             {onOpenSidebar && !backHref && (
               <button
                 type="button"
                 onClick={onOpenSidebar}
-                className="md:hidden flex-shrink-0 p-2 rounded-lg hover:bg-primary-foreground/10 focus:outline-none focus:ring-2 focus:ring-primary-foreground/50"
+                className={cn('flex-shrink-0 p-2 rounded-lg hover:bg-primary-foreground/10 focus:outline-none focus:ring-2 focus:ring-primary-foreground/50', !showSidebarButtonAlways && 'md:hidden')}
                 aria-label={t('sidebar.navigation')}
               >
                 <Menu className="w-5 h-5" />

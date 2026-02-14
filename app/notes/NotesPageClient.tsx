@@ -117,6 +117,8 @@ function NotesPageContent() {
         projectName={t('notes.title')}
         currentProject={null}
         onOpenSidebar={() => setSidebarOpen(true)}
+        minimal
+        showSidebarButtonAlways
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
@@ -130,61 +132,35 @@ function NotesPageContent() {
           onProjectUpdated={loadProjects}
           mobileOpen={sidebarOpen}
           onMobileClose={() => setSidebarOpen(false)}
+          overlayOnly
         />
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {t('notes.title')}
-              </h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                {t('notes.subtitle')}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Select value={projectFilter} onValueChange={setProjectFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder={t('notes.project_placeholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('notes.all_projects')}</SelectItem>
-                  {projectList.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <button
-                type="button"
-                onClick={() => router.push('/notes/new')}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
-              >
-                <Plus className="w-4 h-4" />
-                {t('notes.new_note')}
-              </button>
-            </div>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 min-w-0">
+          <div className="flex items-center gap-3 mb-6">
+            <Select value={projectFilter} onValueChange={setProjectFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder={t('notes.project_placeholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('notes.all_projects')}</SelectItem>
+                {projectList.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {isLoading ? (
-            <p className="text-sm text-slate-500">{t('common.loading')}</p>
+            <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
           ) : notes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 bg-card rounded-lg border border-border">
-              <FileText className="w-12 h-12 text-slate-400 dark:text-slate-500 mb-4" />
-              <p className="text-slate-600 dark:text-slate-400 text-center mb-6">
+              <FileText className="w-12 h-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground text-center">
                 {t('notes.no_notes_yet')}
               </p>
-              <button
-                type="button"
-                onClick={() => router.push('/notes/new')}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
-              >
-                <Plus className="w-4 h-4" />
-                {t('notes.new_note')}
-              </button>
             </div>
           ) : (
-            <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {notes.map((note) => (
                 <div
@@ -239,17 +215,17 @@ function NotesPageContent() {
                 </div>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={() => router.push('/notes/new')}
-              aria-label={t('notes.new_note')}
-              className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
-            >
-              <Plus className="h-6 w-6" />
-            </button>
-            </>
           )}
-        </div>
+
+          <button
+            type="button"
+            onClick={() => router.push('/notes/new')}
+            aria-label={t('notes.new_note')}
+            className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
+          >
+            <Plus className="h-6 w-6" />
+          </button>
+        </main>
       </div>
     </div>
   )

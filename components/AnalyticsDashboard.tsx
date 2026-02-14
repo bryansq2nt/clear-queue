@@ -227,6 +227,7 @@ export default function AnalyticsDashboard() {
                 }}
                 mobileOpen={sidebarOpen}
                 onMobileClose={() => setSidebarOpen(false)}
+                overlayOnly
             />
 
             {/* Main Content */}
@@ -237,7 +238,7 @@ export default function AnalyticsDashboard() {
                         <button
                             type="button"
                             onClick={() => setSidebarOpen(true)}
-                            className="md:hidden flex-shrink-0 p-2 rounded-lg hover:bg-primary-foreground/10 focus:outline-none focus:ring-2 focus:ring-primary-foreground/50"
+                            className="flex-shrink-0 p-2 rounded-lg hover:bg-primary-foreground/10 focus:outline-none focus:ring-2 focus:ring-primary-foreground/50"
                             aria-label={t('sidebar.navigation')}
                         >
                             <Menu className="w-5 h-5" />

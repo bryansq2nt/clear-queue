@@ -61,6 +61,7 @@ export default function BusinessesPageClient() {
         currentProject={null}
         onOpenSidebar={() => setSidebarOpen(true)}
         minimal
+        showSidebarButtonAlways
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
@@ -74,6 +75,7 @@ export default function BusinessesPageClient() {
           onProjectUpdated={loadProjects}
           mobileOpen={sidebarOpen}
           onMobileClose={() => setSidebarOpen(false)}
+          overlayOnly
         />
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {isLoading ? (

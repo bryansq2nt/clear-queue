@@ -13,6 +13,8 @@ export interface GlobalHeaderProps {
   backLabel?: string
   /** If set and no backHref, show menu button to open sidebar (mobile + desktop) */
   onOpenSidebar?: () => void
+  /** When true, show sidebar menu button on all screen sizes (e.g. when sidebar is overlay-only) */
+  showSidebarButtonAlways?: boolean
   /** Optional right-side action (icon button or custom node) */
   rightAction?: React.ReactNode
 }
@@ -26,6 +28,7 @@ export function GlobalHeader({
   backHref,
   backLabel,
   onOpenSidebar,
+  showSidebarButtonAlways = false,
   rightAction,
 }: GlobalHeaderProps) {
   const { t } = useI18n()
@@ -48,7 +51,7 @@ export function GlobalHeader({
           <button
             type="button"
             onClick={onOpenSidebar}
-            className="md:hidden flex-shrink-0 p-2 rounded-lg hover:bg-primary-foreground/10 focus:outline-none focus:ring-2 focus:ring-primary-foreground/50"
+            className={cn('flex-shrink-0 p-2 rounded-lg hover:bg-primary-foreground/10 focus:outline-none focus:ring-2 focus:ring-primary-foreground/50', !showSidebarButtonAlways && 'md:hidden')}
             aria-label={t('sidebar.navigation')}
           >
             <Menu className="w-5 h-5" />

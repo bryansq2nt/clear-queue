@@ -85,6 +85,8 @@ export default function DashboardClient() {
         projectName="Dashboard"
         currentProject={null}
         onOpenSidebar={() => setSidebarOpen(true)}
+        minimal
+        showSidebarButtonAlways
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
@@ -98,6 +100,7 @@ export default function DashboardClient() {
           onProjectUpdated={loadData}
           mobileOpen={sidebarOpen}
           onMobileClose={() => setSidebarOpen(false)}
+          overlayOnly
         />
         <div className="flex-1 overflow-x-auto">
           <KanbanBoard

@@ -23,7 +23,7 @@ export default function NoteDetailClient({
   return (
     <DetailLayout
       backHref="/notes"
-      backLabel={t('notes.back_to_notes')}
+      backLabel=""
       title={initialNote.title || t('notes.title')}
       contentClassName="p-4 sm:p-6"
     >

@@ -91,7 +91,7 @@ export default function BudgetsPageClient() {
         {budgets.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
             {budgets.map((budget) => (
               <BudgetCard
                 key={budget.id}

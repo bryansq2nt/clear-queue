@@ -1,18 +1,16 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/components/I18nProvider'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   createNote,
   updateNote,
@@ -21,7 +19,7 @@ import {
   deleteNoteLink,
 } from '@/app/notes/actions'
 import { getProjects } from '@/app/budgets/actions'
-import { ArrowLeft, Link2, Plus, Trash2, Check } from 'lucide-react'
+import { Link2, Plus, Trash2, Check, Save } from 'lucide-react'
 import { Database } from '@/lib/supabase/types'
 
 type NoteLink = Database['public']['Tables']['note_links']['Row']
@@ -209,44 +207,62 @@ export function NoteEditor({
   const linkHref = (url: string) => (url.startsWith('http') ? url : `https://${url}`)
   const linkLabel = (link: NoteLink | LocalLink) => (link.title && link.title.trim() ? link.title.trim() : link.url)
 
+  const selectedProjectName = projects.find((p) => p.id === projectId)?.name ?? t('notes.project_placeholder')
+
   return (
     <div className="max-w-6xl mx-auto w-full">
-      {/* Sticky toolbar */}
-      <div className="sticky top-0 z-10 bg-slate-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-slate-200 dark:border-gray-700 -mx-4 px-4 py-3 flex flex-wrap items-center gap-3">
-        <Link
-          href="/notes"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          {t('notes.back_to_notes')}
-        </Link>
-        <Select value={projectId} onValueChange={setProjectId}>
-          <SelectTrigger className="w-[180px] h-9 border-slate-200 dark:border-gray-600" id="note-editor-project">
-            <SelectValue placeholder={t('notes.project_placeholder')} />
-          </SelectTrigger>
-          <SelectContent>
-            {projects.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button size="sm" onClick={handleSaveClick} disabled={saving} className="ml-auto">
-          {saving ? t('notes.saving') : isEdit ? t('common.save') : t('notes.create_note')}
-        </Button>
-        {isEdit && saveStatus === 'saved' && (
-          <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-            <Check className="w-3.5 h-3.5" />
-            {t('notes.saved')}
-          </span>
-        )}
-        {isEdit && noteId && (
-          <Button size="sm" variant="outline" onClick={handleDelete} className="text-red-600 hover:text-red-700 border-red-200 dark:border-red-800">
-            {t('common.delete')}
-          </Button>
-        )}
-      </div>
+      {/* Minimal toolbar: only in edit mode (saved + delete) */}
+      {isEdit && (
+        <div className="sticky top-0 z-10 bg-slate-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-slate-200 dark:border-gray-700 -mx-4 px-4 py-3 flex flex-wrap items-center justify-end gap-3">
+          {saveStatus === 'saved' && (
+            <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+              <Check className="w-3.5 h-3.5" />
+              {t('notes.saved')}
+            </span>
+          )}
+          {noteId && (
+            <Button size="sm" variant="outline" onClick={handleDelete} className="text-red-600 hover:text-red-700 border-red-200 dark:border-red-800">
+              {t('common.delete')}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* FAB Project (link project) - above Save */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={t('notes.link_project')}
+            title={selectedProjectName}
+            className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-[7rem] md:right-8"
+          >
+            <Link2 className="h-6 w-6" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" side="top" className="max-h-[min(60vh,320px)] overflow-y-auto">
+          {projects.map((p) => (
+            <DropdownMenuItem key={p.id} onClick={() => setProjectId(p.id)} className="flex items-center justify-between gap-2">
+              <span className={projectId === p.id ? 'font-medium' : ''}>{p.name}</span>
+              {projectId === p.id ? <Check className="w-4 h-4 shrink-0" /> : null}
+            </DropdownMenuItem>
+          ))}
+          {projects.length === 0 && (
+            <DropdownMenuItem disabled>{t('common.loading')}</DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* FAB Save */}
+      <button
+        type="button"
+        onClick={handleSaveClick}
+        disabled={saving}
+        aria-label={isEdit ? t('common.save') : t('notes.create_note')}
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 md:bottom-8 md:right-8"
+      >
+        <Save className="h-6 w-6" />
+      </button>
 
       {error && (
         <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>

@@ -31,6 +31,8 @@ interface SidebarProps {
   onProjectUpdated: () => void
   mobileOpen?: boolean
   onMobileClose?: () => void
+  /** When true, sidebar is overlay/drawer on all screen sizes (no layout column) */
+  overlayOnly?: boolean
 }
 
 const SIDEBAR_MOBILE_BREAKPOINT = 768
@@ -46,6 +48,7 @@ export default function Sidebar({
   onProjectUpdated,
   mobileOpen = true,
   onMobileClose,
+  overlayOnly = false,
 }: SidebarProps) {
   const { t } = useI18n()
   const router = useRouter()
@@ -79,9 +82,9 @@ export default function Sidebar({
     return () => mq.removeEventListener('change', handler)
   }, [])
 
-  const isDrawerMode = isMobile && onMobileClose != null
+  const isDrawerMode = (isMobile && onMobileClose != null) || (overlayOnly && onMobileClose != null)
   const isDrawerOpen = isDrawerMode ? mobileOpen : true
-  const canCollapse = !isMobile
+  const canCollapse = !isMobile && !overlayOnly
   const isCollapsed = canCollapse && collapsed
 
   const loadFavorites = useCallback(async () => {
@@ -132,7 +135,7 @@ export default function Sidebar({
     <>
       {isDrawerMode && isDrawerOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className={cn('fixed inset-0 bg-black/50 z-40', !overlayOnly && 'md:hidden')}
           aria-hidden
           onClick={onMobileClose}
         />
@@ -140,7 +143,7 @@ export default function Sidebar({
       <div
         className={cn(
           'bg-card border-r border-border flex flex-col overflow-hidden shadow-lg transition-[width] duration-200 ease-out flex-shrink-0 h-full',
-          isDrawerMode ? 'fixed inset-y-0 left-0 z-50 w-64' : 'relative',
+          isDrawerMode ? 'fixed inset-y-0 left-0 z-50 w-64 max-h-full' : 'relative',
           !isDrawerMode && (isCollapsed ? 'w-16' : 'w-64'),
           isDrawerMode && (isDrawerOpen ? 'translate-x-0' : '-translate-x-full')
         )}

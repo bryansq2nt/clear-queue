@@ -20,6 +20,7 @@ export default function SettingsLayoutClient({
 }) {
   const { t } = useI18n()
   const [projects, setProjects] = useState<Project[]>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
   const supabase = createClient()
 
@@ -42,6 +43,9 @@ export default function SettingsLayoutClient({
         onProjectUpdated={loadProjects}
         projectName={t('settings.title')}
         currentProject={null}
+        onOpenSidebar={() => setSidebarOpen(true)}
+        minimal
+        showSidebarButtonAlways
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
@@ -53,6 +57,9 @@ export default function SettingsLayoutClient({
           onCategoryChange={() => {}}
           onShowArchivedChange={() => {}}
           onProjectUpdated={loadProjects}
+          mobileOpen={sidebarOpen}
+          onMobileClose={() => setSidebarOpen(false)}
+          overlayOnly
         />
         <main className="flex-1 overflow-y-auto flex flex-col">
           <div className="border-b border-border bg-card px-6">

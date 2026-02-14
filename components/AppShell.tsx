@@ -59,6 +59,7 @@ export function AppShell({
         backHref={backHref}
         backLabel={backLabel}
         onOpenSidebar={backHref == null ? () => setSidebarOpen(true) : undefined}
+        showSidebarButtonAlways
         rightAction={rightAction}
       />
       <div className="flex-1 flex overflow-hidden min-h-0">
@@ -73,6 +74,7 @@ export function AppShell({
           onProjectUpdated={onProjectUpdated}
           mobileOpen={sidebarOpen}
           onMobileClose={() => setSidebarOpen(false)}
+          overlayOnly
         />
         <main className={cn('flex-1 overflow-auto min-w-0', contentClassName)}>
           {children}

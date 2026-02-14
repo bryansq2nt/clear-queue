@@ -40,6 +40,7 @@ export default function ProjectBoardClient({
   const [defaultListId, setDefaultListId] = useState(initialDefaultListId)
   const [items, setItems] = useState<TodoItem[]>(initialItems)
   const [projects, setProjects] = useState<Project[]>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [newTaskContent, setNewTaskContent] = useState('')
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -120,6 +121,9 @@ export default function ProjectBoardClient({
         onProjectUpdated={loadProjects}
         projectName={projectName}
         currentProject={null}
+        onOpenSidebar={() => setSidebarOpen(true)}
+        minimal
+        showSidebarButtonAlways
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
@@ -131,6 +135,9 @@ export default function ProjectBoardClient({
           onCategoryChange={() => {}}
           onShowArchivedChange={() => {}}
           onProjectUpdated={loadProjects}
+          mobileOpen={sidebarOpen}
+          onMobileClose={() => setSidebarOpen(false)}
+          overlayOnly
         />
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-5xl mx-auto w-full px-6 py-6">
