@@ -167,7 +167,8 @@
     "amount_placeholder": "Amount",
     "notes_placeholder": "Notes",
     "custom_no_client": "Custom / No client",
-    "no_project": "No project"
+    "no_project": "No project",
+    "edit_charge": "Edit charge"
   },
   "ideas": {
     "title": "Idea Graph",

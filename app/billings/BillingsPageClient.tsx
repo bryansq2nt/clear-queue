@@ -7,9 +7,9 @@ import { Database } from '@/lib/supabase/types'
 import Sidebar from '@/components/Sidebar'
 import TopBar from '@/components/TopBar'
 import { signOut } from '@/app/actions/auth'
-import { createBilling, getBillings, updateBillingStatus } from './actions'
+import { createBilling, getBillings, updateBillingStatus, updateBilling } from './actions'
 import { getClients, getProjectsByClientId, getProjectsWithoutClient } from '@/app/clients/actions'
-import { Plus } from 'lucide-react'
+import { Plus, Pencil } from 'lucide-react'
 
 type Project = Database['public']['Tables']['projects']['Row']
 type Client = Database['public']['Tables']['clients']['Row']
@@ -36,6 +36,8 @@ export default function BillingsPageClient() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [editingBilling, setEditingBilling] = useState<Billing | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [form, setForm] = useState({
     title: '',
     client_id: '' as string,
@@ -80,7 +82,6 @@ export default function BillingsPageClient() {
       getProjectsWithoutClient().then(setProjectsWithoutClient)
       setClientProjects([])
     }
-    setForm((f) => ({ ...f, project_id: '' }))
   }, [form.client_id])
 
   const filtered = useMemo(() => {
@@ -107,24 +108,75 @@ export default function BillingsPageClient() {
     )
   }, [filtered])
 
-  async function handleCreate(e: FormEvent) {
+  const emptyForm = () => ({
+    title: '',
+    client_id: '' as string,
+    client_name: '',
+    amount: '',
+    due_date: '',
+    notes: '',
+    project_id: '',
+  })
+
+  function openCreate() {
+    setEditingBilling(null)
+    setForm(emptyForm())
+    setIsCreateOpen(true)
+  }
+
+  function openEdit(billing: Billing) {
+    setEditingBilling(billing)
+    setForm({
+      title: billing.title,
+      client_id: billing.client_id || '',
+      client_name: billing.client_name || '',
+      amount: String(billing.amount),
+      due_date: billing.due_date || '',
+      notes: billing.notes || '',
+      project_id: billing.project_id || '',
+    })
+    setIsCreateOpen(true)
+  }
+
+  function closeForm() {
+    setIsCreateOpen(false)
+    setEditingBilling(null)
+    setForm(emptyForm())
+  }
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const clientId = form.client_id || null
     const projectId = form.project_id || null
     const clientName = !form.client_id ? form.client_name : undefined
 
-    await createBilling({
-      title: form.title,
-      client_id: clientId,
-      client_name: clientName,
-      amount: Number(form.amount),
-      due_date: form.due_date || undefined,
-      notes: form.notes,
-      project_id: projectId,
-    })
-    setForm({ title: '', client_id: '', client_name: '', amount: '', due_date: '', notes: '', project_id: '' })
-    setIsCreateOpen(false)
-    loadBillings()
+    try {
+      if (editingBilling) {
+        await updateBilling(editingBilling.id, {
+          title: form.title,
+          client_id: clientId,
+          client_name: clientName,
+          amount: Number(form.amount),
+          due_date: form.due_date || undefined,
+          notes: form.notes,
+          project_id: projectId,
+        })
+      } else {
+        await createBilling({
+          title: form.title,
+          client_id: clientId,
+          client_name: clientName,
+          amount: Number(form.amount),
+          due_date: form.due_date || undefined,
+          notes: form.notes,
+          project_id: projectId,
+        })
+      }
+      closeForm()
+      loadBillings()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error saving charge')
+    }
   }
 
   async function handleStatusChange(id: string, status: Billing['status']) {
@@ -135,13 +187,15 @@ export default function BillingsPageClient() {
   return (
     <div className="flex flex-col h-screen bg-background">
       <TopBar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        searchQuery=""
+        onSearchChange={() => {}}
         onSignOut={() => signOut()}
         onProjectAdded={loadProjects}
         onProjectUpdated={loadProjects}
         projectName={t('billings.title')}
         currentProject={null}
+        onOpenSidebar={() => setSidebarOpen(true)}
+        minimal
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
@@ -153,23 +207,11 @@ export default function BillingsPageClient() {
           onCategoryChange={() => {}}
           onShowArchivedChange={() => {}}
           onProjectUpdated={loadProjects}
+          mobileOpen={sidebarOpen}
+          onMobileClose={() => setSidebarOpen(false)}
         />
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">{t('billings.title')}</h1>
-              <p className="text-muted-foreground mt-2">{t('billings.subtitle')}</p>
-            </div>
-            <button
-              onClick={() => setIsCreateOpen((v) => !v)}
-              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-medium"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              {t('billings.new_charge')}
-            </button>
-          </div>
-
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <SummaryCard label={t('billings.total')} valueFormatted={formatCurrency(summary.total)} />
             <SummaryCard label={t('billings.paid')} valueFormatted={formatCurrency(summary.paid)} />
@@ -177,13 +219,18 @@ export default function BillingsPageClient() {
           </div>
 
           {isCreateOpen && (
-            <form onSubmit={handleCreate} className="bg-card border border-border rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <form onSubmit={handleSubmit} className="bg-card border border-border rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="md:col-span-2 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">
+                  {editingBilling ? t('billings.edit_charge') : t('billings.new_charge')}
+                </h2>
+              </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-muted-foreground mb-1">{t('billings.client_label')}</label>
                 <select
                   className="w-full border border-border rounded px-3 py-2 bg-background text-foreground"
                   value={form.client_id}
-                  onChange={(e) => setForm((f) => ({ ...f, client_id: e.target.value }))}
+                  onChange={(e) => setForm((f) => ({ ...f, client_id: e.target.value, project_id: '' }))}
                 >
                   <option value="">{t('billings.custom_no_client')}</option>
                   {clients.map((c) => (
@@ -236,8 +283,11 @@ export default function BillingsPageClient() {
               <input required type="number" step="0.01" min="0" placeholder={t('billings.amount_placeholder')} className="border border-border rounded px-3 py-2 bg-background text-foreground placeholder:text-muted-foreground" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} />
               <input type="date" className="border border-border rounded px-3 py-2 bg-background text-foreground" value={form.due_date} onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))} />
               <input placeholder={t('billings.notes_placeholder')} className="border border-border rounded px-3 py-2 md:col-span-2 bg-background text-foreground placeholder:text-muted-foreground" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
-              <div className="md:col-span-2 flex justify-end">
-                <button className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90">{t('billings.save_charge')}</button>
+              <div className="md:col-span-2 flex justify-end gap-2">
+                <button type="button" onClick={closeForm} className="px-4 py-2 border border-border rounded-lg bg-background text-foreground hover:bg-accent">
+                  {t('common.cancel')}
+                </button>
+                <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90">{t('billings.save_charge')}</button>
               </div>
             </form>
           )}
@@ -257,6 +307,7 @@ export default function BillingsPageClient() {
                     <th className="text-left p-3">{t('billings.due')}</th>
                     <th className="text-right p-3">{t('billings.amount')}</th>
                     <th className="text-left p-3">{t('billings.status')}</th>
+                    <th className="w-10 p-3"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -281,6 +332,16 @@ export default function BillingsPageClient() {
                           <option value="cancelled">{t('billings.cancelled_status')}</option>
                         </select>
                       </td>
+                      <td className="p-3">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(billing)}
+                          className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
+                          aria-label={t('common.edit')}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -289,6 +350,15 @@ export default function BillingsPageClient() {
           )}
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={openCreate}
+        aria-label={t('billings.new_charge')}
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
     </div>
   )
 }

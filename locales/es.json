@@ -138,7 +138,8 @@
     "amount_placeholder": "Monto",
     "notes_placeholder": "Notas",
     "custom_no_client": "Personalizado / Sin cliente",
-    "no_project": "Sin proyecto"
+    "no_project": "Sin proyecto",
+    "edit_charge": "Editar cargo"
   },
   "ideas": {
     "title": "Ideas",

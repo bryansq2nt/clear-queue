@@ -110,3 +110,40 @@ export async function updateBillingStatus(id: string, status: Billing['status'])
   revalidatePath('/billings')
   return { success: true }
 }
+
+export async function updateBilling(
+  id: string,
+  formData: {
+    title: string
+    client_id?: string | null
+    client_name?: string | null
+    amount: number
+    project_id?: string | null
+    due_date?: string | null
+    notes?: string | null
+  }
+) {
+  await requireAuth()
+  const supabase = await createClient()
+
+  const payload: Database['public']['Tables']['billings']['Update'] = {
+    title: formData.title,
+    client_id: formData.client_id ?? null,
+    client_name: formData.client_id ? null : (formData.client_name ?? null),
+    amount: formData.amount,
+    project_id: formData.project_id ?? null,
+    due_date: formData.due_date || null,
+    notes: formData.notes || null,
+    updated_at: new Date().toISOString(),
+  }
+
+  const { error } = await supabase
+    .from('billings')
+    .update(payload as never)
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/billings')
+  return { success: true }
+}
