@@ -290,7 +290,7 @@ export default function BoardCanvasClient({
 
   return (
     <div
-      className="flex-1 overflow-auto bg-slate-50"
+      className="flex-1 overflow-auto bg-background"
       ref={containerRef}
       onClick={(e) => {
         // Cancel connection mode if clicking on canvas (not on a node)
@@ -327,11 +327,10 @@ export default function BoardCanvasClient({
       >
         {/* SVG for connections - rendered behind nodes */}
         <svg
-          className="absolute top-0 left-0"
+          className="absolute top-0 left-0 z-0 pointer-events-none [&_line]:pointer-events-auto"
           style={{
             width: WORLD_WIDTH,
             height: WORLD_HEIGHT,
-            zIndex: 0,
           }}
         >
           {connections.map((conn) => {
@@ -383,7 +382,7 @@ export default function BoardCanvasClient({
             return (
               <div
                 key={item.id}
-                className="absolute"
+                className="absolute z-10"
                 style={{
                   left: pos.x,
                   top: pos.y,
@@ -405,12 +404,12 @@ export default function BoardCanvasClient({
                   onContextMenu={(e) => handleContextMenu(e, item.idea.id)}
                 >
                   <div
-                    className={`bg-white rounded-lg border shadow-sm p-3 w-48 hover:shadow-md transition-all select-none ${
+                    className={`bg-card rounded-lg border border-border shadow-sm p-3 w-48 hover:shadow-md transition-all select-none ${
                       isConnectionSource
                         ? 'border-primary border-2 ring-2 ring-primary/20'
                         : isConnectionTarget
                           ? 'border-primary border-2'
-                          : 'border-slate-200 hover:border-primary'
+                          : 'border-border hover:border-primary'
                     }`}
                   >
                     {isConnectionSource && (

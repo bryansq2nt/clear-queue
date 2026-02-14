@@ -68,7 +68,7 @@ export default function TodoDashboardClient() {
         </div>
         <Link
           href="/todo/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2.5 text-sm font-medium hover:opacity-90"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium hover:opacity-90"
         >
           <Plus className="w-4 h-4" />
           Add new to-do list
@@ -76,11 +76,11 @@ export default function TodoDashboardClient() {
       </div>
 
       {lists.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 p-8 text-center">
+        <div className="rounded-xl border border-border bg-card p-8 text-center">
           <p className="text-slate-600 dark:text-slate-400 mb-4">No to-do lists yet.</p>
           <Link
             href="/todo/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2.5 text-sm font-medium hover:opacity-90"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium hover:opacity-90"
           >
             <Plus className="w-4 h-4" />
             Add new to-do list
@@ -94,8 +94,8 @@ export default function TodoDashboardClient() {
                 type="button"
                 onClick={() => router.push(`/todo/list/${list.id}`)}
                 className={cn(
-                  'group w-full text-left rounded-xl border border-slate-200 dark:border-gray-700',
-                  'bg-white dark:bg-gray-900/50 hover:bg-slate-50 dark:hover:bg-gray-800/50',
+                  'group w-full text-left rounded-xl border border-border',
+                  'bg-card hover:bg-accent/50',
                   'px-5 py-4 flex items-center justify-between gap-4 transition-colors',
                   'focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-gray-600'
                 )}

@@ -68,7 +68,7 @@ export function ClientCard({ client, onDeleted, onEdit }: ClientCardProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-all relative group">
+    <div className="bg-card rounded-lg shadow-sm border border-border p-5 hover:shadow-md transition-all relative group">
       <div className="flex items-start justify-between gap-2">
         <Link href={`/clients/${client.id}`} className="flex-1 min-w-0">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">

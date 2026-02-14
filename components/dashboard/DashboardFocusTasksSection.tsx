@@ -88,7 +88,7 @@ export default function DashboardFocusTasksSection() {
         emptyMessage="🎉 No hay tareas de maxima prioridad activas."
         showUpdatedAt={false}
         borderColor="border-red-500"
-        bgColor="bg-red-50"
+        bgColor="bg-red-500/10 dark:bg-red-500/20"
       />
 
       {/* Left: En lo que he estado trabajando */}
@@ -99,7 +99,7 @@ export default function DashboardFocusTasksSection() {
         emptyMessage="No hay actividad reciente."
         showUpdatedAt={true}
         borderColor="border-blue-500"
-        bgColor="bg-blue-50"
+        bgColor="bg-blue-500/10 dark:bg-blue-500/20"
       />
 
 

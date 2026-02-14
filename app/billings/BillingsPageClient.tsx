@@ -18,10 +18,10 @@ type Billing = Database['public']['Tables']['billings']['Row'] & {
 }
 
 const STATUS_COLORS: Record<Billing['status'], string> = {
-  pending: 'bg-amber-100 text-amber-700',
-  paid: 'bg-emerald-100 text-emerald-700',
-  overdue: 'bg-rose-100 text-rose-700',
-  cancelled: 'bg-slate-100 text-slate-700',
+  pending: 'bg-amber-500/20 text-amber-700 dark:text-amber-400',
+  paid: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400',
+  overdue: 'bg-rose-500/20 text-rose-700 dark:text-rose-400',
+  cancelled: 'bg-muted text-muted-foreground',
 }
 
 type ClientProject = { id: string; name: string; color: string | null; category: string }
@@ -131,7 +131,7 @@ export default function BillingsPageClient() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col h-screen bg-background">
       <TopBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -156,8 +156,8 @@ export default function BillingsPageClient() {
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Billings</h1>
-              <p className="text-gray-600 mt-2">Track invoices and pending charges per project.</p>
+              <h1 className="text-3xl font-bold text-foreground">Billings</h1>
+              <p className="text-muted-foreground mt-2">Track invoices and pending charges per project.</p>
             </div>
             <button
               onClick={() => setIsCreateOpen((v) => !v)}
@@ -175,9 +175,9 @@ export default function BillingsPageClient() {
           </div>
 
           {isCreateOpen && (
-            <form onSubmit={handleCreate} className="bg-white border rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <form onSubmit={handleCreate} className="bg-card border border-border rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Client</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Client</label>
                 <select
                   className="w-full border rounded px-3 py-2"
                   value={form.client_id}
@@ -207,7 +207,7 @@ export default function BillingsPageClient() {
               ) : (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Project (without client)</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Project (without client)</label>
                     <select
                       className="w-full border rounded px-3 py-2"
                       value={form.project_id}
@@ -220,7 +220,7 @@ export default function BillingsPageClient() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Client name (custom, optional)</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Client name (custom, optional)</label>
                     <input
                       placeholder="Enter client name"
                       className="w-full border rounded px-3 py-2"
@@ -235,19 +235,19 @@ export default function BillingsPageClient() {
               <input type="date" className="border rounded px-3 py-2" value={form.due_date} onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))} />
               <input placeholder="Notes" className="border rounded px-3 py-2 md:col-span-2" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
               <div className="md:col-span-2 flex justify-end">
-                <button className="px-4 py-2 bg-slate-900 text-white rounded">Save charge</button>
+                <button className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90">Save charge</button>
               </div>
             </form>
           )}
 
           {isLoading ? (
-            <div className="text-sm text-slate-500">Loading billings...</div>
+            <div className="text-sm text-muted-foreground">Loading billings...</div>
           ) : filtered.length === 0 ? (
-            <div className="bg-white border rounded-xl p-8 text-center text-slate-500">No charges yet.</div>
+            <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground">No charges yet.</div>
           ) : (
-            <div className="bg-white border rounded-xl overflow-hidden">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-500">
+                <thead className="bg-surface-2 text-muted-foreground">
                   <tr>
                     <th className="text-left p-3">Charge</th>
                     <th className="text-left p-3">Client</th>
@@ -259,19 +259,19 @@ export default function BillingsPageClient() {
                 </thead>
                 <tbody>
                   {filtered.map((billing) => (
-                    <tr key={billing.id} className="border-t">
+                    <tr key={billing.id} className="border-t border-border hover:bg-accent/50">
                       <td className="p-3">
-                        <div className="font-medium text-slate-800">{billing.title}</div>
+                        <div className="font-medium text-foreground">{billing.title}</div>
                       </td>
-                      <td className="p-3 text-slate-600">{billing.clients?.full_name || billing.client_name || '-'}</td>
-                      <td className="p-3 text-slate-600">{billing.projects?.name || '-'}</td>
-                      <td className="p-3 text-slate-600">{billing.due_date || '-'}</td>
+                      <td className="p-3 text-muted-foreground">{billing.clients?.full_name || billing.client_name || '-'}</td>
+                      <td className="p-3 text-muted-foreground">{billing.projects?.name || '-'}</td>
+                      <td className="p-3 text-muted-foreground">{billing.due_date || '-'}</td>
                       <td className="p-3 text-right font-semibold">${Number(billing.amount).toFixed(2)}</td>
                       <td className="p-3">
                         <select
                           value={billing.status}
                           onChange={(e) => handleStatusChange(billing.id, e.target.value as Billing['status'])}
-                          className={`px-2 py-1 rounded border text-xs ${STATUS_COLORS[billing.status]}`}
+                          className={`px-2 py-1 rounded border border-border text-xs ${STATUS_COLORS[billing.status]}`}
                         >
                           <option value="pending">Pending</option>
                           <option value="paid">Paid</option>
@@ -293,9 +293,9 @@ export default function BillingsPageClient() {
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-white border rounded-xl p-4">
-      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="text-2xl font-bold text-slate-900 mt-2">${value.toFixed(2)}</div>
+    <div className="bg-card border border-border rounded-xl p-4">
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-2xl font-bold text-foreground mt-2">${value.toFixed(2)}</div>
     </div>
   )
 }

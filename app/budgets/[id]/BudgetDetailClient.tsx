@@ -264,7 +264,7 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-screen bg-slate-50">
+      <div className="flex flex-col h-screen bg-background">
         <TopBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -299,7 +299,7 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
 
   if (!budgetData) {
     return (
-      <div className="flex flex-col h-screen bg-slate-50">
+      <div className="flex flex-col h-screen bg-background">
         <TopBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -350,7 +350,7 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col h-screen bg-background">
       <TopBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -383,22 +383,22 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
           {/* Categories */}
           <div className="space-y-4">
             {budgetData.categories.length === 0 ? (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-                <div className="mx-auto w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mb-6">
-                  <Plus className="w-10 h-10 text-white" />
+              <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
+                <div className="mx-auto w-20 h-20 bg-primary rounded-full flex items-center justify-center mb-6">
+                  <Plus className="w-10 h-10 text-primary-foreground" />
                 </div>
 
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                <h3 className="text-xl font-semibold text-foreground mb-2">
                   No categories yet
                 </h3>
 
-                <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                   Start organizing your budget by creating categories like Equipment, Establishment, or Cleaning.
                 </p>
 
                 <button
                   onClick={() => setIsCategoryModalOpen(true)}
-                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
+                  className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
                 >
                   <Plus className="w-5 h-5 mr-2" />
                   Create First Category
@@ -434,9 +434,9 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
                 {/* Add Category Button */}
                 <button
                   onClick={() => setIsCategoryModalOpen(true)}
-                  className="w-full p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-purple-500 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-all group"
+                  className="w-full p-6 border-2 border-dashed border-border rounded-lg hover:border-primary hover:bg-primary/5 transition-all group"
                 >
-                  <div className="flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
                     <Plus className="w-5 h-5" />
                     <span className="font-medium">Add Category</span>
                   </div>

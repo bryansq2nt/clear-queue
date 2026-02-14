@@ -21,7 +21,7 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects, projectI
   const notes = projectNotes.slice(0, 5)
 
   return (
-    <div className="w-80 bg-white border-l border-slate-200 p-4 overflow-y-auto">
+    <div className="w-80 bg-card border-l border-border p-4 overflow-y-auto">
       <div className="space-y-6">
         <div>
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg px-4 py-3 mb-3 shadow-md">
@@ -71,7 +71,7 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects, projectI
             </div>
             <div className="space-y-2">
               {notes.length === 0 ? (
-                <p className="text-sm text-slate-500">No notes yet</p>
+                <p className="text-sm text-muted-foreground">No notes yet</p>
               ) : (
                 notes.map(note => (
                   <Link
@@ -86,13 +86,13 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects, projectI
               <div className="flex flex-wrap gap-2 pt-1">
                 <Link
                   href={`/notes?projectId=${projectId}`}
-                  className="text-xs text-slate-500 hover:text-slate-700"
+                  className="text-xs text-muted-foreground hover:text-foreground"
                 >
                   View all
                 </Link>
                 <Link
                   href={`/notes/new?projectId=${projectId}`}
-                  className="text-xs text-slate-500 hover:text-slate-700 inline-flex items-center gap-0.5"
+                  className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5"
                 >
                   <Plus className="w-3 h-3" />
                   Add Note

@@ -505,6 +505,114 @@ export type Database = {
           updated_at?: string
         }
       }
+      profiles: {
+        Row: {
+          user_id: string
+          display_name: string
+          phone: string | null
+          timezone: string
+          locale: string
+          avatar_asset_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          display_name: string
+          phone?: string | null
+          timezone?: string
+          locale?: string
+          avatar_asset_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          display_name?: string
+          phone?: string | null
+          timezone?: string
+          locale?: string
+          avatar_asset_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      user_preferences: {
+        Row: {
+          user_id: string
+          theme_mode: 'light' | 'dark' | 'system'
+          primary_color: string
+          secondary_color: string
+          third_color: string
+          currency: string
+          company_logo_asset_id: string | null
+          cover_image_asset_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          theme_mode?: 'light' | 'dark' | 'system'
+          primary_color?: string
+          secondary_color?: string
+          third_color?: string
+          currency?: string
+          company_logo_asset_id?: string | null
+          cover_image_asset_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          theme_mode?: 'light' | 'dark' | 'system'
+          primary_color?: string
+          secondary_color?: string
+          third_color?: string
+          currency?: string
+          company_logo_asset_id?: string | null
+          cover_image_asset_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      user_assets: {
+        Row: {
+          id: string
+          user_id: string
+          kind: 'avatar' | 'company_logo' | 'cover_image'
+          bucket: string
+          path: string
+          mime_type: string
+          size_bytes: number
+          width: number | null
+          height: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          kind: 'avatar' | 'company_logo' | 'cover_image'
+          bucket: string
+          path: string
+          mime_type: string
+          size_bytes: number
+          width?: number | null
+          height?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          kind?: 'avatar' | 'company_logo' | 'cover_image'
+          bucket?: string
+          path?: string
+          mime_type?: string
+          size_bytes?: number
+          width?: number | null
+          height?: number | null
+          created_at?: string
+        }
+      }
       budgets: {
         Row: {
           id: string

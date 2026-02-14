@@ -32,23 +32,23 @@ interface Connection {
 // ⚡ Threshold para detectar drag vs click
 const DRAG_THRESHOLD = 5
 
-// ⚡ Colores para cards
+// ⚡ Colores para cards (theme-aware: light pastels, dark opacity tints)
 const CARD_COLORS = [
-  { bg: 'bg-red-100', border: 'border-red-300', hover: 'hover:border-red-500', text: 'text-red-900' },
-  { bg: 'bg-blue-100', border: 'border-blue-300', hover: 'hover:border-blue-500', text: 'text-blue-900' },
-  { bg: 'bg-green-100', border: 'border-green-300', hover: 'hover:border-green-500', text: 'text-green-900' },
-  { bg: 'bg-yellow-100', border: 'border-yellow-300', hover: 'hover:border-yellow-500', text: 'text-yellow-900' },
-  { bg: 'bg-purple-100', border: 'border-purple-300', hover: 'hover:border-purple-500', text: 'text-purple-900' },
-  { bg: 'bg-pink-100', border: 'border-pink-300', hover: 'hover:border-pink-500', text: 'text-pink-900' },
-  { bg: 'bg-indigo-100', border: 'border-indigo-300', hover: 'hover:border-indigo-500', text: 'text-indigo-900' },
-  { bg: 'bg-orange-100', border: 'border-orange-300', hover: 'hover:border-orange-500', text: 'text-orange-900' },
-  { bg: 'bg-teal-100', border: 'border-teal-300', hover: 'hover:border-teal-500', text: 'text-teal-900' },
-  { bg: 'bg-cyan-100', border: 'border-cyan-300', hover: 'hover:border-cyan-500', text: 'text-cyan-900' },
-  { bg: 'bg-lime-100', border: 'border-lime-300', hover: 'hover:border-lime-500', text: 'text-lime-900' },
-  { bg: 'bg-emerald-100', border: 'border-emerald-300', hover: 'hover:border-emerald-500', text: 'text-emerald-900' },
-  { bg: 'bg-rose-100', border: 'border-rose-300', hover: 'hover:border-rose-500', text: 'text-rose-900' },
-  { bg: 'bg-violet-100', border: 'border-violet-300', hover: 'hover:border-violet-500', text: 'text-violet-900' },
-  { bg: 'bg-fuchsia-100', border: 'border-fuchsia-300', hover: 'hover:border-fuchsia-500', text: 'text-fuchsia-900' },
+  { bg: 'bg-red-500/20', border: 'border-red-500/50', hover: 'hover:border-red-500', text: 'text-red-700 dark:text-red-400' },
+  { bg: 'bg-blue-500/20', border: 'border-blue-500/50', hover: 'hover:border-blue-500', text: 'text-blue-700 dark:text-blue-400' },
+  { bg: 'bg-green-500/20', border: 'border-green-500/50', hover: 'hover:border-green-500', text: 'text-green-700 dark:text-green-400' },
+  { bg: 'bg-yellow-500/20', border: 'border-yellow-500/50', hover: 'hover:border-yellow-500', text: 'text-yellow-700 dark:text-yellow-400' },
+  { bg: 'bg-purple-500/20', border: 'border-purple-500/50', hover: 'hover:border-purple-500', text: 'text-purple-700 dark:text-purple-400' },
+  { bg: 'bg-pink-500/20', border: 'border-pink-500/50', hover: 'hover:border-pink-500', text: 'text-pink-700 dark:text-pink-400' },
+  { bg: 'bg-indigo-500/20', border: 'border-indigo-500/50', hover: 'hover:border-indigo-500', text: 'text-indigo-700 dark:text-indigo-400' },
+  { bg: 'bg-orange-500/20', border: 'border-orange-500/50', hover: 'hover:border-orange-500', text: 'text-orange-700 dark:text-orange-400' },
+  { bg: 'bg-teal-500/20', border: 'border-teal-500/50', hover: 'hover:border-teal-500', text: 'text-teal-700 dark:text-teal-400' },
+  { bg: 'bg-cyan-500/20', border: 'border-cyan-500/50', hover: 'hover:border-cyan-500', text: 'text-cyan-700 dark:text-cyan-400' },
+  { bg: 'bg-lime-500/20', border: 'border-lime-500/50', hover: 'hover:border-lime-500', text: 'text-lime-700 dark:text-lime-400' },
+  { bg: 'bg-emerald-500/20', border: 'border-emerald-500/50', hover: 'hover:border-emerald-500', text: 'text-emerald-700 dark:text-emerald-400' },
+  { bg: 'bg-rose-500/20', border: 'border-rose-500/50', hover: 'hover:border-rose-500', text: 'text-rose-700 dark:text-rose-400' },
+  { bg: 'bg-violet-500/20', border: 'border-violet-500/50', hover: 'hover:border-violet-500', text: 'text-violet-700 dark:text-violet-400' },
+  { bg: 'bg-fuchsia-500/20', border: 'border-fuchsia-500/50', hover: 'hover:border-fuchsia-500', text: 'text-fuchsia-700 dark:text-fuchsia-400' },
 ]
 
 export default function IdeaGraphCanvas({
@@ -449,7 +449,7 @@ export default function IdeaGraphCanvas({
 
   return (
     <div
-      className="flex-1 overflow-hidden bg-slate-50"
+      className="flex-1 overflow-hidden bg-background"
       ref={containerRef}
       onMouseDown={(e) => {
         if (e.button !== 0) return
@@ -511,16 +511,14 @@ export default function IdeaGraphCanvas({
           transformOrigin: '0 0',
         }}
       >
-        {/* SVG for connections */}
+        {/* SVG for connections - must render behind nodes */}
         <svg
-          className="absolute top-0 left-0 pointer-events-none"
+          className="absolute top-0 left-0 z-0 pointer-events-none [&_line]:pointer-events-auto"
           style={{
             width: SVG_TOTAL_WIDTH,
             height: SVG_TOTAL_HEIGHT,
-            // Offset SVG to account for padding (so it covers expanded area)
             left: -SVG_PADDING,
             top: -SVG_PADDING,
-            zIndex: 0,
           }}
         >
           {connections.map((conn) => {
@@ -567,7 +565,7 @@ export default function IdeaGraphCanvas({
             return (
               <div
                 key={item.id}
-                className="absolute"
+                className="absolute z-10"
                 style={{
                   left: 0,
                   top: 0,

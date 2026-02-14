@@ -49,7 +49,7 @@ export default function IdeasPageClient({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col h-screen bg-background">
       <TopBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}

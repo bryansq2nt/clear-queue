@@ -99,7 +99,7 @@ function NotesPageContent() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col h-screen bg-background">
       <TopBar
         searchQuery=""
         onSearchChange={() => {}}
@@ -147,7 +147,7 @@ function NotesPageContent() {
               <button
                 type="button"
                 onClick={() => router.push('/notes/new')}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
               >
                 <Plus className="w-4 h-4" />
                 New Note
@@ -158,7 +158,7 @@ function NotesPageContent() {
           {isLoading ? (
             <p className="text-sm text-slate-500">Loading...</p>
           ) : notes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col items-center justify-center py-16 px-4 bg-card rounded-lg border border-border">
               <FileText className="w-12 h-12 text-slate-400 dark:text-slate-500 mb-4" />
               <p className="text-slate-600 dark:text-slate-400 text-center mb-6">
                 No notes yet. Create a note linked to a project.
@@ -166,7 +166,7 @@ function NotesPageContent() {
               <button
                 type="button"
                 onClick={() => router.push('/notes/new')}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
               >
                 <Plus className="w-4 h-4" />
                 New Note
@@ -181,7 +181,7 @@ function NotesPageContent() {
                   tabIndex={0}
                   onClick={() => router.push(`/notes/${note.id}`)}
                   onKeyDown={(e) => e.key === 'Enter' && router.push(`/notes/${note.id}`)}
-                  className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-all cursor-pointer group relative"
+                  className="bg-card rounded-lg border border-border p-5 hover:shadow-md transition-all cursor-pointer group relative"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">

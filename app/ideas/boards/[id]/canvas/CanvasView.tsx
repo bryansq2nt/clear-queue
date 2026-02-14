@@ -22,7 +22,7 @@ export default function CanvasView({ items }: { items: BoardItem[] }) {
   const WORLD_HEIGHT = 2000
 
   return (
-    <div className="flex-1 overflow-auto bg-slate-50">
+    <div className="flex-1 overflow-auto bg-background">
       <div
         className="relative"
         style={{
@@ -50,7 +50,7 @@ export default function CanvasView({ items }: { items: BoardItem[] }) {
                 transform: 'translate(0, 0)',
               }}
             >
-              <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-3 w-48 hover:shadow-md hover:border-primary transition-all cursor-pointer">
+              <div className="bg-card rounded-lg border border-border shadow-sm p-3 w-48 hover:shadow-md hover:border-primary transition-all cursor-pointer">
                 <h3 className="font-semibold text-sm mb-1 line-clamp-1 group-hover:text-primary">
                   {item.idea.title}
                 </h3>

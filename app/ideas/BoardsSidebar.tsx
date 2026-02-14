@@ -47,10 +47,10 @@ export default function BoardsSidebar({
   }
 
   return (
-    <div className="w-64 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
+    <div className="w-64 bg-card border-r border-border flex flex-col overflow-y-auto">
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
             Boards
           </h3>
         </div>
@@ -67,8 +67,8 @@ export default function BoardsSidebar({
                 className={cn(
                   'group flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer',
                   selectedBoardId === board.id
-                    ? 'bg-slate-100 text-slate-900 font-medium'
-                    : 'text-slate-600 hover:bg-slate-50'
+                    ? 'bg-accent text-foreground font-medium'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
                 onClick={() => onSelectBoard(board.id)}
               >
@@ -77,7 +77,7 @@ export default function BoardsSidebar({
                 <button
                   onClick={(e) => handleDelete(board.id, e)}
                   disabled={deletingId === board.id}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition-opacity flex-shrink-0"
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded transition-opacity flex-shrink-0"
                   title="Delete board"
                 >
                   <Trash2 className="w-4 h-4 text-red-600" />

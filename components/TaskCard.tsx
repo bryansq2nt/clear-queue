@@ -49,19 +49,19 @@ export default function TaskCard({
     transition,
   }
 
-  // Priority-based styling
+  // Priority-based styling (theme-aware)
   const priorityStyles = {
-    5: { bg: 'bg-red-50', border: 'border-l-4 border-red-500', badge: 'bg-red-500' },
-    4: { bg: 'bg-orange-50', border: 'border-l-4 border-orange-500', badge: 'bg-orange-500' },
-    3: { bg: 'bg-yellow-50', border: 'border-l-4 border-yellow-500', badge: 'bg-yellow-500' },
-    2: { bg: 'bg-blue-50', border: 'border-l-4 border-blue-500', badge: 'bg-blue-500' },
-    1: { bg: 'bg-green-50', border: 'border-l-4 border-green-500', badge: 'bg-green-500' }
+    5: { bg: 'bg-red-500/10 dark:bg-red-500/20', border: 'border-l-4 border-red-500', badge: 'bg-red-500' },
+    4: { bg: 'bg-orange-500/10 dark:bg-orange-500/20', border: 'border-l-4 border-orange-500', badge: 'bg-orange-500' },
+    3: { bg: 'bg-yellow-500/10 dark:bg-yellow-500/20', border: 'border-l-4 border-yellow-500', badge: 'bg-yellow-500' },
+    2: { bg: 'bg-blue-500/10 dark:bg-blue-500/20', border: 'border-l-4 border-blue-500', badge: 'bg-blue-500' },
+    1: { bg: 'bg-green-500/10 dark:bg-green-500/20', border: 'border-l-4 border-green-500', badge: 'bg-green-500' }
   }
 
   // Done tasks always use green styling regardless of priority
-  const doneStyle = { bg: 'bg-green-50', border: 'border-l-4 border-green-500', badge: 'bg-green-500' }
+  const doneStyle = { bg: 'bg-green-500/10 dark:bg-green-500/20', border: 'border-l-4 border-green-500', badge: 'bg-green-500' }
   // Blocked tasks always use red styling to draw attention
-  const blockedStyle = { bg: 'bg-red-50', border: 'border-l-4 border-red-500', badge: 'bg-red-500' }
+  const blockedStyle = { bg: 'bg-red-500/10 dark:bg-red-500/20', border: 'border-l-4 border-red-500', badge: 'bg-red-500' }
   const priorityStyle = task.status === 'done'
     ? doneStyle
     : task.status === 'blocked'
@@ -93,7 +93,7 @@ export default function TaskCard({
         style={style}
         {...dragProps}
         className={cn(
-          'bg-white rounded-lg p-4 shadow-md hover:shadow-lg transition-all cursor-pointer group relative',
+          'bg-card rounded-lg p-4 shadow-md hover:shadow-lg transition-all cursor-pointer group relative border border-border',
           priorityStyle.bg,
           priorityStyle.border,
           (isDragging || isSortableDragging) && 'opacity-50',
@@ -110,7 +110,7 @@ export default function TaskCard({
               'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
               isSelected
                 ? 'bg-blue-500 border-blue-500'
-                : 'bg-white border-slate-300'
+                : 'bg-card border-border'
             )}>
               {isSelected && <Check className="w-3 h-3 text-white" />}
             </div>
@@ -118,7 +118,7 @@ export default function TaskCard({
         )}
 
         <div className={cn('flex items-start justify-between mb-2', selectionMode && 'pl-6')}>
-          <h3 className="font-semibold text-slate-800 text-sm flex-1 leading-tight">{task.title}</h3>
+          <h3 className="font-semibold text-foreground text-sm flex-1 leading-tight">{task.title}</h3>
           <span className={cn(
             priorityStyle.badge,
             'text-white text-xs px-2.5 py-1 rounded-full font-bold ml-2 flex-shrink-0'
@@ -131,8 +131,8 @@ export default function TaskCard({
 
         {task.due_date && (
           <div className={cn(
-            'flex items-center gap-1 text-xs',
-            isOverdue ? 'text-red-600 font-medium' : 'text-slate-600 font-medium'
+            'flex items-center gap-1 text-xs font-medium',
+            isOverdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
           )}>
             Due on:
             <Calendar className="w-3 h-3" />

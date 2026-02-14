@@ -38,7 +38,7 @@ export default function NoteDetailClient({
   }, [loadProjects])
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 dark:bg-gray-950">
+    <div className="flex flex-col h-screen bg-background">
       <TopBar
         searchQuery=""
         onSearchChange={() => {}}

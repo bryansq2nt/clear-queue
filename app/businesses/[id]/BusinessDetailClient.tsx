@@ -105,7 +105,7 @@ export default function BusinessDetailClient({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col h-screen bg-background">
       <TopBar
         searchQuery=""
         onSearchChange={() => {}}
@@ -176,7 +176,7 @@ export default function BusinessDetailClient({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setEditModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent text-foreground"
               >
                 <Edit className="w-4 h-4" />
                 Edit
@@ -191,7 +191,7 @@ export default function BusinessDetailClient({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <section className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <section className="bg-card rounded-lg shadow-sm border border-border p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
                 Address
@@ -215,7 +215,7 @@ export default function BusinessDetailClient({
             </section>
 
             {Object.keys(social).length > 0 && (
-              <section className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <section className="bg-card rounded-lg shadow-sm border border-border p-6">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <Globe className="w-5 h-5" />
                   Social
@@ -237,7 +237,7 @@ export default function BusinessDetailClient({
             )}
 
             {business.notes && (
-              <section className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:col-span-2">
+              <section className="bg-card rounded-lg shadow-sm border border-border p-6 lg:col-span-2">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <StickyNote className="w-5 h-5" />
                   Notes

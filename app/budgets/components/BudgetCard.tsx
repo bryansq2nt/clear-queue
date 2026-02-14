@@ -90,7 +90,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
 
   return (
     <Link href={`/budgets/${budget.id}`}>
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all hover:border-blue-300 dark:hover:border-blue-600 cursor-pointer relative group">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition-all hover:border-primary/50 cursor-pointer relative group">
         {/* Menu button */}
         <button
           onClick={(e) => {
@@ -98,7 +98,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
             e.stopPropagation()
             setShowMenu(!showMenu)
           }}
-          className="absolute top-4 right-4 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100 dark:hover:bg-gray-700 z-10"
+          className="absolute top-4 right-4 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent z-10"
         >
           <MoreVertical className="w-4 h-4 text-gray-500" />
         </button>
@@ -114,11 +114,11 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
                 setShowMenu(false)
               }}
             />
-            <div className="absolute top-12 right-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-30 min-w-[150px]">
+            <div className="absolute top-12 right-4 bg-card rounded-lg shadow-lg border border-border py-2 z-30 min-w-[150px]">
               <button
                 onClick={handleDuplicate}
                 disabled={isDuplicating}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 disabled:opacity-50"
+                className="w-full px-4 py-2 text-left text-sm hover:bg-accent flex items-center gap-2 disabled:opacity-50 text-foreground"
               >
                 <Copy className="w-4 h-4" />
                 {isDuplicating ? 'Duplicating...' : 'Duplicate'}
@@ -136,13 +136,13 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
         )}
 
         {/* Budget name */}
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 pr-8">
+        <h3 className="text-lg font-semibold text-foreground mb-1 pr-8">
           {budget.name}
         </h3>
 
         {/* Description */}
         {budget.description && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
             {budget.description}
           </p>
         )}
@@ -163,7 +163,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
               <Package className="w-3 h-3" />
               Items
             </div>
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="text-lg font-semibold text-foreground">
               {stats.itemCount}
             </div>
           </div>
@@ -173,7 +173,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
               <TrendingUp className="w-3 h-3" />
               Categories
             </div>
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="text-lg font-semibold text-foreground">
               {stats.categoryCount}
             </div>
           </div>
@@ -183,7 +183,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
               <Clock className="w-3 h-3" />
               Progress
             </div>
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="text-lg font-semibold text-foreground">
               {stats.progress}%
             </div>
           </div>

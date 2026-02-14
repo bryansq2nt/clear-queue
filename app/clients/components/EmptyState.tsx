@@ -2,7 +2,7 @@ import { Users } from 'lucide-react'
 
 export function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
+    <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
       <div className="mx-auto w-24 h-24 bg-gradient-to-br from-slate-500 to-slate-600 rounded-full flex items-center justify-center mb-6">
         <Users className="w-12 h-12 text-white" />
       </div>

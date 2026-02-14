@@ -23,11 +23,11 @@ const statusLabels = {
 } as const
 
 const statusColors = {
-  backlog: "bg-gray-100 text-gray-700",
-  next: "bg-yellow-100 text-yellow-700",
-  in_progress: "bg-blue-100 text-blue-700",
-  blocked: "bg-red-100 text-red-700",
-  done: "bg-green-100 text-green-700",
+  backlog: "bg-muted text-muted-foreground",
+  next: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
+  in_progress: "bg-blue-500/20 text-blue-700 dark:text-blue-400",
+  blocked: "bg-red-500/20 text-red-700 dark:text-red-400",
+  done: "bg-green-500/20 text-green-700 dark:text-green-400",
 } as const
 
 function formatDate(dateString: string | null): string {
@@ -138,23 +138,23 @@ export default function TaskListWidget({
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+      <div className="bg-card rounded-lg shadow p-6 hover:shadow-lg transition-shadow border border-border">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+          <h2 className="text-xl font-bold text-foreground">{title}</h2>
           <Link
             href={viewAllLink}
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
+            className="text-primary hover:text-primary/90 text-sm font-medium transition-colors"
           >
             Ver todas →
           </Link>
         </div>
 
         {loading ? (
-          <div className="text-slate-500 text-sm py-4">Cargando...</div>
+          <div className="text-muted-foreground text-sm py-4">Cargando...</div>
         ) : error ? (
-          <div className="text-red-500 text-sm py-4">{error}</div>
+          <div className="text-destructive text-sm py-4">{error}</div>
         ) : tasks.length === 0 ? (
-          <div className="text-slate-500 text-sm py-4">{emptyMessage}</div>
+          <div className="text-muted-foreground text-sm py-4">{emptyMessage}</div>
         ) : (
           <>
             <div className="space-y-3">
@@ -165,18 +165,18 @@ export default function TaskListWidget({
                   className={`border-l-4 ${borderColor} ${bgColor} rounded-r-lg p-4 hover:opacity-90 transition-colors cursor-pointer`}
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-medium text-slate-900 flex-1">{task.title}</h3>
+                    <h3 className="font-medium text-foreground flex-1">{task.title}</h3>
                     {showUpdatedAt && task.updated_at ? (
                       <span className="text-slate-600 text-sm ml-2 whitespace-nowrap">
                         {formatRelativeDate(task.updated_at)}
                       </span>
                     ) : task.due_date ? (
-                      <span className="text-slate-600 text-sm ml-2 whitespace-nowrap">
+                      <span className="text-muted-foreground text-sm ml-2 whitespace-nowrap">
                         {formatDate(task.due_date)}
                       </span>
                     ) : null}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     {task.projects && (
                       <>
                         <div
@@ -196,26 +196,26 @@ export default function TaskListWidget({
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-between">
-                <div className="text-sm text-slate-600">
+              <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
                   Mostrando {startItem}–{endItem} de {totalCount}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    className="px-3 py-1.5 text-sm font-medium text-foreground bg-card border border-border rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Anterior
                   </button>
-                  <span className="text-sm text-slate-600 px-2">
+                  <span className="text-sm text-muted-foreground px-2">
                     Página {page} de {totalPages}
                   </span>
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className="px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    className="px-3 py-1.5 text-sm font-medium text-foreground bg-card border border-border rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                   >
                     Siguiente
                     <ChevronRight className="w-4 h-4" />

@@ -164,9 +164,9 @@ export default function IdeasDashboardClient({
       {/* Main Canvas Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="bg-white border-b p-4">
+        <div className="bg-card border-b border-border p-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-semibold text-foreground">
               {selectedBoardId
                 ? boards.find((b) => b.id === selectedBoardId)?.name ||
                 'Select a Board'

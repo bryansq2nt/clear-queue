@@ -28,13 +28,13 @@ export default function Column({ id, title, tasks, projects, onTaskUpdate, curre
     id,
   })
 
-  // Column-specific color scheme
+  // Column-specific color scheme (theme-aware surface hierarchy)
   const columnStyles = {
-    backlog: { bg: 'bg-slate-100', header: 'bg-slate-200' },
-    next: { bg: 'bg-blue-50', header: 'bg-blue-100' },
-    in_progress: { bg: 'bg-purple-50', header: 'bg-purple-100' },
-    blocked: { bg: 'bg-red-50', header: 'bg-red-100' },
-    done: { bg: 'bg-green-50', header: 'bg-green-100' }
+    backlog: { bg: 'bg-surface-2', header: 'bg-surface-3' },
+    next: { bg: 'bg-surface-2', header: 'bg-blue-500/20 dark:bg-blue-500/30' },
+    in_progress: { bg: 'bg-surface-2', header: 'bg-purple-500/20 dark:bg-purple-500/30' },
+    blocked: { bg: 'bg-surface-2', header: 'bg-red-500/20 dark:bg-red-500/30' },
+    done: { bg: 'bg-surface-2', header: 'bg-green-500/20 dark:bg-green-500/30' }
   }
 
   const columnStyle = columnStyles[id] || columnStyles.backlog
@@ -49,8 +49,8 @@ export default function Column({ id, title, tasks, projects, onTaskUpdate, curre
             columnStyle.header,
             'rounded-t-xl px-4 py-3 shadow-sm'
           )}>
-            <h2 className="text-base font-bold text-slate-800">{title}</h2>
-            <p className="text-xs text-slate-600 mt-0.5">{tasks.length} tasks</p>
+            <h2 className="text-base font-bold text-foreground">{title}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{tasks.length} tasks</p>
           </div>
 
           {/* Cards Container */}
@@ -81,7 +81,7 @@ export default function Column({ id, title, tasks, projects, onTaskUpdate, curre
             </SortableContext>
             {/* Add Task Button */}
             <button
-              className="w-full py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-600 hover:border-slate-400 hover:bg-white transition-all flex items-center justify-center gap-2 text-sm font-medium mt-3"
+              className="w-full py-3 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-primary hover:bg-accent transition-all flex items-center justify-center gap-2 text-sm font-medium mt-3"
               onClick={() => setIsAddModalOpen(true)}
             >
               <Plus className="w-4 h-4" />

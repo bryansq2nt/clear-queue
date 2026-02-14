@@ -96,7 +96,7 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
       tabIndex={linkToDetail ? 0 : undefined}
       onClick={linkToDetail ? handleCardClick : undefined}
       onKeyDown={linkToDetail ? (e) => e.key === 'Enter' && handleCardClick(e as unknown as React.MouseEvent) : undefined}
-      className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-5 transition-all relative group ${linkToDetail ? 'cursor-pointer hover:shadow-md' : ''}`}
+      className={`bg-card rounded-lg shadow-sm border border-border p-5 transition-all relative group ${linkToDetail ? 'cursor-pointer hover:shadow-md' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">

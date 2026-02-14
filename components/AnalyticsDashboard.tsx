@@ -29,17 +29,17 @@ const RCell = Cell as any
 const RLegend = Legend as any
 
 const priorityColors = {
-    5: 'bg-red-100 text-red-800',
-    4: 'bg-orange-100 text-orange-800',
-    3: 'bg-yellow-100 text-yellow-800',
-    2: 'bg-blue-100 text-blue-800',
-    1: 'bg-green-100 text-green-800',
+    5: 'bg-red-500/20 text-red-700 dark:text-red-400',
+    4: 'bg-orange-500/20 text-orange-700 dark:text-orange-400',
+    3: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400',
+    2: 'bg-blue-500/20 text-blue-700 dark:text-blue-400',
+    1: 'bg-green-500/20 text-green-700 dark:text-green-400',
 }
 
 const healthBadges = {
-    Healthy: 'bg-green-100 text-green-800',
-    Warning: 'bg-yellow-100 text-yellow-800',
-    Critical: 'bg-red-100 text-red-800',
+    Healthy: 'bg-green-500/20 text-green-700 dark:text-green-400',
+    Warning: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400',
+    Critical: 'bg-red-500/20 text-red-700 dark:text-red-400',
 }
 
 // Data fetching function
@@ -207,7 +207,7 @@ export default function AnalyticsDashboard() {
     ]
 
     return (
-        <div className="flex h-screen bg-slate-50">
+        <div className="flex h-screen bg-background">
             {/* Left Sidebar */}
             <Sidebar
                 projects={dashboardData.projects}
@@ -231,7 +231,7 @@ export default function AnalyticsDashboard() {
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* 1. TOP NAVIGATION BAR */}
-                <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-xl">
+                <div className="bg-primary text-primary-foreground shadow-xl">
                     <div className="px-6 py-4 flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <h1 className="text-xl font-bold">Mutech Labs - Dashboard</h1>
@@ -241,7 +241,7 @@ export default function AnalyticsDashboard() {
                                 onClick={() => setIsAddProjectModalOpen(true)}
                                 variant="default"
                                 size="sm"
-                                className="bg-white text-slate-900 hover:bg-slate-100"
+                                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
                             >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Create Project
@@ -253,7 +253,7 @@ export default function AnalyticsDashboard() {
                                     await supabase.auth.signOut()
                                     router.push('/')
                                 }}
-                                className="text-white hover:bg-slate-800"
+                                className="text-primary-foreground hover:bg-primary/80"
                             >
                                 <LogOut className="w-4 h-4" />
                             </Button>
@@ -264,7 +264,7 @@ export default function AnalyticsDashboard() {
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {loading ? (
                         <div className="flex items-center justify-center h-64">
-                            <div className="text-slate-600">Loading dashboard data...</div>
+                            <div className="text-muted-foreground">Loading dashboard data...</div>
                         </div>
                     ) : (
                         <>
@@ -295,14 +295,14 @@ export default function AnalyticsDashboard() {
                             <DashboardFocusTasksSection />
 
                             {/* 2. PROJECT HEALTH OVERVIEW */}
-                            <div className="bg-white rounded-lg shadow p-6">
-                                <h2 className="text-xl font-bold text-slate-900 mb-4">Project Health Overview</h2>
+                            <div className="bg-card rounded-lg shadow p-6 border border-border">
+                                <h2 className="text-xl font-bold text-foreground mb-4">Project Health Overview</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {dashboardData.projectHealthData.map((project) => (
                                         <div
                                             key={project.id}
                                             onClick={() => router.push(`/project/${project.id}`)}
-                                            className="border border-slate-200 rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer"
+                                            className="border border-border rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer bg-background hover:bg-accent/50"
                                         >
                                             <div className="flex items-center justify-between mb-3">
                                                 <div className="flex items-center gap-2">
@@ -310,12 +310,12 @@ export default function AnalyticsDashboard() {
                                                         className="w-4 h-4 rounded-full"
                                                         style={{ backgroundColor: project.color }}
                                                     />
-                                                    <h3 className="font-semibold text-slate-900">{project.name}</h3>
+                                                    <h3 className="font-semibold text-foreground">{project.name}</h3>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-slate-500">{getCategoryLabel(project.category)}</span>
+                                                    <span className="text-xs text-muted-foreground">{getCategoryLabel(project.category)}</span>
                                                     {project.category === 'archived' && (
-                                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-200 text-slate-700">
+                                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
                                                             Archived
                                                         </span>
                                                     )}
@@ -326,28 +326,28 @@ export default function AnalyticsDashboard() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
                                                 <div>
-                                                    <span className="text-slate-500">Total:</span>
+                                                    <span className="text-muted-foreground">Total:</span>
                                                     <span className="font-semibold ml-1">{project.total}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="text-slate-500">Critical:</span>
-                                                    <span className="font-semibold ml-1 text-red-600">{project.critical}</span>
+                                                    <span className="text-muted-foreground">Critical:</span>
+                                                    <span className="font-semibold ml-1 text-red-600 dark:text-red-400">{project.critical}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="text-slate-500">Blocked:</span>
-                                                    <span className="font-semibold ml-1 text-orange-600">{project.blocked}</span>
+                                                    <span className="text-muted-foreground">Blocked:</span>
+                                                    <span className="font-semibold ml-1 text-orange-600 dark:text-orange-400">{project.blocked}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="text-slate-500">Completed:</span>
-                                                    <span className="font-semibold ml-1 text-green-600">{project.completed}</span>
+                                                    <span className="text-muted-foreground">Completed:</span>
+                                                    <span className="font-semibold ml-1 text-green-600 dark:text-green-400">{project.completed}</span>
                                                 </div>
                                             </div>
                                             <div>
-                                                <div className="flex justify-between text-xs text-slate-600 mb-1">
+                                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
                                                     <span>Progress</span>
                                                     <span>{project.completion}%</span>
                                                 </div>
-                                                <div className="w-full bg-slate-200 rounded-full h-2">
+                                                <div className="w-full bg-muted rounded-full h-2">
                                                     <div
                                                         className="bg-blue-600 h-2 rounded-full transition-all"
                                                         style={{ width: `${project.completion}%` }}
@@ -363,30 +363,30 @@ export default function AnalyticsDashboard() {
                             {/* 6. BOTTOM ROW */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 {/* Blocked Tasks */}
-                                <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-                                    <h2 className="text-xl font-bold text-slate-900 mb-4">Blocked Tasks</h2>
+                                <div className="bg-card rounded-lg shadow p-6 hover:shadow-lg transition-shadow border border-border">
+                                    <h2 className="text-xl font-bold text-foreground mb-4">Blocked Tasks</h2>
                                     <div className="space-y-3">
                                         {dashboardData.blockedTasks.length === 0 ? (
-                                            <div className="text-slate-500 text-sm py-4">No blocked tasks</div>
+                                            <div className="text-muted-foreground text-sm py-4">No blocked tasks</div>
                                         ) : (
                                             dashboardData.blockedTasks.map((task) => (
                                                 <div
                                                     key={task.id}
-                                                    className="border-l-4 border-red-500 bg-red-50 rounded-r-lg p-4 hover:bg-red-100 transition-colors"
+                                                    className="border-l-4 border-red-500 bg-red-500/10 dark:bg-red-500/20 rounded-r-lg p-4 hover:bg-red-500/20 dark:hover:bg-red-500/30 transition-colors border border-border"
                                                 >
                                                     <div className="flex items-start justify-between mb-2">
-                                                        <h3 className="font-medium text-slate-900 flex-1">{task.title}</h3>
+                                                        <h3 className="font-medium text-foreground flex-1">{task.title}</h3>
                                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${priorityColors[task.priority as keyof typeof priorityColors]}`}>
                                                             P{task.priority}
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                                         <div
                                                             className="w-3 h-3 rounded-full"
                                                             style={{ backgroundColor: task.projectColor }}
                                                         />
                                                         <span>{task.project}</span>
-                                                        <span className="text-red-600 font-medium ml-auto">
+                                                        <span className="text-red-600 dark:text-red-400 font-medium ml-auto">
                                                             Blocked {task.daysBlocked} days
                                                         </span>
                                                     </div>
@@ -397,31 +397,31 @@ export default function AnalyticsDashboard() {
                                 </div>
 
                                 {/* Upcoming Deadlines */}
-                                <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-                                    <h2 className="text-xl font-bold text-slate-900 mb-4">Upcoming Deadlines</h2>
+                                <div className="bg-card rounded-lg shadow p-6 hover:shadow-lg transition-shadow border border-border">
+                                    <h2 className="text-xl font-bold text-foreground mb-4">Upcoming Deadlines</h2>
                                     <div className="space-y-3">
                                         {dashboardData.upcomingDeadlines.length === 0 ? (
-                                            <div className="text-slate-500 text-sm py-4">No upcoming deadlines</div>
+                                            <div className="text-muted-foreground text-sm py-4">No upcoming deadlines</div>
                                         ) : (
                                             dashboardData.upcomingDeadlines.map((task) => (
                                                 <div
                                                     key={task.id}
-                                                    className="border-l-4 border-blue-500 bg-blue-50 rounded-r-lg p-4 hover:bg-blue-100 transition-colors"
+                                                    className="border-l-4 border-blue-500 bg-blue-500/10 dark:bg-blue-500/20 rounded-r-lg p-4 hover:bg-blue-500/20 dark:hover:bg-blue-500/30 transition-colors"
                                                 >
                                                     <div className="flex items-start justify-between mb-2">
-                                                        <h3 className="font-medium text-slate-900 flex-1">{task.title}</h3>
+                                                        <h3 className="font-medium text-foreground flex-1">{task.title}</h3>
                                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${priorityColors[task.priority as keyof typeof priorityColors]}`}>
                                                             P{task.priority}
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                                         <div
                                                             className="w-3 h-3 rounded-full"
                                                             style={{ backgroundColor: task.projectColor }}
                                                         />
                                                         <span>{task.project}</span>
                                                         <Calendar className="w-4 h-4 ml-auto" />
-                                                        <span className="text-blue-600 font-medium">
+                                                        <span className="text-blue-500 dark:text-blue-400 font-medium">
                                                             {new Date(task.dueDate).toLocaleDateString()}
                                                         </span>
                                                     </div>

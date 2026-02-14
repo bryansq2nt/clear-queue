@@ -39,17 +39,17 @@ export default function TopBar({
 
   return (
     <>
-      <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-xl">
+      <div className="bg-primary text-primary-foreground shadow-xl">
         <div className="px-6 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold">{projectName} - Task Board</h1>
           <div className="flex items-center gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-primary-foreground/70" />
               <Input
                 placeholder="Search tasks..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 w-64"
+                className="pl-10 bg-primary/80 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/60 w-64"
               />
             </div>
             {onToggleSelectionMode && (
@@ -57,7 +57,7 @@ export default function TopBar({
                 onClick={onToggleSelectionMode}
                 variant={selectionMode ? "default" : "outline"}
                 size="sm"
-                className={selectionMode ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-slate-800 text-white border-slate-700 hover:bg-slate-700"}
+                className={selectionMode ? "bg-primary-foreground text-primary hover:bg-primary-foreground/90" : "bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"}
               >
                 <CheckSquare className="w-4 h-4 mr-2" />
                 {selectionMode ? 'Cancel Selection' : 'Select'}
@@ -69,7 +69,7 @@ export default function TopBar({
                   onClick={() => setIsNotesModalOpen(true)}
                   variant="outline"
                   size="sm"
-                  className="bg-slate-800 text-white border-slate-700 hover:bg-slate-700"
+                  className="bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Notes
@@ -78,7 +78,7 @@ export default function TopBar({
                   onClick={() => setIsEditModalOpen(true)}
                   variant="default"
                   size="sm"
-                  className="bg-white text-slate-900 hover:bg-slate-100"
+                  className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
                 >
                   Edit Project
                 </Button>
@@ -93,7 +93,7 @@ export default function TopBar({
                 Add Project
               </Button>
             )}
-            <Button variant="ghost" size="icon" onClick={() => onSignOut()} className="text-white hover:bg-slate-800">
+            <Button variant="ghost" size="icon" onClick={() => onSignOut()} className="text-primary-foreground hover:bg-primary/80">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>

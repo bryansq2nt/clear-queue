@@ -64,7 +64,7 @@ export default function BudgetsPageClient() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-screen bg-slate-50">
+      <div className="flex flex-col h-screen bg-background">
         <TopBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -101,7 +101,7 @@ export default function BudgetsPageClient() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col h-screen bg-background">
       <TopBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -126,10 +126,10 @@ export default function BudgetsPageClient() {
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-3xl font-bold text-foreground">
                 Presupuestos
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
+              <p className="text-muted-foreground mt-2">
                 Gestiona tus presupuestos y compras por proyecto
               </p>
             </div>
@@ -137,7 +137,7 @@ export default function BudgetsPageClient() {
             {filteredBudgets.length > 0 && (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+                className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 New Budget
@@ -149,7 +149,7 @@ export default function BudgetsPageClient() {
           {filteredBudgets.length === 0 && budgets.length === 0 ? (
             <EmptyState onCreateClick={() => setIsModalOpen(true)} />
           ) : filteredBudgets.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
+            <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
               <p className="text-gray-600 dark:text-gray-400">
                 No budgets found matching &quot;{searchQuery}&quot;
               </p>
@@ -171,7 +171,7 @@ export default function BudgetsPageClient() {
             <div className="mt-6 text-center">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+                className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 New Budget

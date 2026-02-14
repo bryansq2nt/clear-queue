@@ -60,7 +60,7 @@ export default function ClientsPageClient() {
     : clients
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col h-screen bg-background">
       <TopBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -84,8 +84,8 @@ export default function ClientsPageClient() {
         <div className="flex-1 overflow-y-auto p-6">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Clients</h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
+              <h1 className="text-3xl font-bold text-foreground">Clients</h1>
+              <p className="text-muted-foreground mt-2">
                 Manage your clients and their businesses
               </p>
             </div>
@@ -110,8 +110,8 @@ export default function ClientsPageClient() {
           ) : clients.length === 0 ? (
             <EmptyState onCreateClick={() => setIsCreateModalOpen(true)} />
           ) : filteredClients.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-              <p className="text-gray-600 dark:text-gray-400">
+            <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
+              <p className="text-muted-foreground">
                 No clients match &quot;{searchQuery}&quot;
               </p>
             </div>

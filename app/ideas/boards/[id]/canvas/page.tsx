@@ -74,7 +74,7 @@ export default async function BoardCanvasPage({
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b p-4">
+      <div className="bg-card border-b border-border p-4">
         <div className="container mx-auto max-w-full">
           <div className="flex items-center justify-between">
             <div>
@@ -84,7 +84,7 @@ export default async function BoardCanvasPage({
               >
                 ← Back to Board
               </Link>
-              <h1 className="text-2xl font-bold">{board.name}</h1>
+              <h1 className="text-2xl font-bold text-foreground">{board.name}</h1>
             </div>
           </div>
         </div>
