@@ -14,13 +14,13 @@ import { deleteBusinessAction } from '../actions'
 import { Database } from '@/lib/supabase/types'
 import type { SocialLinks } from '../actions'
 
-function EmailAction({ email }: { email: string }) {
+function EmailAction({ email, t }: { email: string; t: (key: string) => string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
         <button
           type="button"
-          className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           <Mail className="w-3.5 h-3.5" />
           <span className="truncate">{email}</span>
@@ -29,12 +29,12 @@ function EmailAction({ email }: { email: string }) {
       <DropdownMenuContent align="start">
         <DropdownMenuItem onClick={() => void navigator.clipboard.writeText(email)}>
           <Copy className="w-4 h-4 mr-2" />
-          Copy email
+          {t('clients.copy_email')}
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <a href={`mailto:${email}`} onClick={(e) => e.stopPropagation()}>
             <Send className="w-4 h-4 mr-2" />
-            Send email
+            {t('clients.send_email')}
           </a>
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -102,27 +102,27 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+          <h3 className="text-lg font-semibold text-foreground truncate">
             {business.name}
           </h3>
           {clientId && (
             <Link
               href={`/clients/${clientId}`}
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 mt-0.5 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground hover:text-foreground"
             >
               <User className="w-3.5 h-3.5" />
-              <span className="truncate">{clientName || 'View client'}</span>
+              <span className="truncate">{clientName || t('clients.view_client')}</span>
             </Link>
           )}
           {business.tagline && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">
+            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">
               {business.tagline}
             </p>
           )}
           {business.email && (
             <div className="mt-1" onClick={(e) => e.stopPropagation()}>
-              <EmailAction email={business.email} />
+              <EmailAction email={business.email} t={t} />
             </div>
           )}
           {business.website && (
@@ -131,7 +131,7 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+              className="flex items-center gap-1.5 mt-2 text-sm text-primary hover:underline"
             >
               <Globe className="w-3.5 h-3.5" />
               <span className="truncate">{business.website}</span>
@@ -145,7 +145,7 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
                   href={social[s.key]!.startsWith('http') ? social[s.key]! : `https://${social[s.key]}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   {s.label}
                 </a>
@@ -169,7 +169,7 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1.5 mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                className="flex items-center gap-1.5 mt-2 text-sm text-primary hover:underline"
               >
                 <MapPin className="w-3.5 h-3.5" />
                 <span className="line-clamp-1">{fullAddress}</span>
@@ -182,9 +182,9 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
             <button
               type="button"
               onClick={(e) => e.stopPropagation()}
-              className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
+              className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent text-muted-foreground hover:text-foreground flex-shrink-0"
             >
-              <MoreVertical className="w-4 h-4 text-gray-500" />
+              <MoreVertical className="w-4 h-4" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

@@ -306,12 +306,18 @@
     "title": "Clients",
     "subtitle": "Manage your clients and their businesses",
     "no_clients_yet": "No clients yet",
+    "no_clients_match": "No clients match \"{query}\"",
     "add_first_client_desc": "Add your first client to manage contacts, businesses, and projects.",
     "add_client": "Add client",
     "edit_client": "Edit client",
     "new_client": "New client",
     "back_to_clients": "Back to clients",
+    "detail_title": "Client",
+    "client_info_title": "Client information",
+    "contact": "Contact",
     "phone": "Phone",
+    "phone_placeholder": "+1 234 567 8900",
+    "email_placeholder": "jane@example.com",
     "full_name": "Full name *",
     "full_name_placeholder": "e.g. Jane Doe",
     "gender": "Gender",
@@ -328,6 +334,7 @@
     "preferences": "Preferences",
     "notes": "Notes",
     "optional": "Optional",
+    "optional_details": "Gender, preferences, notes",
     "create_client": "Create client",
     "creating": "Creating...",
     "saving": "Saving...",
@@ -343,7 +350,15 @@
     "add_link": "Add link",
     "no_projects_linked": "No projects linked to this client yet.",
     "notes_preferences": "Notes & Preferences",
-    "no_notes_or_preferences": "No notes or preferences."
+    "no_notes_or_preferences": "No notes or preferences.",
+    "copy_email": "Copy email",
+    "send_email": "Send email",
+    "view_client": "View client",
+    "link_url_label": "URL *",
+    "link_url_placeholder": "https://...",
+    "link_label_optional": "Label (optional)",
+    "link_label_placeholder": "e.g. Reference doc",
+    "remove_link_confirm": "Remove this link?"
   },
   "budgets": {
     "title": "Budgets",
@@ -481,7 +496,8 @@
     "create_business_btn": "Create business",
     "creating": "Creating...",
     "saving": "Saving...",
-    "error_select_client": "Select a client."
+    "error_select_client": "Select a client.",
+    "address_and_more": "Address & more"
   },
   "projects": {
     "edit_title": "Edit project",

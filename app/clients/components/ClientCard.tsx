@@ -10,17 +10,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { deleteClientAction } from '../actions'
+import { formatPhoneDisplay } from '@/lib/formatPhone'
 import { Database } from '@/lib/supabase/types'
 
 type Client = Database['public']['Tables']['clients']['Row']
 
-function EmailAction({ email }: { email: string }) {
+function EmailAction({ email, t }: { email: string; t: (key: string) => string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
-          className="flex items-center gap-1.5 mt-0.5 text-sm text-gray-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white w-full text-left min-w-0"
+          className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground hover:text-foreground w-full text-left min-w-0"
         >
           <Mail className="w-3.5 h-3.5 flex-shrink-0" />
           <span className="truncate">{email}</span>
@@ -34,12 +35,12 @@ function EmailAction({ email }: { email: string }) {
           }}
         >
           <Copy className="w-4 h-4 mr-2" />
-          Copy email
+          {t('clients.copy_email')}
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <a href={`mailto:${email}`} onClick={(e) => e.stopPropagation()}>
             <Send className="w-4 h-4 mr-2" />
-            Send email
+            {t('clients.send_email')}
           </a>
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -73,31 +74,31 @@ export function ClientCard({ client, onDeleted, onEdit }: ClientCardProps) {
     <div className="bg-card rounded-lg shadow-sm border border-border p-5 hover:shadow-md transition-all relative group">
       <div className="flex items-start justify-between gap-2">
         <Link href={`/clients/${client.id}`} className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+          <h3 className="text-lg font-semibold text-foreground truncate">
             {client.full_name}
           </h3>
           {client.phone && (
             <a
               href={`tel:${client.phone.replace(/\s/g, '')}`}
-              className="flex items-center gap-1.5 mt-1 text-sm text-gray-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+              className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground hover:text-foreground"
               onClick={(e) => e.stopPropagation()}
             >
               <Phone className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="truncate">{client.phone}</span>
+              <span className="truncate">{formatPhoneDisplay(client.phone)}</span>
             </a>
           )}
           {client.email && (
-            <EmailAction email={client.email} />
+            <EmailAction email={client.email} t={t} />
           )}
         </Link>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
-            <button
-              className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
-              onClick={(e) => e.preventDefault()}
-            >
-              <MoreVertical className="w-4 h-4 text-gray-500" />
-            </button>
+        <button
+          className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent text-muted-foreground hover:text-foreground flex-shrink-0"
+          onClick={(e) => e.preventDefault()}
+        >
+          <MoreVertical className="w-4 h-4" />
+        </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {onEdit && (

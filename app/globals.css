@@ -106,3 +106,25 @@
   animation: cq-update-flash-strong 620ms cubic-bezier(0.16, 1, 0.3, 1);
   will-change: background-color, box-shadow;
 }
+
+/* PhoneInput theme: use app background/border/foreground */
+.PhoneInput-theme.PhoneInput {
+  @apply flex w-full rounded-md border border-input overflow-hidden bg-background;
+  min-height: 2rem;
+}
+.PhoneInput-theme .PhoneInputCountry {
+  @apply flex items-center border-r border-input bg-muted/50 pl-2 pr-1;
+  min-width: 3.5rem;
+}
+.PhoneInput-theme .PhoneInputCountrySelect {
+  @apply bg-transparent text-foreground cursor-pointer;
+}
+.PhoneInput-theme .PhoneInputCountrySelectArrow {
+  @apply opacity-70 text-foreground;
+}
+.PhoneInput-theme .PhoneInputInput {
+  @apply flex-1 min-w-0 h-8 px-3 text-sm bg-background text-foreground placeholder:text-muted-foreground border-0 outline-none focus:ring-2 focus:ring-ring focus:ring-inset rounded-r-md;
+}
+.PhoneInput-theme .PhoneInputCountryIconImg {
+  @apply w-5;
+}

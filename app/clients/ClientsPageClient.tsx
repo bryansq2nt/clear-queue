@@ -73,6 +73,7 @@ export default function ClientsPageClient() {
         projectName={t('clients.title')}
         currentProject={null}
         onOpenSidebar={() => setSidebarOpen(true)}
+        minimal
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
@@ -88,28 +89,16 @@ export default function ClientsPageClient() {
           onMobileClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t('clients.title')}</h1>
-              <p className="text-muted-foreground mt-2">
-                {t('clients.subtitle')}
-              </p>
-            </div>
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-lg font-medium hover:from-slate-700 hover:to-slate-800 transition-all shadow-lg hover:shadow-xl"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              {t('clients.new_client')}
-            </button>
-          </div>
+          <p className="text-muted-foreground mb-6 sm:mb-8">
+            {t('clients.subtitle')}
+          </p>
 
           {isLoading ? (
             <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+              <div className="h-8 bg-muted rounded w-1/4" />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+                  <div key={i} className="h-32 bg-muted rounded-lg" />
                 ))}
               </div>
             </div>
@@ -118,7 +107,7 @@ export default function ClientsPageClient() {
           ) : filteredClients.length === 0 ? (
             <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
               <p className="text-muted-foreground">
-                No clients match &quot;{searchQuery}&quot;
+                {t('clients.no_clients_match', { query: searchQuery })}
               </p>
             </div>
           ) : (

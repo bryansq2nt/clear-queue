@@ -31,6 +31,8 @@ interface TopBarProps {
   backLabel?: string
   /** Optional actions (e.g. Edit, Delete) shown in header when in detail view */
   actions?: React.ReactNode
+  /** Minimal header: only menu + title, no Add Project / logout / search (e.g. for Clients list) */
+  minimal?: boolean
 }
 
 export default function TopBar({
@@ -48,6 +50,7 @@ export default function TopBar({
   backHref,
   backLabel,
   actions,
+  minimal = false,
 }: TopBarProps) {
   const isDetailView = !!backHref
   const { t } = useI18n()
@@ -81,7 +84,7 @@ export default function TopBar({
               </button>
             )}
             <h1 className="text-base md:text-xl font-bold truncate min-w-0 flex-1">
-              {backHref ? projectName : `${projectName} – ${t('topbar.task_board')}`}
+              {backHref || minimal ? projectName : `${projectName} – ${t('topbar.task_board')}`}
             </h1>
             {isDetailView && actions != null && (
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -89,74 +92,78 @@ export default function TopBar({
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {onToggleSelectionMode && (
-              <Button
-                onClick={onToggleSelectionMode}
-                variant={selectionMode ? "default" : "outline"}
-                size="sm"
-                className={selectionMode ? "bg-primary-foreground text-primary hover:bg-primary-foreground/90" : "bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"}
-              >
-                <CheckSquare className="w-4 h-4 md:mr-2" />
-                <span className="hidden md:inline">{selectionMode ? t('topbar.cancel_selection') : t('topbar.select')}</span>
-              </Button>
-            )}
-            {currentProject ? (
-              <>
-                <Button
-                  onClick={() => setIsResourcesModalOpen(true)}
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90",
-                    resourcesInSidebar && "lg:hidden"
-                  )}
-                >
-                  <FolderOpen className="w-4 h-4 md:mr-2" />
-                  {t('resources.title')}
+          {!minimal && (
+            <>
+              <div className="flex items-center gap-2 flex-wrap">
+                {onToggleSelectionMode && (
+                  <Button
+                    onClick={onToggleSelectionMode}
+                    variant={selectionMode ? "default" : "outline"}
+                    size="sm"
+                    className={selectionMode ? "bg-primary-foreground text-primary hover:bg-primary-foreground/90" : "bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"}
+                  >
+                    <CheckSquare className="w-4 h-4 md:mr-2" />
+                    <span className="hidden md:inline">{selectionMode ? t('topbar.cancel_selection') : t('topbar.select')}</span>
+                  </Button>
+                )}
+                {currentProject ? (
+                  <>
+                    <Button
+                      onClick={() => setIsResourcesModalOpen(true)}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90",
+                        resourcesInSidebar && "lg:hidden"
+                      )}
+                    >
+                      <FolderOpen className="w-4 h-4 md:mr-2" />
+                      {t('resources.title')}
+                    </Button>
+                    <Button
+                      onClick={() => setIsNotesModalOpen(true)}
+                      variant="outline"
+                      size="sm"
+                      className="bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"
+                    >
+                      <FileText className="w-4 h-4 md:mr-2" />
+                      {t('sidebar.notes')}
+                    </Button>
+                    <Button
+                      onClick={() => setIsEditModalOpen(true)}
+                      variant="default"
+                      size="sm"
+                      className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                    >
+                      {t('topbar.edit_project')}
+                    </Button>
+                  </>
+                ) : !isDetailView ? (
+                  <Button
+                    onClick={() => setIsAddModalOpen(true)}
+                    variant="default"
+                    size="sm"
+                    className="bg-white text-slate-900 hover:bg-slate-100"
+                  >
+                    {t('topbar.add_project')}
+                  </Button>
+                ) : null}
+                <Button variant="ghost" size="icon" onClick={() => onSignOut()} className="text-primary-foreground hover:bg-primary/80" aria-label="Sign out">
+                  <LogOut className="w-4 h-4" />
                 </Button>
-                <Button
-                  onClick={() => setIsNotesModalOpen(true)}
-                  variant="outline"
-                  size="sm"
-                  className="bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"
-                >
-                  <FileText className="w-4 h-4 md:mr-2" />
-                  {t('sidebar.notes')}
-                </Button>
-                <Button
-                  onClick={() => setIsEditModalOpen(true)}
-                  variant="default"
-                  size="sm"
-                  className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-                >
-                  {t('topbar.edit_project')}
-                </Button>
-              </>
-            ) : !isDetailView ? (
-              <Button
-                onClick={() => setIsAddModalOpen(true)}
-                variant="default"
-                size="sm"
-                className="bg-white text-slate-900 hover:bg-slate-100"
-              >
-                {t('topbar.add_project')}
-              </Button>
-            ) : null}
-            <Button variant="ghost" size="icon" onClick={() => onSignOut()} className="text-primary-foreground hover:bg-primary/80" aria-label="Sign out">
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
-          {!isDetailView && (
-            <div className="relative min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-foreground/70" />
-              <Input
-                placeholder={t('topbar.search_tasks')}
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-10 bg-primary/80 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/60 w-full max-w-md"
-              />
-            </div>
+              </div>
+              {!isDetailView && (
+                <div className="relative min-w-0">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-foreground/70" />
+                  <Input
+                    placeholder={t('topbar.search_tasks')}
+                    value={searchQuery}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    className="pl-10 bg-primary/80 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/60 w-full max-w-md"
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
