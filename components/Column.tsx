@@ -5,7 +5,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import TaskCard from './TaskCard'
 import { AddTaskModal } from './AddTaskModal'
-import { Plus, ChevronDown } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight } from 'lucide-react'
 import { useI18n } from '@/components/I18nProvider'
 import { Database } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
@@ -45,14 +45,48 @@ export default function Column({ id, title, tasks, projects, onTaskUpdate, curre
   const columnStyle = columnStyles[id] || columnStyles.backlog
   const tasksLabel = tasks.length === 1 ? t('kanban.tasks_count_one') : t('kanban.tasks_count', { count: tasks.length })
   const showBody = accordion ? isExpanded : !collapsed
-  const isCollapsedStrip = !accordion && collapsed && onToggle
+  const isCollapsedNarrow = !accordion && collapsed && onToggle
 
   return (
     <>
-      <div className={cn('flex flex-col flex-1', accordion ? 'w-full' : 'min-w-[280px]')}>
-        {/* Column Container */}
-        <div className={cn('rounded-xl flex flex-col flex-1 overflow-hidden shadow-sm', accordion && !isExpanded && 'rounded-b-xl')}>
-          {/* Column Header - clickable in accordion mode; has collapse button on desktop */}
+      <div
+        className={cn(
+          'flex flex-col flex-shrink-0',
+          accordion && 'flex-1 w-full',
+          !accordion && collapsed && 'w-14',
+          !accordion && !collapsed && 'min-w-[280px]'
+        )}
+      >
+        {/* Desktop colapsado: rectángulo vertical con nombre hacia arriba (solo en modo Kanban) */}
+        {isCollapsedNarrow && (
+          <div
+            ref={setNodeRef}
+            className={cn(
+              columnStyle.header,
+              'rounded-xl w-14 flex flex-col flex-1 min-h-[200px] items-center justify-between py-4 px-1 cursor-pointer shadow-sm hover:opacity-90',
+              isOver && 'ring-2 ring-primary/50'
+            )}
+            onClick={() => setCollapsed(false)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCollapsed(false) } }}
+            title={`${title} (${tasks.length})`}
+          >
+            <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden />
+            <span
+              className="text-xs font-medium text-foreground flex-1 flex items-center justify-center py-2"
+              style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', letterSpacing: '0.02em', transform: 'rotate(180deg)' }}
+            >
+              {title}
+            </span>
+            <span className="text-sm font-semibold text-foreground tabular-nums flex-shrink-0">{tasks.length}</span>
+          </div>
+        )}
+
+        {/* Column completa (accordion o desktop expandido) */}
+        {!isCollapsedNarrow && (
+        <div className={cn('rounded-xl flex flex-col flex-1 overflow-hidden shadow-sm min-h-0', accordion && !isExpanded && 'rounded-b-xl')}>
+          {/* Column Header */}
           <div
             className={cn(
               columnStyle.header,
@@ -83,30 +117,10 @@ export default function Column({ id, title, tasks, projects, onTaskUpdate, curre
             )}
           </div>
 
-          {/* Collapsed strip (desktop only): narrow strip, still droppable */}
-          {isCollapsedStrip && (
-            <div
-              ref={setNodeRef}
-              className={cn(
-                columnStyle.bg,
-                'rounded-b-xl px-3 py-2 flex items-center justify-between gap-2 min-h-[48px] cursor-pointer',
-                isOver && 'bg-opacity-80'
-              )}
-              onClick={() => setCollapsed(false)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCollapsed(false) } }}
-            >
-              <span className="text-sm font-medium text-foreground truncate">{title}</span>
-              <span className="text-xs text-muted-foreground flex-shrink-0">{tasks.length}</span>
-              <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 -rotate-90" />
-            </div>
-          )}
-
           {/* Cards Container - hidden when accordion collapsed or column collapsed */}
           {showBody && (
             <div
-              ref={isCollapsedStrip ? undefined : setNodeRef}
+              ref={setNodeRef}
               className={cn(
                 columnStyle.bg,
                 'rounded-b-xl p-3 flex-1 space-y-3 overflow-y-auto shadow-sm min-h-[calc(100vh-250px)]',
@@ -140,6 +154,7 @@ export default function Column({ id, title, tasks, projects, onTaskUpdate, curre
             </div>
           )}
         </div>
+        )}
       </div>
       {currentProjectId && (
         <AddTaskModal

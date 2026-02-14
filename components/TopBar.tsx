@@ -35,6 +35,12 @@ interface TopBarProps {
   minimal?: boolean
   /** When true, show sidebar menu button on all screen sizes (e.g. when sidebar is overlay-only) */
   showSidebarButtonAlways?: boolean
+  /** Controlled open state for Resources modal (e.g. so parent can open from bottom bar on mobile) */
+  resourcesModalOpen?: boolean
+  onResourcesModalOpenChange?: (open: boolean) => void
+  /** Controlled open state for Edit modal */
+  editModalOpen?: boolean
+  onEditModalOpenChange?: (open: boolean) => void
 }
 
 export default function TopBar({
@@ -54,13 +60,22 @@ export default function TopBar({
   actions,
   minimal = false,
   showSidebarButtonAlways = false,
+  resourcesModalOpen: resourcesModalOpenProp,
+  onResourcesModalOpenChange,
+  editModalOpen: editModalOpenProp,
+  onEditModalOpenChange,
 }: TopBarProps) {
   const isDetailView = !!backHref
   const { t } = useI18n()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isEditModalOpenInternal, setIsEditModalOpenInternal] = useState(false)
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false)
-  const [isResourcesModalOpen, setIsResourcesModalOpen] = useState(false)
+  const [isResourcesModalOpenInternal, setIsResourcesModalOpenInternal] = useState(false)
+
+  const isEditModalOpen = editModalOpenProp ?? isEditModalOpenInternal
+  const setEditModalOpen = (open: boolean) => (onEditModalOpenChange ? onEditModalOpenChange(open) : setIsEditModalOpenInternal(open))
+  const isResourcesModalOpen = resourcesModalOpenProp ?? isResourcesModalOpenInternal
+  const setResourcesModalOpen = (open: boolean) => (onResourcesModalOpenChange ? onResourcesModalOpenChange(open) : setIsResourcesModalOpenInternal(open))
 
   return (
     <>
@@ -100,8 +115,8 @@ export default function TopBar({
           </div>
           {!minimal && (
             <>
-              <div className="flex items-center gap-2 flex-wrap">
-                {onToggleSelectionMode && (
+              <div className={cn("flex items-center gap-2 flex-wrap", isDetailView && "hidden lg:flex")}>
+                {onToggleSelectionMode && !(isDetailView && resourcesInSidebar) && (
                   <Button
                     onClick={onToggleSelectionMode}
                     variant={selectionMode ? "default" : "outline"}
@@ -114,18 +129,21 @@ export default function TopBar({
                 )}
                 {currentProject ? (
                   <>
-                    <Button
-                      onClick={() => setIsResourcesModalOpen(true)}
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90",
-                        resourcesInSidebar && "lg:hidden"
-                      )}
-                    >
-                      <FolderOpen className="w-4 h-4 md:mr-2" />
-                      {t('resources.title')}
-                    </Button>
+                    {(!isDetailView || !resourcesInSidebar) && (
+                      <Button
+                        onClick={() => setResourcesModalOpen(true)}
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90",
+                          resourcesInSidebar && "lg:hidden"
+                        )}
+                      >
+                        <FolderOpen className="w-4 h-4 md:mr-2" />
+                        {t('resources.title')}
+                      </Button>
+                    )}
+                    {!isDetailView && (
                     <Button
                       onClick={() => setIsNotesModalOpen(true)}
                       variant="outline"
@@ -135,14 +153,17 @@ export default function TopBar({
                       <FileText className="w-4 h-4 md:mr-2" />
                       {t('sidebar.notes')}
                     </Button>
-                    <Button
-                      onClick={() => setIsEditModalOpen(true)}
-                      variant="default"
-                      size="sm"
-                      className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-                    >
-                      {t('topbar.edit_project')}
-                    </Button>
+                    )}
+                    {!isDetailView && (
+                      <Button
+                        onClick={() => setEditModalOpen(true)}
+                        variant="default"
+                        size="sm"
+                        className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                      >
+                        {t('topbar.edit_project')}
+                      </Button>
+                    )}
                   </>
                 ) : !isDetailView ? (
                   <Button
@@ -154,9 +175,11 @@ export default function TopBar({
                     {t('topbar.add_project')}
                   </Button>
                 ) : null}
-                <Button variant="ghost" size="icon" onClick={() => onSignOut()} className="text-primary-foreground hover:bg-primary/80" aria-label="Sign out">
-                  <LogOut className="w-4 h-4" />
-                </Button>
+                {!isDetailView && (
+                  <Button variant="ghost" size="icon" onClick={() => onSignOut()} className="text-primary-foreground hover:bg-primary/80" aria-label="Sign out">
+                    <LogOut className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
               {!isDetailView && (
                 <div className="relative min-w-0">
@@ -177,10 +200,10 @@ export default function TopBar({
         <>
           <EditProjectModal
             isOpen={isEditModalOpen}
-            onClose={() => setIsEditModalOpen(false)}
+            onClose={() => setEditModalOpen(false)}
             onProjectUpdated={() => {
               onProjectUpdated()
-              setIsEditModalOpen(false)
+              setEditModalOpen(false)
             }}
             project={currentProject}
             defaultTab="details"
@@ -196,7 +219,7 @@ export default function TopBar({
           />
           <ProjectResourcesModal
             isOpen={isResourcesModalOpen}
-            onClose={() => setIsResourcesModalOpen(false)}
+            onClose={() => setResourcesModalOpen(false)}
             projectId={currentProject.id}
             projectName={currentProject.name}
           />

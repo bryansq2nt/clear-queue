@@ -12,7 +12,13 @@ import { SelectionActionBar } from './SelectionActionBar'
 import { AddTaskModal } from './AddTaskModal'
 import { deleteTasksByIds } from '@/app/actions/tasks'
 import { cn } from '@/lib/utils'
-import { Plus, FolderOpen } from 'lucide-react'
+import { Plus, FolderOpen, CheckSquare, Pencil, MoreVertical } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu'
 import { useI18n } from '@/components/I18nProvider'
 
 type Project = Database['public']['Tables']['projects']['Row']
@@ -35,6 +41,9 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
   const [isDeleting, setIsDeleting] = useState(false)
   const [resourcesPanelOpen, setResourcesPanelOpen] = useState(true)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
+  const [resourcesModalOpen, setResourcesModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [selectedKanbanTab, setSelectedKanbanTab] = useState<'backlog' | 'next' | 'in_progress' | 'blocked' | 'done'>('next')
   const router = useRouter()
   const { t } = useI18n()
 
@@ -169,11 +178,15 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
             }
           }}
           resourcesInSidebar
-          backHref="/dashboard"
-          backLabel={t('sidebar.dashboard')}
+          backHref="/projects"
+          backLabel=""
+          resourcesModalOpen={resourcesModalOpen}
+          onResourcesModalOpenChange={setResourcesModalOpen}
+          editModalOpen={editModalOpen}
+          onEditModalOpenChange={setEditModalOpen}
         />
         <div className="flex-1 flex overflow-hidden">
-          <div className={cn("flex-1 overflow-x-auto", selectionMode && "pb-20")}>
+          <div className={cn("flex-1 overflow-x-auto", selectionMode && "pb-20", "pb-20 lg:pb-0")}>
             <KanbanBoard
               tasks={filteredTasks}
               projects={projects}
@@ -182,6 +195,9 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
               selectionMode={selectionMode}
               selectedTaskIds={selectedTaskIds}
               onToggleSelection={toggleTaskSelection}
+              selectedTab={selectedKanbanTab}
+              onTabChange={setSelectedKanbanTab}
+              onAddTask={() => setIsAddTaskOpen(true)}
             />
           </div>
           <div className="hidden lg:flex flex-shrink-0">
@@ -214,14 +230,35 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
         )}
 
         {!selectionMode && (
-          <button
-            type="button"
-            onClick={() => setIsAddTaskOpen(true)}
-            aria-label={t('kanban.add_task')}
-            className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
-          >
-            <Plus className="h-6 w-6" />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={t('common.menu')}
+                className="fixed bottom-16 right-6 left-auto z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background lg:bottom-6"
+              >
+                <MoreVertical className="h-6 w-6" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" sideOffset={8} className="min-w-[12rem]">
+              <DropdownMenuItem onClick={() => setIsAddTaskOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                {t('kanban.add_task')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setResourcesModalOpen(true)} className="lg:hidden">
+                <FolderOpen className="mr-2 h-4 w-4" />
+                {t('resources.title')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                {t('topbar.edit_project')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => enterSelectionMode()}>
+                <CheckSquare className="mr-2 h-4 w-4" />
+                {t('topbar.select')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
 
         <AddTaskModal
@@ -232,7 +269,7 @@ export default function ProjectKanbanClient({ projectId }: ProjectKanbanClientPr
             setIsAddTaskOpen(false)
           }}
           defaultProjectId={projectId}
-          defaultStatus="next"
+          defaultStatus={selectedKanbanTab}
         />
       </div>
     </div>

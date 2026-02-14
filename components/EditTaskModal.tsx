@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { updateTask, deleteTask } from '@/app/actions/tasks'
 import { Database } from '@/lib/supabase/types'
 import {
@@ -38,6 +39,7 @@ export function EditTaskModal({
   onClose,
   onTaskUpdate,
 }: EditTaskModalProps) {
+  const { t } = useI18n()
   const [title, setTitle] = useState(task.title)
   const [status, setStatus] = useState<Task['status']>(task.status)
   const [priority, setPriority] = useState(task.priority.toString())
@@ -72,7 +74,7 @@ export function EditTaskModal({
   }
 
   async function handleDelete() {
-    if (!confirm('Are you sure you want to delete this task?')) return
+    if (!confirm(t('tasks.delete_confirm'))) return
 
     setIsDeleting(true)
     const result = await deleteTask(task.id)
@@ -88,63 +90,64 @@ export function EditTaskModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto sm:w-full">
         <DialogHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
           <div className="space-y-1.5">
-            <DialogTitle>Edit Task</DialogTitle>
-            <DialogDescription>Update task details</DialogDescription>
+            <DialogTitle>{t('tasks.edit_task')}</DialogTitle>
+            <DialogDescription>{t('tasks.edit_task_description')}</DialogDescription>
           </div>
           <p className="text-xs text-muted-foreground shrink-0 pt-0.5 pr-8">
-            Created {new Date(task.created_at).toLocaleDateString()}
+            {t('tasks.created')} {new Date(task.created_at).toLocaleDateString()}
             {task.updated_at && (
-              <> · Updated {new Date(task.updated_at).toLocaleDateString()}</>
+              <> · {t('tasks.updated')} {new Date(task.updated_at).toLocaleDateString()}</>
             )}
           </p>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Title *</Label>
+              <Label htmlFor="title">{t('tasks.title_label')}</Label>
               <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                placeholder={t('tasks.title_placeholder')}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">{t('tasks.status_label')}</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as Task['status'])}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="backlog">Backlog</SelectItem>
-                  <SelectItem value="next">Next</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="blocked">Blocked</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
+                  <SelectItem value="backlog">{t('kanban.backlog')}</SelectItem>
+                  <SelectItem value="next">{t('kanban.next')}</SelectItem>
+                  <SelectItem value="in_progress">{t('kanban.in_progress')}</SelectItem>
+                  <SelectItem value="blocked">{t('kanban.blocked')}</SelectItem>
+                  <SelectItem value="done">{t('kanban.done')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="priority">Priority</Label>
+                <Label htmlFor="priority">{t('tasks.priority_label')}</Label>
                 <Select value={priority} onValueChange={setPriority}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 (Lowest)</SelectItem>
+                    <SelectItem value="1">{t('tasks.priority_lowest')}</SelectItem>
                     <SelectItem value="2">2</SelectItem>
                     <SelectItem value="3">3</SelectItem>
                     <SelectItem value="4">4</SelectItem>
-                    <SelectItem value="5">5 (Highest)</SelectItem>
+                    <SelectItem value="5">{t('tasks.priority_highest')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="due_date">Due Date</Label>
+                <Label htmlFor="due_date">{t('tasks.due_date_label')}</Label>
                 <Input
                   id="due_date"
                   type="date"
@@ -154,11 +157,12 @@ export function EditTaskModal({
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes">{t('tasks.notes_label')}</Label>
               <Textarea
                 id="notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
+                placeholder={t('tasks.notes_placeholder')}
                 rows={4}
               />
             </div>
@@ -175,14 +179,14 @@ export function EditTaskModal({
               onClick={handleDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? 'Deleting...' : 'Delete Task'}
+              {isDeleting ? t('tasks.deleting') : t('tasks.delete_task')}
             </Button>
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Saving...' : 'Save Changes'}
+                {isLoading ? t('tasks.saving') : t('tasks.save_changes')}
               </Button>
             </div>
           </DialogFooter>

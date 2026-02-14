@@ -193,6 +193,40 @@ export async function deleteProject(id: string) {
   return { success: true }
 }
 
+export type ProjectListItem = {
+  id: string
+  name: string
+  category: string
+  client_id: string | null
+  client_name: string | null
+}
+
+export async function getProjectsList(): Promise<ProjectListItem[]> {
+  await requireAuth()
+  const supabase = await createClient()
+
+  const { data: rows, error } = await supabase
+    .from('projects')
+    .select('id, name, category, client_id, clients(full_name)')
+    .order('name', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching projects list:', error)
+    return []
+  }
+
+  return (rows || []).map((row: { id: string; name: string; category: string; client_id: string | null; clients: { full_name: string } | { full_name: string }[] | null }) => {
+    const client = row.clients == null ? null : Array.isArray(row.clients) ? row.clients[0] : row.clients
+    return {
+      id: row.id,
+      name: row.name,
+      category: row.category,
+      client_id: row.client_id,
+      client_name: client?.full_name ?? null,
+    }
+  })
+}
+
 export async function getFavoriteProjectIds(): Promise<{ data?: string[]; error?: string }> {
   const user = await getUser()
   if (!user) return { data: [] }

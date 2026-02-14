@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Database } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
 import { useRouter, usePathname } from 'next/navigation'
-import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus, Lightbulb, DollarSign, CheckSquare, Star, Users, Building2, FileText, Receipt, Settings, User, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { LayoutDashboard, MoreVertical, Edit, Archive, ArchiveRestore, Trash2, Plus, Lightbulb, DollarSign, CheckSquare, Star, Users, Building2, FileText, Receipt, Settings, User, X, PanelLeftClose, PanelLeftOpen, LogOut, FolderKanban } from 'lucide-react'
 import Link from 'next/link'
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ import {
 import { EditProjectModal } from './EditProjectModal'
 import { AddProjectModal } from './AddProjectModal'
 import { archiveProject, unarchiveProject, deleteProject, getFavoriteProjectIds, addProjectFavorite, removeProjectFavorite } from '@/app/actions/projects'
+import { signOut } from '@/app/actions/auth'
 import { useI18n } from '@/components/I18nProvider'
 
 type Project = Database['public']['Tables']['projects']['Row']
@@ -80,6 +81,12 @@ export default function Sidebar({
     setIsMobile(mq.matches)
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = () => setIsAddProjectModalOpen(true)
+    window.addEventListener('sidebar-open-add-project', handler)
+    return () => window.removeEventListener('sidebar-open-add-project', handler)
   }, [])
 
   const isDrawerMode = (isMobile && onMobileClose != null) || (overlayOnly && onMobileClose != null)
@@ -182,6 +189,20 @@ export default function Sidebar({
               >
                 <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
                 {!isCollapsed && t('sidebar.dashboard')}
+              </Link>
+              <Link
+                href="/projects"
+                className={cn(
+                  'w-full flex items-center rounded-md text-sm transition-colors',
+                  isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2',
+                  pathname?.startsWith('/projects')
+                    ? 'bg-accent text-foreground font-medium'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                )}
+                title={isCollapsed ? t('sidebar.my_projects') : undefined}
+              >
+                <FolderKanban className="w-4 h-4 flex-shrink-0" />
+                {!isCollapsed && t('sidebar.my_projects')}
               </Link>
               <Link
                 href="/ideas"
@@ -407,8 +428,21 @@ export default function Sidebar({
 
           </div>
 
-          {canCollapse && (
-            <div className="mt-auto pt-4 border-t border-border flex-shrink-0">
+          <div className="mt-auto pt-4 border-t border-border flex-shrink-0 space-y-0.5">
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); signOut(); }}
+              className={cn(
+                'w-full flex items-center rounded-md text-sm transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer',
+                isCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2'
+              )}
+              aria-label={t('sidebar.logout')}
+              title={isCollapsed ? t('sidebar.logout') : undefined}
+            >
+              <LogOut className="w-4 h-4 flex-shrink-0" />
+              {!isCollapsed && t('sidebar.logout')}
+            </button>
+            {canCollapse && (
               <button
                 type="button"
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleCollapsed(); }}
@@ -428,8 +462,8 @@ export default function Sidebar({
                   </>
                 )}
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
       {editingProject && (
