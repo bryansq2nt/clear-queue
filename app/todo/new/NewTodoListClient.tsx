@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import { useI18n } from '@/components/I18nProvider'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import Sidebar from '@/components/Sidebar'
@@ -23,6 +24,7 @@ import { Button } from '@/components/ui/button'
 type Project = Database['public']['Tables']['projects']['Row']
 
 export default function NewTodoListClient() {
+  const { t } = useI18n()
   const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<string>('')
@@ -42,15 +44,15 @@ export default function NewTodoListClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const t = title.trim()
-    if (!t) {
-      setError('List name is required.')
+    const trimmed = title.trim()
+    if (!trimmed) {
+      setError(t('todo.list_name_required'))
       return
     }
     setError(null)
     setSubmitting(true)
     const formData = new FormData()
-    formData.append('title', t)
+    formData.append('title', trimmed)
     formData.append('project_id', projectId || '')
     const result = await createTodoListAction(formData)
     setSubmitting(false)
@@ -71,7 +73,7 @@ export default function NewTodoListClient() {
         onSignOut={() => signOut()}
         onProjectAdded={loadProjects}
         onProjectUpdated={loadProjects}
-        projectName="New to-do list"
+        projectName={t('todo.new_list_title')}
         currentProject={null}
       />
       <div className="flex-1 flex overflow-hidden">
@@ -92,25 +94,25 @@ export default function NewTodoListClient() {
               className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-6"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to To-do
+              {t('todo.back_to_todo')}
             </Link>
             <h1 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight mb-2">
-              New to-do list
+              {t('todo.new_list_title')}
             </h1>
             <p className="text-slate-600 dark:text-slate-400 text-sm mb-8">
-              Name your list. Optionally assign a project. You can add tasks after creating it.
+              {t('todo.new_list_desc')}
             </p>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="new-list-project" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  Project (optional)
+                  {t('todo.project_optional')}
                 </label>
                 <Select value={projectId || 'none'} onValueChange={(v) => setProjectId(v === 'none' ? '' : v)}>
                   <SelectTrigger id="new-list-project" className="w-full">
-                    <SelectValue placeholder="No project" />
+                    <SelectValue placeholder={t('billings.no_project')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No project</SelectItem>
+                    <SelectItem value="none">{t('billings.no_project')}</SelectItem>
                     {projects.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.name}
@@ -121,23 +123,23 @@ export default function NewTodoListClient() {
               </div>
               <div>
                 <label htmlFor="new-list-title" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  List name
+                  {t('todo.list_name')}
                 </label>
                 <Input
                   id="new-list-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Tasks, Shopping, Ideas"
+                  placeholder={t('todo.list_name_placeholder')}
                   className="w-full"
                 />
               </div>
               {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
               <div className="flex gap-3">
                 <Button type="submit" disabled={submitting}>
-                  {submitting ? 'Creating...' : 'Create and open list'}
+                  {submitting ? t('clients.creating') : t('todo.create_and_open')}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => router.push('/todo')}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </div>
             </form>

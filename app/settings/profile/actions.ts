@@ -23,12 +23,13 @@ export async function getProfile(): Promise<Profile | null> {
   if (error) return null
   if (data) return data as Profile
 
+  const insertPayload: Database['public']['Tables']['profiles']['Insert'] = {
+    user_id: user.id,
+    display_name: user.email?.split('@')[0] ?? 'User',
+  }
   const { data: inserted, error: insertError } = await supabase
     .from('profiles')
-    .insert({
-      user_id: user.id,
-      display_name: user.email?.split('@')[0] ?? 'User',
-    } as Database['public']['Tables']['profiles']['Insert'])
+    .insert(insertPayload as never)
     .select()
     .single()
 
@@ -38,9 +39,9 @@ export async function getProfile(): Promise<Profile | null> {
       .select('*')
       .eq('user_id', user.id)
       .single()
-    return (existing as Profile) ?? null
+    return existing ? (existing as Profile) : null
   }
-  return (inserted as Profile) ?? null
+  return inserted ? (inserted as Profile) : null
 }
 
 export async function getProfileWithAvatar(): Promise<
@@ -57,7 +58,7 @@ export async function getProfileWithAvatar(): Promise<
     .eq('id', profile.avatar_asset_id)
     .single()
 
-  return { ...profile, avatar_asset: (asset as UserAsset) ?? null }
+  return { ...profile, avatar_asset: asset ? (asset as UserAsset) : null }
 }
 
 export async function updateProfile(payload: {
@@ -129,19 +130,20 @@ export async function getAssetSignedUrl(assetId: string): Promise<string | null>
   const user = await requireAuth()
   const supabase = await createClient()
 
-  const { data: asset, error: fetchError } = await supabase
+  const { data, error: fetchError } = await supabase
     .from('user_assets')
     .select('id, user_id, path, bucket')
     .eq('id', assetId)
     .single()
 
+  const asset = data as { id: string; user_id: string; path: string; bucket: string } | null
   if (fetchError || !asset || asset.user_id !== user.id) return null
 
-  const { data } = await supabase.storage
+  const { data: urlData } = await supabase.storage
     .from(asset.bucket)
     .createSignedUrl(asset.path, 3600)
 
-  return data?.signedUrl ?? null
+  return urlData?.signedUrl ?? null
 }
 
 export async function deleteUserAsset(
@@ -150,12 +152,13 @@ export async function deleteUserAsset(
   const user = await requireAuth()
   const supabase = await createClient()
 
-  const { data: asset, error: fetchError } = await supabase
+  const { data, error: fetchError } = await supabase
     .from('user_assets')
     .select('id, user_id, kind, path, bucket')
     .eq('id', assetId)
     .single()
 
+  const asset = data as { id: string; user_id: string; kind: string; path: string; bucket: string } | null
   if (fetchError || !asset) return { error: 'Asset not found' }
   if (asset.user_id !== user.id) return { error: 'Unauthorized' }
 

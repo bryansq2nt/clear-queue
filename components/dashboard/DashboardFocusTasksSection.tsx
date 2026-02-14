@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { createClient } from '@/lib/supabase/client'
 import TaskListWidget from './TaskListWidget'
 import { Database } from '@/lib/supabase/types'
@@ -13,6 +14,7 @@ interface TaskWithProject extends Task {
 }
 
 export default function DashboardFocusTasksSection() {
+  const { t } = useI18n()
   const supabase = createClient()
 
   // Query function for "En lo que he estado trabajando"
@@ -82,10 +84,10 @@ export default function DashboardFocusTasksSection() {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Right: High Priority (P5) */}
       <TaskListWidget
-        title="Maxima Prioridad"
+        title={t('tasks.maxima_prioridad')}
         viewAllLink="/dashboard"
         queryFn={queryHighPriorityTasks}
-        emptyMessage="🎉 No hay tareas de maxima prioridad activas."
+        emptyMessage={t('tasks.no_max_priority')}
         showUpdatedAt={false}
         borderColor="border-red-500"
         bgColor="bg-red-500/10 dark:bg-red-500/20"
@@ -93,10 +95,10 @@ export default function DashboardFocusTasksSection() {
 
       {/* Left: En lo que he estado trabajando */}
       <TaskListWidget
-        title="En lo que he estado trabajando"
+        title={t('tasks.recent_work')}
         viewAllLink="/dashboard"
         queryFn={queryRecentTasks}
-        emptyMessage="No hay actividad reciente."
+        emptyMessage={t('tasks.no_recent')}
         showUpdatedAt={true}
         borderColor="border-blue-500"
         bgColor="bg-blue-500/10 dark:bg-blue-500/20"

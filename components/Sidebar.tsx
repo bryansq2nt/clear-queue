@@ -18,6 +18,7 @@ import {
 import { EditProjectModal } from './EditProjectModal'
 import { AddProjectModal } from './AddProjectModal'
 import { archiveProject, unarchiveProject, deleteProject, getFavoriteProjectIds, addProjectFavorite, removeProjectFavorite } from '@/app/actions/projects'
+import { useI18n } from '@/components/I18nProvider'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
@@ -42,6 +43,7 @@ export default function Sidebar({
   onShowArchivedChange,
   onProjectUpdated,
 }: SidebarProps) {
+  const { t } = useI18n()
   const router = useRouter()
   const pathname = usePathname()
   const [editingProject, setEditingProject] = useState<Project | null>(null)
@@ -104,7 +106,7 @@ export default function Sidebar({
   }
 
   async function handleDelete(project: Project) {
-    if (!confirm(`Delete project "${project.name}" and all its tasks? This cannot be undone.`)) {
+    if (!confirm(t('projects.delete_confirm', { name: project.name }))) {
       return
     }
     setIsDeleting(project.id)
@@ -123,7 +125,7 @@ export default function Sidebar({
           {/* Navigation */}
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
-              Navigation
+              {t('sidebar.navigation')}
             </label>
             <div className="space-y-1">
               <Link
@@ -136,7 +138,7 @@ export default function Sidebar({
                 )}
               >
                 <LayoutDashboard className="w-4 h-4" />
-                Dashboard
+                {t('sidebar.dashboard')}
               </Link>
               <Link
                 href="/ideas"
@@ -148,7 +150,7 @@ export default function Sidebar({
                 )}
               >
                 <Lightbulb className="w-4 h-4" />
-                Idea Graph
+                {t('sidebar.idea_graph')}
               </Link>
               <Link
                 href="/todo"
@@ -160,7 +162,7 @@ export default function Sidebar({
                 )}
               >
                 <CheckSquare className="w-4 h-4" />
-                To-do List
+                {t('sidebar.todo_list')}
               </Link>
               <Link
                 href="/budgets"
@@ -172,7 +174,7 @@ export default function Sidebar({
                 )}
               >
                 <DollarSign className="w-4 h-4" />
-                Budgets
+                {t('sidebar.budgets')}
               </Link>
               <Link
                 href="/clients"
@@ -184,7 +186,7 @@ export default function Sidebar({
                 )}
               >
                 <Users className="w-4 h-4" />
-                Clients
+                {t('sidebar.clients')}
               </Link>
               <Link
                 href="/businesses"
@@ -196,7 +198,7 @@ export default function Sidebar({
                 )}
               >
                 <Building2 className="w-4 h-4" />
-                Businesses
+                {t('sidebar.businesses')}
               </Link>
               <Link
                 href="/billings"
@@ -220,7 +222,7 @@ export default function Sidebar({
                 )}
               >
                 <FileText className="w-4 h-4" />
-                Notes
+                {t('sidebar.notes')}
               </Link>
               <Link
                 href="/settings/profile"
@@ -232,7 +234,7 @@ export default function Sidebar({
                 )}
               >
                 <Settings className="w-4 h-4" />
-                Settings
+                {t('sidebar.settings')}
               </Link>
               <button
                 onClick={() => setIsAddProjectModalOpen(true)}
@@ -242,7 +244,7 @@ export default function Sidebar({
                 )}
               >
                 <Plus className="w-4 h-4" />
-                Add Project
+                {t('sidebar.add_project')}
               </button>
             </div>
           </div>
@@ -251,7 +253,7 @@ export default function Sidebar({
           {favoriteProjects.length > 0 && (
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
-                Favorites
+                {t('sidebar.favorites')}
               </label>
               <div className="space-y-1">
                 {favoriteProjects.map(project => (
@@ -277,7 +279,7 @@ export default function Sidebar({
                         />
                         <span className="truncate flex-1 min-w-0">{project.name}</span>
                             {project.category === 'archived' && (
-                          <span className="text-xs text-muted-foreground flex-shrink-0">Archived</span>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">{t('dashboard.archived')}</span>
                         )}
                       </button>
                       <DropdownMenu>
@@ -285,7 +287,7 @@ export default function Sidebar({
                           <button
                             className="opacity-60 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition-opacity flex-shrink-0"
                             onClick={(e) => e.stopPropagation()}
-                            title="Project options"
+                            title={t('sidebar.project_options')}
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
@@ -293,23 +295,23 @@ export default function Sidebar({
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleToggleFavorite(project.id, true)}>
                             <Star className="w-4 h-4 mr-2 fill-amber-400 text-amber-500" />
-                            Remove from favorites
+                            {t('sidebar.remove_from_favorites')}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => setEditingProject(project)}>
                             <Edit className="w-4 h-4 mr-2" />
-                            Edit Project
+                            {t('sidebar.edit_project')}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           {project.category === 'archived' ? (
                             <DropdownMenuItem onClick={() => handleArchive(project)}>
                               <ArchiveRestore className="w-4 h-4 mr-2" />
-                              Unarchive
+                              {t('sidebar.unarchive')}
                             </DropdownMenuItem>
                           ) : (
                             <DropdownMenuItem onClick={() => handleArchive(project)}>
                               <Archive className="w-4 h-4 mr-2" />
-                              Archive
+                              {t('sidebar.archive')}
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
@@ -319,7 +321,7 @@ export default function Sidebar({
                             disabled={isDeleting === project.id}
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
-                            {isDeleting === project.id ? 'Deleting...' : 'Delete'}
+                            {isDeleting === project.id ? t('projects.deleting') : t('common.delete')}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -332,7 +334,7 @@ export default function Sidebar({
           {/* Projects List - Grouped by Category */}
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
-              Projects
+              {t('sidebar.projects')}
             </label>
             <div className="space-y-1">
               <button
@@ -347,7 +349,7 @@ export default function Sidebar({
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
               >
-                All Projects
+                {t('sidebar.all_projects')}
               </button>
 
               {/* Filter by Category - positioned below All Projects */}
@@ -360,7 +362,7 @@ export default function Sidebar({
                     <SelectValue placeholder="Filter by Category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="all">{t('sidebar.all_categories')}</SelectItem>
                     {PROJECT_CATEGORIES.filter(c => c.key !== 'archived' || showArchived).map(cat => (
                       <SelectItem key={cat.key} value={cat.key}>
                         {cat.label}
@@ -380,7 +382,7 @@ export default function Sidebar({
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
               >
-                {showArchived ? '✓' : ''} Show Archived
+                {showArchived ? '✓' : ''} {t('projects.show_archived')}
               </button>
               {visibleCategories.map(category => {
                 const categoryProjects = groupedProjects[category.key] || []
@@ -415,7 +417,7 @@ export default function Sidebar({
                             />
                             <span className="truncate flex-1 min-w-0">{project.name}</span>
                             {project.category === 'archived' && (
-                          <span className="text-xs text-muted-foreground flex-shrink-0">Archived</span>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">{t('dashboard.archived')}</span>
                         )}
                           </button>
                           <DropdownMenu>
@@ -423,7 +425,7 @@ export default function Sidebar({
                               <button
                                 className="opacity-60 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition-opacity flex-shrink-0"
                                 onClick={(e) => e.stopPropagation()}
-                                title="Project options"
+                                title={t('sidebar.project_options')}
                               >
                                 <MoreVertical className="w-4 h-4" />
                               </button>
@@ -466,7 +468,7 @@ export default function Sidebar({
                                 disabled={isDeleting === project.id}
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
-                                {isDeleting === project.id ? 'Deleting...' : 'Delete'}
+                                {isDeleting === project.id ? t('projects.deleting') : t('common.delete')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

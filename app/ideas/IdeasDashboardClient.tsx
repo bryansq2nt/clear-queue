@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,6 +48,7 @@ export default function IdeasDashboardClient({
   initialBoards: Board[]
   initialIdeas: Idea[]
 }) {
+  const { t } = useI18n()
   const router = useRouter()
   const [boards, setBoards] = useState(initialBoards)
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(
@@ -265,7 +267,7 @@ export default function IdeasDashboardClient({
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               <p className="text-muted-foreground">
-                Select a board from the sidebar or create a new one to get started.
+                {t('ideas.select_board_or_create')}
               </p>
             </div>
           )}

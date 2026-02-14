@@ -511,17 +511,18 @@ export default function IdeaGraphCanvas({
           transformOrigin: '0 0',
         }}
       >
-        {/* SVG for connections - must render behind nodes */}
-        <svg
-          className="absolute top-0 left-0 z-0 pointer-events-none [&_line]:pointer-events-auto"
-          style={{
-            width: SVG_TOTAL_WIDTH,
-            height: SVG_TOTAL_HEIGHT,
-            left: -SVG_PADDING,
-            top: -SVG_PADDING,
-          }}
-        >
-          {connections.map((conn) => {
+        {/* Layer 1: Connections - must render behind nodes */}
+        <div className="absolute inset-0 z-0 pointer-events-none [&_line]:pointer-events-auto">
+          <svg
+            className="absolute top-0 left-0"
+            style={{
+              width: SVG_TOTAL_WIDTH,
+              height: SVG_TOTAL_HEIGHT,
+              left: -SVG_PADDING,
+              top: -SVG_PADDING,
+            }}
+          >
+            {connections.map((conn) => {
             const fromPos = getCardCenter(conn.from_idea_id)
             const toPos = getCardCenter(conn.to_idea_id)
 
@@ -545,9 +546,11 @@ export default function IdeaGraphCanvas({
               />
             )
           })}
-        </svg>
+          </svg>
+        </div>
 
-        {/* Nodes */}
+        {/* Layer 2: Nodes - always on top */}
+        <div className="absolute inset-0 z-[100]">
         {items.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-muted-foreground">
@@ -565,12 +568,12 @@ export default function IdeaGraphCanvas({
             return (
               <div
                 key={item.id}
-                className="absolute z-10"
+                className="absolute"
                 style={{
                   left: 0,
                   top: 0,
                   transform: `translate(${pos.x}px, ${pos.y}px)`,
-                  zIndex: isDragging ? 50 : 10,
+                  zIndex: isDragging ? 200 : 100,
                   willChange: isDragging ? 'transform' : 'auto',
                   transition: isDragging ? 'none' : 'transform 0.1s ease-out',
                 }}
@@ -594,9 +597,9 @@ export default function IdeaGraphCanvas({
                 >
                   <div
                     className={`
-                      rounded-lg border-2 shadow-sm transition-all select-none
+                      relative rounded-lg border-2 shadow-sm transition-all select-none
                       px-4 py-2 inline-block min-w-fit
-                      ${cardColor.bg} 
+                      bg-card
                       ${cardColor.border} 
                       ${cardColor.hover}
                       ${isConnectionSource
@@ -627,6 +630,7 @@ export default function IdeaGraphCanvas({
             )
           })
         )}
+        </div>
       </div>
     </div>
   )

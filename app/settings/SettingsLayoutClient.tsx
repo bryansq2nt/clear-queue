@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import Sidebar from '@/components/Sidebar'
@@ -17,6 +18,7 @@ export default function SettingsLayoutClient({
 }: {
   children: React.ReactNode
 }) {
+  const { t } = useI18n()
   const [projects, setProjects] = useState<Project[]>([])
   const pathname = usePathname()
   const supabase = createClient()
@@ -38,7 +40,7 @@ export default function SettingsLayoutClient({
         onSignOut={() => signOut()}
         onProjectAdded={loadProjects}
         onProjectUpdated={loadProjects}
-        projectName="Settings"
+        projectName={t('settings.title')}
         currentProject={null}
       />
       <div className="flex-1 flex overflow-hidden">
@@ -64,7 +66,7 @@ export default function SettingsLayoutClient({
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 )}
               >
-                Profile
+                {t('settings.profile')}
               </Link>
               <Link
                 href="/settings/appearance"
@@ -75,7 +77,7 @@ export default function SettingsLayoutClient({
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 )}
               >
-                Appearance
+                {t('settings.appearance')}
               </Link>
             </nav>
           </div>

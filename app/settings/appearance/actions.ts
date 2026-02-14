@@ -22,13 +22,16 @@ export async function getPreferences(): Promise<UserPreferences | null> {
   if (error) return null
   if (data) return data as UserPreferences
 
+  const insertPayload: Database['public']['Tables']['user_preferences']['Insert'] = {
+    user_id: user.id,
+  }
   const { data: inserted } = await supabase
     .from('user_preferences')
-    .insert({ user_id: user.id } as Database['public']['Tables']['user_preferences']['Insert'])
+    .insert(insertPayload as never)
     .select()
     .single()
 
-  return (inserted as UserPreferences) ?? null
+  return inserted ? (inserted as UserPreferences) : null
 }
 
 export async function getPreferencesOptional(): Promise<UserPreferences | null> {
@@ -40,7 +43,7 @@ export async function getPreferencesOptional(): Promise<UserPreferences | null> 
     .select('*')
     .eq('user_id', user.id)
     .maybeSingle()
-  return (data as UserPreferences) ?? null
+  return data ? (data as UserPreferences) : null
 }
 
 export async function updatePreferences(payload: {
@@ -84,11 +87,12 @@ export async function updatePreferences(payload: {
   }
   if (payload.company_logo_asset_id !== undefined) {
     if (payload.company_logo_asset_id) {
-      const { data: asset } = await supabase
+      const { data } = await supabase
         .from('user_assets')
         .select('id, user_id, kind')
         .eq('id', payload.company_logo_asset_id)
         .single()
+      const asset = data as { id: string; user_id: string; kind: string } | null
       if (!asset || asset.user_id !== user.id || asset.kind !== 'company_logo') {
         return { error: 'Invalid company logo asset' }
       }
@@ -97,11 +101,12 @@ export async function updatePreferences(payload: {
   }
   if (payload.cover_image_asset_id !== undefined) {
     if (payload.cover_image_asset_id) {
-      const { data: asset } = await supabase
+      const { data } = await supabase
         .from('user_assets')
         .select('id, user_id, kind')
         .eq('id', payload.cover_image_asset_id)
         .single()
+      const asset = data as { id: string; user_id: string; kind: string } | null
       if (!asset || asset.user_id !== user.id || asset.kind !== 'cover_image') {
         return { error: 'Invalid cover image asset' }
       }
@@ -114,12 +119,13 @@ export async function updatePreferences(payload: {
     return { data: existing ?? undefined }
   }
 
+  const upsertPayload: Database['public']['Tables']['user_preferences']['Insert'] = {
+    user_id: user.id,
+    ...updates,
+  }
   const { data, error } = await supabase
     .from('user_preferences')
-    .upsert(
-      { user_id: user.id, ...updates } as Database['public']['Tables']['user_preferences']['Insert'],
-      { onConflict: 'user_id' }
-    )
+    .upsert(upsertPayload as never, { onConflict: 'user_id' })
     .select()
     .single()
 

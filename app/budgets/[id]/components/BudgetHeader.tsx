@@ -1,6 +1,7 @@
 'use client'
 
 import { ArrowLeft, Edit2 } from 'lucide-react'
+import { useI18n } from '@/components/I18nProvider'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { EditBudgetModal } from './EditBudgetModal'
@@ -24,6 +25,7 @@ interface BudgetHeaderProps {
 }
 
 export function BudgetHeader({ budget, projects, stats, onUpdated }: BudgetHeaderProps) {
+  const { t, formatCurrency: formatCurr } = useI18n()
   const router = useRouter()
   const [isEditOpen, setIsEditOpen] = useState(false)
 
@@ -45,7 +47,7 @@ export function BudgetHeader({ budget, projects, stats, onUpdated }: BudgetHeade
             className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Budgets
+            {t('budgets.back_to_budgets')}
           </button>
 
           <div className="flex items-start gap-4">
@@ -92,7 +94,7 @@ export function BudgetHeader({ budget, projects, stats, onUpdated }: BudgetHeade
         {/* Total Budget */}
         <div className="col-span-1 md:col-span-2">
           <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-            Total Budget
+            {t('budgets.total_budget')}
           </div>
           <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             {formatCurrency(stats.total)}
@@ -115,7 +117,7 @@ export function BudgetHeader({ budget, projects, stats, onUpdated }: BudgetHeade
         {/* Pending */}
         <div>
           <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-            ⏳ Pending
+            ⏳ {t('budgets.pending')}
           </div>
           <div className="text-2xl font-semibold text-yellow-600 dark:text-yellow-400">
             {formatCurrency(stats.pending)}

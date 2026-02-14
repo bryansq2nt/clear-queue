@@ -17,6 +17,7 @@ import {
 } from '@/app/todo/actions'
 import type { TodoItem } from '@/lib/todo/lists'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/components/I18nProvider'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
@@ -33,6 +34,7 @@ export default function ProjectBoardClient({
   initialDefaultListId,
   initialItems,
 }: ProjectBoardClientProps) {
+  const { t } = useI18n()
   const router = useRouter()
   const [projectName, setProjectName] = useState(initialProjectName)
   const [defaultListId, setDefaultListId] = useState(initialDefaultListId)
@@ -139,7 +141,7 @@ export default function ProjectBoardClient({
                 className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back to To-do
+                {t('todo.back_to_todo')}
               </Link>
               <h1 className="text-xl font-semibold text-slate-900 dark:text-white truncate flex-1 min-w-0">
                 {projectName}

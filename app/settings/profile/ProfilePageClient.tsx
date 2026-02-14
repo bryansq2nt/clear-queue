@@ -20,10 +20,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Loader2, Upload, X } from 'lucide-react'
+import { useI18n } from '@/components/I18nProvider'
 
 type ProfileWithAvatar = Awaited<ReturnType<typeof getProfileWithAvatar>>
 
 export default function ProfilePageClient() {
+  const { t, setPrefs } = useI18n()
   const [profile, setProfile] = useState<ProfileWithAvatar | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -87,6 +89,7 @@ export default function ProfilePageClient() {
       return
     }
     setSuccess(true)
+    setPrefs({ locale: form.locale as 'en' | 'es', currency: form.currency })
     if (profileResult.data) setProfile({ ...profileResult.data, avatar_asset: profile?.avatar_asset ?? null })
     setTimeout(() => setSuccess(false), 3000)
   }
@@ -137,8 +140,8 @@ export default function ProfilePageClient() {
   return (
     <div className="p-6 max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground">Profile</h1>
-        <p className="text-muted-foreground mt-1">Manage your display name, contact info, and avatar.</p>
+        <h1 className="text-3xl font-bold text-foreground">{t('profile.title')}</h1>
+        <p className="text-muted-foreground mt-1">{t('profile.subtitle')}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -149,12 +152,12 @@ export default function ProfilePageClient() {
         )}
         {success && (
           <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
-            Profile updated successfully.
+            {t('profile.update_success')}
           </div>
         )}
 
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Avatar</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t('profile.avatar')}</h2>
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-full bg-muted overflow-hidden flex items-center justify-center">
               {avatarUrl ? (
@@ -179,7 +182,7 @@ export default function ProfilePageClient() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80"
               >
                 <Upload className="w-4 h-4" />
-                Upload
+                {t('common.upload')}
               </button>
               {avatarUrl && (
                 <button
@@ -188,46 +191,46 @@ export default function ProfilePageClient() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/20"
                 >
                   <X className="w-4 h-4" />
-                  Remove
+                  {t('common.remove')}
                 </button>
               )}
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">PNG, JPEG, WebP. Max 5MB.</p>
+          <p className="text-xs text-muted-foreground mt-2">{t('profile.avatar_hint')}</p>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Profile info</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t('profile.profile_info')}</h2>
           <div>
-            <Label htmlFor="display_name">Display name</Label>
+            <Label htmlFor="display_name">{t('profile.display_name')}</Label>
             <Input
               id="display_name"
               required
-              placeholder="Your display name"
+              placeholder={t('profile.display_name_placeholder')}
               value={form.display_name}
               onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))}
               className="mt-1"
             />
           </div>
           <div>
-            <Label htmlFor="phone">Phone (optional)</Label>
+            <Label htmlFor="phone">{t('profile.phone')}</Label>
             <Input
               id="phone"
               type="tel"
-              placeholder="+1 234 567 8900"
+              placeholder={t('profile.phone_placeholder')}
               value={form.phone}
               onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
               className="mt-1"
             />
           </div>
           <div>
-            <Label htmlFor="timezone">Timezone</Label>
+            <Label htmlFor="timezone">{t('profile.timezone')}</Label>
             <Select
               value={form.timezone}
               onValueChange={(v) => setForm((f) => ({ ...f, timezone: v }))}
             >
               <SelectTrigger id="timezone" className="mt-1">
-                <SelectValue placeholder="Select timezone" />
+                <SelectValue placeholder={t('profile.timezone_placeholder')} />
               </SelectTrigger>
               <SelectContent className="bg-popover text-popover-foreground z-[100]">
                 {TIMEZONE_OPTIONS.map((tz) => (
@@ -239,28 +242,36 @@ export default function ProfilePageClient() {
             </Select>
           </div>
           <div>
-            <Label htmlFor="locale">Locale</Label>
+            <Label htmlFor="locale">{t('profile.language')}</Label>
             <Select
               value={form.locale}
-              onValueChange={(v) => setForm((f) => ({ ...f, locale: v }))}
+              onValueChange={(v) => {
+                setForm((f) => ({ ...f, locale: v }))
+                setPrefs({ locale: v as 'en' | 'es' })
+                updateProfile({ locale: v }).catch(() => {})
+              }}
             >
               <SelectTrigger id="locale" className="mt-1">
-                <SelectValue placeholder="Select locale" />
+                <SelectValue placeholder={t('profile.locale_placeholder')} />
               </SelectTrigger>
               <SelectContent className="bg-popover text-popover-foreground z-[100]">
-                <SelectItem value="es">Spanish</SelectItem>
-                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="es">{t('profile.spanish')}</SelectItem>
+                <SelectItem value="en">{t('profile.english')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label htmlFor="currency">Currency</Label>
+            <Label htmlFor="currency">{t('profile.currency')}</Label>
             <Select
               value={form.currency}
-              onValueChange={(v) => setForm((f) => ({ ...f, currency: v }))}
+              onValueChange={(v) => {
+                setForm((f) => ({ ...f, currency: v }))
+                setPrefs({ currency: v })
+                updatePreferences({ currency: v }).catch(() => {})
+              }}
             >
               <SelectTrigger id="currency" className="mt-1">
-                <SelectValue placeholder="Select currency" />
+                <SelectValue placeholder={t('profile.currency_placeholder')} />
               </SelectTrigger>
               <SelectContent className="bg-popover text-popover-foreground z-[100]">
                 {CURRENCY_OPTIONS.map((c) => (
@@ -279,7 +290,7 @@ export default function ProfilePageClient() {
           className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
         >
           {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-          Save changes
+          {t('profile.save_changes')}
         </button>
       </form>
     </div>

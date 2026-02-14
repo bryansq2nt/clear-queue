@@ -325,15 +325,16 @@ export default function BoardCanvasClient({
           minHeight: WORLD_HEIGHT,
         }}
       >
-        {/* SVG for connections - rendered behind nodes */}
-        <svg
-          className="absolute top-0 left-0 z-0 pointer-events-none [&_line]:pointer-events-auto"
-          style={{
-            width: WORLD_WIDTH,
-            height: WORLD_HEIGHT,
-          }}
-        >
-          {connections.map((conn) => {
+        {/* Layer 1: Connections - rendered behind nodes */}
+        <div className="absolute inset-0 z-0 pointer-events-none [&_line]:pointer-events-auto">
+          <svg
+            className="absolute top-0 left-0"
+            style={{
+              width: WORLD_WIDTH,
+              height: WORLD_HEIGHT,
+            }}
+          >
+            {connections.map((conn) => {
             const fromPos = getPositionByIdeaId(conn.from_idea_id)
             const toPos = getPositionByIdeaId(conn.to_idea_id)
 
@@ -361,9 +362,10 @@ export default function BoardCanvasClient({
               />
             )
           })}
-        </svg>
+          </svg>
+        </div>
 
-        {/* Nodes - rendered on top */}
+        {/* Layer 2: Nodes - always on top */}
         {items.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-muted-foreground">
@@ -371,7 +373,8 @@ export default function BoardCanvasClient({
             </p>
           </div>
         ) : (
-          items.map((item) => {
+          <div className="absolute inset-0 z-[100]">
+          {items.map((item) => {
             const pos = getPosition(item.id)
             const isDragging = draggingNodeId === item.id
             const isSavingThis = isSaving === item.id
@@ -382,11 +385,11 @@ export default function BoardCanvasClient({
             return (
               <div
                 key={item.id}
-                className="absolute z-10"
+                className="absolute"
                 style={{
                   left: pos.x,
                   top: pos.y,
-                  zIndex: isDragging ? 50 : 10,
+                  zIndex: isDragging ? 200 : 100,
                   opacity: isSavingThis ? 0.7 : 1,
                 }}
               >
@@ -404,7 +407,7 @@ export default function BoardCanvasClient({
                   onContextMenu={(e) => handleContextMenu(e, item.idea.id)}
                 >
                   <div
-                    className={`bg-card rounded-lg border border-border shadow-sm p-3 w-48 hover:shadow-md transition-all select-none ${
+                    className={`relative bg-card rounded-lg border border-border shadow-sm p-3 w-48 hover:shadow-md transition-all select-none ${
                       isConnectionSource
                         ? 'border-primary border-2 ring-2 ring-primary/20'
                         : isConnectionTarget
@@ -434,7 +437,8 @@ export default function BoardCanvasClient({
                 </Link>
               </div>
             )
-          })
+          })}
+          </div>
         )}
       </div>
     </div>

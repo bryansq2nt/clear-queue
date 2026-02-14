@@ -46,7 +46,8 @@ export const TIMEZONE_OPTIONS = [
   'UTC',
 ] as const
 
-const ALLOWED_TIMEZONES = new Set(TIMEZONE_OPTIONS)
+type TimezoneOption = (typeof TIMEZONE_OPTIONS)[number]
+const ALLOWED_TIMEZONES = new Set<TimezoneOption>(TIMEZONE_OPTIONS)
 
 const ALLOWED_LOCALES = ['es', 'en'] as const
 export type AllowedLocale = (typeof ALLOWED_LOCALES)[number]
@@ -59,14 +60,15 @@ export const CURRENCY_OPTIONS = [
   { code: 'MXN', label: 'Mexican Peso (MXN)' },
 ] as const
 
-const ALLOWED_CURRENCIES = new Set(CURRENCY_OPTIONS.map((c) => c.code))
+type CurrencyCode = (typeof CURRENCY_OPTIONS)[number]['code']
+const ALLOWED_CURRENCIES = new Set<CurrencyCode>(CURRENCY_OPTIONS.map((c) => c.code))
 
 export function validateCurrency(
   value: unknown
 ): { ok: true; value: string } | { ok: false; error: string } {
   const s = typeof value === 'string' ? value.trim().toUpperCase() : ''
   if (!s) return { ok: false, error: 'Currency is required' }
-  if (!ALLOWED_CURRENCIES.has(s)) {
+  if (!ALLOWED_CURRENCIES.has(s as CurrencyCode)) {
     return { ok: false, error: 'Invalid currency. Choose USD, EUR, GBP, CAD, or MXN.' }
   }
   return { ok: true, value: s }
@@ -92,7 +94,7 @@ export function validatePhone(value: unknown): { ok: true; value: string | null 
 export function validateTimezone(value: unknown): { ok: true; value: string } | { ok: false; error: string } {
   const s = typeof value === 'string' ? value.trim() : ''
   if (!s) return { ok: false, error: 'Timezone is required' }
-  if (!ALLOWED_TIMEZONES.has(s)) {
+  if (!ALLOWED_TIMEZONES.has(s as TimezoneOption)) {
     return { ok: false, error: 'Invalid timezone' }
   }
   return { ok: true, value: s }

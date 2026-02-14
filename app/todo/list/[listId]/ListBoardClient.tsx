@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/components/I18nProvider'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
@@ -45,6 +46,7 @@ export default function ListBoardClient({
   initialProjectName,
   initialItems,
 }: ListBoardClientProps) {
+  const { t } = useI18n()
   const router = useRouter()
   const [listTitle, setListTitle] = useState(initialListTitle)
   const [projectId, setProjectId] = useState<string | null>(initialProjectId)
@@ -207,7 +209,7 @@ export default function ListBoardClient({
                   className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Back to To-do
+                  {t('todo.back_to_todo')}
                 </Link>
               </div>
               <div className="flex flex-wrap items-center gap-4">
@@ -245,10 +247,10 @@ export default function ListBoardClient({
                     disabled={savingProject}
                   >
                     <SelectTrigger className="w-[180px] h-9">
-                      <SelectValue placeholder="No project" />
+                      <SelectValue placeholder={t('billings.no_project')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No project</SelectItem>
+                      <SelectItem value="none">{t('billings.no_project')}</SelectItem>
                       {projects.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.name}

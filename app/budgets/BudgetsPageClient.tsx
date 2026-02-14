@@ -11,10 +11,12 @@ import { getBudgets } from './actions'
 import { BudgetCard } from './components/BudgetCard'
 import { CreateBudgetModal } from './components/CreateBudgetModal'
 import { EmptyState } from './components/EmptyState'
+import { useI18n } from '@/components/I18nProvider'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
 export default function BudgetsPageClient() {
+  const { t } = useI18n()
   const [projects, setProjects] = useState<Project[]>([])
   const [budgets, setBudgets] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -71,7 +73,7 @@ export default function BudgetsPageClient() {
           onSignOut={signOut}
           onProjectAdded={loadProjects}
           onProjectUpdated={loadProjects}
-          projectName="Presupuestos"
+          projectName={t('budgets.title')}
           currentProject={null}
         />
         <div className="flex-1 flex overflow-hidden">
@@ -108,7 +110,7 @@ export default function BudgetsPageClient() {
         onSignOut={signOut}
         onProjectAdded={loadProjects}
         onProjectUpdated={loadProjects}
-        projectName="Presupuestos"
+        projectName={t('budgets.title')}
         currentProject={null}
       />
       <div className="flex-1 flex overflow-hidden">
@@ -127,10 +129,10 @@ export default function BudgetsPageClient() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-foreground">
-                Presupuestos
+                {t('budgets.title')}
               </h1>
               <p className="text-muted-foreground mt-2">
-                Gestiona tus presupuestos y compras por proyecto
+                {t('budgets.subtitle')}
               </p>
             </div>
 
@@ -140,7 +142,7 @@ export default function BudgetsPageClient() {
                 className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
               >
                 <Plus className="w-5 h-5 mr-2" />
-                New Budget
+                {t('budgets.new_budget')}
               </button>
             )}
           </div>
@@ -174,7 +176,7 @@ export default function BudgetsPageClient() {
                 className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
               >
                 <Plus className="w-5 h-5 mr-2" />
-                New Budget
+                {t('budgets.new_budget')}
               </button>
             </div>
           )}

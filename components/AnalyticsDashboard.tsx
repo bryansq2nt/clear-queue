@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { CheckCircle, AlertCircle, AlertTriangle, TrendingUp, Calendar, LogOut, Plus } from 'lucide-react'
 import { getCategoryLabel } from '@/lib/constants'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts'
@@ -140,6 +141,7 @@ function calculateKPIs(tasks: Task[]) {
 }
 
 export default function AnalyticsDashboard() {
+    const { t } = useI18n()
     const pathname = usePathname()
     const router = useRouter()
     const supabase = createClient()
@@ -200,10 +202,10 @@ export default function AnalyticsDashboard() {
 
 
     const kpiData = [
-        { label: 'Total Tasks', value: dashboardData.kpis.total, icon: CheckCircle, color: 'bg-blue-500' },
-        { label: 'Blocked Tasks', value: dashboardData.kpis.blocked, icon: AlertCircle, color: 'bg-red-500' },
-        { label: 'Critical Priority', value: dashboardData.kpis.critical, icon: AlertTriangle, color: 'bg-orange-500' },
-        { label: 'Completed', value: dashboardData.kpis.completed, icon: TrendingUp, color: 'bg-green-500' },
+        { label: t('dashboard.total_tasks'), value: dashboardData.kpis.total, icon: CheckCircle, color: 'bg-blue-500' },
+        { label: t('dashboard.blocked_tasks'), value: dashboardData.kpis.blocked, icon: AlertCircle, color: 'bg-red-500' },
+        { label: t('dashboard.critical_priority'), value: dashboardData.kpis.critical, icon: AlertTriangle, color: 'bg-orange-500' },
+        { label: t('dashboard.completed'), value: dashboardData.kpis.completed, icon: TrendingUp, color: 'bg-green-500' },
     ]
 
     return (
@@ -234,7 +236,7 @@ export default function AnalyticsDashboard() {
                 <div className="bg-primary text-primary-foreground shadow-xl">
                     <div className="px-6 py-4 flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <h1 className="text-xl font-bold">Mutech Labs - Dashboard</h1>
+                            <h1 className="text-xl font-bold">Mutech Labs - {t('dashboard.title')}</h1>
                         </div>
                         <div className="flex items-center gap-4">
                             <Button
@@ -264,7 +266,7 @@ export default function AnalyticsDashboard() {
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {loading ? (
                         <div className="flex items-center justify-center h-64">
-                            <div className="text-muted-foreground">Loading dashboard data...</div>
+                            <div className="text-muted-foreground">{t('dashboard.loading_data')}</div>
                         </div>
                     ) : (
                         <>
@@ -296,7 +298,7 @@ export default function AnalyticsDashboard() {
 
                             {/* 2. PROJECT HEALTH OVERVIEW */}
                             <div className="bg-card rounded-lg shadow p-6 border border-border">
-                                <h2 className="text-xl font-bold text-foreground mb-4">Project Health Overview</h2>
+                                <h2 className="text-xl font-bold text-foreground mb-4">{t('dashboard.project_health_overview')}</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {dashboardData.projectHealthData.map((project) => (
                                         <div
@@ -316,7 +318,7 @@ export default function AnalyticsDashboard() {
                                                     <span className="text-xs text-muted-foreground">{getCategoryLabel(project.category)}</span>
                                                     {project.category === 'archived' && (
                                                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                                                            Archived
+                                                            {t('dashboard.archived')}
                                                         </span>
                                                     )}
                                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${healthBadges[project.health as keyof typeof healthBadges]}`}>
@@ -330,15 +332,15 @@ export default function AnalyticsDashboard() {
                                                     <span className="font-semibold ml-1">{project.total}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="text-muted-foreground">Critical:</span>
+                                                    <span className="text-muted-foreground">{t('dashboard.critical')}:</span>
                                                     <span className="font-semibold ml-1 text-red-600 dark:text-red-400">{project.critical}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="text-muted-foreground">Blocked:</span>
+                                                    <span className="text-muted-foreground">{t('dashboard.blocked')}:</span>
                                                     <span className="font-semibold ml-1 text-orange-600 dark:text-orange-400">{project.blocked}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="text-muted-foreground">Completed:</span>
+                                                    <span className="text-muted-foreground">{t('dashboard.completed_label')}:</span>
                                                     <span className="font-semibold ml-1 text-green-600 dark:text-green-400">{project.completed}</span>
                                                 </div>
                                             </div>
@@ -364,7 +366,7 @@ export default function AnalyticsDashboard() {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 {/* Blocked Tasks */}
                                 <div className="bg-card rounded-lg shadow p-6 hover:shadow-lg transition-shadow border border-border">
-                                    <h2 className="text-xl font-bold text-foreground mb-4">Blocked Tasks</h2>
+                                    <h2 className="text-xl font-bold text-foreground mb-4">{t('dashboard.blocked_tasks_section')}</h2>
                                     <div className="space-y-3">
                                         {dashboardData.blockedTasks.length === 0 ? (
                                             <div className="text-muted-foreground text-sm py-4">No blocked tasks</div>
@@ -387,7 +389,7 @@ export default function AnalyticsDashboard() {
                                                         />
                                                         <span>{task.project}</span>
                                                         <span className="text-red-600 dark:text-red-400 font-medium ml-auto">
-                                                            Blocked {task.daysBlocked} days
+                                                            {t('dashboard.blocked_days', { days: task.daysBlocked })}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -401,7 +403,7 @@ export default function AnalyticsDashboard() {
                                     <h2 className="text-xl font-bold text-foreground mb-4">Upcoming Deadlines</h2>
                                     <div className="space-y-3">
                                         {dashboardData.upcomingDeadlines.length === 0 ? (
-                                            <div className="text-muted-foreground text-sm py-4">No upcoming deadlines</div>
+                                            <div className="text-muted-foreground text-sm py-4">{t('dashboard.no_upcoming_deadlines')}</div>
                                         ) : (
                                             dashboardData.upcomingDeadlines.map((task) => (
                                                 <div

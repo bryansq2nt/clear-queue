@@ -7,6 +7,7 @@ import { Search, LogOut, CheckSquare, FileText } from 'lucide-react'
 import { useState } from 'react'
 import { AddProjectModal } from './AddProjectModal'
 import { EditProjectModal } from './EditProjectModal'
+import { useI18n } from '@/components/I18nProvider'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
@@ -33,6 +34,7 @@ export default function TopBar({
   selectionMode = false,
   onToggleSelectionMode,
 }: TopBarProps) {
+  const { t } = useI18n()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false)
@@ -41,12 +43,12 @@ export default function TopBar({
     <>
       <div className="bg-primary text-primary-foreground shadow-xl">
         <div className="px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold">{projectName} - Task Board</h1>
+          <h1 className="text-xl font-bold">{projectName} - {t('topbar.task_board')}</h1>
           <div className="flex items-center gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-primary-foreground/70" />
               <Input
-                placeholder="Search tasks..."
+                placeholder={t('topbar.search_tasks')}
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 className="pl-10 bg-primary/80 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/60 w-64"
@@ -60,7 +62,7 @@ export default function TopBar({
                 className={selectionMode ? "bg-primary-foreground text-primary hover:bg-primary-foreground/90" : "bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"}
               >
                 <CheckSquare className="w-4 h-4 mr-2" />
-                {selectionMode ? 'Cancel Selection' : 'Select'}
+                {selectionMode ? t('topbar.cancel_selection') : t('topbar.select')}
               </Button>
             )}
             {currentProject ? (
@@ -72,7 +74,7 @@ export default function TopBar({
                   className="bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"
                 >
                   <FileText className="w-4 h-4 mr-2" />
-                  Notes
+                  {t('sidebar.notes')}
                 </Button>
                 <Button
                   onClick={() => setIsEditModalOpen(true)}
@@ -80,7 +82,7 @@ export default function TopBar({
                   size="sm"
                   className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
                 >
-                  Edit Project
+                  {t('topbar.edit_project')}
                 </Button>
               </>
             ) : (
@@ -90,7 +92,7 @@ export default function TopBar({
                 size="sm"
                 className="bg-white text-slate-900 hover:bg-slate-100"
               >
-                Add Project
+                {t('topbar.add_project')}
               </Button>
             )}
             <Button variant="ghost" size="icon" onClick={() => onSignOut()} className="text-primary-foreground hover:bg-primary/80">

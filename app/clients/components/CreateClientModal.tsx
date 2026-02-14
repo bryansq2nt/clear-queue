@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Users } from 'lucide-react'
+import { useI18n } from '@/components/I18nProvider'
 import { createClientAction } from '../actions'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,13 +15,13 @@ interface CreateClientModalProps {
   onCreated?: () => void
 }
 
-const GENDER_OPTIONS = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'not_specified', label: 'Not specified' },
-] as const
-
 export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientModalProps) {
+  const { t } = useI18n()
+  const GENDER_OPTIONS = [
+    { value: 'male', label: t('clients.gender_male') },
+    { value: 'female', label: t('clients.gender_female') },
+    { value: 'not_specified', label: t('clients.gender_not_specified') },
+  ]
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [gender, setGender] = useState<string>('not_specified')
@@ -62,7 +63,7 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
             <div className="w-10 h-10 bg-gradient-to-br from-slate-500 to-slate-600 rounded-lg flex items-center justify-center">
               <Users className="w-6 h-6 text-white" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">New Client</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t('clients.new_client')}</h2>
           </div>
           <button
             type="button"
@@ -78,16 +79,16 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
             <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>
           )}
           <div>
-            <Label htmlFor="full_name">Full name *</Label>
-            <Input id="full_name" name="full_name" required placeholder="e.g. Jane Doe" />
+            <Label htmlFor="full_name">{t('clients.full_name')}</Label>
+            <Input id="full_name" name="full_name" required placeholder={t('clients.full_name_placeholder')} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="phone">{t('clients.phone')}</Label>
               <Input id="phone" name="phone" type="tel" placeholder="+1 234 567 8900" />
             </div>
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('auth.email')}</Label>
               <Input id="email" name="email" type="email" placeholder="jane@example.com" />
             </div>
           </div>
@@ -95,7 +96,7 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
             <Label htmlFor="gender">Gender</Label>
             <Select value={gender} onValueChange={setGender}>
               <SelectTrigger id="gender">
-                <SelectValue placeholder="Select" />
+                <SelectValue placeholder={t('common.select')} />
               </SelectTrigger>
               <SelectContent>
                 {GENDER_OPTIONS.map((o) => (
@@ -109,26 +110,26 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
             <Input id="address_line1" name="address_line1" placeholder="Street address" />
           </div>
           <div>
-            <Label htmlFor="address_line2">Address line 2</Label>
-            <Input id="address_line2" name="address_line2" placeholder="Apt, suite, etc." />
+            <Label htmlFor="address_line2">{t('clients.address_line2')}</Label>
+            <Input id="address_line2" name="address_line2" placeholder={t('clients.apt_placeholder')} />
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="city">City</Label>
+              <Label htmlFor="city">{t('clients.city')}</Label>
               <Input id="city" name="city" />
             </div>
             <div>
-              <Label htmlFor="state">State</Label>
+              <Label htmlFor="state">{t('clients.state')}</Label>
               <Input id="state" name="state" />
             </div>
             <div>
-              <Label htmlFor="postal_code">Postal code</Label>
+              <Label htmlFor="postal_code">{t('clients.postal_code')}</Label>
               <Input id="postal_code" name="postal_code" />
             </div>
           </div>
           <div>
-            <Label htmlFor="preferences">Preferences</Label>
-            <Textarea id="preferences" name="preferences" rows={2} placeholder="Optional" />
+            <Label htmlFor="preferences">{t('clients.preferences')}</Label>
+            <Textarea id="preferences" name="preferences" rows={2} placeholder={t('clients.optional')} />
           </div>
           <div>
             <Label htmlFor="notes">Notes</Label>
@@ -140,14 +141,14 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-lg hover:from-slate-700 hover:to-slate-800 disabled:opacity-50 font-medium"
             >
-              {isSubmitting ? 'Creating...' : 'Create Client'}
+              {isSubmitting ? t('clients.creating') : t('clients.create_client')}
             </button>
           </div>
         </form>

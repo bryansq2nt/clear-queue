@@ -7,10 +7,12 @@ import Sidebar from '@/components/Sidebar'
 import TopBar from '@/components/TopBar'
 import { signOut } from '@/app/actions/auth'
 import TodoDashboardClient from './TodoDashboardClient'
+import { useI18n } from '@/components/I18nProvider'
 
 type Project = Database['public']['Tables']['projects']['Row']
 
 export default function TodoPageClient() {
+  const { t } = useI18n()
   const [projects, setProjects] = useState<Project[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -35,7 +37,7 @@ export default function TodoPageClient() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-lg">Loading...</div>
+        <div className="text-lg">{t('common.loading')}</div>
       </div>
     )
   }

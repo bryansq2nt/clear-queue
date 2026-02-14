@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import { EditTaskModal } from '../EditTaskModal'
@@ -14,12 +15,12 @@ interface TaskWithProject extends Task {
   projects: Project | null
 }
 
-const statusLabels = {
-  backlog: "Pendientes",
-  next: "Lo Siguiente",
-  in_progress: "En Progreso",
-  blocked: "Bloqueado",
-  done: "Terminado",
+const STATUS_KEYS = {
+  backlog: "task_status.backlog",
+  next: "task_status.next",
+  in_progress: "task_status.in_progress",
+  blocked: "task_status.blocked",
+  done: "task_status.done",
 } as const
 
 const statusColors = {
@@ -78,6 +79,7 @@ export default function TaskListWidget({
   borderColor = "border-blue-500",
   bgColor = "bg-blue-50",
 }: TaskListWidgetProps) {
+  const { t } = useI18n()
   const [tasks, setTasks] = useState<TaskWithProject[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -93,7 +95,7 @@ export default function TaskListWidget({
     const result = await queryFn(page, pageSize)
     
     if (result.error) {
-      setError(result.error.message || 'Error al cargar tareas')
+      setError(result.error.message || t('tasks.load_error'))
       setLoading(false)
       return
     }
@@ -117,7 +119,7 @@ export default function TaskListWidget({
     setTasks(transformedTasks)
     setTotalCount(result.count || 0)
     setLoading(false)
-  }, [page, pageSize, queryFn])
+  }, [page, pageSize, queryFn, t])
 
   useEffect(() => {
     loadTasks()
@@ -150,7 +152,7 @@ export default function TaskListWidget({
         </div>
 
         {loading ? (
-          <div className="text-muted-foreground text-sm py-4">Cargando...</div>
+          <div className="text-muted-foreground text-sm py-4">{t('common.loading')}</div>
         ) : error ? (
           <div className="text-destructive text-sm py-4">{error}</div>
         ) : tasks.length === 0 ? (
@@ -187,7 +189,7 @@ export default function TaskListWidget({
                       </>
                     )}
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ml-auto ${statusColors[task.status]}`}>
-                      {statusLabels[task.status]}
+                      {t(STATUS_KEYS[task.status])}
                     </span>
                   </div>
                 </div>
@@ -210,14 +212,14 @@ export default function TaskListWidget({
                     Anterior
                   </button>
                   <span className="text-sm text-muted-foreground px-2">
-                    Página {page} de {totalPages}
+                    {t('tasks.page')} {page} {t('tasks.of')} {totalPages}
                   </span>
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
                     className="px-3 py-1.5 text-sm font-medium text-foreground bg-card border border-border rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                   >
-                    Siguiente
+                    {t('tasks.next')}
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>

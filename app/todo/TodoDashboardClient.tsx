@@ -8,8 +8,10 @@ import { getTodoListsAction } from './actions'
 import { getProjects } from '@/app/budgets/actions'
 import type { TodoList } from '@/lib/todo/lists'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/components/I18nProvider'
 
 export default function TodoDashboardClient() {
+  const { t } = useI18n()
   const router = useRouter()
   const [lists, setLists] = useState<TodoList[]>([])
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([])
@@ -42,7 +44,7 @@ export default function TodoDashboardClient() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <p className="text-slate-500 dark:text-slate-400">Loading...</p>
+        <p className="text-slate-500 dark:text-slate-400">{t('common.loading')}</p>
       </div>
     )
   }
@@ -71,19 +73,19 @@ export default function TodoDashboardClient() {
           className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium hover:opacity-90"
         >
           <Plus className="w-4 h-4" />
-          Add new to-do list
+          {t('todo.add_new_list')}
         </Link>
       </div>
 
       {lists.length === 0 ? (
         <div className="rounded-xl border border-border bg-card p-8 text-center">
-          <p className="text-slate-600 dark:text-slate-400 mb-4">No to-do lists yet.</p>
+          <p className="text-slate-600 dark:text-slate-400 mb-4">{t('todo.no_lists_yet')}</p>
           <Link
             href="/todo/new"
             className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium hover:opacity-90"
           >
             <Plus className="w-4 h-4" />
-            Add new to-do list
+            {t('todo.add_new_list')}
           </Link>
         </div>
       ) : (
