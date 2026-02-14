@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { X, Users } from 'lucide-react'
 import { updateClientAction } from '../actions'
 import { Input } from '@/components/ui/input'
@@ -11,12 +12,6 @@ import { Database } from '@/lib/supabase/types'
 
 type Client = Database['public']['Tables']['clients']['Row']
 
-const GENDER_OPTIONS = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'not_specified', label: 'Not specified' },
-] as const
-
 interface EditClientModalProps {
   client: Client | null
   isOpen: boolean
@@ -25,6 +20,12 @@ interface EditClientModalProps {
 }
 
 export function EditClientModal({ client, isOpen, onClose, onUpdated }: EditClientModalProps) {
+  const { t } = useI18n()
+  const GENDER_OPTIONS = [
+    { value: 'male', label: t('clients.gender_male') },
+    { value: 'female', label: t('clients.gender_female') },
+    { value: 'not_specified', label: t('clients.gender_not_specified') },
+  ]
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const genderValue = client?.gender === 'male' || client?.gender === 'female' ? client.gender : 'not_specified'
@@ -71,7 +72,7 @@ export function EditClientModal({ client, isOpen, onClose, onUpdated }: EditClie
             <div className="w-10 h-10 bg-gradient-to-br from-slate-500 to-slate-600 rounded-lg flex items-center justify-center">
               <Users className="w-6 h-6 text-white" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Edit Client</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t('clients.edit_client')}</h2>
           </div>
           <button
             type="button"
@@ -87,18 +88,18 @@ export function EditClientModal({ client, isOpen, onClose, onUpdated }: EditClie
             <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>
           )}
           <div>
-            <Label htmlFor="edit-full_name">Full name *</Label>
+            <Label htmlFor="edit-full_name">{t('clients.full_name')}</Label>
             <Input
               id="edit-full_name"
               name="full_name"
               defaultValue={client.full_name}
               required
-              placeholder="e.g. Jane Doe"
+              placeholder={t('clients.full_name_placeholder')}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="edit-phone">Phone</Label>
+              <Label htmlFor="edit-phone">{t('clients.phone')}</Label>
               <Input
                 id="edit-phone"
                 name="phone"
@@ -108,7 +109,7 @@ export function EditClientModal({ client, isOpen, onClose, onUpdated }: EditClie
               />
             </div>
             <div>
-              <Label htmlFor="edit-email">Email</Label>
+              <Label htmlFor="edit-email">{t('auth.email')}</Label>
               <Input
                 id="edit-email"
                 name="email"
@@ -119,10 +120,10 @@ export function EditClientModal({ client, isOpen, onClose, onUpdated }: EditClie
             </div>
           </div>
           <div>
-            <Label htmlFor="edit-gender">Gender</Label>
+            <Label htmlFor="edit-gender">{t('clients.gender')}</Label>
             <Select value={gender} onValueChange={setGender}>
               <SelectTrigger id="edit-gender">
-                <SelectValue placeholder="Select" />
+                <SelectValue placeholder={t('common.select')} />
               </SelectTrigger>
               <SelectContent>
                 {GENDER_OPTIONS.map((o) => (
@@ -132,7 +133,7 @@ export function EditClientModal({ client, isOpen, onClose, onUpdated }: EditClie
             </Select>
           </div>
           <div>
-            <Label htmlFor="edit-address_line1">Address line 1</Label>
+            <Label htmlFor="edit-address_line1">{t('clients.address_line1')}</Label>
             <Input
               id="edit-address_line1"
               name="address_line1"
@@ -140,7 +141,7 @@ export function EditClientModal({ client, isOpen, onClose, onUpdated }: EditClie
             />
           </div>
           <div>
-            <Label htmlFor="edit-address_line2">Address line 2</Label>
+            <Label htmlFor="edit-address_line2">{t('clients.address_line2')}</Label>
             <Input
               id="edit-address_line2"
               name="address_line2"
@@ -149,20 +150,20 @@ export function EditClientModal({ client, isOpen, onClose, onUpdated }: EditClie
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="edit-city">City</Label>
+              <Label htmlFor="edit-city">{t('clients.city')}</Label>
               <Input id="edit-city" name="city" defaultValue={client.city ?? ''} />
             </div>
             <div>
-              <Label htmlFor="edit-state">State</Label>
+              <Label htmlFor="edit-state">{t('clients.state')}</Label>
               <Input id="edit-state" name="state" defaultValue={client.state ?? ''} />
             </div>
             <div>
-              <Label htmlFor="edit-postal_code">Postal code</Label>
+              <Label htmlFor="edit-postal_code">{t('clients.postal_code')}</Label>
               <Input id="edit-postal_code" name="postal_code" defaultValue={client.postal_code ?? ''} />
             </div>
           </div>
           <div>
-            <Label htmlFor="edit-preferences">Preferences</Label>
+            <Label htmlFor="edit-preferences">{t('clients.preferences')}</Label>
             <Textarea
               id="edit-preferences"
               name="preferences"
@@ -171,7 +172,7 @@ export function EditClientModal({ client, isOpen, onClose, onUpdated }: EditClie
             />
           </div>
           <div>
-            <Label htmlFor="edit-notes">Notes</Label>
+            <Label htmlFor="edit-notes">{t('clients.notes')}</Label>
             <Textarea id="edit-notes" name="notes" rows={3} defaultValue={client.notes ?? ''} />
           </div>
           <div className="flex gap-3 pt-4">
@@ -180,14 +181,14 @@ export function EditClientModal({ client, isOpen, onClose, onUpdated }: EditClie
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-lg hover:from-slate-700 hover:to-slate-800 disabled:opacity-50 font-medium"
             >
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? t('clients.saving') : t('common.save')}
             </button>
           </div>
         </form>

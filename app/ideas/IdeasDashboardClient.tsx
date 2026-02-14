@@ -5,14 +5,18 @@ import { useI18n } from '@/components/I18nProvider'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Lightbulb, Layout } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Plus } from 'lucide-react'
 import BoardsSidebar from './BoardsSidebar'
 import IdeaGraphCanvas from './IdeaGraphCanvas'
 import IdeaDrawer from './IdeaDrawer'
 import { createIdeaAction } from './actions'
-import { createBoardAction } from './boards/actions'
+import {
+  createBoardAction,
+  updateBoardAction,
+  addIdeaToBoardAction,
+} from './boards/actions'
 import { loadBoardDataAction } from './load-board-data'
-import { addIdeaToBoardAction } from './boards/actions'
 
 interface Idea {
   id: string
@@ -24,6 +28,7 @@ interface Board {
   id: string
   name: string
   description: string | null
+  project_id?: string | null
 }
 
 interface BoardItem {
@@ -44,9 +49,11 @@ interface Connection {
 export default function IdeasDashboardClient({
   initialBoards,
   initialIdeas,
+  initialProjects = [],
 }: {
   initialBoards: Board[]
   initialIdeas: Idea[]
+  initialProjects?: { id: string; name: string }[]
 }) {
   const { t } = useI18n()
   const router = useRouter()
@@ -59,6 +66,7 @@ export default function IdeasDashboardClient({
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
   const [isCreatingIdea, setIsCreatingIdea] = useState(false)
   const [isCreatingBoard, setIsCreatingBoard] = useState(false)
+  const [isEditingBoard, setIsEditingBoard] = useState(false)
   const [newBoardName, setNewBoardName] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -91,6 +99,13 @@ export default function IdeasDashboardClient({
         .filter((item): item is BoardItem => item !== null)
       setBoardItems(validItems)
       setConnections(result.connections || [])
+      if (result.board) {
+        setBoards((prev) =>
+          prev.map((b) =>
+            b.id === result.board!.id ? { ...b, ...result.board } : b
+          )
+        )
+      }
     } catch (error) {
       console.error('Failed to load board data:', error)
     } finally {
@@ -153,6 +168,25 @@ export default function IdeasDashboardClient({
     }
   }
 
+  const selectedBoard = selectedBoardId
+    ? boards.find((b) => b.id === selectedBoardId)
+    : null
+
+  const handleUpdateBoard = async (formData: FormData) => {
+    if (!selectedBoardId) return
+    formData.set('id', selectedBoardId)
+    const result = await updateBoardAction(formData)
+    if (result.data) {
+      setBoards((prev) =>
+        prev.map((b) =>
+          b.id === selectedBoardId ? { ...b, ...result.data } : b
+        )
+      )
+      setIsEditingBoard(false)
+      router.refresh()
+    }
+  }
+
   return (
     <div className="flex-1 flex overflow-hidden">
       {/* Boards Sidebar */}
@@ -161,96 +195,123 @@ export default function IdeasDashboardClient({
         selectedBoardId={selectedBoardId}
         onSelectBoard={setSelectedBoardId}
         onRefresh={handleRefresh}
+        isCreatingBoard={isCreatingBoard}
+        newBoardName={newBoardName}
+        onNewBoardNameChange={setNewBoardName}
+        onCreateBoard={handleCreateBoard}
+        onCancelNewBoard={() => {
+          setIsCreatingBoard(false)
+          setNewBoardName('')
+        }}
+        onStartCreateBoard={() => setIsCreatingBoard(true)}
+        onEditBoard={(boardId) => {
+          setSelectedBoardId(boardId)
+          setIsEditingBoard(true)
+        }}
       />
 
       {/* Main Canvas Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="bg-card border-b border-border p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">
-              {selectedBoardId
-                ? boards.find((b) => b.id === selectedBoardId)?.name ||
-                'Select a Board'
-                : 'Select a Board'}
-            </h2>
-            <div className="flex items-center gap-2">
-              {isCreatingBoard ? (
-                <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            {isEditingBoard && selectedBoard ? (
+              <form
+                action={handleUpdateBoard}
+                className="flex flex-wrap items-end gap-3 flex-1 min-w-0"
+              >
+                <input type="hidden" name="id" value={selectedBoard.id} />
+                <div className="flex flex-col gap-1">
                   <Input
-                    value={newBoardName}
-                    onChange={(e) => setNewBoardName(e.target.value)}
-                    placeholder="Board name..."
+                    name="name"
+                    defaultValue={selectedBoard.name}
+                    placeholder={t('ideas.board_name_placeholder')}
                     className="w-48"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleCreateBoard()
-                      if (e.key === 'Escape') {
-                        setIsCreatingBoard(false)
-                        setNewBoardName('')
-                      }
-                    }}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Textarea
+                    name="description"
+                    defaultValue={selectedBoard.description ?? ''}
+                    placeholder={t('ideas.board_description_placeholder')}
+                    rows={1}
+                    className="w-48 min-h-9 resize-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <select
+                    name="projectId"
+                    defaultValue={selectedBoard.project_id ?? ''}
+                    className="flex h-9 w-48 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  >
+                    <option value="">{t('ideas.no_project')}</option>
+                    {initialProjects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-muted-foreground">
+                    {t('ideas.link_board_to_project')}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" size="sm">
+                    {t('common.save')}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsEditingBoard(false)}
+                  >
+                    {t('common.cancel')}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <h2 className="text-lg font-semibold text-foreground truncate min-w-0">
+                {selectedBoardId
+                  ? selectedBoard?.name || t('ideas.select_board')
+                  : t('ideas.select_board')}
+              </h2>
+            )}
+            {!isEditingBoard && (
+            <div className="flex items-center gap-2">
+              {isCreatingIdea ? (
+                <form action={handleCreateIdea} className="flex items-center gap-2">
+                  <Input
+                    name="title"
+                    placeholder={t('ideas.new_word_placeholder')}
+                    required
+                    className="w-48"
                     autoFocus
                   />
-                  <Button size="sm" onClick={handleCreateBoard}>
-                    Create
+                  <Button size="sm" type="submit">
+                    {t('common.add')}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => {
-                      setIsCreatingBoard(false)
-                      setNewBoardName('')
-                    }}
+                    type="button"
+                    onClick={() => setIsCreatingIdea(false)}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
-                </div>
+                </form>
               ) : (
-                <>
-                  {isCreatingIdea ? (
-                    <form action={handleCreateIdea} className="flex items-center gap-2">
-                      <Input
-                        name="title"
-                        placeholder="Nueva palabra..."
-                        required
-                        className="w-48"
-                        autoFocus
-                      />
-                      <Button size="sm" type="submit">
-                        Create
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        type="button"
-                        onClick={() => setIsCreatingIdea(false)}
-                      >
-                        Cancel
-                      </Button>
-                    </form>
-                  ) : (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsCreatingIdea(true)}
-                        disabled={!selectedBoardId}
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Agregar Palabra
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setIsCreatingBoard(true)}
-                      >
-                        <Layout className="w-4 h-4 mr-2" />
-                        New Board
-                      </Button>
-                    </>
-                  )}
-                </>
+                <Button
+                  size="sm"
+                  onClick={() => setIsCreatingIdea(true)}
+                  disabled={!selectedBoardId}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  {t('ideas.add_word')}
+                </Button>
               )}
             </div>
+            )}
           </div>
         </div>
 

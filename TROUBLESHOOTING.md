@@ -380,3 +380,118 @@ const clientsList = (clientsData || []) as { id: string; full_name: string }[]
 ### Related
 - **2026-02-01** (this file): Different Supabase fix using split query + `.from('...') as any` in `lib/todo/lists.ts`. Use that pattern if `as never` on the payload is not enough or if the file already uses the split-query style.
 - **Files changed:** `lib/supabase/types.ts` (Views/Enums/CompositeTypes), `app/clients/actions.ts` (payload variables + `as never`, clients list cast).
+
+---
+
+## 2026-02-13: "Property 'X' does not exist on type 'IntrinsicAttributes & SomeComponentProps'"
+
+### Context
+Next.js app with server components passing props to client components (e.g. Ideas page).
+
+### Problem
+```
+Type error: Type '{ initialBoards: ...; initialIdeas: ...; initialProjects: ... }' 
+is not assignable to type 'IntrinsicAttributes & IdeasPageClientProps'.
+  Property 'initialProjects' does not exist on type 'IntrinsicAttributes & IdeasPageClientProps'.
+
+  20 |       initialProjects={projects}
+      |       ^
+```
+
+Build fails because the server page passes a prop that the client component does not declare.
+
+### Root Cause
+**Missing prop in client component interface:**
+- The server page fetches data and passes it to a client component (e.g. `initialProjects={projects}`).
+- The client component’s props interface did not include that prop, so TypeScript rejects it.
+
+### Solution Implemented
+**Declare and forward the prop in the client component:**
+
+1. Add the prop to the component’s props interface with the correct type (match what the server passes, e.g. `listProjectsForPicker()` returns `{ id: string; name: string }[]`):
+   ```typescript
+   interface IdeasPageClientProps {
+     initialBoards: any[]
+     initialIdeas: any[]
+     initialProjects?: { id: string; name: string }[]  // add this
+   }
+   ```
+
+2. Destructure it in the component (with default if optional):
+   ```typescript
+   export default function IdeasPageClient({
+     initialBoards,
+     initialIdeas,
+     initialProjects = [],
+   }: IdeasPageClientProps) {
+   ```
+
+3. Pass it through to any child that needs it:
+   ```typescript
+   <IdeasDashboardClient
+     initialBoards={initialBoards}
+     initialIdeas={initialIdeas}
+     initialProjects={initialProjects}
+   />
+   ```
+
+### Prevention
+- ✅ When adding a new prop to a server→client call, update the client component’s props interface and destructuring.
+- ✅ Keep prop types in sync with server data (e.g. return type of `listProjectsForPicker()`).
+
+### Related Files
+- `app/ideas/page.tsx` (server, passes `initialProjects`)
+- `app/ideas/IdeasPageClient.tsx` (client, must declare and forward the prop)
+
+---
+
+## 2026-02-13: "This expression is not callable. Type 'String' has no call signatures" (i18n `t` shadowed)
+
+### Context
+Using `useI18n()` and `t()` for translations in a component that also uses a local variable named `t`.
+
+### Problem
+```
+./app/notes/components/NoteEditor.tsx:139:16
+Type error: This expression is not callable.
+  Type 'String' has no call signatures.
+
+  139 |       setError(t('notes.error_select_project'))
+      |                ^
+```
+
+Build fails even though `t` from `useI18n()` is a function; TypeScript reports `t` as type `String`.
+
+### Root Cause
+**Variable shadowing:**
+- The component does `const { t } = useI18n()` (translation function).
+- In the same function (e.g. `handleSaveClick`), a later line declares `const t = title.trim()`.
+- In TypeScript, that later declaration makes `t` have type `string` for the **entire** function body, so the earlier call `t('notes.error_select_project')` is invalid (string is not callable).
+
+### Solution Implemented
+**Rename the local variable so it does not shadow the i18n `t`:**
+
+```typescript
+// ❌ BEFORE (shadows useI18n's t):
+const t = title.trim()
+if (!t) {
+  setError(t('notes.error_title_required'))  // t is string here
+}
+// ...
+title: t,
+
+// ✅ AFTER:
+const trimmedTitle = title.trim()
+if (!trimmedTitle) {
+  setError(t('notes.error_title_required'))   // t still the translation function
+}
+// ...
+title: trimmedTitle,
+```
+
+### Prevention
+- ✅ Do **not** use the name `t` for local variables in components that use `const { t } = useI18n()`.
+- ✅ Prefer names like `trimmedTitle`, `trimmed`, or `value` for local string variables in those components.
+
+### Related Files
+- `app/notes/components/NoteEditor.tsx` (fixed by renaming local `t` to `trimmedTitle`)

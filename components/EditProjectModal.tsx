@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { updateProject, deleteProject } from '@/app/actions/projects'
 import { getClients, getBusinessesByClientId } from '@/app/clients/actions'
 import {
@@ -40,6 +41,7 @@ const COLORS = [
 ]
 
 export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, defaultTab = 'details' }: EditProjectModalProps) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [category, setCategory] = useState<string>('business')
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
@@ -166,30 +168,30 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Project</DialogTitle>
-          <DialogDescription>Update project details or delete the project</DialogDescription>
+          <DialogTitle>{t('projects.edit_title')}</DialogTitle>
+          <DialogDescription>{t('projects.edit_description')}</DialogDescription>
         </DialogHeader>
         {!showDeleteConfirm ? (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="notes">Notes</TabsTrigger>
+              <TabsTrigger value="details">{t('projects.tab_details')}</TabsTrigger>
+              <TabsTrigger value="notes">{t('projects.tab_notes')}</TabsTrigger>
             </TabsList>
             <TabsContent value="details">
               <form onSubmit={handleSubmit}>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Project Name</Label>
+                    <Label htmlFor="name">{t('projects.project_name')}</Label>
                     <Input
                       id="name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="My Project"
+                      placeholder={t('projects.project_name_placeholder')}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
+                    <Label htmlFor="category">{t('projects.category')}</Label>
                     <Select value={category} onValueChange={setCategory}>
                       <SelectTrigger id="category">
                         <SelectValue />
@@ -197,20 +199,20 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
                       <SelectContent>
                         {PROJECT_CATEGORIES.filter(c => c.key !== 'archived').map(cat => (
                           <SelectItem key={cat.key} value={cat.key}>
-                            {cat.label}
+                            {t(`categories.${cat.key}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-client">Client (optional)</Label>
+                    <Label htmlFor="edit-client">{t('projects.client_optional')}</Label>
                     <Select value={clientId || 'none'} onValueChange={(v) => setClientId(v === 'none' ? '' : v)}>
                       <SelectTrigger id="edit-client">
-                        <SelectValue placeholder="Select client" />
+                        <SelectValue placeholder={t('projects.select_client')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">No client</SelectItem>
+                        <SelectItem value="none">{t('projects.no_client')}</SelectItem>
                         {clients.map((c) => (
                           <SelectItem key={c.id} value={c.id}>
                             {c.full_name}
@@ -221,13 +223,13 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
                   </div>
                   {clientId && (
                     <div className="space-y-2">
-                      <Label htmlFor="edit-business">Business (optional)</Label>
+                      <Label htmlFor="edit-business">{t('projects.business_optional')}</Label>
                       <Select value={businessId || 'none'} onValueChange={(v) => setBusinessId(v === 'none' ? '' : v)}>
                         <SelectTrigger id="edit-business">
-                          <SelectValue placeholder="Select business" />
+                          <SelectValue placeholder={t('projects.select_business')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">No business</SelectItem>
+                          <SelectItem value="none">{t('projects.no_business')}</SelectItem>
                           {businesses.map((b) => (
                             <SelectItem key={b.id} value={b.id}>
                               {b.name}
@@ -238,7 +240,7 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
                     </div>
                   )}
                   <div className="space-y-2">
-                    <Label>Color (optional)</Label>
+                    <Label>{t('projects.color_optional')}</Label>
                     <div className="grid grid-cols-10 gap-2">
                       {COLORS.map(color => (
                         <button
@@ -267,14 +269,14 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
                     onClick={() => setShowDeleteConfirm(true)}
                     disabled={isLoading}
                   >
-                    Delete Project
+                    {t('projects.delete_project')}
                   </Button>
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                     <Button type="submit" disabled={isLoading}>
-                      {isLoading ? 'Saving...' : 'Save Changes'}
+                      {isLoading ? t('projects.saving') : t('projects.save_changes')}
                     </Button>
                   </div>
                 </DialogFooter>
@@ -283,20 +285,20 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
             <TabsContent value="notes">
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Project Notes</Label>
+                  <Label htmlFor="notes">{t('projects.project_notes')}</Label>
                   <Textarea
                     id="notes"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Client info, meeting notes, links, requirements..."
+                    placeholder={t('projects.project_notes_placeholder')}
                     className="min-h-[300px] font-mono text-sm"
                   />
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-slate-500">
-                      {notes.length} characters
+                      {t('projects.characters_count', { count: notes.length })}
                     </p>
                     {notesSaved && (
-                      <span className="text-xs text-green-600 font-medium">✓ Saved</span>
+                      <span className="text-xs text-green-600 font-medium">{t('projects.notes_saved')}</span>
                     )}
                   </div>
                 </div>
@@ -308,10 +310,10 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
                 <DialogFooter>
                   <div className="flex gap-2 w-full justify-end">
                     <Button type="button" variant="outline" onClick={onClose} disabled={isSavingNotes}>
-                      Close
+                      {t('projects.close')}
                     </Button>
                     <Button type="button" onClick={handleSaveNotes} disabled={isSavingNotes}>
-                      {isSavingNotes ? 'Saving...' : 'Save Notes'}
+                      {isSavingNotes ? t('projects.saving') : t('projects.save_notes')}
                     </Button>
                   </div>
                 </DialogFooter>
@@ -321,8 +323,8 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
         ) : (
           <div className="space-y-4 py-4">
             <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
-              <p className="font-semibold mb-2">Warning: This action cannot be undone</p>
-              <p>Deleting this project will also delete all associated tasks.</p>
+              <p className="font-semibold mb-2">{t('projects.delete_warning')}</p>
+              <p>{t('projects.delete_warning_tasks')}</p>
             </div>
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
@@ -339,7 +341,7 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
                 }}
                 disabled={isLoading}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="button"
@@ -347,7 +349,7 @@ export function EditProjectModal({ isOpen, onClose, onProjectUpdated, project, d
                 onClick={handleDelete}
                 disabled={isLoading}
               >
-                {isLoading ? 'Deleting...' : 'Delete Project and All Tasks'}
+                {isLoading ? t('projects.deleting') : t('projects.delete_confirm_btn')}
               </Button>
             </DialogFooter>
           </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { X, DollarSign } from 'lucide-react'
 import { createBudget, getProjects } from '../actions'
 
@@ -10,6 +11,7 @@ interface CreateBudgetModalProps {
 }
 
 export function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModalProps) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [projectId, setProjectId] = useState('')
@@ -77,7 +79,7 @@ export function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModalProps) {
               <DollarSign className="w-6 h-6 text-white" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Create Budget
+              {t('budgets.create_budget')}
             </h2>
           </div>
           <button
@@ -93,13 +95,13 @@ export function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModalProps) {
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Budget Name <span className="text-red-500">*</span>
+              {t('budgets.budget_name_label')}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Trailer Setup - Summer 2026"
+              placeholder={t('budgets.budget_name_placeholder')}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               required
               autoFocus
@@ -109,12 +111,12 @@ export function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModalProps) {
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description
+              {t('budgets.description_label')}
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional description..."
+              placeholder={t('budgets.optional_description')}
               rows={3}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
             />
@@ -123,14 +125,14 @@ export function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModalProps) {
           {/* Project (optional) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Associated Project (Optional)
+              {t('budgets.associated_project_optional')}
             </label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
             >
-              <option value="">No project</option>
+              <option value="">{t('budgets.no_project')}</option>
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>
                   {project.name}
@@ -146,14 +148,14 @@ export function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModalProps) {
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isSubmitting ? 'Creating...' : 'Create Budget'}
+              {isSubmitting ? t('budgets.creating') : t('budgets.create_budget')}
             </button>
           </div>
         </form>

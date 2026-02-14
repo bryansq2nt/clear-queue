@@ -13,6 +13,7 @@ import {
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import Column from './Column'
 import TaskCard from './TaskCard'
+import { useI18n } from '@/components/I18nProvider'
 import { Database } from '@/lib/supabase/types'
 import { updateTaskOrder } from '@/app/actions/tasks'
 import { cn } from '@/lib/utils'
@@ -21,13 +22,6 @@ type Task = Database['public']['Tables']['tasks']['Row']
 type Project = Database['public']['Tables']['projects']['Row']
 
 const STATUSES: Task['status'][] = ['backlog', 'next', 'in_progress', 'blocked', 'done']
-const STATUS_LABELS: Record<Task['status'], string> = {
-  backlog: 'Ideas Pendientes',
-  next: 'Lo Siguiente',
-  in_progress: 'Trabajando en Esto',
-  blocked: 'Bloqueado',
-  done: '¡Completado!',
-}
 
 interface KanbanBoardProps {
   tasks: Task[]
@@ -48,6 +42,7 @@ export default function KanbanBoard({
   selectedTaskIds = new Set(),
   onToggleSelection,
 }: KanbanBoardProps) {
+  const { t } = useI18n()
   // Get project ID from tasks if not provided
   const projectId = currentProjectId || (tasks.length > 0 ? tasks[0].project_id : '')
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -171,7 +166,7 @@ export default function KanbanBoard({
             <Column
               key={status}
               id={status}
-              title={STATUS_LABELS[status]}
+              title={t(`kanban.${status}`)}
               tasks={columnTasks}
               projects={projects}
               onTaskUpdate={onTaskUpdate}

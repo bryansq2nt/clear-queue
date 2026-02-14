@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Building2 } from 'lucide-react'
+import { useI18n } from '@/components/I18nProvider'
 import { createBusinessAction, getClients } from '../actions'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,6 +21,7 @@ interface CreateBusinessModalProps {
 }
 
 export function CreateBusinessModal({ clientId: fixedClientId, isOpen, onClose, onCreated }: CreateBusinessModalProps) {
+  const { t } = useI18n()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [clients, setClients] = useState<Client[]>([])
@@ -35,7 +37,7 @@ export function CreateBusinessModal({ clientId: fixedClientId, isOpen, onClose, 
     e.preventDefault()
     const clientId = fixedClientId ?? selectedClientId
     if (!clientId) {
-      setError('Please select a client.')
+      setError(t('businesses.error_select_client'))
       return
     }
     setError(null)
@@ -73,7 +75,7 @@ export function CreateBusinessModal({ clientId: fixedClientId, isOpen, onClose, 
             <div className="w-10 h-10 bg-gradient-to-br from-slate-500 to-slate-600 rounded-lg flex items-center justify-center">
               <Building2 className="w-6 h-6 text-white" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Add Business</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t('businesses.create_modal_title')}</h2>
           </div>
           <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
             <X className="w-5 h-5 text-gray-500" />
@@ -86,10 +88,10 @@ export function CreateBusinessModal({ clientId: fixedClientId, isOpen, onClose, 
           )}
           {showClientDropdown && (
             <div>
-              <Label htmlFor="b-client">Client *</Label>
+              <Label htmlFor="b-client">{t('businesses.client_label')}</Label>
               <Select value={selectedClientId} onValueChange={setSelectedClientId} required>
                 <SelectTrigger id="b-client">
-                  <SelectValue placeholder="Select client" />
+                  <SelectValue placeholder={t('businesses.select_client')} />
                 </SelectTrigger>
                 <SelectContent>
                   {clients.map((c) => (
@@ -102,27 +104,27 @@ export function CreateBusinessModal({ clientId: fixedClientId, isOpen, onClose, 
             </div>
           )}
           <div>
-            <Label htmlFor="b-name">Name *</Label>
-            <Input id="b-name" name="name" required placeholder="Business name" />
+            <Label htmlFor="b-name">{t('businesses.name_label')}</Label>
+            <Input id="b-name" name="name" required placeholder={t('businesses.business_name_placeholder')} />
           </div>
           <div>
-            <Label htmlFor="b-tagline">Tagline</Label>
-            <Input id="b-tagline" name="tagline" placeholder="Short tagline" />
+            <Label htmlFor="b-tagline">{t('businesses.tagline_label')}</Label>
+            <Input id="b-tagline" name="tagline" placeholder={t('businesses.tagline_placeholder')} />
           </div>
           <div>
-            <Label htmlFor="b-description">Description</Label>
-            <Textarea id="b-description" name="description" rows={2} placeholder="Optional" />
+            <Label htmlFor="b-description">{t('businesses.description_label')}</Label>
+            <Textarea id="b-description" name="description" rows={2} placeholder={t('businesses.optional_placeholder')} />
           </div>
           <div>
-            <Label htmlFor="b-email">Business email</Label>
-            <Input id="b-email" name="email" type="email" placeholder="contact@business.com (optional)" />
+            <Label htmlFor="b-email">{t('businesses.business_email_label')}</Label>
+            <Input id="b-email" name="email" type="email" placeholder={t('businesses.business_email_placeholder')} />
           </div>
           <div>
-            <Label htmlFor="b-website">Website</Label>
-            <Input id="b-website" name="website" type="url" placeholder="https://..." />
+            <Label htmlFor="b-website">{t('businesses.website_label')}</Label>
+            <Input id="b-website" name="website" type="url" placeholder={t('businesses.website_placeholder')} />
           </div>
           <div>
-            <Label className="mb-2 block">Social links</Label>
+            <Label className="mb-2 block">{t('businesses.social_links_label')}</Label>
             <div className="grid grid-cols-2 gap-2">
               {['instagram', 'facebook', 'tiktok', 'youtube'].map((k) => (
                 <Input
@@ -134,41 +136,41 @@ export function CreateBusinessModal({ clientId: fixedClientId, isOpen, onClose, 
             </div>
           </div>
           <div>
-            <Label htmlFor="b-address_line1">Address line 1</Label>
+            <Label htmlFor="b-address_line1">{t('businesses.address_line1_label')}</Label>
             <Input id="b-address_line1" name="address_line1" />
           </div>
           <div>
-            <Label htmlFor="b-address_line2">Address line 2</Label>
+            <Label htmlFor="b-address_line2">{t('businesses.address_line2_label')}</Label>
             <Input id="b-address_line2" name="address_line2" />
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="b-city">City</Label>
+              <Label htmlFor="b-city">{t('businesses.city_label')}</Label>
               <Input id="b-city" name="city" />
             </div>
             <div>
-              <Label htmlFor="b-state">State</Label>
+              <Label htmlFor="b-state">{t('businesses.state_label')}</Label>
               <Input id="b-state" name="state" />
             </div>
             <div>
-              <Label htmlFor="b-postal_code">Postal code</Label>
+              <Label htmlFor="b-postal_code">{t('businesses.postal_code_label')}</Label>
               <Input id="b-postal_code" name="postal_code" />
             </div>
           </div>
           <div>
-            <Label htmlFor="b-notes">Notes</Label>
+            <Label htmlFor="b-notes">{t('businesses.notes_label')}</Label>
             <Textarea id="b-notes" name="notes" rows={2} />
           </div>
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-lg hover:from-slate-700 hover:to-slate-800 disabled:opacity-50 font-medium"
             >
-              {isSubmitting ? 'Creating...' : 'Create Business'}
+              {isSubmitting ? t('businesses.creating') : t('businesses.create_business_btn')}
             </button>
           </div>
         </form>

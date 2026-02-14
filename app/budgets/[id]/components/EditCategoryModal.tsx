@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { X, FolderPen } from 'lucide-react'
 import { updateCategory } from '../actions'
 
@@ -23,6 +24,7 @@ export function EditCategoryModal({
   category,
   budgetId,
 }: EditCategoryModalProps) {
+  const { t } = useI18n()
   const [name, setName] = useState(category.name)
   const [description, setDescription] = useState(category.description ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -84,7 +86,7 @@ export function EditCategoryModal({
               <FolderPen className="w-6 h-6 text-white" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Edit Category
+              {t('budgets.edit_category')}
             </h2>
           </div>
           <button
@@ -115,7 +117,7 @@ export function EditCategoryModal({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description (Optional)
+              {t('budgets.description_optional')}
             </label>
             <textarea
               value={description}
@@ -132,14 +134,14 @@ export function EditCategoryModal({
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? t('budgets.saving') : t('common.save')}
             </button>
           </div>
         </form>

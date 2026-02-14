@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -42,6 +43,7 @@ export default function IdeaDetailClient({
   projectLinks: ProjectLink[]
   availableProjects: { id: string; name: string }[]
 }) {
+  const { t } = useI18n()
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [idea, setIdea] = useState(initialIdea)
@@ -63,11 +65,7 @@ export default function IdeaDetailClient({
   }
 
   async function handleDelete() {
-    if (
-      !confirm(
-        'Are you sure you want to delete this idea? This action cannot be undone.'
-      )
-    ) {
+    if (!confirm(t('ideas.delete_idea_confirm'))) {
       return
     }
 
@@ -88,7 +86,7 @@ export default function IdeaDetailClient({
     const role = formData.get('role') as string | null
 
     if (!projectId) {
-      setLinkError('Please select a project')
+      setLinkError(t('ideas.please_select_project'))
       return
     }
 
@@ -105,11 +103,7 @@ export default function IdeaDetailClient({
   }
 
   async function handleUnlink(linkId: string) {
-    if (
-      !confirm(
-        'Are you sure you want to unlink this project? This action cannot be undone.'
-      )
-    ) {
+    if (!confirm(t('ideas.unlink_confirm'))) {
       return
     }
 
@@ -139,7 +133,7 @@ export default function IdeaDetailClient({
                 htmlFor="title"
                 className="block text-sm font-medium mb-2"
               >
-                Title <span className="text-red-500">*</span>
+                {t('ideas.title_label')}
               </label>
               <Input
                 id="title"
@@ -155,7 +149,7 @@ export default function IdeaDetailClient({
                 htmlFor="description"
                 className="block text-sm font-medium mb-2"
               >
-                Description
+                {t('ideas.description_label')}
               </label>
               <Textarea
                 id="description"
@@ -165,13 +159,13 @@ export default function IdeaDetailClient({
               />
             </div>
             <div className="flex gap-2">
-              <Button type="submit">Save</Button>
+              <Button type="submit">{t('common.save')}</Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsEditing(false)}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
             </div>
           </form>
@@ -184,14 +178,14 @@ export default function IdeaDetailClient({
                   variant="outline"
                   onClick={() => setIsEditing(true)}
                 >
-                  Edit
+                  {t('common.edit')}
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={handleDelete}
                   disabled={isDeleting}
                 >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
+                  {isDeleting ? t('ideas.deleting') : t('common.delete')}
                 </Button>
               </div>
             </div>
@@ -204,129 +198,13 @@ export default function IdeaDetailClient({
             )}
             <div className="text-sm text-muted-foreground">
               <p>
-                Created: {new Date(idea.created_at).toLocaleString()}
+                {t('ideas.created')}: {new Date(idea.created_at).toLocaleString()}
               </p>
               {idea.updated_at !== idea.created_at && (
                 <p>
-                  Updated: {new Date(idea.updated_at).toLocaleString()}
+                  {t('ideas.updated')}: {new Date(idea.updated_at).toLocaleString()}
                 </p>
               )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Linked Projects */}
-      <div className="bg-white rounded-lg border p-6 space-y-6">
-        <h2 className="text-xl font-semibold">Linked Projects</h2>
-
-        {/* Link to Project Form */}
-        <div className="border-t pt-4">
-          <h3 className="text-sm font-medium mb-3">Link to Project</h3>
-          <form
-            id="link-project-form"
-            action={handleLinkProject}
-            className="space-y-3"
-          >
-            <div>
-              <label
-                htmlFor="projectId"
-                className="block text-sm font-medium mb-2"
-              >
-                Project <span className="text-red-500">*</span>
-              </label>
-              {availableProjectsToLink.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  All available projects are already linked to this idea.
-                </p>
-              ) : (
-                <select
-                  id="projectId"
-                  name="projectId"
-                  required
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <option value="">Select a project...</option>
-                  {availableProjectsToLink.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium mb-2">
-                Role (optional)
-              </label>
-              <Input
-                id="role"
-                name="role"
-                type="text"
-                placeholder="e.g., origin, reference, blocks"
-              />
-            </div>
-            {linkError && (
-              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
-                {linkError}
-              </div>
-            )}
-            <Button
-              type="submit"
-              disabled={availableProjectsToLink.length === 0}
-            >
-              Link Project
-            </Button>
-          </form>
-        </div>
-
-        {/* Linked Projects List */}
-        {projectLinks.length === 0 ? (
-          <div className="border-t pt-4">
-            <p className="text-muted-foreground">
-              This idea is not linked to any projects yet.
-            </p>
-          </div>
-        ) : (
-          <div className="border-t pt-4">
-            <h3 className="text-sm font-medium mb-3">Linked Projects</h3>
-            <div className="space-y-2">
-              {projectLinks.map((link) => (
-                <div
-                  key={link.id}
-                  className="flex items-center justify-between p-3 bg-muted rounded-md"
-                >
-                  <div className="flex-1">
-                    {link.project ? (
-                      <Link
-                        href={`/project/${link.project.id}`}
-                        className="font-medium hover:text-primary"
-                      >
-                        {link.project.name}
-                      </Link>
-                    ) : (
-                      <p className="font-medium">Project ID: {link.project_id}</p>
-                    )}
-                    {link.role && (
-                      <p className="text-sm text-muted-foreground">
-                        Role: {link.role}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(link.created_at).toLocaleDateString()}
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleUnlink(link.id)}
-                    >
-                      Unlink
-                    </Button>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         )}

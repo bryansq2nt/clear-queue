@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { X, Edit2 } from 'lucide-react'
 import { updateBudget } from '../../actions'
 
@@ -24,6 +25,7 @@ export function EditBudgetModal({
   projects,
   budget,
 }: EditBudgetModalProps) {
+  const { t } = useI18n()
   const [name, setName] = useState(budget.name)
   const [description, setDescription] = useState(budget.description ?? '')
   const [projectId, setProjectId] = useState<string>(budget.project_id ?? '')
@@ -89,7 +91,7 @@ export function EditBudgetModal({
               <Edit2 className="w-6 h-6 text-white" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Edit Budget
+              {t('budgets.edit_budget')}
             </h2>
           </div>
           <button
@@ -105,7 +107,7 @@ export function EditBudgetModal({
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Budget Name <span className="text-red-500">*</span>
+              {t('budgets.budget_name_label')}
             </label>
             <input
               type="text"
@@ -120,14 +122,14 @@ export function EditBudgetModal({
           {/* Project */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Project (Optional)
+              {t('budgets.project_optional')}
             </label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
             >
-              <option value="">No project</option>
+              <option value="">{t('budgets.no_project')}</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -139,7 +141,7 @@ export function EditBudgetModal({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description (Optional)
+              {t('budgets.description_optional')}
             </label>
             <textarea
               value={description}
@@ -156,14 +158,14 @@ export function EditBudgetModal({
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? t('budgets.saving') : t('common.save')}
             </button>
           </div>
         </form>

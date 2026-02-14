@@ -13,11 +13,13 @@ type Project = Database['public']['Tables']['projects']['Row']
 interface IdeasPageClientProps {
   initialBoards: any[]
   initialIdeas: any[]
+  initialProjects?: { id: string; name: string }[]
 }
 
 export default function IdeasPageClient({
   initialBoards,
   initialIdeas,
+  initialProjects = [],
 }: IdeasPageClientProps) {
   const [projects, setProjects] = useState<Project[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -73,6 +75,7 @@ export default function IdeasPageClient({
         <IdeasDashboardClient
           initialBoards={initialBoards}
           initialIdeas={initialIdeas}
+          initialProjects={initialProjects}
         />
       </div>
     </div>

@@ -1,11 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { Button } from '@/components/ui/button'
-import { Plus, Layout, Trash2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Layout, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { deleteBoardAction } from './boards/actions'
-import { useRouter } from 'next/navigation'
 
 interface Board {
   id: string
@@ -18,18 +25,31 @@ export default function BoardsSidebar({
   selectedBoardId,
   onSelectBoard,
   onRefresh,
+  isCreatingBoard,
+  newBoardName,
+  onNewBoardNameChange,
+  onCreateBoard,
+  onCancelNewBoard,
+  onStartCreateBoard,
+  onEditBoard,
 }: {
   boards: Board[]
   selectedBoardId: string | null
   onSelectBoard: (boardId: string | null) => void
   onRefresh: () => void
+  isCreatingBoard: boolean
+  newBoardName: string
+  onNewBoardNameChange: (value: string) => void
+  onCreateBoard: () => void
+  onCancelNewBoard: () => void
+  onStartCreateBoard: () => void
+  onEditBoard: (boardId: string) => void
 }) {
-  const router = useRouter()
+  const { t } = useI18n()
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const handleDelete = async (boardId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!confirm('Delete this board? This will not delete the ideas, only the board view.')) {
+  const handleDelete = async (boardId: string) => {
+    if (!confirm(t('ideas.delete_board_confirm'))) {
       return
     }
 
@@ -51,14 +71,14 @@ export default function BoardsSidebar({
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            Boards
+            {t('ideas.boards_heading')}
           </h3>
         </div>
 
         <div className="space-y-1">
-          {boards.length === 0 ? (
+          {boards.length === 0 && !isCreatingBoard ? (
             <p className="text-sm text-muted-foreground px-2">
-              No boards yet. Create one to get started.
+              {t('ideas.no_boards_yet')}
             </p>
           ) : (
             boards.map((board) => (
@@ -73,19 +93,71 @@ export default function BoardsSidebar({
                 onClick={() => onSelectBoard(board.id)}
               >
                 <Layout className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate flex-1">{board.name}</span>
-                <button
-                  onClick={(e) => handleDelete(board.id, e)}
-                  disabled={deletingId === board.id}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded transition-opacity flex-shrink-0"
-                  title="Delete board"
-                >
-                  <Trash2 className="w-4 h-4 text-red-600" />
-                </button>
+                <span className="truncate flex-1 min-w-0">{board.name}</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className="p-1 hover:bg-accent rounded transition-opacity flex-shrink-0 opacity-70 hover:opacity-100"
+                      onClick={(e) => e.stopPropagation()}
+                      title={t('ideas.edit_board')}
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuItem onClick={() => onEditBoard(board.id)}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      {t('common.edit')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleDelete(board.id)}
+                      disabled={deletingId === board.id}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      {deletingId === board.id ? t('ideas.deleting') : t('common.delete')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ))
           )}
         </div>
+
+        {/* New Board button or inline form */}
+        {isCreatingBoard ? (
+          <div className="space-y-2 pt-2 border-t border-border">
+            <Input
+              value={newBoardName}
+              onChange={(e) => onNewBoardNameChange(e.target.value)}
+              placeholder={t('ideas.board_name_placeholder')}
+              className="w-full"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onCreateBoard()
+                if (e.key === 'Escape') onCancelNewBoard()
+              }}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button size="sm" className="flex-1" onClick={onCreateBoard}>
+                {t('common.create')}
+              </Button>
+              <Button size="sm" variant="outline" onClick={onCancelNewBoard}>
+                {t('common.cancel')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full mt-2 justify-start gap-2"
+            onClick={onStartCreateBoard}
+          >
+            <Plus className="w-4 h-4" />
+            {t('ideas.new_board')}
+          </Button>
+        )}
       </div>
     </div>
   )

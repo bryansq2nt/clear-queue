@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import Sidebar from '@/components/Sidebar'
 import TopBar from '@/components/TopBar'
+import { useI18n } from '@/components/I18nProvider'
 import { signOut } from '@/app/actions/auth'
 import {
   ArrowLeft,
@@ -157,6 +158,7 @@ interface ClientDetailClientProps {
 }
 
 export default function ClientDetailClient({ clientId, initialClient }: ClientDetailClientProps) {
+  const { t } = useI18n()
   const router = useRouter()
   const [client, setClient] = useState<Client>(initialClient)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
@@ -260,7 +262,7 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
               className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Clients
+              {t('clients.back_to_clients')}
             </Link>
           </div>
 
@@ -291,7 +293,7 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
               className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent text-foreground"
             >
               <Edit className="w-4 h-4" />
-              Edit
+              {t('common.edit')}
             </button>
           </div>
 
@@ -300,18 +302,20 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
             <section className="bg-card rounded-lg shadow-sm border border-border p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
-                Details
+                {t('clients.details')}
               </h2>
               <dl className="space-y-3 text-sm">
                 {client.gender && (
                   <div>
-                    <dt className="text-gray-500 dark:text-gray-400">Gender</dt>
-                    <dd className="text-gray-900 dark:text-white">{client.gender}</dd>
+                    <dt className="text-gray-500 dark:text-gray-400">{t('clients.gender')}</dt>
+                    <dd className="text-gray-900 dark:text-white">
+                      {client.gender === 'male' ? t('clients.gender_male') : client.gender === 'female' ? t('clients.gender_female') : t('clients.gender_not_specified')}
+                    </dd>
                   </div>
                 )}
                 {addressParts.length > 0 && (
                   <div>
-                    <dt className="text-gray-500 dark:text-gray-400">Address</dt>
+                    <dt className="text-gray-500 dark:text-gray-400">{t('clients.address')}</dt>
                     <dd className="text-gray-900 dark:text-white">
                       {mapsUrl ? (
                         <a
@@ -329,7 +333,7 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
                   </div>
                 )}
                 {!client.gender && addressParts.length === 0 && (
-                  <p className="text-gray-500 dark:text-gray-400">No additional details.</p>
+                  <p className="text-gray-500 dark:text-gray-400">{t('clients.no_details')}</p>
                 )}
               </dl>
             </section>
@@ -339,20 +343,20 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                   <Building2 className="w-5 h-5" />
-                  Businesses
+                  {t('clients.businesses')}
                 </h2>
                 <button
                   onClick={() => setIsCreateBusinessOpen(true)}
                   className="text-sm px-3 py-1.5 bg-slate-600 text-white rounded-lg hover:bg-slate-700"
                 >
-                  Add Business
+                  {t('clients.add_business')}
                 </button>
               </div>
               {businessesLoading ? (
-                <p className="text-sm text-gray-500">Loading...</p>
+                <p className="text-sm text-gray-500">{t('common.loading')}</p>
               ) : businesses.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No businesses yet. Add one to get started.
+                  {t('clients.no_businesses_yet')}
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -372,13 +376,13 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
             <section className="bg-card rounded-lg shadow-sm border border-border p-6 lg:col-span-2">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <FolderKanban className="w-5 h-5" />
-                Projects
+                {t('clients.projects')}
               </h2>
               {projectsLoading ? (
-                <p className="text-sm text-gray-500">Loading...</p>
+                <p className="text-sm text-gray-500">{t('common.loading')}</p>
               ) : projects.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No projects linked to this client yet.
+                  {t('clients.no_projects_linked')}
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -407,7 +411,7 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                   <Link2 className="w-5 h-5" />
-                  Links
+                  {t('clients.links')}
                 </h2>
                 {!showAddLink && !editingLink && (
                   <Button
@@ -416,7 +420,7 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
                     size="sm"
                     onClick={() => setShowAddLink(true)}
                   >
-                    Add link
+                    {t('clients.add_link')}
                   </Button>
                 )}
               </div>
@@ -438,10 +442,10 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
                 />
               )}
               {linksLoading ? (
-                <p className="text-sm text-gray-500">Loading...</p>
+                <p className="text-sm text-gray-500">{t('common.loading')}</p>
               ) : links.length === 0 && !showAddLink && !editingLink ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No links yet. Add reference links your client sent you.
+                  {t('clients.no_links_yet')}
                 </p>
               ) : (
                 <ul className="space-y-2 mt-4">
@@ -465,7 +469,7 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
                           size="sm"
                           onClick={() => setEditingLink(link)}
                         >
-                          Edit
+                          {t('common.edit')}
                         </Button>
                         <Button
                           type="button"
@@ -478,7 +482,7 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
                             loadLinks()
                           }}
                         >
-                          Delete
+                          {t('common.delete')}
                         </Button>
                       </div>
                     </li>
@@ -491,12 +495,12 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
             <section className="bg-card rounded-lg shadow-sm border border-border p-6 lg:col-span-2">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <StickyNote className="w-5 h-5" />
-                Notes &amp; Preferences
+                {t('clients.notes_preferences')}
               </h2>
               {client.preferences && (
                 <div className="mb-4">
                   <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Preferences
+                    {t('clients.preferences')}
                   </h3>
                   <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
                     {client.preferences}
@@ -506,13 +510,13 @@ export default function ClientDetailClient({ clientId, initialClient }: ClientDe
               {client.notes && (
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Notes
+                    {t('clients.notes')}
                   </h3>
                   <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{client.notes}</p>
                 </div>
               )}
               {!client.preferences && !client.notes && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">No notes or preferences.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('clients.no_notes_or_preferences')}</p>
               )}
             </section>
           </div>

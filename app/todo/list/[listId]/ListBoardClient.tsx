@@ -167,7 +167,7 @@ export default function ListBoardClient({
   }
 
   const handleDeleteList = async () => {
-    if (!confirm(`Delete list "${listTitle}"? All tasks in it will be deleted. This cannot be undone.`)) return
+    if (!confirm(t('todo.delete_list_confirm', { title: listTitle }))) return
     setDeletingList(true)
     const result = await deleteTodoListAction(listId)
     setDeletingList(false)
@@ -240,7 +240,7 @@ export default function ListBoardClient({
                   </button>
                 )}
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-500 dark:text-slate-400">Project:</span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">{t('todo.project_label')}</span>
                   <Select
                     value={projectId ?? 'none'}
                     onValueChange={handleProjectChange}
@@ -266,7 +266,7 @@ export default function ListBoardClient({
                   className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
                 >
                   <Trash2 className="w-4 h-4" />
-                  Delete list
+                  {t('todo.delete_list')}
                 </button>
               </div>
             </div>
@@ -281,7 +281,7 @@ export default function ListBoardClient({
                   type="text"
                   value={newTaskContent}
                   onChange={(e) => setNewTaskContent(e.target.value)}
-                  placeholder="Add a task..."
+                  placeholder={t('todo.add_task_placeholder')}
                   disabled={adding}
                   className="flex-1 rounded-lg border border-border bg-card px-4 py-2.5 text-base text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-gray-600"
                 />
@@ -291,7 +291,7 @@ export default function ListBoardClient({
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
                 >
                   <Plus className="w-4 h-4" />
-                  Add
+                  {t('common.add')}
                 </button>
               </div>
             </form>
@@ -299,7 +299,7 @@ export default function ListBoardClient({
             <div className="mt-6">
               {items.length === 0 ? (
                 <p className="text-slate-500 dark:text-slate-400 text-sm py-8">
-                  No tasks yet. Add one above.
+                  {t('todo.no_tasks_yet')}
                 </p>
               ) : (
                 <ul className="divide-y divide-slate-100 dark:divide-gray-800">

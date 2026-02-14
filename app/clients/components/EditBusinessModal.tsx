@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { X, Building2 } from 'lucide-react'
 import { updateBusinessAction } from '../actions'
 import { Input } from '@/components/ui/input'
@@ -24,6 +25,7 @@ interface EditBusinessModalProps {
 }
 
 export function EditBusinessModal({ business, isOpen, onClose, onUpdated }: EditBusinessModalProps) {
+  const { t } = useI18n()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -65,7 +67,7 @@ export function EditBusinessModal({ business, isOpen, onClose, onUpdated }: Edit
             <div className="w-10 h-10 bg-gradient-to-br from-slate-500 to-slate-600 rounded-lg flex items-center justify-center">
               <Building2 className="w-6 h-6 text-white" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Edit Business</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t('businesses.edit_business')}</h2>
           </div>
           <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
             <X className="w-5 h-5 text-gray-500" />
@@ -77,27 +79,27 @@ export function EditBusinessModal({ business, isOpen, onClose, onUpdated }: Edit
             <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>
           )}
           <div>
-            <Label htmlFor="eb-name">Name *</Label>
+            <Label htmlFor="eb-name">{t('businesses.name_label')}</Label>
             <Input id="eb-name" name="name" defaultValue={business.name} required />
           </div>
           <div>
-            <Label htmlFor="eb-tagline">Tagline</Label>
+            <Label htmlFor="eb-tagline">{t('businesses.tagline_label')}</Label>
             <Input id="eb-tagline" name="tagline" defaultValue={business.tagline ?? ''} />
           </div>
           <div>
-            <Label htmlFor="eb-description">Description</Label>
+            <Label htmlFor="eb-description">{t('businesses.description_label')}</Label>
             <Textarea id="eb-description" name="description" rows={2} defaultValue={business.description ?? ''} />
           </div>
           <div>
-            <Label htmlFor="eb-email">Business email</Label>
-            <Input id="eb-email" name="email" type="email" defaultValue={business.email ?? ''} placeholder="contact@business.com (optional)" />
+            <Label htmlFor="eb-email">{t('businesses.business_email_label')}</Label>
+            <Input id="eb-email" name="email" type="email" defaultValue={business.email ?? ''} placeholder={t('businesses.business_email_placeholder')} />
           </div>
           <div>
-            <Label htmlFor="eb-website">Website</Label>
+            <Label htmlFor="eb-website">{t('businesses.website_label')}</Label>
             <Input id="eb-website" name="website" type="url" defaultValue={business.website ?? ''} />
           </div>
           <div>
-            <Label className="mb-2 block">Social links</Label>
+            <Label className="mb-2 block">{t('businesses.social_links_label')}</Label>
             <div className="grid grid-cols-2 gap-2">
               {(['instagram', 'facebook', 'tiktok', 'youtube'] as const).map((k) => (
                 <Input
@@ -110,41 +112,41 @@ export function EditBusinessModal({ business, isOpen, onClose, onUpdated }: Edit
             </div>
           </div>
           <div>
-            <Label htmlFor="eb-address_line1">Address line 1</Label>
+            <Label htmlFor="eb-address_line1">{t('businesses.address_line1_label')}</Label>
             <Input id="eb-address_line1" name="address_line1" defaultValue={business.address_line1 ?? ''} />
           </div>
           <div>
-            <Label htmlFor="eb-address_line2">Address line 2</Label>
+            <Label htmlFor="eb-address_line2">{t('businesses.address_line2_label')}</Label>
             <Input id="eb-address_line2" name="address_line2" defaultValue={business.address_line2 ?? ''} />
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="eb-city">City</Label>
+              <Label htmlFor="eb-city">{t('businesses.city_label')}</Label>
               <Input id="eb-city" name="city" defaultValue={business.city ?? ''} />
             </div>
             <div>
-              <Label htmlFor="eb-state">State</Label>
+              <Label htmlFor="eb-state">{t('businesses.state_label')}</Label>
               <Input id="eb-state" name="state" defaultValue={business.state ?? ''} />
             </div>
             <div>
-              <Label htmlFor="eb-postal_code">Postal code</Label>
+              <Label htmlFor="eb-postal_code">{t('businesses.postal_code_label')}</Label>
               <Input id="eb-postal_code" name="postal_code" defaultValue={business.postal_code ?? ''} />
             </div>
           </div>
           <div>
-            <Label htmlFor="eb-notes">Notes</Label>
+            <Label htmlFor="eb-notes">{t('businesses.notes_label')}</Label>
             <Textarea id="eb-notes" name="notes" rows={2} defaultValue={business.notes ?? ''} />
           </div>
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-lg hover:from-slate-700 hover:to-slate-800 disabled:opacity-50 font-medium"
             >
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? t('businesses.saving') : t('common.save')}
             </button>
           </div>
         </form>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { X, FolderPlus } from 'lucide-react'
 import { createCategory } from '../actions'
 import { Database } from '@/lib/supabase/types'
@@ -20,6 +21,7 @@ export function CreateCategoryModal({
   onCreated,
   budgetId,
 }: CreateCategoryModalProps) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -87,7 +89,7 @@ export function CreateCategoryModal({
               <FolderPlus className="w-6 h-6 text-white" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Add Category
+              {t('budgets.add_category')}
             </h2>
           </div>
           <button
@@ -103,13 +105,13 @@ export function CreateCategoryModal({
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Category Name <span className="text-red-500">*</span>
+              {t('budgets.category_name_label')}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Equipment, Establishment, Cleaning"
+              placeholder={t('budgets.category_name_placeholder')}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               required
               autoFocus
@@ -119,12 +121,12 @@ export function CreateCategoryModal({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description (Optional)
+              {t('budgets.description_optional')}
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of this category..."
+              placeholder={t('budgets.category_description_placeholder')}
               rows={3}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
             />
@@ -137,14 +139,14 @@ export function CreateCategoryModal({
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isSubmitting ? 'Creating...' : 'Create Category'}
+              {isSubmitting ? t('budgets.creating_category') : t('budgets.create_category')}
             </button>
           </div>
         </form>

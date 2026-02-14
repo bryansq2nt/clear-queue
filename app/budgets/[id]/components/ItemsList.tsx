@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { Plus, Trash2, X, CheckSquare } from 'lucide-react'
 import { ItemRow } from './ItemRow'
 import { CreateItemModal } from './CreateItemModal'
@@ -67,6 +68,7 @@ export function ItemsList({
   selectionMode = false,
   onExitSelectionMode,
 }: ItemsListProps) {
+  const { t } = useI18n()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<BudgetItem | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
@@ -315,7 +317,7 @@ export function ItemsList({
                 className="w-full inline-flex items-center justify-center px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 rounded-lg hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm font-medium"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add Item
+                {t('budgets.add_item')}
               </button>
             </div>
           </>

@@ -6,6 +6,7 @@ import {
   createBoard,
   deleteBoard,
   addIdeaToBoard,
+  updateBoard,
 } from '@/lib/idea-graph/boards'
 
 export async function createBoardAction(formData: FormData) {
@@ -33,6 +34,34 @@ export async function createBoardAction(formData: FormData) {
 export async function createBoardFormAction(formData: FormData) {
   await createBoardAction(formData)
   // Form action doesn't need to return anything
+}
+
+export async function updateBoardAction(formData: FormData) {
+  await requireAuth()
+
+  const id = formData.get('id') as string
+  const name = formData.get('name') as string | null
+  const description = formData.get('description') as string | null
+  const projectId = formData.get('projectId') as string | null
+
+  if (!id) {
+    return { error: 'Board ID is required' }
+  }
+
+  try {
+    const data = await updateBoard(id, {
+      ...(name !== undefined && name !== null && { name: name ?? '' }),
+      ...(description !== undefined && { description: description || null }),
+      ...(projectId !== undefined && { project_id: projectId || null }),
+    })
+    revalidatePath('/ideas/boards')
+    revalidatePath('/ideas')
+    return { data }
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Failed to update board',
+    }
+  }
 }
 
 export async function deleteBoardAction(id: string) {

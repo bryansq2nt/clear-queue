@@ -93,7 +93,7 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
             </div>
           </div>
           <div>
-            <Label htmlFor="gender">Gender</Label>
+            <Label htmlFor="gender">{t('clients.gender')}</Label>
             <Select value={gender} onValueChange={setGender}>
               <SelectTrigger id="gender">
                 <SelectValue placeholder={t('common.select')} />
@@ -106,8 +106,8 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
             </Select>
           </div>
           <div>
-            <Label htmlFor="address_line1">Address line 1</Label>
-            <Input id="address_line1" name="address_line1" placeholder="Street address" />
+            <Label htmlFor="address_line1">{t('clients.address_line1')}</Label>
+            <Input id="address_line1" name="address_line1" placeholder={t('clients.address_placeholder')} />
           </div>
           <div>
             <Label htmlFor="address_line2">{t('clients.address_line2')}</Label>
@@ -132,8 +132,8 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
             <Textarea id="preferences" name="preferences" rows={2} placeholder={t('clients.optional')} />
           </div>
           <div>
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea id="notes" name="notes" rows={3} placeholder="Optional" />
+            <Label htmlFor="notes">{t('clients.notes')}</Label>
+            <Textarea id="notes" name="notes" rows={3} placeholder={t('clients.optional')} />
           </div>
           <div className="flex gap-3 pt-4">
             <button

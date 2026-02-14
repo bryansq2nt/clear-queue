@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '@/components/I18nProvider'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,6 +49,7 @@ export function NoteEditor({
   initialLinks,
   preselectedProjectId,
 }: NoteEditorProps) {
+  const { t } = useI18n()
   const router = useRouter()
   const [title, setTitle] = useState(initialNote.title)
   const [content, setContent] = useState(initialNote.content)
@@ -134,19 +136,19 @@ export function NoteEditor({
     setError(null)
     setSaving(true)
     if (!projectId) {
-      setError('Select a project.')
+      setError(t('notes.error_select_project'))
       setSaving(false)
       return
     }
-    const t = title.trim()
-    if (!t) {
-      setError('Title is required.')
+    const trimmedTitle = title.trim()
+    if (!trimmedTitle) {
+      setError(t('notes.error_title_required'))
       setSaving(false)
       return
     }
     const result = await createNote({
       project_id: projectId,
-      title: t,
+      title: trimmedTitle,
       content: content ?? '',
     })
     if (result.error) {
@@ -166,7 +168,7 @@ export function NoteEditor({
 
   const handleDelete = async () => {
     if (!isEdit || !noteId) return
-    if (!confirm('Delete this note? This cannot be undone.')) return
+    if (!confirm(t('notes.delete_note_confirm'))) return
     const { error: err } = await deleteNote(noteId)
     if (err) alert(err)
     else router.push('/notes')
@@ -177,7 +179,7 @@ export function NoteEditor({
     const url = newLinkUrl.trim()
     if (!url) return
     if (!MIN_VALID_URL(url)) {
-      setError('URL must start with http:// or https://')
+      setError(t('notes.error_invalid_url'))
       return
     }
     setError(null)
@@ -216,11 +218,11 @@ export function NoteEditor({
           className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Notes
+          {t('notes.back_to_notes')}
         </Link>
         <Select value={projectId} onValueChange={setProjectId}>
           <SelectTrigger className="w-[180px] h-9 border-slate-200 dark:border-gray-600" id="note-editor-project">
-            <SelectValue placeholder="Project" />
+            <SelectValue placeholder={t('notes.project_placeholder')} />
           </SelectTrigger>
           <SelectContent>
             {projects.map((p) => (
@@ -231,17 +233,17 @@ export function NoteEditor({
           </SelectContent>
         </Select>
         <Button size="sm" onClick={handleSaveClick} disabled={saving} className="ml-auto">
-          {saving ? 'Saving...' : isEdit ? 'Save' : 'Create Note'}
+          {saving ? t('notes.saving') : isEdit ? t('common.save') : t('notes.create_note')}
         </Button>
         {isEdit && saveStatus === 'saved' && (
           <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
             <Check className="w-3.5 h-3.5" />
-            Saved
+            {t('notes.saved')}
           </span>
         )}
         {isEdit && noteId && (
           <Button size="sm" variant="outline" onClick={handleDelete} className="text-red-600 hover:text-red-700 border-red-200 dark:border-red-800">
-            Delete
+            {t('common.delete')}
           </Button>
         )}
       </div>
@@ -257,25 +259,25 @@ export function NoteEditor({
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Title"
+            placeholder={t('notes.title_placeholder')}
             className="w-full text-2xl lg:text-3xl font-semibold bg-transparent border-0 border-b border-transparent focus:border-slate-300 dark:focus:border-gray-600 focus:outline-none focus:ring-0 pb-2 text-gray-900 dark:text-white placeholder:text-slate-400"
           />
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Write your note..."
+            placeholder={t('notes.content_placeholder')}
             className="mt-6 w-full min-h-[60vh] resize-y bg-transparent border-0 focus:outline-none focus:ring-0 text-base leading-relaxed text-gray-900 dark:text-white placeholder:text-slate-400 py-0"
             style={{ minHeight: '60vh' }}
           />
         </div>
 
-        {/* Right: Links y referencias (sidebar on desktop, collapsible on mobile) */}
+        {/* Right: Links & references (sidebar on desktop, collapsible on mobile) */}
         <div className="lg:pl-4 lg:border-l border-slate-200 dark:border-gray-700">
           <div className="lg:sticky lg:top-[4.5rem]">
             <details className="group lg:block" open>
               <summary className="lg:list-none lg:pointer-events-none cursor-pointer list-none flex items-center gap-2 mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300 [&::-webkit-details-marker]:hidden">
                 <Link2 className="w-4 h-4 flex-shrink-0" />
-                Links y referencias
+                {t('notes.links_section')}
                 <span className="lg:hidden ml-1 opacity-70 group-open:rotate-180">▼</span>
               </summary>
             {showAddLink ? (
@@ -283,29 +285,29 @@ export function NoteEditor({
                 <Input
                   value={newLinkTitle}
                   onChange={(e) => setNewLinkTitle(e.target.value)}
-                  placeholder="Label (optional)"
+                  placeholder={t('notes.link_label_placeholder')}
                   className="text-sm"
                 />
                 <Input
                   value={newLinkUrl}
                   onChange={(e) => setNewLinkUrl(e.target.value)}
-                  placeholder="https://..."
+                  placeholder={t('notes.link_url_placeholder')}
                   type="url"
                   className="text-sm"
                 />
                 <div className="flex gap-2">
-                  <Button type="submit" size="sm">Add</Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => { setShowAddLink(false); setNewLinkTitle(''); setNewLinkUrl(''); }}>Cancel</Button>
+                  <Button type="submit" size="sm">{t('notes.add')}</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => { setShowAddLink(false); setNewLinkTitle(''); setNewLinkUrl(''); }}>{t('common.cancel')}</Button>
                 </div>
               </form>
             ) : (
               <Button variant="outline" size="sm" onClick={() => setShowAddLink(true)} className="mb-4">
                 <Plus className="w-4 h-4 mr-1" />
-                Add link
+                {t('notes.add_link')}
               </Button>
             )}
             {links.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">No links yet.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t('notes.no_links_yet')}</p>
             ) : (
               <ul className="space-y-2">
                 {links.map((link) => (

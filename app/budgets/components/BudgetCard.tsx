@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Package, TrendingUp, Clock, MoreVertical, Trash2, Copy } from 'lucide-react'
-import { getBudgetStats, deleteBudget, duplicateBudget } from '../actions'
+import { useI18n } from '@/components/I18nProvider'
+import { Package, TrendingUp, Clock, MoreVertical, Trash2, Copy, Eye, Pencil } from 'lucide-react'
+import { getBudgetStats, deleteBudget, duplicateBudget, getProjects } from '../actions'
+import { EditBudgetModal } from '../[id]/components/EditBudgetModal'
 
 interface BudgetCardProps {
   budget: {
@@ -18,6 +20,7 @@ interface BudgetCardProps {
 }
 
 export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
+  const { t } = useI18n()
   const [stats, setStats] = useState({
     total: 0,
     acquired: 0,
@@ -29,7 +32,16 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
   const [showMenu, setShowMenu] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDuplicating, setIsDuplicating] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [projectsForEdit, setProjectsForEdit] = useState<{ id: string; name: string }[]>([])
   const router = useRouter()
+
+  const budgetForModal = {
+    id: budget.id,
+    name: budget.name,
+    description: budget.description ?? null,
+    project_id: (budget as { project_id?: string | null }).project_id ?? budget.projects?.id ?? null,
+  }
 
   useEffect(() => {
     getBudgetStats(budget.id).then(setStats)
@@ -54,6 +66,22 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
       alert('Failed to delete budget')
       setIsDeleting(false)
     }
+  }
+
+  const handleView = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setShowMenu(false)
+    router.push(`/budgets/${budget.id}`)
+  }
+
+  const handleEdit = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setShowMenu(false)
+    const list = await getProjects()
+    setProjectsForEdit(list ?? [])
+    setShowEditModal(true)
   }
 
   const handleDuplicate = async (e: React.MouseEvent) => {
@@ -89,6 +117,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
   }
 
   return (
+    <>
     <Link href={`/budgets/${budget.id}`}>
       <div className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition-all hover:border-primary/50 cursor-pointer relative group">
         {/* Menu button */}
@@ -116,20 +145,38 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
             />
             <div className="absolute top-12 right-4 bg-card rounded-lg shadow-lg border border-border py-2 z-30 min-w-[150px]">
               <button
+                type="button"
+                onClick={handleView}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-accent flex items-center gap-2 text-foreground"
+              >
+                <Eye className="w-4 h-4" />
+                {t('budgets.view')}
+              </button>
+              <button
+                type="button"
+                onClick={handleEdit}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-accent flex items-center gap-2 text-foreground"
+              >
+                <Pencil className="w-4 h-4" />
+                {t('common.edit')}
+              </button>
+              <button
+                type="button"
                 onClick={handleDuplicate}
                 disabled={isDuplicating}
                 className="w-full px-4 py-2 text-left text-sm hover:bg-accent flex items-center gap-2 disabled:opacity-50 text-foreground"
               >
                 <Copy className="w-4 h-4" />
-                {isDuplicating ? 'Duplicating...' : 'Duplicate'}
+                {isDuplicating ? t('budgets.duplicating') : t('budgets.duplicate')}
               </button>
               <button
+                type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
                 className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 disabled:opacity-50"
               >
                 <Trash2 className="w-4 h-4" />
-                {isDeleting ? 'Deleting...' : 'Delete'}
+                {isDeleting ? t('budgets.deleting') : t('common.delete')}
               </button>
             </div>
           </>
@@ -161,7 +208,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
           <div>
             <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
               <Package className="w-3 h-3" />
-              Items
+              {t('budgets.items')}
             </div>
             <div className="text-lg font-semibold text-foreground">
               {stats.itemCount}
@@ -171,7 +218,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
           <div>
             <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
               <TrendingUp className="w-3 h-3" />
-              Categories
+              {t('budgets.categories')}
             </div>
             <div className="text-lg font-semibold text-foreground">
               {stats.categoryCount}
@@ -181,7 +228,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
           <div>
             <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
               <Clock className="w-3 h-3" />
-              Progress
+              {t('budgets.progress')}
             </div>
             <div className="text-lg font-semibold text-foreground">
               {stats.progress}%
@@ -193,7 +240,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Budget</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('budgets.total_budget')}</div>
               <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 {formatCurrency(stats.total)}
               </div>
@@ -220,5 +267,17 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
         </div>
       </div>
     </Link>
+
+    <EditBudgetModal
+      isOpen={showEditModal}
+      onClose={() => setShowEditModal(false)}
+      onUpdated={() => {
+        setShowEditModal(false)
+        onDeleted?.()
+      }}
+      projects={projectsForEdit}
+      budget={budgetForModal}
+    />
+  </>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { Edit, Trash2, ExternalLink, RefreshCw, GripVertical } from 'lucide-react'
 import { Database } from '@/lib/supabase/types'
 
@@ -37,6 +38,7 @@ export function ItemRow({
   deleting = false,
   dragHandle,
 }: ItemRowProps) {
+  const { t } = useI18n()
   const [showMenu, setShowMenu] = useState(false)
   // Start highlighted immediately when the row mounts with flash=true
   const [isFlashing, setIsFlashing] = useState(flash)
@@ -91,9 +93,9 @@ export function ItemRow({
   }
 
   const statusLabels = {
-    pending: '⏳ Pending',
-    quoted: '💬 Quoted',
-    acquired: '✅ Acquired',
+    pending: t('budgets.item_status_pending'),
+    quoted: t('budgets.item_status_quoted'),
+    acquired: t('budgets.item_status_acquired'),
   }
 
   const showUpdated = updated && !deleting && !isFlashing
@@ -187,7 +189,7 @@ export function ItemRow({
             {item.is_recurrent && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
                 <RefreshCw className="w-3 h-3" />
-                Recurrent
+                {t('budgets.recurrent_badge')}
               </span>
             )}
 
@@ -201,14 +203,14 @@ export function ItemRow({
                 onClick={(e) => e.stopPropagation()}
               >
                 <ExternalLink className="w-3 h-3" />
-                View Link
+                {t('budgets.view_link')}
               </a>
             )}
 
             {/* Notes indicator */}
             {item.notes && (
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                📝 Has notes
+                {t('budgets.has_notes')}
               </span>
             )}
           </div>
@@ -253,7 +255,7 @@ export function ItemRow({
                     className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
                     <Edit className="w-4 h-4" />
-                    Edit
+                    {t('common.edit')}
                   </button>
                   <button
                     onClick={(e) => {
@@ -264,7 +266,7 @@ export function ItemRow({
                     className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
                   >
                     <Trash2 className="w-4 h-4" />
-                    Delete
+                    {t('common.delete')}
                   </button>
                 </div>
               </>

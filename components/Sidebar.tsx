@@ -435,30 +435,30 @@ export default function Sidebar({
                                 {favoriteProjectIds.has(project.id) ? (
                                   <>
                                     <Star className="w-4 h-4 mr-2 fill-amber-400 text-amber-500" />
-                                    Remove from favorites
+                                    {t('sidebar.remove_from_favorites')}
                                   </>
                                 ) : (
                                   <>
                                     <Star className="w-4 h-4 mr-2" />
-                                    Add to favorites
+                                    {t('sidebar.add_to_favorites')}
                                   </>
                                 )}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => setEditingProject(project)}>
                                 <Edit className="w-4 h-4 mr-2" />
-                                Edit Project
+                                {t('sidebar.edit_project')}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               {project.category === 'archived' ? (
                                 <DropdownMenuItem onClick={() => handleArchive(project)}>
                                   <ArchiveRestore className="w-4 h-4 mr-2" />
-                                  Unarchive
+                                  {t('sidebar.unarchive')}
                                 </DropdownMenuItem>
                               ) : (
                                 <DropdownMenuItem onClick={() => handleArchive(project)}>
                                   <Archive className="w-4 h-4 mr-2" />
-                                  Archive
+                                  {t('sidebar.archive')}
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />

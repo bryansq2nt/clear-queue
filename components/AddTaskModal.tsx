@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { createTask } from '@/app/actions/tasks'
 import { Database } from '@/lib/supabase/types'
 import {
@@ -38,6 +39,7 @@ export function AddTaskModal({
   defaultProjectId,
   defaultStatus = 'next',
 }: AddTaskModalProps) {
+  const { t } = useI18n()
   const [title, setTitle] = useState('')
   const [status, setStatus] = useState<Database['public']['Tables']['tasks']['Row']['status']>(defaultStatus)
   const [priority, setPriority] = useState('3')
@@ -52,7 +54,7 @@ export function AddTaskModal({
     setError(null)
 
     if (!defaultProjectId) {
-      setError('Project ID is required')
+      setError(t('tasks.error_project_required'))
       setIsLoading(false)
       return
     }
@@ -85,54 +87,54 @@ export function AddTaskModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add Task</DialogTitle>
-          <DialogDescription>Create a new task</DialogDescription>
+          <DialogTitle>{t('tasks.add_task')}</DialogTitle>
+          <DialogDescription>{t('tasks.add_task_description')}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Title *</Label>
+              <Label htmlFor="title">{t('tasks.title_label')}</Label>
               <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Task title"
+                placeholder={t('tasks.title_placeholder')}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">{t('tasks.status_label')}</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as any)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="backlog">Backlog</SelectItem>
-                  <SelectItem value="next">Next</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="blocked">Blocked</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
+                  <SelectItem value="backlog">{t('kanban.backlog')}</SelectItem>
+                  <SelectItem value="next">{t('kanban.next')}</SelectItem>
+                  <SelectItem value="in_progress">{t('kanban.in_progress')}</SelectItem>
+                  <SelectItem value="blocked">{t('kanban.blocked')}</SelectItem>
+                  <SelectItem value="done">{t('kanban.done')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="priority">Priority</Label>
+                <Label htmlFor="priority">{t('tasks.priority_label')}</Label>
                 <Select value={priority} onValueChange={setPriority}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 (Lowest)</SelectItem>
+                    <SelectItem value="1">{t('tasks.priority_lowest')}</SelectItem>
                     <SelectItem value="2">2</SelectItem>
                     <SelectItem value="3">3</SelectItem>
                     <SelectItem value="4">4</SelectItem>
-                    <SelectItem value="5">5 (Highest)</SelectItem>
+                    <SelectItem value="5">{t('tasks.priority_highest')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="due_date">Due Date</Label>
+                <Label htmlFor="due_date">{t('tasks.due_date_label')}</Label>
                 <Input
                   id="due_date"
                   type="date"
@@ -142,12 +144,12 @@ export function AddTaskModal({
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes">{t('tasks.notes_label')}</Label>
               <Textarea
                 id="notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Additional notes..."
+                placeholder={t('tasks.notes_placeholder')}
                 rows={4}
               />
             </div>
@@ -159,10 +161,10 @@ export function AddTaskModal({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creating...' : 'Create Task'}
+              {isLoading ? t('tasks.creating') : t('tasks.create_task')}
             </Button>
           </DialogFooter>
         </form>

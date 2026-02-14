@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useI18n } from '@/components/I18nProvider'
 import { useRouter } from 'next/navigation'
 import { Building2, Globe, MoreVertical, Edit, Trash2, Mail, MapPin, Copy, Send, User } from 'lucide-react'
 import {
@@ -69,6 +70,7 @@ interface BusinessCardProps {
 }
 
 export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId, linkToDetail = true }: BusinessCardProps) {
+  const { t } = useI18n()
   const router = useRouter()
   const social = getSocialLinks(business.social_links)
 
@@ -189,12 +191,12 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
             {onEdit && (
               <DropdownMenuItem onClick={() => onEdit(business)}>
                 <Edit className="w-4 h-4 mr-2" />
-                Edit
+                {t('common.edit')}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={handleDelete} className="text-red-600 focus:text-red-600">
               <Trash2 className="w-4 h-4 mr-2" />
-              Delete
+              {t('common.delete')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

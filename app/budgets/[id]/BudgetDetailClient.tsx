@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import Sidebar from '@/components/Sidebar'
@@ -23,6 +24,7 @@ interface BudgetDetailClientProps {
 }
 
 export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps) {
+  const { t } = useI18n()
   const [projects, setProjects] = useState<Project[]>([])
   const [budgetData, setBudgetData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -438,7 +440,7 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
                 >
                   <div className="flex items-center justify-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
                     <Plus className="w-5 h-5" />
-                    <span className="font-medium">Add Category</span>
+                    <span className="font-medium">{t('budgets.add_category')}</span>
                   </div>
                 </button>
               </>

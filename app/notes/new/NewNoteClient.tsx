@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import Sidebar from '@/components/Sidebar'
 import TopBar from '@/components/TopBar'
+import { useI18n } from '@/components/I18nProvider'
 import { signOut } from '@/app/actions/auth'
 import { NoteEditor } from '../components/NoteEditor'
 
@@ -26,6 +27,7 @@ function NewNoteEditorWrapper() {
 }
 
 export default function NewNoteClient() {
+  const { t } = useI18n()
   const [projects, setProjects] = useState<Project[]>([])
 
   const loadProjects = useCallback(async () => {
@@ -49,7 +51,7 @@ export default function NewNoteClient() {
         onSignOut={() => signOut()}
         onProjectAdded={loadProjects}
         onProjectUpdated={loadProjects}
-        projectName="New Note"
+        projectName={t('notes.new_note')}
         currentProject={null}
       />
       <div className="flex-1 flex overflow-hidden">

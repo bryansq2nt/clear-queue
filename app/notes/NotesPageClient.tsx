@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import Sidebar from '@/components/Sidebar'
 import TopBar from '@/components/TopBar'
+import { useI18n } from '@/components/I18nProvider'
 import { signOut } from '@/app/actions/auth'
 import { Plus, FileText, MoreVertical, Edit, Trash2, ExternalLink } from 'lucide-react'
 import {
@@ -27,18 +28,24 @@ import { getProjects } from '@/app/budgets/actions'
 type Project = Database['public']['Tables']['projects']['Row']
 type Note = Database['public']['Tables']['notes']['Row']
 
-function formatUpdatedAt(iso: string): string {
+function formatUpdatedAt(
+  iso: string,
+  t: (key: string, params?: Record<string, string | number>) => string,
+  locale: string
+): string {
   const d = new Date(iso)
   const now = new Date()
   const diffMs = now.getTime() - d.getTime()
   const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000))
-  if (diffDays === 0) return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  if (diffDays === 1) return 'Yesterday'
-  if (diffDays < 7) return `${diffDays} days ago`
-  return d.toLocaleDateString()
+  const localeTag = locale === 'es' ? 'es-MX' : 'en-US'
+  if (diffDays === 0) return d.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' })
+  if (diffDays === 1) return t('notes.yesterday')
+  if (diffDays < 7) return t('notes.days_ago', { count: diffDays })
+  return d.toLocaleDateString(localeTag)
 }
 
 function NotesPageContent() {
+  const { t, locale } = useI18n()
   const router = useRouter()
   const searchParams = useSearchParams()
   const projectIdFromUrl = searchParams.get('projectId')
@@ -83,13 +90,13 @@ function NotesPageContent() {
 
   const projectNameById = (id: string) => {
     const p = projectList.find((x) => x.id === id) || projects.find((p) => p.id === id)
-    return p?.name ?? 'Unknown project'
+    return p?.name ?? t('notes.unknown_project')
   }
 
   const handleDelete = async (e: React.MouseEvent, note: Note) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!confirm(`Delete note "${note.title}"?`)) return
+    if (!confirm(t('notes.delete_confirm', { title: note.title }))) return
     const { error } = await deleteNote(note.id)
     if (error) {
       alert(error)
@@ -106,7 +113,7 @@ function NotesPageContent() {
         onSignOut={() => signOut()}
         onProjectAdded={loadProjects}
         onProjectUpdated={loadProjects}
-        projectName="Notes"
+        projectName={t('notes.title')}
         currentProject={null}
       />
       <div className="flex-1 flex overflow-hidden">
@@ -124,19 +131,19 @@ function NotesPageContent() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Notes
+                {t('notes.title')}
               </h1>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Notes linked to your projects.
+                {t('notes.subtitle')}
               </p>
             </div>
             <div className="flex items-center gap-3">
               <Select value={projectFilter} onValueChange={setProjectFilter}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Project" />
+                  <SelectValue placeholder={t('notes.project_placeholder')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Projects</SelectItem>
+                  <SelectItem value="all">{t('notes.all_projects')}</SelectItem>
                   {projectList.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
@@ -150,18 +157,18 @@ function NotesPageContent() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
               >
                 <Plus className="w-4 h-4" />
-                New Note
+                {t('notes.new_note')}
               </button>
             </div>
           </div>
 
           {isLoading ? (
-            <p className="text-sm text-slate-500">Loading...</p>
+            <p className="text-sm text-slate-500">{t('common.loading')}</p>
           ) : notes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 bg-card rounded-lg border border-border">
               <FileText className="w-12 h-12 text-slate-400 dark:text-slate-500 mb-4" />
               <p className="text-slate-600 dark:text-slate-400 text-center mb-6">
-                No notes yet. Create a note linked to a project.
+                {t('notes.no_notes_yet')}
               </p>
               <button
                 type="button"
@@ -169,7 +176,7 @@ function NotesPageContent() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
               >
                 <Plus className="w-4 h-4" />
-                New Note
+                {t('notes.new_note')}
               </button>
             </div>
           ) : (
@@ -192,7 +199,7 @@ function NotesPageContent() {
                         {projectNameById(note.project_id)}
                       </p>
                       <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                        {formatUpdatedAt(note.updated_at)}
+                        {formatUpdatedAt(note.updated_at, t, locale)}
                       </p>
                     </div>
                     <DropdownMenu>
@@ -208,18 +215,18 @@ function NotesPageContent() {
                       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenuItem onClick={() => router.push(`/notes/${note.id}`)}>
                           <ExternalLink className="w-4 h-4 mr-2" />
-                          View
+                          {t('notes.view')}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => router.push(`/notes/${note.id}`)}>
                           <Edit className="w-4 h-4 mr-2" />
-                          Edit
+                          {t('notes.edit')}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={(e) => handleDelete(e, note)}
                           className="text-red-600 focus:text-red-600"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
+                          {t('common.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -236,7 +243,7 @@ function NotesPageContent() {
 
 export default function NotesPageClient() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-muted-foreground">Loading...</div>}>
       <NotesPageContent />
     </Suspense>
   )

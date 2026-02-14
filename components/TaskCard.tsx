@@ -3,6 +3,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Database } from '@/lib/supabase/types'
+import { useI18n } from '@/components/I18nProvider'
 import { EditTaskModal } from './EditTaskModal'
 import { useState } from 'react'
 import { Calendar, Check } from 'lucide-react'
@@ -30,6 +31,7 @@ export default function TaskCard({
   isSelected = false,
   onToggleSelection,
 }: TaskCardProps) {
+  const { t } = useI18n()
   const [isOpen, setIsOpen] = useState(false)
 
   const {
@@ -134,7 +136,7 @@ export default function TaskCard({
             'flex items-center gap-1 text-xs font-medium',
             isOverdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
           )}>
-            Due on:
+            {t('tasks.due_on')}{' '}
             <Calendar className="w-3 h-3" />
             {new Date(task.due_date).toLocaleDateString()}
           </div>

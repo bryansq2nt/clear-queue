@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useI18n } from '@/components/I18nProvider'
 import { Database } from '@/lib/supabase/types'
 import TaskCard from './TaskCard'
 import { FileText, Plus } from 'lucide-react'
@@ -18,6 +19,7 @@ interface RightPanelProps {
 }
 
 export default function RightPanel({ todayTasks, nextUpTasks, projects, projectId, projectNotes = [] }: RightPanelProps) {
+  const { t } = useI18n()
   const notes = projectNotes.slice(0, 5)
 
   return (
@@ -25,11 +27,11 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects, projectI
       <div className="space-y-6">
         <div>
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg px-4 py-3 mb-3 shadow-md">
-            <h2 className="text-base font-bold text-white">Today</h2>
+            <h2 className="text-base font-bold text-white">{t('right_panel.today')}</h2>
           </div>
           <div className="space-y-2">
             {todayTasks.length === 0 ? (
-              <p className="text-sm text-slate-500">No tasks due today</p>
+              <p className="text-sm text-slate-500">{t('right_panel.no_tasks_today')}</p>
             ) : (
               todayTasks.map(task => (
                 <TaskCard
@@ -44,11 +46,11 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects, projectI
         </div>
         <div>
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg px-4 py-3 mb-3 shadow-md">
-            <h2 className="text-base font-bold text-white">Next Up</h2>
+            <h2 className="text-base font-bold text-white">{t('right_panel.next_up')}</h2>
           </div>
           <div className="space-y-2">
             {nextUpTasks.length === 0 ? (
-              <p className="text-sm text-slate-500">No tasks in Next</p>
+              <p className="text-sm text-slate-500">{t('right_panel.no_tasks_next')}</p>
             ) : (
               nextUpTasks.map(task => (
                 <TaskCard
@@ -66,12 +68,12 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects, projectI
             <div className="bg-gradient-to-r from-slate-500 to-slate-600 rounded-lg px-4 py-3 mb-3 shadow-md flex items-center justify-between">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <FileText className="w-4 h-4" />
-                Notes
+                {t('right_panel.notes')}
               </h2>
             </div>
             <div className="space-y-2">
               {notes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No notes yet</p>
+                <p className="text-sm text-muted-foreground">{t('right_panel.no_notes')}</p>
               ) : (
                 notes.map(note => (
                   <Link
@@ -88,14 +90,14 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects, projectI
                   href={`/notes?projectId=${projectId}`}
                   className="text-xs text-muted-foreground hover:text-foreground"
                 >
-                  View all
+                  {t('right_panel.view_all')}
                 </Link>
                 <Link
                   href={`/notes/new?projectId=${projectId}`}
                   className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5"
                 >
                   <Plus className="w-3 h-3" />
-                  Add Note
+                  {t('right_panel.add_note')}
                 </Link>
               </div>
             </div>

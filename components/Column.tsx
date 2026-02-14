@@ -6,6 +6,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import TaskCard from './TaskCard'
 import { AddTaskModal } from './AddTaskModal'
 import { Plus } from 'lucide-react'
+import { useI18n } from '@/components/I18nProvider'
 import { Database } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
 import { getStatusColumnClasses } from '@/lib/ui/statusStyles'
@@ -23,6 +24,7 @@ interface ColumnProps {
 }
 
 export default function Column({ id, title, tasks, projects, onTaskUpdate, currentProjectId }: ColumnProps) {
+  const { t } = useI18n()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const { setNodeRef, isOver } = useDroppable({
     id,
@@ -50,7 +52,7 @@ export default function Column({ id, title, tasks, projects, onTaskUpdate, curre
             'rounded-t-xl px-4 py-3 shadow-sm'
           )}>
             <h2 className="text-base font-bold text-foreground">{title}</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">{tasks.length} tasks</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('kanban.tasks_count', { count: tasks.length })}</p>
           </div>
 
           {/* Cards Container */}
@@ -85,7 +87,7 @@ export default function Column({ id, title, tasks, projects, onTaskUpdate, curre
               onClick={() => setIsAddModalOpen(true)}
             >
               <Plus className="w-4 h-4" />
-              Add Task
+              {t('kanban.add_task')}
             </button>
           </div>
         </div>

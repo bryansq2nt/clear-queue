@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { createProject } from '@/app/actions/projects'
 import { getClients, getBusinessesByClientId } from '@/app/clients/actions'
 import {
@@ -35,6 +36,7 @@ const COLORS = [
 ]
 
 export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectModalProps) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [category, setCategory] = useState<string>('business')
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
@@ -93,23 +95,23 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Project</DialogTitle>
-          <DialogDescription>Create a new project to organize your tasks</DialogDescription>
+          <DialogTitle>{t('projects.add_title')}</DialogTitle>
+          <DialogDescription>{t('projects.add_description')}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Project Name</Label>
+              <Label htmlFor="name">{t('projects.project_name')}</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="My Project"
+                placeholder={t('projects.project_name_placeholder')}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">{t('projects.category')}</Label>
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger id="category">
                   <SelectValue />
@@ -117,20 +119,20 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
                 <SelectContent>
                   {PROJECT_CATEGORIES.filter(c => c.key !== 'archived').map(cat => (
                     <SelectItem key={cat.key} value={cat.key}>
-                      {cat.label}
+                      {t(`categories.${cat.key}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="client">Client (optional)</Label>
+              <Label htmlFor="client">{t('projects.client_optional')}</Label>
               <Select value={clientId || 'none'} onValueChange={(v) => setClientId(v === 'none' ? '' : v)}>
                 <SelectTrigger id="client">
-                  <SelectValue placeholder="Select client" />
+                  <SelectValue placeholder={t('projects.select_client')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No client</SelectItem>
+                  <SelectItem value="none">{t('projects.no_client')}</SelectItem>
                   {clients.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.full_name}
@@ -141,13 +143,13 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
             </div>
             {clientId && (
               <div className="space-y-2">
-                <Label htmlFor="business">Business (optional)</Label>
+                <Label htmlFor="business">{t('projects.business_optional')}</Label>
                 <Select value={businessId || 'none'} onValueChange={(v) => setBusinessId(v === 'none' ? '' : v)}>
                   <SelectTrigger id="business">
-                    <SelectValue placeholder="Select business" />
+                    <SelectValue placeholder={t('projects.select_business')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No business</SelectItem>
+                    <SelectItem value="none">{t('projects.no_business')}</SelectItem>
                     {businesses.map((b) => (
                       <SelectItem key={b.id} value={b.id}>
                         {b.name}
@@ -158,7 +160,7 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
               </div>
             )}
             <div className="space-y-2">
-              <Label>Color (optional)</Label>
+              <Label>{t('projects.color_optional')}</Label>
               <div className="grid grid-cols-10 gap-2">
                 {COLORS.map(color => (
                   <button
@@ -183,10 +185,10 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creating...' : 'Create Project'}
+              {isLoading ? t('projects.creating') : t('projects.create_project')}
             </Button>
           </DialogFooter>
         </form>

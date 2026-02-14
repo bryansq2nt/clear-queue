@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { getPreferences, updatePreferences } from './actions'
 import { uploadUserAsset, deleteUserAsset, getAssetSignedUrl } from '@/app/settings/profile/actions'
 import { applyTheme, saveToStorage } from '@/lib/theme'
@@ -12,14 +13,21 @@ import { Input } from '@/components/ui/input'
 type Preferences = Awaited<ReturnType<typeof getPreferences>>
 
 const COLOR_PRESETS = [
-  { primary: '#05668D', secondary: '#0B132B', third: '#F4F7FB', label: 'Default' },
-  { primary: '#059669', secondary: '#064e3b', third: '#ecfdf5', label: 'Emerald' },
-  { primary: '#7c3aed', secondary: '#4c1d95', third: '#f5f3ff', label: 'Violet' },
-  { primary: '#dc2626', secondary: '#7f1d1d', third: '#fef2f2', label: 'Rose' },
-  { primary: '#2563eb', secondary: '#1e3a8a', third: '#eff6ff', label: 'Blue' },
+  { primary: '#05668D', secondary: '#0B132B', third: '#F4F7FB', labelKey: 'preset_default' },
+  { primary: '#059669', secondary: '#064e3b', third: '#ecfdf5', labelKey: 'preset_emerald' },
+  { primary: '#7c3aed', secondary: '#4c1d95', third: '#f5f3ff', labelKey: 'preset_violet' },
+  { primary: '#dc2626', secondary: '#7f1d1d', third: '#fef2f2', labelKey: 'preset_rose' },
+  { primary: '#2563eb', secondary: '#1e3a8a', third: '#eff6ff', labelKey: 'preset_blue' },
 ]
 
+const THEME_MODE_KEYS: Record<ThemeMode, string> = {
+  light: 'theme_light',
+  dark: 'theme_dark',
+  system: 'theme_system',
+}
+
 export default function AppearancePageClient() {
+  const { t } = useI18n()
   const [prefs, setPrefs] = useState<Preferences | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -211,8 +219,8 @@ export default function AppearancePageClient() {
   return (
     <div className="p-6 max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground">Appearance</h1>
-        <p className="text-muted-foreground mt-1">Customize theme mode and brand colors.</p>
+        <h1 className="text-3xl font-bold text-foreground">{t('settings.appearance')}</h1>
+        <p className="text-muted-foreground mt-1">{t('settings.appearance_subtitle')}</p>
       </div>
 
       <div className="space-y-6">
@@ -223,12 +231,12 @@ export default function AppearancePageClient() {
         )}
         {success && (
           <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
-            Appearance updated. Refresh to see changes app-wide.
+            {t('settings.appearance_updated')}
           </div>
         )}
 
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Theme mode</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t('settings.theme_mode')}</h2>
           <div className="flex gap-2">
             {THEME_MODES.map((mode) => (
               <button
@@ -241,20 +249,20 @@ export default function AppearancePageClient() {
                     : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 }`}
               >
-                {mode}
+                {t(`settings.${THEME_MODE_KEYS[mode]}`)}
               </button>
             ))}
           </div>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Company logo</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t('settings.company_logo')}</h2>
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-lg bg-muted overflow-hidden flex items-center justify-center border border-border">
               {companyLogoUrl ? (
-                <img src={companyLogoUrl} alt="Company logo" className="w-full h-full object-contain" />
+                <img src={companyLogoUrl} alt={t('settings.company_logo')} className="w-full h-full object-contain" />
               ) : (
-                <span className="text-sm text-muted-foreground">No logo</span>
+                <span className="text-sm text-muted-foreground">{t('settings.no_logo')}</span>
               )}
             </div>
             <div className="flex gap-2">
@@ -271,7 +279,7 @@ export default function AppearancePageClient() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80"
               >
                 <Upload className="w-4 h-4" />
-                Upload
+                {t('common.upload')}
               </button>
               {companyLogoUrl && (
                 <button
@@ -280,22 +288,22 @@ export default function AppearancePageClient() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/20"
                 >
                   <X className="w-4 h-4" />
-                  Remove
+                  {t('common.remove')}
                 </button>
               )}
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">PNG, JPEG, WebP. Max 5MB.</p>
+          <p className="text-xs text-muted-foreground mt-2">{t('settings.image_hint')}</p>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Cover image</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t('settings.cover_image')}</h2>
           <div className="flex items-center gap-4">
             <div className="w-full max-w-xs h-24 rounded-lg bg-muted overflow-hidden flex items-center justify-center border border-border">
               {coverImageUrl ? (
-                <img src={coverImageUrl} alt="Cover" className="w-full h-full object-cover" />
+                <img src={coverImageUrl} alt={t('settings.cover_image')} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-sm text-muted-foreground">No cover</span>
+                <span className="text-sm text-muted-foreground">{t('settings.no_cover')}</span>
               )}
             </div>
             <div className="flex gap-2">
@@ -312,7 +320,7 @@ export default function AppearancePageClient() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80"
               >
                 <Upload className="w-4 h-4" />
-                Upload
+                {t('common.upload')}
               </button>
               {coverImageUrl && (
                 <button
@@ -321,21 +329,21 @@ export default function AppearancePageClient() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/20"
                 >
                   <X className="w-4 h-4" />
-                  Remove
+                  {t('common.remove')}
                 </button>
               )}
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">PNG, JPEG, WebP. Max 5MB.</p>
+          <p className="text-xs text-muted-foreground mt-2">{t('settings.image_hint')}</p>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Brand colors</h2>
-          <p className="text-sm text-muted-foreground mb-4">Preset swatches</p>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t('settings.brand_colors')}</h2>
+          <p className="text-sm text-muted-foreground mb-4">{t('settings.preset_swatches')}</p>
           <div className="flex flex-wrap gap-2 mb-6">
             {COLOR_PRESETS.map((preset) => (
               <button
-                key={preset.label}
+                key={preset.labelKey}
                 type="button"
                 onClick={() => applyPreset(preset)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:border-primary/50 bg-background"
@@ -344,14 +352,14 @@ export default function AppearancePageClient() {
                   className="w-6 h-6 rounded-full border border-border"
                   style={{ backgroundColor: preset.primary }}
                 />
-                <span className="text-sm text-foreground">{preset.label}</span>
+                <span className="text-sm text-foreground">{t(`settings.${preset.labelKey}`)}</span>
               </button>
             ))}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label className="mb-1">Primary</Label>
+              <Label className="mb-1">{t('settings.color_primary')}</Label>
               <div className="flex gap-2 mt-1">
                 <input
                   type="color"
@@ -371,7 +379,7 @@ export default function AppearancePageClient() {
               </div>
             </div>
             <div>
-              <Label className="mb-1">Secondary</Label>
+              <Label className="mb-1">{t('settings.color_secondary')}</Label>
               <div className="flex gap-2 mt-1">
                 <input
                   type="color"
@@ -391,7 +399,7 @@ export default function AppearancePageClient() {
               </div>
             </div>
             <div>
-              <Label className="mb-1">Third</Label>
+              <Label className="mb-1">{t('settings.color_third')}</Label>
               <div className="flex gap-2 mt-1">
                 <input
                   type="color"
@@ -413,14 +421,14 @@ export default function AppearancePageClient() {
           </div>
 
           <div className="mt-6 p-4 rounded-lg border border-border bg-muted/50">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Live preview</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">{t('settings.live_preview')}</p>
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
                 className="px-4 py-2 rounded-lg font-medium text-white"
                 style={{ backgroundColor: form.primary_color }}
               >
-                Primary button
+                {t('settings.preview_primary_button')}
               </button>
               <button
                 type="button"
@@ -432,14 +440,14 @@ export default function AppearancePageClient() {
                   borderColor: form.primary_color,
                 }}
               >
-                Secondary button
+                {t('settings.preview_secondary_button')}
               </button>
               <a
                 href="#"
                 className="px-4 py-2 font-medium hover:underline"
                 style={{ color: form.primary_color }}
               >
-                Link
+                {t('settings.preview_link')}
               </a>
             </div>
           </div>
@@ -457,7 +465,7 @@ export default function AppearancePageClient() {
           className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
         >
           {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-          Save changes
+          {t('profile.save_changes')}
         </button>
       </div>
     </div>

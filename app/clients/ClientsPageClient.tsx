@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import Sidebar from '@/components/Sidebar'
 import TopBar from '@/components/TopBar'
+import { useI18n } from '@/components/I18nProvider'
 import { signOut } from '@/app/actions/auth'
 import { Plus } from 'lucide-react'
 import { getClients } from './actions'
@@ -17,6 +18,7 @@ type Project = Database['public']['Tables']['projects']['Row']
 type Client = Database['public']['Tables']['clients']['Row']
 
 export default function ClientsPageClient() {
+  const { t } = useI18n()
   const [projects, setProjects] = useState<Project[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -67,7 +69,7 @@ export default function ClientsPageClient() {
         onSignOut={() => signOut()}
         onProjectAdded={loadProjects}
         onProjectUpdated={loadProjects}
-        projectName="Clients"
+        projectName={t('clients.title')}
         currentProject={null}
       />
       <div className="flex-1 flex overflow-hidden">
@@ -84,9 +86,9 @@ export default function ClientsPageClient() {
         <div className="flex-1 overflow-y-auto p-6">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Clients</h1>
+              <h1 className="text-3xl font-bold text-foreground">{t('clients.title')}</h1>
               <p className="text-muted-foreground mt-2">
-                Manage your clients and their businesses
+                {t('clients.subtitle')}
               </p>
             </div>
             <button
@@ -94,7 +96,7 @@ export default function ClientsPageClient() {
               className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-lg font-medium hover:from-slate-700 hover:to-slate-800 transition-all shadow-lg hover:shadow-xl"
             >
               <Plus className="w-5 h-5 mr-2" />
-              New Client
+              {t('clients.new_client')}
             </button>
           </div>
 

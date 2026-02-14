@@ -82,6 +82,52 @@ export async function listBoards(): Promise<IdeaBoard[]> {
 }
 
 /**
+ * Update a board (name, description, project_id)
+ */
+export async function updateBoard(
+  id: string,
+  input: { name?: string; description?: string | null; project_id?: string | null }
+): Promise<IdeaBoard> {
+  if (!id || id.trim().length === 0) {
+    throw new Error('Board ID is required')
+  }
+
+  await getUserIdOrThrow()
+  const supabase = await createClient()
+
+  const updateData: Partial<IdeaBoardUpdate> = {
+    updated_at: new Date().toISOString(),
+  }
+  if (input.name !== undefined) {
+    updateData.name = input.name.trim()
+  }
+  if (input.description !== undefined) {
+    updateData.description = input.description?.trim() || null
+  }
+  if (input.project_id !== undefined) {
+    updateData.project_id = input.project_id || null
+  }
+
+  const { data, error } = await supabase
+    .from('idea_boards')
+    // @ts-ignore - Supabase type inference issue with generated types
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`Failed to update board: ${error.message}`)
+  }
+
+  if (!data) {
+    throw new Error('Failed to update board: No data returned')
+  }
+
+  return data
+}
+
+/**
  * Get a board by ID
  */
 export async function getBoardById(id: string): Promise<IdeaBoard | null> {

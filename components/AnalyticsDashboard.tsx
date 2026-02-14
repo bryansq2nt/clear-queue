@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useI18n } from '@/components/I18nProvider'
 import { CheckCircle, AlertCircle, AlertTriangle, TrendingUp, Calendar, LogOut, Plus } from 'lucide-react'
-import { getCategoryLabel } from '@/lib/constants'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -246,7 +245,7 @@ export default function AnalyticsDashboard() {
                                 className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
                             >
                                 <Plus className="w-4 h-4 mr-2" />
-                                Create Project
+                                {t('dashboard.create_project')}
                             </Button>
                             <Button
                                 variant="ghost"
@@ -315,20 +314,20 @@ export default function AnalyticsDashboard() {
                                                     <h3 className="font-semibold text-foreground">{project.name}</h3>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-muted-foreground">{getCategoryLabel(project.category)}</span>
+                                                    <span className="text-xs text-muted-foreground">{t(`categories.${project.category}`)}</span>
                                                     {project.category === 'archived' && (
                                                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
                                                             {t('dashboard.archived')}
                                                         </span>
                                                     )}
                                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${healthBadges[project.health as keyof typeof healthBadges]}`}>
-                                                        {project.health}
+                                                        {t(`dashboard.health_${project.health.toLowerCase()}`)}
                                                     </span>
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
                                                 <div>
-                                                    <span className="text-muted-foreground">Total:</span>
+                                                    <span className="text-muted-foreground">{t('dashboard.total')}:</span>
                                                     <span className="font-semibold ml-1">{project.total}</span>
                                                 </div>
                                                 <div>
@@ -346,7 +345,7 @@ export default function AnalyticsDashboard() {
                                             </div>
                                             <div>
                                                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                                                    <span>Progress</span>
+                                                    <span>{t('dashboard.progress')}</span>
                                                     <span>{project.completion}%</span>
                                                 </div>
                                                 <div className="w-full bg-muted rounded-full h-2">
@@ -369,7 +368,7 @@ export default function AnalyticsDashboard() {
                                     <h2 className="text-xl font-bold text-foreground mb-4">{t('dashboard.blocked_tasks_section')}</h2>
                                     <div className="space-y-3">
                                         {dashboardData.blockedTasks.length === 0 ? (
-                                            <div className="text-muted-foreground text-sm py-4">No blocked tasks</div>
+                                            <div className="text-muted-foreground text-sm py-4">{t('dashboard.no_blocked_tasks')}</div>
                                         ) : (
                                             dashboardData.blockedTasks.map((task) => (
                                                 <div
@@ -400,7 +399,7 @@ export default function AnalyticsDashboard() {
 
                                 {/* Upcoming Deadlines */}
                                 <div className="bg-card rounded-lg shadow p-6 hover:shadow-lg transition-shadow border border-border">
-                                    <h2 className="text-xl font-bold text-foreground mb-4">Upcoming Deadlines</h2>
+                                    <h2 className="text-xl font-bold text-foreground mb-4">{t('dashboard.upcoming_deadlines')}</h2>
                                     <div className="space-y-3">
                                         {dashboardData.upcomingDeadlines.length === 0 ? (
                                             <div className="text-muted-foreground text-sm py-4">{t('dashboard.no_upcoming_deadlines')}</div>

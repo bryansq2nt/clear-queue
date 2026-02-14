@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useI18n } from '@/components/I18nProvider'
 import { MoreVertical, Edit, Trash2, Phone, Mail, Copy, Send } from 'lucide-react'
 import {
   DropdownMenu,
@@ -53,6 +54,7 @@ interface ClientCardProps {
 }
 
 export function ClientCard({ client, onDeleted, onEdit }: ClientCardProps) {
+  const { t } = useI18n()
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -101,7 +103,7 @@ export function ClientCard({ client, onDeleted, onEdit }: ClientCardProps) {
             {onEdit && (
               <DropdownMenuItem onClick={() => onEdit(client)}>
                 <Edit className="w-4 h-4 mr-2" />
-                Edit
+                {t('common.edit')}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
@@ -109,7 +111,7 @@ export function ClientCard({ client, onDeleted, onEdit }: ClientCardProps) {
               className="text-red-600 focus:text-red-600"
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Delete
+              {t('common.delete')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

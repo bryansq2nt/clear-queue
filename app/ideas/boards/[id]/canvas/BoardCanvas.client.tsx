@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { useI18n } from '@/components/I18nProvider'
 import { useRouter } from 'next/navigation'
 import { updatePositionAction } from './actions'
 import {
@@ -37,6 +38,7 @@ export default function BoardCanvasClient({
   items: BoardItem[]
   connections: Connection[]
 }) {
+  const { t } = useI18n()
   // World dimensions
   const WORLD_WIDTH = 2000
   const WORLD_HEIGHT = 2000
@@ -304,13 +306,13 @@ export default function BoardCanvasClient({
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-lg">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium">
-              Connection mode: Click another node to connect (ESC to cancel)
+              {t('ideas.connection_mode')}
             </span>
             <button
               onClick={() => setConnectionMode(null)}
               className="text-sm underline hover:no-underline"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </div>
@@ -365,7 +367,7 @@ export default function BoardCanvasClient({
           </svg>
         </div>
 
-        {/* Layer 2: Nodes - always on top */}
+        {/* Layer 2: Nodes - always on top; pointer-events-none so clicks pass through to lines */}
         {items.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-muted-foreground">
@@ -373,7 +375,7 @@ export default function BoardCanvasClient({
             </p>
           </div>
         ) : (
-          <div className="absolute inset-0 z-[100]">
+          <div className="absolute inset-0 z-[100] pointer-events-none">
           {items.map((item) => {
             const pos = getPosition(item.id)
             const isDragging = draggingNodeId === item.id
@@ -385,7 +387,7 @@ export default function BoardCanvasClient({
             return (
               <div
                 key={item.id}
-                className="absolute"
+                className="absolute pointer-events-auto"
                 style={{
                   left: pos.x,
                   top: pos.y,
@@ -417,12 +419,12 @@ export default function BoardCanvasClient({
                   >
                     {isConnectionSource && (
                       <p className="text-xs text-primary font-medium mb-1">
-                        Connecting from...
+                        {t('ideas.connecting_from')}
                       </p>
                     )}
                     {isConnectionTarget && (
                       <p className="text-xs text-primary font-medium mb-1">
-                        Click to connect
+                        {t('ideas.click_to_connect')}
                       </p>
                     )}
                     <h3 className="font-semibold text-sm mb-1 line-clamp-1 group-hover:text-primary">

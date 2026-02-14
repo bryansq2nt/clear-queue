@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -49,6 +50,7 @@ export default function IdeaDrawer({
   onClose: () => void
   onUpdate: () => void
 }) {
+  const { t } = useI18n()
   const router = useRouter()
   const [idea, setIdea] = useState<Idea | null>(null)
   const [projectLinks, setProjectLinks] = useState<ProjectLink[]>([])
@@ -178,11 +180,11 @@ export default function IdeaDrawer({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Idea Details</DialogTitle>
+          <DialogTitle>{t('ideas.idea_details')}</DialogTitle>
         </DialogHeader>
 
         {loading ? (
-          <div className="py-8 text-center">Loading...</div>
+          <div className="py-8 text-center">{t('common.loading')}</div>
         ) : (
           <div className="space-y-6">
             {/* Title and Description */}
@@ -194,7 +196,7 @@ export default function IdeaDrawer({
                       htmlFor="title"
                       className="block text-sm font-medium mb-2"
                     >
-                      Title <span className="text-red-500">*</span>
+                      {t('ideas.title_label')}
                     </label>
                     <Input
                       id="title"
@@ -210,7 +212,7 @@ export default function IdeaDrawer({
                       htmlFor="description"
                       className="block text-sm font-medium mb-2"
                     >
-                      Description
+                      {t('ideas.description_label')}
                     </label>
                     <Textarea
                       id="description"
@@ -220,13 +222,13 @@ export default function IdeaDrawer({
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Button type="submit">Save</Button>
+                    <Button type="submit">{t('common.save')}</Button>
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setIsEditing(false)}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 </form>
@@ -240,7 +242,7 @@ export default function IdeaDrawer({
                         size="sm"
                         onClick={() => setIsEditing(true)}
                       >
-                        Edit
+                        {t('common.edit')}
                       </Button>
                       <Button
                         variant="destructive"
@@ -248,7 +250,7 @@ export default function IdeaDrawer({
                         onClick={handleDelete}
                         disabled={isDeleting}
                       >
-                        {isDeleting ? 'Deleting...' : 'Delete'}
+                        {isDeleting ? t('ideas.deleting') : t('common.delete')}
                       </Button>
                     </div>
                   </div>
@@ -259,115 +261,6 @@ export default function IdeaDrawer({
                       </p>
                     </div>
                   )}
-                </div>
-              )}
-            </div>
-
-            {/* Linked Projects */}
-            <div className="border-t pt-4">
-              <h3 className="text-lg font-semibold mb-4">Linked Projects</h3>
-
-              {/* Link to Project Form */}
-              <div className="mb-4">
-                <form
-                  id="link-project-form"
-                  action={handleLinkProject}
-                  className="space-y-3"
-                >
-                  <div>
-                    <label
-                      htmlFor="projectId"
-                      className="block text-sm font-medium mb-2"
-                    >
-                      Project <span className="text-red-500">*</span>
-                    </label>
-                    {availableProjects.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        All available projects are already linked to this idea.
-                      </p>
-                    ) : (
-                      <select
-                        id="projectId"
-                        name="projectId"
-                        required
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      >
-                        <option value="">Select a project...</option>
-                        {availableProjects.map((project) => (
-                          <option key={project.id} value={project.id}>
-                            {project.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                  <div>
-                    <label htmlFor="role" className="block text-sm font-medium mb-2">
-                      Role (optional)
-                    </label>
-                    <Input
-                      id="role"
-                      name="role"
-                      type="text"
-                      placeholder="e.g., origin, reference, blocks"
-                    />
-                  </div>
-                  {linkError && (
-                    <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
-                      {linkError}
-                    </div>
-                  )}
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={availableProjects.length === 0}
-                  >
-                    Link Project
-                  </Button>
-                </form>
-              </div>
-
-              {/* Linked Projects List */}
-              {projectLinks.length === 0 ? (
-                <p className="text-muted-foreground">
-                  This idea is not linked to any projects yet.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {projectLinks.map((link) => (
-                    <div
-                      key={link.id}
-                      className="flex items-center justify-between p-3 bg-muted rounded-md"
-                    >
-                      <div className="flex-1">
-                        {link.project ? (
-                          <Link
-                            href={`/project/${link.project.id}`}
-                            className="font-medium hover:text-primary"
-                            target="_blank"
-                          >
-                            {link.project.name}
-                          </Link>
-                        ) : (
-                          <p className="font-medium">
-                            Project ID: {link.project_id}
-                          </p>
-                        )}
-                        {link.role && (
-                          <p className="text-sm text-muted-foreground">
-                            Role: {link.role}
-                          </p>
-                        )}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleUnlink(link.id)}
-                      >
-                        Unlink
-                      </Button>
-                    </div>
-                  ))}
                 </div>
               )}
             </div>

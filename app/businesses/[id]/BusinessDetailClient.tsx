@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '@/components/I18nProvider'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import Sidebar from '@/components/Sidebar'
@@ -56,6 +57,7 @@ export default function BusinessDetailClient({
   initialBusiness,
   clientName,
 }: BusinessDetailClientProps) {
+  const { t } = useI18n()
   const router = useRouter()
   const [business, setBusiness] = useState<Business>(initialBusiness)
   const [projectsList, setProjectsList] = useState<Project[]>([])
@@ -133,7 +135,7 @@ export default function BusinessDetailClient({
               className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Businesses
+              {t('businesses.back_to_businesses')}
             </Link>
           </div>
 
@@ -179,13 +181,13 @@ export default function BusinessDetailClient({
                 className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent text-foreground"
               >
                 <Edit className="w-4 h-4" />
-                Edit
+                {t('common.edit')}
               </button>
               <button
                 onClick={handleDelete}
                 className="inline-flex items-center gap-2 px-4 py-2 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400"
               >
-                Delete
+                {t('common.delete')}
               </button>
             </div>
           </div>
@@ -194,7 +196,7 @@ export default function BusinessDetailClient({
             <section className="bg-card rounded-lg shadow-sm border border-border p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
-                Address
+                {t('businesses.address')}
               </h2>
               {addressParts.length > 0 ? (
                 mapsUrl ? (
@@ -210,7 +212,7 @@ export default function BusinessDetailClient({
                   <p className="text-gray-900 dark:text-white">{addressParts.join(' · ')}</p>
                 )
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">No address.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('businesses.no_address')}</p>
               )}
             </section>
 
@@ -218,7 +220,7 @@ export default function BusinessDetailClient({
               <section className="bg-card rounded-lg shadow-sm border border-border p-6">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <Globe className="w-5 h-5" />
-                  Social
+                  {t('businesses.social')}
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {SOCIAL_ICONS.filter((s) => social[s.key]).map((s) => (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { useRouter } from 'next/navigation'
 import { batchUpdatePositionsAction } from './boards/[id]/canvas/batch-actions'
 import {
@@ -64,6 +65,7 @@ export default function IdeaGraphCanvas({
   onNodeClick: (ideaId: string) => void
   onRefresh: () => void
 }) {
+  const { t } = useI18n()
   const router = useRouter()
 
   // World dimensions
@@ -487,13 +489,13 @@ export default function IdeaGraphCanvas({
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-lg">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium">
-              Connection mode: Click another node to connect (ESC to cancel)
+              {t('ideas.connection_mode')}
             </span>
             <button
               onClick={() => setConnectionMode(null)}
               className="text-sm underline hover:no-underline"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </div>
@@ -549,8 +551,8 @@ export default function IdeaGraphCanvas({
           </svg>
         </div>
 
-        {/* Layer 2: Nodes - always on top */}
-        <div className="absolute inset-0 z-[100]">
+        {/* Layer 2: Nodes - always on top; pointer-events-none so clicks pass through to lines */}
+        <div className="absolute inset-0 z-[100] pointer-events-none">
         {items.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-muted-foreground">
@@ -568,7 +570,7 @@ export default function IdeaGraphCanvas({
             return (
               <div
                 key={item.id}
-                className="absolute"
+                className="absolute pointer-events-auto"
                 style={{
                   left: 0,
                   top: 0,
@@ -613,12 +615,12 @@ export default function IdeaGraphCanvas({
                   >
                     {isConnectionSource && (
                       <p className="text-xs text-primary font-medium mb-1 whitespace-nowrap">
-                        Connecting from...
+                        {t('ideas.connecting_from')}
                       </p>
                     )}
                     {isConnectionTarget && (
                       <p className="text-xs text-primary font-medium mb-1 whitespace-nowrap">
-                        Click to connect
+                        {t('ideas.click_to_connect')}
                       </p>
                     )}
                     <h3 className={`font-semibold text-sm whitespace-nowrap ${cardColor.text}`}>

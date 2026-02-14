@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import Sidebar from '@/components/Sidebar'
 import TopBar from '@/components/TopBar'
+import { useI18n } from '@/components/I18nProvider'
 import { signOut } from '@/app/actions/auth'
 import { Plus } from 'lucide-react'
 import { getBusinesses, type BusinessWithClient } from '@/app/clients/actions'
@@ -16,6 +17,7 @@ type Project = Database['public']['Tables']['projects']['Row']
 type Business = Database['public']['Tables']['businesses']['Row']
 
 export default function BusinessesPageClient() {
+  const { t } = useI18n()
   const [projects, setProjects] = useState<Project[]>([])
   const [businesses, setBusinesses] = useState<BusinessWithClient[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -55,7 +57,7 @@ export default function BusinessesPageClient() {
         onSignOut={() => signOut()}
         onProjectAdded={loadProjects}
         onProjectUpdated={loadProjects}
-        projectName="Businesses"
+        projectName={t('businesses.title')}
         currentProject={null}
       />
       <div className="flex-1 flex overflow-hidden">
@@ -73,10 +75,10 @@ export default function BusinessesPageClient() {
           <div className="flex items-center justify-between gap-4 mb-6">
             <div>
               <h1 className="text-2xl font-bold text-foreground">
-                Businesses
+                {t('businesses.title')}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                All businesses linked to your clients.
+                {t('businesses.subtitle')}
               </p>
             </div>
             <button
@@ -85,14 +87,14 @@ export default function BusinessesPageClient() {
               className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
             >
               <Plus className="w-4 h-4" />
-              Add Business
+              {t('businesses.add_business')}
             </button>
           </div>
           {isLoading ? (
-            <p className="text-sm text-slate-500">Loading...</p>
+            <p className="text-sm text-slate-500">{t('common.loading')}</p>
           ) : businesses.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              No businesses yet. Click &quot;Add Business&quot; to create one.
+              {t('businesses.no_businesses_yet')}
             </p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

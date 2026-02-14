@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 import { X, Package } from 'lucide-react'
 import { createItem } from '../actions'
 import { Database } from '@/lib/supabase/types'
@@ -22,6 +23,7 @@ export function CreateItemModal({
   categoryId,
   budgetId,
 }: CreateItemModalProps) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [quantity, setQuantity] = useState('1')
@@ -117,7 +119,7 @@ export function CreateItemModal({
               <Package className="w-6 h-6 text-white" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Add Item
+              {t('budgets.add_item')}
             </h2>
           </div>
           <button
@@ -133,13 +135,13 @@ export function CreateItemModal({
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Item Name <span className="text-red-500">*</span>
+              {t('budgets.item_name_label')}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Trailer Hitch, Cleaning Supplies"
+              placeholder={t('budgets.item_name_placeholder')}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               required
               autoFocus
@@ -149,12 +151,12 @@ export function CreateItemModal({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description (Optional)
+              {t('budgets.description_optional')}
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description..."
+              placeholder={t('budgets.brief_description_placeholder')}
               rows={2}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
             />
@@ -164,7 +166,7 @@ export function CreateItemModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Quantity <span className="text-red-500">*</span>
+                {t('budgets.quantity_label')}
               </label>
               <input
                 type="number"
@@ -179,7 +181,7 @@ export function CreateItemModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Unit Price ($) <span className="text-red-500">*</span>
+                {t('budgets.unit_price_label')}
               </label>
               <input
                 type="number"
@@ -196,13 +198,13 @@ export function CreateItemModal({
           {/* Link */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Link (Optional)
+              {t('budgets.link_optional')}
             </label>
             <input
               type="url"
               value={link}
               onChange={(e) => setLink(e.target.value)}
-              placeholder="https://example.com/product"
+              placeholder={t('budgets.link_placeholder')}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
             />
           </div>
@@ -210,16 +212,16 @@ export function CreateItemModal({
           {/* Status */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Status
+              {t('budgets.status_label')}
             </label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as 'pending' | 'quoted' | 'acquired')}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
             >
-              <option value="pending">⏳ Pending</option>
-              <option value="quoted">💬 Quoted</option>
-              <option value="acquired">✅ Acquired</option>
+              <option value="pending">{t('budgets.item_status_pending')}</option>
+              <option value="quoted">{t('budgets.item_status_quoted')}</option>
+              <option value="acquired">{t('budgets.item_status_acquired')}</option>
             </select>
           </div>
 
@@ -233,19 +235,19 @@ export function CreateItemModal({
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <label htmlFor="isRecurrent" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Recurrent item (e.g., monthly subscription)
+              {t('budgets.recurrent_item_label')}
             </label>
           </div>
 
           {/* Notes */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Notes (Optional)
+              {t('budgets.notes_optional')}
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Additional notes..."
+              placeholder={t('budgets.additional_notes_placeholder')}
               rows={3}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
             />
@@ -258,14 +260,14 @@ export function CreateItemModal({
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isSubmitting ? 'Creating...' : 'Create Item'}
+              {isSubmitting ? t('budgets.creating_item') : t('budgets.create_item')}
             </button>
           </div>
         </form>

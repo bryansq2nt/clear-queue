@@ -104,7 +104,7 @@ export function BudgetHeader({ budget, projects, stats, onUpdated }: BudgetHeade
         {/* Acquired */}
         <div>
           <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-            ✅ Acquired
+            {t('budgets.item_status_acquired')}
           </div>
           <div className="text-2xl font-semibold text-green-600 dark:text-green-400">
             {formatCurrency(stats.acquired)}
@@ -117,7 +117,7 @@ export function BudgetHeader({ budget, projects, stats, onUpdated }: BudgetHeade
         {/* Pending */}
         <div>
           <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-            ⏳ {t('budgets.pending')}
+            {t('budgets.item_status_pending')}
           </div>
           <div className="text-2xl font-semibold text-yellow-600 dark:text-yellow-400">
             {formatCurrency(stats.pending)}
