@@ -232,8 +232,12 @@
     "project_label": "Project:",
     "delete_list": "Delete list",
     "delete_list_confirm": "Delete list \"{title}\"? All tasks in it will be deleted. This cannot be undone.",
+    "link_list_to_project": "Link to project",
+    "no_project": "No project",
     "add_task_placeholder": "Add a task...",
-    "no_tasks_yet": "No tasks yet. Add one above."
+    "no_tasks_yet": "No tasks yet. Add one above.",
+    "untitled_list": "Untitled",
+    "new_list_hint": "Name your list above and add your first task below."
   },
   "tasks": {
     "add_task": "Add task",

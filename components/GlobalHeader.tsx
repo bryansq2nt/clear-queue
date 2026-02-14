@@ -33,13 +33,16 @@ export function GlobalHeader({
   return (
     <header className="bg-primary text-primary-foreground shadow flex-shrink-0">
       <div className="px-4 md:px-6 py-3 md:py-4 flex items-center gap-2 min-w-0">
-        {backHref != null && backLabel != null ? (
+        {backHref != null ? (
           <Link
             href={backHref}
             className="flex-shrink-0 inline-flex items-center gap-1.5 text-sm text-primary-foreground/90 hover:text-primary-foreground py-1 pr-2"
+            aria-label={backLabel && backLabel.trim() ? undefined : t('common.back')}
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline truncate max-w-[120px]">{backLabel}</span>
+            {backLabel && backLabel.trim() ? (
+              <span className="hidden sm:inline truncate max-w-[120px]">{backLabel}</span>
+            ) : null}
           </Link>
         ) : onOpenSidebar != null ? (
           <button

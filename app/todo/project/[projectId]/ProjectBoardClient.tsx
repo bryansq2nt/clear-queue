@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import Sidebar from '@/components/Sidebar'
@@ -238,12 +238,17 @@ function TaskRow({
 
   return (
     <li className="group flex items-center gap-3 py-3">
-      <input
-        type="checkbox"
-        checked={item.is_done}
-        onChange={onToggle}
-        className="flex-shrink-0 w-5 h-5 rounded border-slate-300 dark:border-gray-600 text-slate-600 focus:ring-slate-400 cursor-pointer"
-      />
+      <label className="flex-shrink-0 cursor-pointer flex items-center justify-center w-5 h-5">
+        <input
+          type="checkbox"
+          checked={item.is_done}
+          onChange={onToggle}
+          className="sr-only peer"
+        />
+        <span className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-gray-600 bg-transparent flex items-center justify-center transition-colors peer-checked:bg-primary peer-checked:border-primary">
+          {item.is_done && <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />}
+        </span>
+      </label>
       <div className="flex-1 min-w-0">
         {editing ? (
           <input

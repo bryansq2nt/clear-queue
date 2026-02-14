@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { Trash2, MoreVertical, Link2, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
-import { DetailLayout } from '@/components/DetailLayout'
+import { GlobalHeader } from '@/components/GlobalHeader'
 import {
   createTodoItemAction,
   toggleTodoItemAction,
@@ -24,6 +24,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/components/I18nProvider'
 
@@ -51,13 +63,14 @@ export default function ListBoardClient({
   const [items, setItems] = useState<TodoItem[]>(initialItems)
   const [projects, setProjects] = useState<Project[]>([])
   const [newTaskContent, setNewTaskContent] = useState('')
-  const [adding, setAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState(initialListTitle)
   const [savingTitle, setSavingTitle] = useState(false)
   const [savingProject, setSavingProject] = useState(false)
   const [deletingList, setDeletingList] = useState(false)
+  const [linkProjectOpen, setLinkProjectOpen] = useState(false)
+  const newTaskInputRef = useRef<HTMLInputElement>(null)
 
   const loadProjects = useCallback(async () => {
     const { data } = await createClient()
@@ -77,29 +90,59 @@ export default function ListBoardClient({
     setProjectId(initialProjectId)
   }, [initialListTitle, initialProjectId])
 
-  const handleAddTask = async (e: React.FormEvent) => {
+  const submitNewTask = useCallback(
+    (content: string) => {
+      const trimmed = content.trim()
+      if (!trimmed) return
+      setError(null)
+      const tempId = `opt-${Date.now()}`
+      const optimisticItem: TodoItem = {
+        id: tempId,
+        owner_id: '',
+        list_id: listId,
+        content: trimmed,
+        is_done: false,
+        due_date: null,
+        position: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      setItems((prev) => [...prev, optimisticItem])
+      setNewTaskContent('')
+      newTaskInputRef.current?.focus()
+
+      createTodoItemAction(
+        (() => {
+          const fd = new FormData()
+          fd.append('list_id', listId)
+          fd.append('content', trimmed)
+          return fd
+        })()
+      ).then((result) => {
+        if (result.data) {
+          setItems((prev) =>
+            prev.map((i) => (i.id === tempId ? result.data! : i))
+          )
+          router.refresh()
+        } else {
+          setItems((prev) => prev.filter((i) => i.id !== tempId))
+          setError(result.error ?? null)
+        }
+      })
+    },
+    [listId, router]
+  )
+
+  const handleNewTaskKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return
     e.preventDefault()
     const content = newTaskContent.trim()
     if (!content) return
-
-    setError(null)
-    setAdding(true)
-    const formData = new FormData()
-    formData.append('list_id', listId)
-    formData.append('content', content)
-    const result = await createTodoItemAction(formData)
-    setAdding(false)
-    setNewTaskContent('')
-
-    if (result.data) {
-      setItems((prev) => [...prev, result.data!])
-      router.refresh()
-    } else if (result.error) {
-      setError(result.error)
-    }
+    submitNewTask(content)
   }
 
   const handleToggle = async (item: TodoItem) => {
+    if (item.id.startsWith('opt-')) return
     const result = await toggleTodoItemAction(item.id)
     if (result.data) {
       setItems((prev) =>
@@ -110,6 +153,7 @@ export default function ListBoardClient({
   }
 
   const handleUpdateContent = async (item: TodoItem, content: string) => {
+    if (item.id.startsWith('opt-')) return
     const trimmed = content.trim()
     if (trimmed === item.content) return
     if (!trimmed) return
@@ -124,6 +168,7 @@ export default function ListBoardClient({
   }
 
   const handleDelete = async (item: TodoItem) => {
+    if (item.id.startsWith('opt-')) return
     const result = await deleteTodoItemAction(item.id)
     if (result.success) {
       setItems((prev) => prev.filter((i) => i.id !== item.id))
@@ -132,17 +177,17 @@ export default function ListBoardClient({
   }
 
   const handleSaveTitle = async () => {
-    const t = titleValue.trim()
-    if (!t || t === listTitle) {
+    const trimmed = titleValue.trim()
+    if (!trimmed || trimmed === listTitle) {
       setEditingTitle(false)
       setTitleValue(listTitle)
       return
     }
     setSavingTitle(true)
-    const result = await renameTodoListAction(listId, t)
+    const result = await renameTodoListAction(listId, trimmed)
     setSavingTitle(false)
     if (result.data) {
-      setListTitle(t)
+      setListTitle(trimmed)
       setEditingTitle(false)
       router.refresh()
     } else if (result.error) {
@@ -158,6 +203,7 @@ export default function ListBoardClient({
     setSavingProject(false)
     if (result.data) {
       setProjectId(value)
+      setLinkProjectOpen(false)
       router.refresh()
     } else if (result.error) {
       setError(result.error)
@@ -177,24 +223,126 @@ export default function ListBoardClient({
   }
 
   return (
-    <DetailLayout
-      backHref="/todo"
-      backLabel={t('todo.back_to_todo')}
-      title={listTitle}
-      actions={
-        <>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground hidden sm:inline">{t('todo.project_label')}</span>
+    <div className="flex flex-col h-screen bg-background">
+      <GlobalHeader
+        backHref="/todo"
+        backLabel=""
+        title={t('todo.title')}
+      />
+      <main className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-6 py-4">
+        <div className="max-w-5xl mx-auto w-full pb-24">
+          {/* List title - only in content */}
+          <div className="border-b border-border pb-4 mb-4">
+            <div className="flex flex-wrap items-center gap-4">
+              {editingTitle ? (
+                <input
+                  type="text"
+                  value={titleValue}
+                  onChange={(e) => setTitleValue(e.target.value)}
+                  onBlur={handleSaveTitle}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveTitle()
+                    if (e.key === 'Escape') {
+                      setTitleValue(listTitle)
+                      setEditingTitle(false)
+                    }
+                  }}
+                  autoFocus
+                  disabled={savingTitle}
+                  className="text-xl font-semibold bg-transparent border-0 border-b border-slate-300 dark:border-gray-600 focus:outline-none focus:ring-0 py-0.5 text-slate-900 dark:text-white min-w-[200px]"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingTitle(true)}
+                  className="text-xl font-semibold text-slate-900 dark:text-white truncate text-left hover:opacity-80"
+                >
+                  {listTitle}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {error && (
+            <p className="mt-3 text-sm text-destructive">{error}</p>
+          )}
+
+          {/* Task list + new task row (Enter to add, no button) */}
+          <div className="mt-6">
+            <ul className="divide-y divide-slate-100 dark:divide-gray-800">
+              {items.map((item) => (
+                <TaskRow
+                  key={item.id}
+                  item={item}
+                  onToggle={() => handleToggle(item)}
+                  onSaveContent={(content) => handleUpdateContent(item, content)}
+                  onDelete={() => handleDelete(item)}
+                />
+              ))}
+              <li className="flex items-center gap-3 py-3">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full border-2 border-slate-300 dark:border-gray-600 bg-transparent" aria-hidden />
+                <input
+                  ref={newTaskInputRef}
+                  type="text"
+                  value={newTaskContent}
+                  onChange={(e) => setNewTaskContent(e.target.value)}
+                  onKeyDown={handleNewTaskKeyDown}
+                  placeholder={t('todo.add_task_placeholder')}
+                  className="flex-1 min-w-0 bg-transparent border-0 border-b border-slate-200 dark:border-gray-700 focus:border-slate-400 dark:focus:border-gray-500 focus:outline-none focus:ring-0 py-0.5 text-base text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  aria-label={t('todo.add_task_placeholder')}
+                />
+              </li>
+            </ul>
+          </div>
+        </div>
+      </main>
+
+      {/* FAB: 3-dot menu — Link to project, Delete list */}
+      <div className="fixed bottom-6 right-6 z-40 md:bottom-8 md:right-8">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
+              aria-label={t('todo.title')}
+            >
+              <MoreVertical className="w-6 h-6" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top" className="w-56">
+            <DropdownMenuItem onClick={() => setLinkProjectOpen(true)}>
+              <Link2 className="w-4 h-4 mr-2" />
+              {t('todo.link_list_to_project')}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleDeleteList}
+              disabled={deletingList}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {t('todo.delete_list')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Modal: Link list to project */}
+      <Dialog open={linkProjectOpen} onOpenChange={setLinkProjectOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('todo.link_list_to_project')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
             <Select
               value={projectId ?? 'none'}
               onValueChange={handleProjectChange}
               disabled={savingProject}
             >
-              <SelectTrigger className="w-[140px] sm:w-[180px] h-9">
-                <SelectValue placeholder={t('billings.no_project')} />
+              <SelectTrigger className="w-full h-10">
+                <SelectValue placeholder={t('todo.no_project')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">{t('billings.no_project')}</SelectItem>
+                <SelectItem value="none">{t('todo.no_project')}</SelectItem>
                 {projects.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}
@@ -203,97 +351,9 @@ export default function ListBoardClient({
               </SelectContent>
             </Select>
           </div>
-          <button
-            type="button"
-            onClick={handleDeleteList}
-            disabled={deletingList}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/50 text-destructive px-3 py-1.5 text-sm font-medium hover:bg-destructive/10 disabled:opacity-50"
-          >
-            <Trash2 className="w-4 h-4" />
-            {t('todo.delete_list')}
-          </button>
-        </>
-      }
-      contentClassName="px-4 sm:px-6 py-4"
-    >
-      <div className="max-w-5xl mx-auto w-full">
-        <div className="border-b border-border pb-4 mb-4">
-          <div className="flex flex-wrap items-center gap-4">
-                {editingTitle ? (
-                  <input
-                    type="text"
-                    value={titleValue}
-                    onChange={(e) => setTitleValue(e.target.value)}
-                    onBlur={handleSaveTitle}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSaveTitle()
-                      if (e.key === 'Escape') {
-                        setTitleValue(listTitle)
-                        setEditingTitle(false)
-                      }
-                    }}
-                    autoFocus
-                    disabled={savingTitle}
-                    className="text-xl font-semibold bg-transparent border-0 border-b border-slate-300 dark:border-gray-600 focus:outline-none focus:ring-0 py-0.5 text-slate-900 dark:text-white min-w-[200px]"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setEditingTitle(true)}
-                    className="text-xl font-semibold text-slate-900 dark:text-white truncate text-left hover:opacity-80"
-                  >
-                    {listTitle}
-                  </button>
-                )}
-              </div>
-            </div>
-
-        {error && (
-              <p className="mt-3 text-sm text-destructive">{error}</p>
-            )}
-
-            <form onSubmit={handleAddTask} className="mt-6">
-              <div className="flex gap-2 items-center">
-                <input
-                  type="text"
-                  value={newTaskContent}
-                  onChange={(e) => setNewTaskContent(e.target.value)}
-                  placeholder={t('todo.add_task_placeholder')}
-                  disabled={adding}
-                  className="flex-1 rounded-lg border border-border bg-card px-4 py-2.5 text-base text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-gray-600"
-                />
-                <button
-                  type="submit"
-                  disabled={adding || !newTaskContent.trim()}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
-                >
-                  <Plus className="w-4 h-4" />
-                  {t('common.add')}
-                </button>
-              </div>
-            </form>
-
-            <div className="mt-6">
-              {items.length === 0 ? (
-                <p className="text-slate-500 dark:text-slate-400 text-sm py-8">
-                  {t('todo.no_tasks_yet')}
-                </p>
-              ) : (
-                <ul className="divide-y divide-slate-100 dark:divide-gray-800">
-                  {items.map((item) => (
-                    <TaskRow
-                      key={item.id}
-                      item={item}
-                      onToggle={() => handleToggle(item)}
-                      onSaveContent={(content) => handleUpdateContent(item, content)}
-                      onDelete={() => handleDelete(item)}
-                    />
-                  ))}
-                </ul>
-              )}
-            </div>
-      </div>
-    </DetailLayout>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }
 
@@ -334,12 +394,17 @@ function TaskRow({
 
   return (
     <li className="group flex items-center gap-3 py-3">
-      <input
-        type="checkbox"
-        checked={item.is_done}
-        onChange={onToggle}
-        className="flex-shrink-0 w-5 h-5 rounded border-slate-300 dark:border-gray-600 text-slate-600 focus:ring-slate-400 cursor-pointer"
-      />
+      <label className="flex-shrink-0 cursor-pointer flex items-center justify-center w-5 h-5">
+        <input
+          type="checkbox"
+          checked={item.is_done}
+          onChange={onToggle}
+          className="sr-only peer"
+        />
+        <span className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-gray-600 bg-transparent flex items-center justify-center transition-colors peer-checked:bg-primary peer-checked:border-primary">
+          {item.is_done && <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />}
+        </span>
+      </label>
       <div className="flex-1 min-w-0">
         {editing ? (
           <input

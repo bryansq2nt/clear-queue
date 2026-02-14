@@ -183,7 +183,16 @@
     "create_and_open": "Crear y abrir lista",
     "unknown_project": "Proyecto desconocido",
     "no_lists_yet": "Aún no hay listas de tareas.",
-    "list_name_required": "El nombre de la lista es obligatorio."
+    "list_name_required": "El nombre de la lista es obligatorio.",
+    "project_label": "Proyecto:",
+    "delete_list": "Eliminar lista",
+    "delete_list_confirm": "¿Eliminar la lista \"{title}\"? Se eliminarán todas las tareas. No se puede deshacer.",
+    "link_list_to_project": "Vincular a proyecto",
+    "no_project": "Sin proyecto",
+    "add_task_placeholder": "Agregar una tarea...",
+    "no_tasks_yet": "Aún no hay tareas. Agrega una abajo.",
+    "untitled_list": "Sin título",
+    "new_list_hint": "Nombre la lista arriba y agrega la primera tarea abajo."
   },
   "task_status": {
     "backlog": "Pendientes",

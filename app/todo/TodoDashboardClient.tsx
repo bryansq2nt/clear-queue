@@ -39,7 +39,9 @@ export default function TodoDashboardClient() {
   }, [load])
 
   const projectName = (projectId: string | null) =>
-    projectId ? (projects.find((p) => p.id === projectId)?.name ?? 'Unknown project') : 'No project'
+    projectId
+      ? (projects.find((p) => p.id === projectId)?.name ?? t('todo.unknown_project'))
+      : t('todo.no_project')
 
   if (loading) {
     return (
@@ -58,35 +60,14 @@ export default function TodoDashboardClient() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">
-            To-do
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1 text-sm">
-            Your to-do lists. Open one to manage tasks.
-          </p>
-        </div>
-        <Link
-          href="/todo/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium hover:opacity-90"
-        >
-          <Plus className="w-4 h-4" />
-          {t('todo.add_new_list')}
-        </Link>
-      </div>
+    <div className="max-w-5xl mx-auto relative">
+      <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">
+        {t('todo.subtitle')}
+      </p>
 
       {lists.length === 0 ? (
         <div className="rounded-xl border border-border bg-card p-8 text-center">
-          <p className="text-slate-600 dark:text-slate-400 mb-4">{t('todo.no_lists_yet')}</p>
-          <Link
-            href="/todo/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium hover:opacity-90"
-          >
-            <Plus className="w-4 h-4" />
-            {t('todo.add_new_list')}
-          </Link>
+          <p className="text-slate-600 dark:text-slate-400">{t('todo.no_lists_yet')}</p>
         </div>
       ) : (
         <ul className="space-y-1">
@@ -114,6 +95,16 @@ export default function TodoDashboardClient() {
           ))}
         </ul>
       )}
+
+      {/* FAB: Agregar nueva lista */}
+      <Link
+        href="/todo/new"
+        title={t('todo.add_new_list')}
+        aria-label={t('todo.add_new_list')}
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
+      >
+        <Plus className="w-6 h-6" />
+      </Link>
     </div>
   );
 }
