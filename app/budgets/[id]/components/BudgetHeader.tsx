@@ -22,7 +22,7 @@ interface BudgetHeaderProps {
     progress: number
   }
   onUpdated: () => void
-  /** When true, back button and h1 are omitted (used inside DetailLayout) */
+  /** When true, used inside DetailLayout: no back button in card, title (h1) shown in card */
   compact?: boolean
 }
 
@@ -89,6 +89,9 @@ export function BudgetHeader({ budget, projects, stats, onUpdated, compact }: Bu
       {compact && (
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="min-w-0 flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
+              {budget.name}
+            </h1>
             {budget.description && (
               <p className="text-sm text-muted-foreground">{budget.description}</p>
             )}
@@ -110,41 +113,41 @@ export function BudgetHeader({ budget, projects, stats, onUpdated, compact }: Bu
         budget={budget}
       />
 
-      {/* Total Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Total Summary: una fila horizontal en móvil, grid en desktop */}
+      <div className="grid grid-cols-3 md:grid-cols-4 gap-2 sm:gap-6">
         {/* Total Budget */}
-        <div className="col-span-1 md:col-span-2">
-          <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+        <div className="col-span-1 md:col-span-2 min-w-0">
+          <div className="text-xs sm:text-sm text-muted-foreground truncate">
             {t('budgets.total_budget')}
           </div>
-          <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <div className="text-lg sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent truncate">
             {formatCurrency(stats.total)}
           </div>
         </div>
 
-        {/* Acquired */}
-        <div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+        {/* Acquired: label + monto + % en una línea compacta en móvil */}
+        <div className="min-w-0 flex flex-col justify-center">
+          <div className="text-xs sm:text-sm text-muted-foreground truncate">
             {t('budgets.item_status_acquired')}
           </div>
-          <div className="text-2xl font-semibold text-green-600 dark:text-green-400">
-            {formatCurrency(stats.acquired)}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">
-            {stats.progress}%
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="text-base sm:text-2xl font-semibold text-green-600 dark:text-green-400 truncate">
+              {formatCurrency(stats.acquired)}
+            </span>
+            <span className="text-xs text-muted-foreground shrink-0">{stats.progress}%</span>
           </div>
         </div>
 
         {/* Pending */}
-        <div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+        <div className="min-w-0 flex flex-col justify-center">
+          <div className="text-xs sm:text-sm text-muted-foreground truncate">
             {t('budgets.item_status_pending')}
           </div>
-          <div className="text-2xl font-semibold text-yellow-600 dark:text-yellow-400">
-            {formatCurrency(stats.pending)}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">
-            {100 - stats.progress}%
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="text-base sm:text-2xl font-semibold text-yellow-600 dark:text-yellow-400 truncate">
+              {formatCurrency(stats.pending)}
+            </span>
+            <span className="text-xs text-muted-foreground shrink-0">{100 - stats.progress}%</span>
           </div>
         </div>
       </div>

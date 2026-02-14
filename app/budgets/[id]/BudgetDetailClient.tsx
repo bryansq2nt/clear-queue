@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useI18n } from '@/components/I18nProvider'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 import { DetailLayout } from '@/components/DetailLayout'
-import { Plus } from 'lucide-react'
+import { Plus, FolderPlus, Package, ChevronLeft } from 'lucide-react'
 import { getBudgetWithData, reorderCategories, reorderItems } from './actions'
 import { BudgetHeader } from './components/BudgetHeader'
 import { CategorySection } from './components/CategorySection'
 import { CreateCategoryModal } from './components/CreateCategoryModal'
+import { CreateItemModal } from './components/CreateItemModal'
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
@@ -27,8 +28,25 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
   const [budgetData, setBudgetData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const [fabMenuOpen, setFabMenuOpen] = useState(false)
+  const [fabSubView, setFabSubView] = useState<'main' | 'pick-category'>('main')
+  const [categoryIdForNewItem, setCategoryIdForNewItem] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const fabRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
+
+  // Close FAB menu when clicking outside
+  useEffect(() => {
+    if (!fabMenuOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (fabRef.current && !fabRef.current.contains(e.target as Node)) {
+        setFabMenuOpen(false)
+        setFabSubView('main')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [fabMenuOpen])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -266,8 +284,8 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
     return (
       <DetailLayout
         backHref="/budgets"
-        backLabel={t('budgets.back_to_budgets')}
-        title={t('budgets.title')}
+        backLabel=""
+        title={t('budgets.detail_title')}
         contentClassName="p-4 sm:p-6"
       >
         <div className="animate-pulse space-y-4">
@@ -283,8 +301,8 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
     return (
       <DetailLayout
         backHref="/budgets"
-        backLabel={t('budgets.back_to_budgets')}
-        title={t('budgets.title')}
+        backLabel=""
+        title={t('budgets.detail_title')}
         contentClassName="p-4 sm:p-6"
       >
         <div className="bg-destructive/10 border border-destructive rounded-lg p-6 text-center">
@@ -317,8 +335,8 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
     <>
       <DetailLayout
         backHref="/budgets"
-        backLabel={t('budgets.back_to_budgets')}
-        title={budgetData.budget.name}
+        backLabel=""
+        title={t('budgets.detail_title')}
         contentClassName="p-4 sm:p-6 max-w-7xl mx-auto w-full"
       >
         <BudgetHeader
@@ -394,14 +412,79 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
             )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsCategoryModalOpen(true)}
-          aria-label={t('budgets.add_category')}
-          className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
+        {/* Floating action button with menu */}
+        <div ref={fabRef} className="fixed bottom-6 right-6 z-40 md:bottom-8 md:right-8 flex flex-col items-end gap-2">
+          {fabMenuOpen && (
+            <div className="mb-2 w-56 rounded-lg border border-border bg-background shadow-xl overflow-hidden">
+              {fabSubView === 'main' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFabMenuOpen(false)
+                      setIsCategoryModalOpen(true)
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm font-medium text-foreground hover:bg-accent transition-colors"
+                  >
+                    <FolderPlus className="w-5 h-5 text-muted-foreground shrink-0" />
+                    {t('budgets.add_category')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const categories = budgetData?.categories ?? []
+                      if (categories.length === 0) {
+                        setFabMenuOpen(false)
+                        setIsCategoryModalOpen(true)
+                        return
+                      }
+                      setFabSubView('pick-category')
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm font-medium text-foreground hover:bg-accent transition-colors border-t border-border"
+                  >
+                    <Package className="w-5 h-5 text-muted-foreground shrink-0" />
+                    {t('budgets.add_item')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setFabSubView('main')}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-left text-sm text-muted-foreground hover:bg-accent transition-colors border-b border-border"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    {t('budgets.select_category')}
+                  </button>
+                  <div className="max-h-48 overflow-y-auto">
+                    {(budgetData?.categories ?? []).map((cat: any) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          setCategoryIdForNewItem(cat.id)
+                          setFabMenuOpen(false)
+                          setFabSubView('main')
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-foreground hover:bg-accent transition-colors"
+                      >
+                        <span className="truncate">{cat.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setFabMenuOpen((open) => !open)}
+            aria-label={t('budgets.add_category')}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:h-14 md:w-14"
+          >
+            <Plus className="h-6 w-6" />
+          </button>
+        </div>
       </DetailLayout>
 
       <CreateCategoryModal
@@ -410,6 +493,19 @@ export default function BudgetDetailClient({ budgetId }: BudgetDetailClientProps
         onCreated={handleCategoryCreated}
         budgetId={budgetId}
       />
+
+      {categoryIdForNewItem && (
+        <CreateItemModal
+          isOpen={!!categoryIdForNewItem}
+          onClose={() => setCategoryIdForNewItem(null)}
+          onCreated={(item) => {
+            handleItemCreated(categoryIdForNewItem, item)
+            setCategoryIdForNewItem(null)
+          }}
+          categoryId={categoryIdForNewItem}
+          budgetId={budgetId}
+        />
+      )}
     </>
   )
 }

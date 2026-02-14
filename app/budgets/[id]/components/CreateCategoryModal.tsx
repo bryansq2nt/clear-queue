@@ -81,27 +81,27 @@ export function CreateCategoryModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+      <div className="bg-background rounded-lg shadow-xl border border-border max-w-md w-full">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
-              <FolderPlus className="w-6 h-6 text-white" />
+            <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
+              <FolderPlus className="w-5 h-5 text-primary-foreground" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 className="text-lg font-semibold text-foreground">
               {t('budgets.add_category')}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3">
+        <form onSubmit={handleSubmit} className="p-4 space-y-3">
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
               {t('budgets.category_name_label')}
@@ -111,7 +111,7 @@ export function CreateCategoryModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('budgets.category_name_placeholder')}
-              className="w-full h-9 px-3 border border-input rounded-md bg-background text-foreground focus:ring-2 focus:ring-ring"
+              className="w-full h-9 px-3 border border-input rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
               required
               autoFocus
             />
@@ -126,7 +126,7 @@ export function CreateCategoryModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('budgets.category_description_placeholder')}
               rows={2}
-              className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background text-foreground focus:ring-2 focus:ring-ring resize-none"
+              className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-transparent resize-none"
             />
           </div>
 
@@ -134,14 +134,14 @@ export function CreateCategoryModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="flex-1 px-4 py-2 border border-border rounded-lg bg-background text-foreground hover:bg-accent transition-colors"
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               {isSubmitting ? t('budgets.creating_category') : t('budgets.create_category')}
             </button>

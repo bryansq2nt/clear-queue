@@ -3,9 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
-import Sidebar from '@/components/Sidebar'
-import TopBar from '@/components/TopBar'
-import { signOut } from '@/app/actions/auth'
+import { AppShell } from '@/components/AppShell'
 import { Plus } from 'lucide-react'
 import { getBudgets } from './actions'
 import { BudgetCard } from './components/BudgetCard'
@@ -19,10 +17,8 @@ export default function BudgetsPageClient() {
   const { t } = useI18n()
   const [projects, setProjects] = useState<Project[]>([])
   const [budgets, setBudgets] = useState<any[]>([])
-  const [searchQuery, setSearchQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const supabase = createClient()
 
   const loadProjects = useCallback(async () => {
@@ -48,146 +44,63 @@ export default function BudgetsPageClient() {
     loadBudgets()
   }, [loadProjects, loadBudgets])
 
-  // Reload budgets when modal closes
   const handleModalClose = () => {
     setIsModalOpen(false)
     loadBudgets()
   }
 
-  // Filter budgets by search query
-  const filteredBudgets = budgets.filter(budget => {
-    if (!searchQuery) return true
-    const query = searchQuery.toLowerCase()
-    return (
-      budget.name.toLowerCase().includes(query) ||
-      (budget.description && budget.description.toLowerCase().includes(query)) ||
-      (budget.projects && budget.projects.name.toLowerCase().includes(query))
-    )
-  })
-
   if (isLoading) {
     return (
-      <div className="flex flex-col h-screen bg-background">
-        <TopBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onSignOut={signOut}
-          onProjectAdded={loadProjects}
-          onProjectUpdated={loadProjects}
-          projectName={t('budgets.title')}
-          currentProject={null}
-          onOpenSidebar={() => setSidebarOpen(true)}
-        />
-        <div className="flex-1 flex overflow-hidden">
-          <Sidebar
-            projects={projects}
-            selectedProject={null}
-            selectedCategory={null}
-            showArchived={false}
-            onSelectProject={() => { }}
-            onCategoryChange={() => { }}
-            onShowArchivedChange={() => { }}
-            onProjectUpdated={loadProjects}
-            mobileOpen={sidebarOpen}
-            onMobileClose={() => setSidebarOpen(false)}
-          />
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-                ))}
-              </div>
-            </div>
-          </div>
+      <AppShell
+        title={t('budgets.title')}
+        projects={projects}
+        selectedProject={null}
+        selectedCategory={null}
+        showArchived={false}
+        onSelectProject={() => {}}
+        onCategoryChange={() => {}}
+        onShowArchivedChange={() => {}}
+        onProjectUpdated={loadProjects}
+        contentClassName="p-6"
+      >
+        <div className="flex items-center justify-center min-h-[200px]">
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
-      </div>
+      </AppShell>
     )
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <TopBar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onSignOut={signOut}
-        onProjectAdded={loadProjects}
-        onProjectUpdated={loadProjects}
-        projectName={t('budgets.title')}
-        currentProject={null}
-        onOpenSidebar={() => setSidebarOpen(true)}
-      />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          projects={projects}
-          selectedProject={null}
-          selectedCategory={null}
-          showArchived={false}
-          onSelectProject={() => { }}
-          onCategoryChange={() => { }}
-          onShowArchivedChange={() => { }}
-          onProjectUpdated={loadProjects}
-          mobileOpen={sidebarOpen}
-          onMobileClose={() => setSidebarOpen(false)}
-        />
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                {t('budgets.title')}
-              </h1>
-              <p className="text-muted-foreground mt-2">
-                {t('budgets.subtitle')}
-              </p>
-            </div>
+    <AppShell
+      title={t('budgets.title')}
+      projects={projects}
+      selectedProject={null}
+      selectedCategory={null}
+      showArchived={false}
+      onSelectProject={() => {}}
+      onCategoryChange={() => {}}
+      onShowArchivedChange={() => {}}
+      onProjectUpdated={loadProjects}
+      contentClassName="p-4 sm:p-6"
+    >
+      <div className="max-w-5xl mx-auto relative">
+        <p className="text-muted-foreground text-sm mb-6">
+          {t('budgets.subtitle')}
+        </p>
 
-            {filteredBudgets.length > 0 && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                {t('budgets.new_budget')}
-              </button>
-            )}
+        {budgets.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {budgets.map((budget) => (
+              <BudgetCard
+                key={budget.id}
+                budget={budget}
+                onDeleted={loadBudgets}
+              />
+            ))}
           </div>
-
-          {/* Content */}
-          {filteredBudgets.length === 0 && budgets.length === 0 ? (
-            <EmptyState onCreateClick={() => setIsModalOpen(true)} />
-          ) : filteredBudgets.length === 0 ? (
-            <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
-              <p className="text-gray-600 dark:text-gray-400">
-                No budgets found matching &quot;{searchQuery}&quot;
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredBudgets.map((budget) => (
-                <BudgetCard
-                  key={budget.id}
-                  budget={budget}
-                  onDeleted={loadBudgets}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Show create button when no results but budgets exist */}
-          {filteredBudgets.length === 0 && budgets.length > 0 && (
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                {t('budgets.new_budget')}
-              </button>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       <button
@@ -203,6 +116,6 @@ export default function BudgetsPageClient() {
         isOpen={isModalOpen}
         onClose={handleModalClose}
       />
-    </div>
+    </AppShell>
   )
 }

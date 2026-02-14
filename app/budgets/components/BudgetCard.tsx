@@ -51,7 +51,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
     e.preventDefault()
     e.stopPropagation()
     
-    if (!confirm(`Are you sure you want to delete "${budget.name}"? This action cannot be undone.`)) {
+    if (!confirm(t('budgets.delete_confirm', { name: budget.name }))) {
       return
     }
 
@@ -63,7 +63,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
       }
     } catch (error) {
       console.error('Error deleting budget:', error)
-      alert('Failed to delete budget')
+      alert(t('budgets.delete_error'))
       setIsDeleting(false)
     }
   }

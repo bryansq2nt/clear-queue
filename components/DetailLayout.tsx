@@ -1,14 +1,13 @@
 'use client'
 
-import { signOut } from '@/app/actions/auth'
 import { cn } from '@/lib/utils'
-import TopBar from './TopBar'
+import { GlobalHeader } from './GlobalHeader'
 
 interface DetailLayoutProps {
   /** e.g. /budgets, /clients */
   backHref: string
-  /** i18n key or text for back link */
-  backLabel: string
+  /** i18n key or text for back link; empty string = only arrow icon */
+  backLabel?: string
   /** Page title shown in header */
   title: string
   children: React.ReactNode
@@ -19,22 +18,17 @@ interface DetailLayoutProps {
 }
 
 /**
- * Full-height layout for singular/detail views: no Sidebar, only TopBar with back button + title.
+ * Full-height layout for detail views: GlobalHeader (back + title only), no sidebar/search.
  * Mobile-friendly and responsive.
  */
-export function DetailLayout({ backHref, backLabel, title, children, contentClassName, actions }: DetailLayoutProps) {
+export function DetailLayout({ backHref, backLabel = '', title, children, contentClassName, actions }: DetailLayoutProps) {
   return (
     <div className="flex flex-col h-screen bg-background">
-      <TopBar
+      <GlobalHeader
         backHref={backHref}
         backLabel={backLabel}
-        projectName={title}
-        actions={actions}
-        searchQuery=""
-        onSearchChange={() => {}}
-        onSignOut={() => signOut()}
-        onProjectAdded={() => {}}
-        onProjectUpdated={() => {}}
+        title={title}
+        rightAction={actions}
       />
       <main className={cn('flex-1 overflow-y-auto min-h-0', contentClassName)}>
         {children}

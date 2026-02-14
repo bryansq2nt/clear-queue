@@ -355,6 +355,13 @@
     "description_label": "Description",
     "no_project": "No project",
     "creating": "Creating...",
+    "name_required": "Please enter a budget name.",
+    "create_error": "Failed to create budget.",
+    "no_budgets_yet": "No budgets yet.",
+    "no_budgets_hint": "Use the button below to create your first budget.",
+    "delete_confirm": "Delete budget \"{name}\"? This action cannot be undone.",
+    "delete_error": "Failed to delete budget.",
+    "detail_title": "Budget",
     "back_to_budgets": "Back to Budgets",
     "total_budget": "Total Budget",
     "acquired": "Acquired",
@@ -383,6 +390,7 @@
     "item_status_quoted": "💬 Quoted",
     "add_category": "Add Category",
     "add_item": "Add Item",
+    "select_category": "Select category",
     "view_link": "View Link",
     "has_notes": "📝 Has notes",
     "item_name_label": "Item Name *",
@@ -407,7 +415,8 @@
     "creating_category": "Creating...",
     "edit_category": "Edit Category",
     "edit_budget": "Edit Budget",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "update_error": "Failed to update budget."
   },
   "notes": {
     "title": "Notes",
