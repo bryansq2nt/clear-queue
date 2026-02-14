@@ -26,6 +26,9 @@ interface AddProjectModalProps {
   isOpen: boolean
   onClose: () => void
   onProjectAdded: () => void
+  /** When opening from business detail, pre-fill client and business. */
+  defaultClientId?: string
+  defaultBusinessId?: string
 }
 
 const COLORS = [
@@ -35,7 +38,13 @@ const COLORS = [
   '#ec4899', '#f43f5e', '#94a3b8', '#64748b', '#475569',
 ]
 
-export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectModalProps) {
+export function AddProjectModal({
+  isOpen,
+  onClose,
+  onProjectAdded,
+  defaultClientId,
+  defaultBusinessId,
+}: AddProjectModalProps) {
   const { t } = useI18n()
   const [name, setName] = useState('')
   const [category, setCategory] = useState<string>('business')
@@ -50,6 +59,13 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: AddProjectM
   useEffect(() => {
     if (isOpen) getClients().then(setClients)
   }, [isOpen])
+
+  useEffect(() => {
+    if (isOpen && defaultClientId) setClientId(defaultClientId)
+  }, [isOpen, defaultClientId])
+  useEffect(() => {
+    if (isOpen && defaultBusinessId) setBusinessId(defaultBusinessId)
+  }, [isOpen, defaultBusinessId])
 
   useEffect(() => {
     if (!clientId) {

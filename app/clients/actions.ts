@@ -57,6 +57,18 @@ export async function getProjectsByClientId(clientId: string) {
   return (data || []) as { id: string; name: string; color: string | null; category: string }[]
 }
 
+export async function getProjectsByBusinessId(businessId: string) {
+  await requireAuth()
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('projects')
+    .select('id, name, color, category')
+    .eq('business_id', businessId)
+    .order('name', { ascending: true })
+  if (error) return []
+  return (data || []) as { id: string; name: string; color: string | null; category: string }[]
+}
+
 export async function getProjectsWithoutClient() {
   await requireAuth()
   const supabase = await createClient()
@@ -311,6 +323,53 @@ export async function updateBusinessAction(
   if (error) return { error: error.message }
   revalidatePath('/clients')
   revalidatePath('/clients/[id]')
+  return { data: data as Business }
+}
+
+type BusinessUpdateFields = Partial<Database['public']['Tables']['businesses']['Update']>
+
+/** Update only the provided business fields (for in-place editing). */
+export async function updateBusinessFieldsAction(
+  id: string,
+  fields: BusinessUpdateFields
+): Promise<{ error?: string; data?: Business }> {
+  await requireAuth()
+  const supabase = await createClient()
+  const payload: Record<string, unknown> = { ...fields }
+  if (payload.name !== undefined && (payload.name as string)?.trim() === '') {
+    return { error: 'Business name is required' }
+  }
+  if (payload.name !== undefined) payload.name = (payload.name as string)?.trim() ?? null
+  if (payload.tagline !== undefined) payload.tagline = (payload.tagline as string)?.trim() || null
+  if (payload.description !== undefined) payload.description = (payload.description as string)?.trim() || null
+  if (payload.email !== undefined) payload.email = (payload.email as string)?.trim() || null
+  if (payload.website !== undefined) payload.website = (payload.website as string)?.trim() || null
+  if (payload.address_line1 !== undefined) payload.address_line1 = (payload.address_line1 as string)?.trim() || null
+  if (payload.address_line2 !== undefined) payload.address_line2 = (payload.address_line2 as string)?.trim() || null
+  if (payload.city !== undefined) payload.city = (payload.city as string)?.trim() || null
+  if (payload.state !== undefined) payload.state = (payload.state as string)?.trim() || null
+  if (payload.postal_code !== undefined) payload.postal_code = (payload.postal_code as string)?.trim() || null
+  if (payload.notes !== undefined) payload.notes = (payload.notes as string)?.trim() || null
+  const { data, error } = await supabase
+    .from('businesses')
+    .update(payload as never)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) return { error: error.message }
+  // Ownership: the business owns its projects. When the business's client changes,
+  // cascade client_id to all projects linked to this business.
+  if (payload.client_id !== undefined) {
+    const newClientId = (payload.client_id as string)?.trim() || null
+    await supabase
+      .from('projects')
+      .update({ client_id: newClientId } as never)
+      .eq('business_id', id)
+  }
+  revalidatePath('/clients')
+  revalidatePath('/clients/[id]')
+  revalidatePath('/businesses')
+  revalidatePath(`/businesses/${id}`)
   return { data: data as Business }
 }
 

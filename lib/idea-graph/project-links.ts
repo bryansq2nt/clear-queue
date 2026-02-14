@@ -113,6 +113,33 @@ export async function listProjectLinksForProject(
 }
 
 /**
+ * List all idea-project links for multiple projects
+ */
+export async function listProjectLinksForProjectIds(
+  projectIds: string[]
+): Promise<IdeaProjectLink[]> {
+  if (!projectIds || projectIds.length === 0) {
+    return []
+  }
+  const validIds = projectIds.filter((id) => id && id.trim().length > 0)
+  if (validIds.length === 0) return []
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('idea_project_links')
+    .select('*')
+    .in('project_id', validIds)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    throw new Error(
+      `Failed to list project links for projects: ${error.message}`
+    )
+  }
+  return data || []
+}
+
+/**
  * Unlink an idea from a project
  */
 export async function unlinkIdeaFromProject(linkId: string): Promise<void> {

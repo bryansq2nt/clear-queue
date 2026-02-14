@@ -20,7 +20,6 @@ export default function BusinessesPageClient() {
   const { t } = useI18n()
   const [projects, setProjects] = useState<Project[]>([])
   const [businesses, setBusinesses] = useState<BusinessWithClient[]>([])
-  const [searchQuery, setSearchQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [editingBusiness, setEditingBusiness] = useState<Business | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -37,10 +36,10 @@ export default function BusinessesPageClient() {
 
   const loadBusinesses = useCallback(async () => {
     setIsLoading(true)
-    const data = await getBusinesses(searchQuery.trim() || undefined)
+    const data = await getBusinesses()
     setBusinesses(data)
     setIsLoading(false)
-  }, [searchQuery])
+  }, [])
 
   useEffect(() => {
     loadProjects()
@@ -53,14 +52,15 @@ export default function BusinessesPageClient() {
   return (
     <div className="flex flex-col h-screen bg-background">
       <TopBar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        searchQuery=""
+        onSearchChange={() => {}}
         onSignOut={() => signOut()}
         onProjectAdded={loadProjects}
         onProjectUpdated={loadProjects}
         projectName={t('businesses.title')}
         currentProject={null}
         onOpenSidebar={() => setSidebarOpen(true)}
+        minimal
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
@@ -76,24 +76,6 @@ export default function BusinessesPageClient() {
           onMobileClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                {t('businesses.title')}
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t('businesses.subtitle')}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              {t('businesses.add_business')}
-            </button>
-          </div>
           {isLoading ? (
             <p className="text-sm text-slate-500">{t('common.loading')}</p>
           ) : businesses.length === 0 ? (
