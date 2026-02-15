@@ -7,7 +7,15 @@ import { revalidatePath } from 'next/cache';
 import { PROJECT_CATEGORIES, type ProjectCategory } from '@/lib/constants';
 import type { Database } from '@/lib/supabase/types';
 
+export type ActionResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
+
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
+type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
+type ProjectUpdate = Database['public']['Tables']['projects']['Update'];
+type ProjectFavoriteInsert =
+  Database['public']['Tables']['project_favorites']['Insert'];
 
 export const getProjectsForSidebar = cache(async (): Promise<ProjectRow[]> => {
   const user = await requireAuth();
@@ -20,7 +28,7 @@ export const getProjectsForSidebar = cache(async (): Promise<ProjectRow[]> => {
     .eq('owner_id', user.id)
     .order('created_at', { ascending: true });
   if (error) return [];
-  return (data || []) as ProjectRow[];
+  return data || [];
 });
 
 export const getProjectById = cache(
@@ -35,11 +43,13 @@ export const getProjectById = cache(
       .eq('id', projectId)
       .single();
     if (error || !data) return null;
-    return data as ProjectRow;
+    return data;
   }
 );
 
-export async function createProject(formData: FormData) {
+export async function createProject(
+  formData: FormData
+): Promise<ActionResult<ProjectRow>> {
   const user = await requireAuth();
   const supabase = await createClient();
 
@@ -47,42 +57,47 @@ export async function createProject(formData: FormData) {
   const color = formData.get('color') as string | null;
   const category = (formData.get('category') as string) || 'business';
 
-  // Validate category
   const validCategories = PROJECT_CATEGORIES.map((c) => c.key);
   if (!validCategories.includes(category as ProjectCategory)) {
-    return { error: 'Invalid category' };
+    return { ok: false, error: 'Invalid category' };
   }
 
   if (!name || name.trim().length === 0) {
-    return { error: 'Project name is required' };
+    return { ok: false, error: 'Project name is required' };
   }
 
   const client_id = (formData.get('client_id') as string)?.trim() || null;
   const business_id = (formData.get('business_id') as string)?.trim() || null;
 
+  const insertData: ProjectInsert = {
+    name: name.trim(),
+    color: color || null,
+    category,
+    owner_id: user.id,
+    client_id,
+    business_id,
+  };
+
   const { data, error } = await supabase
     .from('projects')
-    .insert({
-      name: name.trim(),
-      color: color || null,
-      category,
-      owner_id: user.id,
-      client_id: client_id || null,
-      business_id: business_id || null,
-    } as any)
-    .select()
+    .insert(insertData as never)
+    .select(
+      'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
+    )
     .single();
 
-  if (error) {
-    return { error: error.message };
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? 'Failed to create project' };
   }
 
   revalidatePath('/dashboard');
   revalidatePath('/project');
-  return { data };
+  return { ok: true, data };
 }
 
-export async function updateProject(formData: FormData) {
+export async function updateProject(
+  formData: FormData
+): Promise<ActionResult<ProjectRow>> {
   await requireAuth();
   const supabase = await createClient();
 
@@ -95,10 +110,10 @@ export async function updateProject(formData: FormData) {
   const business_id = formData.get('business_id') as string | null;
 
   if (!id) {
-    return { error: 'Project ID is required' };
+    return { ok: false, error: 'Project ID is required' };
   }
 
-  const updates: any = {};
+  const updates: ProjectUpdate = {};
 
   if (client_id !== undefined) {
     updates.client_id = client_id?.trim() || null;
@@ -110,7 +125,7 @@ export async function updateProject(formData: FormData) {
   if (name !== null) {
     const trimmedName = name.trim();
     if (trimmedName.length === 0) {
-      return { error: 'Project name cannot be empty' };
+      return { ok: false, error: 'Project name cannot be empty' };
     }
     updates.name = trimmedName;
   }
@@ -120,10 +135,9 @@ export async function updateProject(formData: FormData) {
   }
 
   if (category !== null) {
-    // Validate category
     const validCategories = PROJECT_CATEGORIES.map((c) => c.key);
     if (!validCategories.includes(category as ProjectCategory)) {
-      return { error: 'Invalid category' };
+      return { ok: false, error: 'Invalid category' };
     }
     updates.category = category;
   }
@@ -132,85 +146,95 @@ export async function updateProject(formData: FormData) {
     updates.notes = notes || null;
   }
 
-  const query: any = (supabase.from('projects') as any).update(updates as any);
+  const { data, error } = await supabase
+    .from('projects')
+    .update(updates as never)
+    .eq('id', id)
+    .select(
+      'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
+    )
+    .single();
 
-  const result: any = await query.eq('id', id).select().single();
-
-  const { data, error } = result;
-
-  if (error) {
-    return { error: error.message };
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? 'Failed to update project' };
   }
 
   revalidatePath('/dashboard');
   revalidatePath('/project');
-  return { data };
+  return { ok: true, data };
 }
 
-export async function archiveProject(id: string) {
+export async function archiveProject(id: string): Promise<ActionResult<ProjectRow>> {
   await requireAuth();
   const supabase = await createClient();
 
-  const query: any = (supabase.from('projects') as any).update({
-    category: 'archived',
-  } as any);
+  const updates: ProjectUpdate = { category: 'archived' };
+  const { data, error } = await supabase
+    .from('projects')
+    .update(updates as never)
+    .eq('id', id)
+    .select(
+      'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
+    )
+    .single();
 
-  const result: any = await query.eq('id', id).select().single();
-
-  const { data, error } = result;
-
-  if (error) {
-    return { error: error.message };
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? 'Failed to archive project' };
   }
 
   revalidatePath('/dashboard');
   revalidatePath('/project');
-  return { data };
+  return { ok: true, data };
 }
 
-export async function unarchiveProject(id: string, previousCategory?: string) {
+export async function unarchiveProject(
+  id: string,
+  previousCategory?: string
+): Promise<ActionResult<ProjectRow>> {
   await requireAuth();
   const supabase = await createClient();
 
-  // Default to 'business' if no previous category provided
   const category = previousCategory || 'business';
 
-  // Validate category
   const validCategories = PROJECT_CATEGORIES.map((c) => c.key);
   if (!validCategories.includes(category as ProjectCategory)) {
-    return { error: 'Invalid category' };
+    return { ok: false, error: 'Invalid category' };
   }
 
-  const query: any = (supabase.from('projects') as any).update({
-    category,
-  } as any);
+  const updates: ProjectUpdate = { category };
+  const { data, error } = await supabase
+    .from('projects')
+    .update(updates as never)
+    .eq('id', id)
+    .select(
+      'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
+    )
+    .single();
 
-  const result: any = await query.eq('id', id).select().single();
-
-  const { data, error } = result;
-
-  if (error) {
-    return { error: error.message };
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? 'Failed to unarchive project' };
   }
 
   revalidatePath('/dashboard');
   revalidatePath('/project');
-  return { data };
+  return { ok: true, data };
 }
 
-export async function deleteProject(id: string) {
+export async function deleteProject(
+  id: string
+): Promise<ActionResult<{ success: true }>> {
   await requireAuth();
   const supabase = await createClient();
 
   const { error } = await supabase.from('projects').delete().eq('id', id);
 
   if (error) {
-    return { error: error.message };
+    return { ok: false, error: error.message };
   }
 
   revalidatePath('/dashboard');
   revalidatePath('/project');
-  return { success: true };
+  return { ok: true, data: { success: true } };
 }
 
 export type ProjectListItem = {
@@ -261,12 +285,9 @@ export const getProjectsList = cache(async (): Promise<ProjectListItem[]> => {
 });
 
 export const getFavoriteProjectIds = cache(
-  async (): Promise<{
-    data?: string[];
-    error?: string;
-  }> => {
+  async (): Promise<ActionResult<string[]>> => {
     const user = await getUser();
-    if (!user) return { data: [] };
+    if (!user) return { ok: true, data: [] };
 
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -274,8 +295,9 @@ export const getFavoriteProjectIds = cache(
       .select('project_id')
       .eq('user_id', user.id);
 
-    if (error) return { error: error.message };
+    if (error) return { ok: false, error: error.message };
     return {
+      ok: true,
       data: (data || []).map((row: { project_id: string }) => row.project_id),
     };
   }
@@ -283,26 +305,25 @@ export const getFavoriteProjectIds = cache(
 
 export async function addProjectFavorite(
   projectId: string
-): Promise<{ error?: string }> {
+): Promise<ActionResult<null>> {
   const user = await getUser();
-  if (!user) return { error: 'Not authenticated' };
+  if (!user) return { ok: false, error: 'Not authenticated' };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('project_favorites')
-    .insert({ user_id: user.id, project_id: projectId } as any);
+  const payload: ProjectFavoriteInsert = { user_id: user.id, project_id: projectId };
+  const { error } = await supabase.from('project_favorites').insert(payload as never);
 
-  if (error) return { error: error.message };
+  if (error) return { ok: false, error: error.message };
   revalidatePath('/dashboard');
   revalidatePath('/project');
-  return {};
+  return { ok: true, data: null };
 }
 
 export async function removeProjectFavorite(
   projectId: string
-): Promise<{ error?: string }> {
+): Promise<ActionResult<null>> {
   const user = await getUser();
-  if (!user) return { error: 'Not authenticated' };
+  if (!user) return { ok: false, error: 'Not authenticated' };
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -311,8 +332,8 @@ export async function removeProjectFavorite(
     .eq('user_id', user.id)
     .eq('project_id', projectId);
 
-  if (error) return { error: error.message };
+  if (error) return { ok: false, error: error.message };
   revalidatePath('/dashboard');
   revalidatePath('/project');
-  return {};
+  return { ok: true, data: null };
 }

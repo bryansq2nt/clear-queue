@@ -22,6 +22,8 @@ import { Database } from '@/lib/supabase/types';
 import { updateTaskOrder } from '@/app/actions/tasks';
 import { cn } from '@/lib/utils';
 import { Plus } from 'lucide-react';
+import { applyOptimisticTaskMove } from '@/lib/kanban/optimistic';
+import { toastError } from '@/lib/ui/toast';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 type Project = Database['public']['Tables']['projects']['Row'];
@@ -174,34 +176,12 @@ export default function KanbanBoard({
 
     if (task.status === newStatus && task.order_index === newOrderIndex) return;
 
-    const updated = optimisticTasks.map((t) => {
-      if (t.id === taskId) {
-        return { ...t, status: newStatus, order_index: newOrderIndex };
-      }
-      if (
-        t.status === newStatus &&
-        t.order_index >= newOrderIndex &&
-        task.status === newStatus &&
-        t.order_index < task.order_index
-      ) {
-        return { ...t, order_index: t.order_index + 1 };
-      }
-      if (
-        t.status === newStatus &&
-        t.order_index >= newOrderIndex &&
-        task.status !== newStatus
-      ) {
-        return { ...t, order_index: t.order_index + 1 };
-      }
-      if (
-        t.status === task.status &&
-        t.order_index > task.order_index &&
-        task.status !== newStatus
-      ) {
-        return { ...t, order_index: t.order_index - 1 };
-      }
-      return t;
-    });
+    const updated = applyOptimisticTaskMove(
+      optimisticTasks,
+      taskId,
+      newStatus,
+      newOrderIndex
+    );
     setOptimisticTasks(updated);
 
     const result = await updateTaskOrder(
@@ -212,7 +192,7 @@ export default function KanbanBoard({
     );
     if (result.error) {
       setOptimisticTasks(tasks);
-      alert('Failed to update task: ' + result.error);
+      toastError('Failed to update task: ' + result.error);
     } else {
       onTaskUpdate();
     }

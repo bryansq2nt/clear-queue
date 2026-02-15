@@ -53,12 +53,11 @@ export default function NewTodoListClient() {
       formData.append('title', listTitle.trim() || t('todo.untitled_list'));
       formData.append('project_id', projectId ?? '');
       const result = await createTodoListAction(formData);
-      if (result.error) {
+      if (!result.ok) {
         setError(result.error);
         return null;
       }
-      if (result.data) return result.data.id;
-      return null;
+      return result.data.id;
     },
     [projectId, t]
   );
@@ -98,11 +97,11 @@ export default function NewTodoListClient() {
           return fd;
         })()
       ).then((listResult) => {
-        if (listResult.error || !listResult.data) {
+        if (!listResult.ok) {
           creatingRef.current = false;
           pendingQueueRef.current = [];
           setPendingTasks([]);
-          setError(listResult.error ?? null);
+          setError(listResult.error);
           return;
         }
         const listId = listResult.data.id;
@@ -112,7 +111,6 @@ export default function NewTodoListClient() {
           if (queue.length === 0) {
             creatingRef.current = false;
             router.push(`/todo/list/${listId}`);
-            router.refresh();
             return Promise.resolve();
           }
           pendingQueueRef.current = [];
@@ -126,7 +124,7 @@ export default function NewTodoListClient() {
             itemFormData.append('list_id', listId);
             itemFormData.append('content', queue[index]);
             return createTodoItemAction(itemFormData).then((itemResult) => {
-              if (itemResult.error) {
+              if (!itemResult.ok) {
                 creatingRef.current = false;
                 setError(itemResult.error);
                 return;

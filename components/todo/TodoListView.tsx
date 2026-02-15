@@ -48,9 +48,9 @@ export default function TodoListView({
     setCreating(false);
     setNewItemContent('');
 
-    if (result.data) {
+    if (result.ok) {
       onRefresh();
-    } else if (result.error) {
+    } else {
       alert(result.error);
     }
   };
@@ -66,10 +66,10 @@ export default function TodoListView({
     const result = await renameTodoListAction(list.id, editedTitle);
     setRenaming(false);
 
-    if (result.data) {
+    if (result.ok) {
       setIsEditingTitle(false);
       onRefresh();
-    } else if (result.error) {
+    } else {
       alert(result.error);
       setEditedTitle(list.title);
     }
@@ -82,9 +82,9 @@ export default function TodoListView({
     }
 
     const result = await deleteTodoListAction(list.id);
-    if (result.success) {
+    if (result.ok) {
       onRefresh();
-    } else if (result.error) {
+    } else {
       alert(result.error);
     }
   };

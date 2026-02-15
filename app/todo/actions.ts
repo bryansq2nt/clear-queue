@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import {
   getTodoLists,
@@ -17,30 +18,23 @@ import {
   deleteTodoItem,
 } from '@/lib/todo/lists';
 import { getProjects } from '@/app/budgets/actions';
-import type { TodoItem } from '@/lib/todo/lists';
+import type { TodoItem, TodoList } from '@/lib/todo/lists';
 
-// ============================================================================
-// List Actions
-// ============================================================================
+export type ActionResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
 
 export async function getTodoListsAction(options?: {
   includeArchived?: boolean;
   projectId?: string | null;
-}) {
+}): Promise<ActionResult<TodoList[]>> {
   await requireAuth();
-
-  try {
-    const data = await getTodoLists(options);
-    return { data };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to fetch todo lists',
-    };
-  }
+  return getTodoLists(options);
 }
 
-export async function createTodoListAction(formData: FormData) {
+export async function createTodoListAction(
+  formData: FormData
+): Promise<ActionResult<TodoList>> {
   await requireAuth();
 
   const title = formData.get('title') as string;
@@ -49,167 +43,142 @@ export async function createTodoListAction(formData: FormData) {
   const color = formData.get('color') as string | null;
 
   if (!title || title.trim().length === 0) {
-    return { error: 'List title is required' };
+    return { ok: false, error: 'List title is required' };
   }
 
-  try {
-    const data = await createTodoList({
-      title,
-      project_id: projectId || null,
-      description: description || null,
-      color: color || null,
-    });
+  const result = await createTodoList({
+    title,
+    project_id: projectId || null,
+    description: description || null,
+    color: color || null,
+  });
 
-    revalidatePath('/todo');
-    return { data };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to create todo list',
-    };
-  }
+  if (!result.ok) return result;
+  revalidatePath('/todo');
+  return result;
 }
 
-export async function renameTodoListAction(id: string, title: string) {
+export async function renameTodoListAction(
+  id: string,
+  title: string
+): Promise<ActionResult<TodoList>> {
   await requireAuth();
 
   if (!id || !title || title.trim().length === 0) {
-    return { error: 'List ID and title are required' };
+    return { ok: false, error: 'List ID and title are required' };
   }
 
-  try {
-    const data = await updateTodoList(id, { title });
-    revalidatePath('/todo');
-    revalidatePath(`/todo/list/${id}`);
-    return { data };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to rename todo list',
-    };
-  }
+  const result = await updateTodoList(id, { title });
+  if (!result.ok) return result;
+
+  revalidatePath('/todo');
+  revalidatePath(`/todo/list/${id}`);
+  return result;
 }
 
 export async function updateTodoListAction(
   id: string,
   updates: { title?: string; project_id?: string | null }
-) {
+): Promise<ActionResult<TodoList>> {
   await requireAuth();
 
   if (!id) {
-    return { error: 'List ID is required' };
+    return { ok: false, error: 'List ID is required' };
   }
 
-  try {
-    const data = await updateTodoList(id, updates);
-    revalidatePath('/todo');
-    revalidatePath(`/todo/list/${id}`);
-    return { data };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to update todo list',
-    };
-  }
+  const result = await updateTodoList(id, updates);
+  if (!result.ok) return result;
+
+  revalidatePath('/todo');
+  revalidatePath(`/todo/list/${id}`);
+  return result;
 }
 
-export async function archiveTodoListAction(id: string, isArchived: boolean) {
+export async function archiveTodoListAction(
+  id: string,
+  isArchived: boolean
+): Promise<ActionResult<TodoList>> {
   await requireAuth();
 
   if (!id) {
-    return { error: 'List ID is required' };
+    return { ok: false, error: 'List ID is required' };
   }
 
-  try {
-    const data = await archiveTodoList(id, isArchived);
-    revalidatePath('/todo');
-    return { data };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to archive todo list',
-    };
-  }
+  const result = await archiveTodoList(id, isArchived);
+  if (!result.ok) return result;
+
+  revalidatePath('/todo');
+  return result;
 }
 
-export async function deleteTodoListAction(id: string) {
+export async function deleteTodoListAction(
+  id: string
+): Promise<ActionResult<{ success: true }>> {
   await requireAuth();
 
   if (!id) {
-    return { error: 'List ID is required' };
+    return { ok: false, error: 'List ID is required' };
   }
 
-  try {
-    await deleteTodoList(id);
-    revalidatePath('/todo');
-    return { success: true };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to delete todo list',
-    };
-  }
+  const result = await deleteTodoList(id);
+  if (!result.ok) return result;
+
+  revalidatePath('/todo');
+  return result;
 }
 
-// ============================================================================
-// Item Actions
-// ============================================================================
-
-export async function getTodoItemsAction(listId: string) {
+export async function getTodoItemsAction(
+  listId: string
+): Promise<ActionResult<TodoItem[]>> {
   await requireAuth();
 
   if (!listId) {
-    return { error: 'List ID is required' };
+    return { ok: false, error: 'List ID is required' };
   }
 
-  try {
-    const data = await getTodoItems(listId);
-    return { data };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to fetch todo items',
-    };
-  }
+  return getTodoItems(listId);
 }
 
 export type TodoListWithItems = {
-  list: Awaited<ReturnType<typeof getTodoListById>>;
+  list: TodoList;
   items: TodoItem[];
   projectName: string | null;
 };
 
-export async function getTodoListWithItemsAction(listId: string): Promise<{
-  data?: TodoListWithItems;
-  error?: string;
-}> {
+export async function getTodoListWithItemsAction(
+  listId: string
+): Promise<ActionResult<TodoListWithItems>> {
   await requireAuth();
 
   if (!listId) {
-    return { error: 'List ID is required' };
+    return { ok: false, error: 'List ID is required' };
   }
 
-  try {
-    const list = await getTodoListById(listId);
-    if (!list) {
-      return { error: 'List not found' };
-    }
-    const items = await getTodoItems(listId);
-    const projects = await getProjects();
-    const projectName = list.project_id
-      ? (projects.find((p) => p.id === list.project_id)?.name ?? null)
-      : null;
-    return {
-      data: { list, items, projectName },
-    };
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : 'Failed to load list',
-    };
+  const listResult = await getTodoListById(listId);
+  if (!listResult.ok) return listResult;
+
+  const list = listResult.data;
+  if (!list) {
+    return { ok: false, error: 'List not found' };
   }
+
+  const itemsResult = await getTodoItems(listId);
+  if (!itemsResult.ok) return itemsResult;
+
+  const projects = await getProjects();
+  const projectName = list.project_id
+    ? (projects.find((p) => p.id === list.project_id)?.name ?? null)
+    : null;
+
+  return {
+    ok: true,
+    data: { list, items: itemsResult.data, projectName },
+  };
 }
 
-export async function createTodoItemAction(formData: FormData) {
+export async function createTodoItemAction(
+  formData: FormData
+): Promise<ActionResult<TodoItem>> {
   await requireAuth();
 
   const listId = formData.get('list_id') as string;
@@ -217,43 +186,34 @@ export async function createTodoItemAction(formData: FormData) {
   const dueDate = formData.get('due_date') as string | null;
 
   if (!listId || !content || content.trim().length === 0) {
-    return { error: 'List ID and content are required' };
+    return { ok: false, error: 'List ID and content are required' };
   }
 
-  try {
-    const data = await createTodoItem({
-      list_id: listId,
-      content,
-      due_date: dueDate || null,
-    });
+  const result = await createTodoItem({
+    list_id: listId,
+    content,
+    due_date: dueDate || null,
+  });
 
-    revalidatePath('/todo');
-    return { data };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to create todo item',
-    };
-  }
+  if (!result.ok) return result;
+  revalidatePath('/todo');
+  return result;
 }
 
-export async function toggleTodoItemAction(id: string) {
+export async function toggleTodoItemAction(
+  id: string
+): Promise<ActionResult<TodoItem>> {
   await requireAuth();
 
   if (!id) {
-    return { error: 'Item ID is required' };
+    return { ok: false, error: 'Item ID is required' };
   }
 
-  try {
-    const data = await toggleTodoItem(id);
-    revalidatePath('/todo');
-    return { data };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to toggle todo item',
-    };
-  }
+  const result = await toggleTodoItem(id);
+  if (!result.ok) return result;
+
+  revalidatePath('/todo');
+  return result;
 }
 
 export async function updateTodoItemAction(
@@ -262,47 +222,35 @@ export async function updateTodoItemAction(
     content?: string;
     due_date?: string | null;
   }
-) {
+): Promise<ActionResult<TodoItem>> {
   await requireAuth();
 
   if (!id) {
-    return { error: 'Item ID is required' };
+    return { ok: false, error: 'Item ID is required' };
   }
 
-  try {
-    const data = await updateTodoItem(id, updates);
-    revalidatePath('/todo');
-    return { data };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to update todo item',
-    };
-  }
+  const result = await updateTodoItem(id, updates);
+  if (!result.ok) return result;
+
+  revalidatePath('/todo');
+  return result;
 }
 
-export async function deleteTodoItemAction(id: string) {
+export async function deleteTodoItemAction(
+  id: string
+): Promise<ActionResult<{ success: true }>> {
   await requireAuth();
 
   if (!id) {
-    return { error: 'Item ID is required' };
+    return { ok: false, error: 'Item ID is required' };
   }
 
-  try {
-    await deleteTodoItem(id);
-    revalidatePath('/todo');
-    return { success: true };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to delete todo item',
-    };
-  }
+  const result = await deleteTodoItem(id);
+  if (!result.ok) return result;
+
+  revalidatePath('/todo');
+  return result;
 }
-
-// ============================================================================
-// Project-first dashboard & board
-// ============================================================================
 
 export type ProjectTodoSummary = {
   projectId: string;
@@ -311,65 +259,32 @@ export type ProjectTodoSummary = {
   previewItems: TodoItem[];
 };
 
-export async function getProjectsWithTodoSummaryAction(): Promise<{
-  data?: ProjectTodoSummary[];
-  error?: string;
-}> {
+export async function getProjectsWithTodoSummaryAction(): Promise<
+  ActionResult<ProjectTodoSummary[]>
+> {
   await requireAuth();
+  const supabase = await createClient();
 
-  try {
-    const projects = await getProjects();
-    const lists = await getTodoLists({ includeArchived: false });
-    const projectListIds = lists
-      .filter((l) => l.project_id != null)
-      .reduce(
-        (acc, l) => {
-          const pid = l.project_id!;
-          if (!acc[pid]) acc[pid] = [];
-          acc[pid].push(l.id);
-          return acc;
-        },
-        {} as Record<string, string[]>
-      );
-
-    const allListIds = lists.map((list) => list.id);
-    const allItems =
-      allListIds.length > 0 ? await getTodoItemsByListIds(allListIds) : [];
-    const itemsByListId = allItems.reduce(
-      (acc, item) => {
-        if (!acc[item.list_id]) {
-          acc[item.list_id] = [];
-        }
-        acc[item.list_id].push(item);
-        return acc;
-      },
-      {} as Record<string, TodoItem[]>
-    );
-
-    const summaries: ProjectTodoSummary[] = [];
-    for (const project of projects) {
-      const listIds = projectListIds[project.id] || [];
-      if (listIds.length === 0) continue;
-
-      const items = listIds.flatMap((listId) => itemsByListId[listId] || []);
-      const pending = items.filter((i) => !i.is_done);
-      const previewItems = items.slice(0, 3);
-
-      summaries.push({
-        projectId: project.id,
-        projectName: project.name,
-        pendingCount: pending.length,
-        previewItems,
-      });
-    }
-
-    return { data: summaries };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to fetch todo summary',
-    };
+  const { data, error } = await supabase.rpc('get_project_todo_summary' as never);
+  if (error) {
+    return { ok: false, error: error.message };
   }
+
+  type SummaryRow = {
+    project_id: string;
+    project_name: string;
+    pending_count: number;
+    preview_items: TodoItem[] | null;
+  };
+
+  const summaries = ((data || []) as SummaryRow[]).map((row) => ({
+    projectId: row.project_id,
+    projectName: row.project_name,
+    pendingCount: row.pending_count,
+    previewItems: row.preview_items ?? [],
+  }));
+
+  return { ok: true, data: summaries };
 }
 
 export type ProjectTodoBoard = {
@@ -378,52 +293,50 @@ export type ProjectTodoBoard = {
   items: TodoItem[];
 };
 
-export async function getProjectTodoBoardAction(projectId: string): Promise<{
-  data?: ProjectTodoBoard;
-  error?: string;
-}> {
+export async function getProjectTodoBoardAction(
+  projectId: string
+): Promise<ActionResult<ProjectTodoBoard>> {
   await requireAuth();
 
   if (!projectId) {
-    return { error: 'Project ID is required' };
+    return { ok: false, error: 'Project ID is required' };
   }
 
-  try {
-    const projects = await getProjects();
-    const project = projects.find((p) => p.id === projectId);
-    if (!project) {
-      return { error: 'Project not found' };
-    }
-
-    let lists = await getTodoLists({ includeArchived: false, projectId });
-    if (lists.length === 0) {
-      const newList = await createTodoList({
-        title: 'Tasks',
-        project_id: projectId,
-      });
-      lists = [newList];
-      revalidatePath('/todo');
-      revalidatePath(`/todo/project/${projectId}`);
-    }
-
-    const sortedLists = [...lists].sort(
-      (a, b) => (a.position ?? 0) - (b.position ?? 0)
-    );
-    const defaultListId = sortedLists[0]?.id ?? lists[0].id;
-    const listIds = lists.map((l) => l.id);
-    const items = await getTodoItemsByListIds(listIds);
-
-    return {
-      data: {
-        defaultListId,
-        projectName: project.name,
-        items,
-      },
-    };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : 'Failed to load project board',
-    };
+  const projects = await getProjects();
+  const project = projects.find((p) => p.id === projectId);
+  if (!project) {
+    return { ok: false, error: 'Project not found' };
   }
+
+  const listsResult = await getTodoLists({ includeArchived: false, projectId });
+  if (!listsResult.ok) return listsResult;
+
+  let lists = listsResult.data;
+  if (lists.length === 0) {
+    const newListResult = await createTodoList({
+      title: 'Tasks',
+      project_id: projectId,
+    });
+    if (!newListResult.ok) return newListResult;
+
+    lists = [newListResult.data];
+    revalidatePath('/todo');
+    revalidatePath(`/todo/project/${projectId}`);
+  }
+
+  const sortedLists = [...lists].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const defaultListId = sortedLists[0]?.id ?? lists[0].id;
+  const listIds = lists.map((l) => l.id);
+
+  const itemsResult = await getTodoItemsByListIds(listIds);
+  if (!itemsResult.ok) return itemsResult;
+
+  return {
+    ok: true,
+    data: {
+      defaultListId,
+      projectName: project.name,
+      items: itemsResult.data,
+    },
+  };
 }

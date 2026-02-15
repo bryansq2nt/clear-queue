@@ -26,9 +26,9 @@ export default function TodoItemRow({ item, onRefresh }: TodoItemRowProps) {
     const result = await toggleTodoItemAction(item.id);
     setIsToggling(false);
 
-    if (result.data) {
+    if (result.ok) {
       onRefresh();
-    } else if (result.error) {
+    } else {
       alert(result.error);
     }
   };
@@ -49,10 +49,10 @@ export default function TodoItemRow({ item, onRefresh }: TodoItemRowProps) {
       content: editedContent,
     });
 
-    if (result.data) {
+    if (result.ok) {
       setIsEditing(false);
       onRefresh();
-    } else if (result.error) {
+    } else {
       alert(result.error);
       setEditedContent(item.content);
     }
@@ -65,9 +65,9 @@ export default function TodoItemRow({ item, onRefresh }: TodoItemRowProps) {
     const result = await deleteTodoItemAction(item.id);
     setIsDeleting(false);
 
-    if (result.success) {
+    if (result.ok) {
       onRefresh();
-    } else if (result.error) {
+    } else {
       alert(result.error);
     }
   };

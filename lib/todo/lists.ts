@@ -2,6 +2,10 @@ import { createClient } from '@/lib/supabase/server';
 import { getUser } from '@/lib/auth';
 import type { Database } from '@/lib/supabase/types';
 
+export type ActionResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
+
 type TodoList = Database['public']['Tables']['todo_lists']['Row'];
 type TodoListInsert = Database['public']['Tables']['todo_lists']['Insert'];
 type TodoListUpdate = Database['public']['Tables']['todo_lists']['Update'];
@@ -10,7 +14,6 @@ type TodoItem = Database['public']['Tables']['todo_items']['Row'];
 type TodoItemInsert = Database['public']['Tables']['todo_items']['Insert'];
 type TodoItemUpdate = Database['public']['Tables']['todo_items']['Update'];
 
-// Export the Row types for use in components
 export type { TodoList, TodoItem };
 
 const TODO_LIST_COLS =
@@ -18,9 +21,6 @@ const TODO_LIST_COLS =
 const TODO_ITEM_COLS =
   'id, owner_id, list_id, content, is_done, due_date, position, created_at, updated_at';
 
-/**
- * Helper to get the current user ID or throw an error
- */
 async function getUserIdOrThrow(): Promise<string> {
   const user = await getUser();
   if (!user || !user.id) {
@@ -29,17 +29,72 @@ async function getUserIdOrThrow(): Promise<string> {
   return user.id;
 }
 
-// ============================================================================
-// List Operations
-// ============================================================================
+function fail(message: string): ActionResult<never> {
+  return { ok: false, error: message };
+}
 
-/**
- * Get all todo lists for the current user
- */
+async function insertTodoList(values: TodoListInsert): Promise<ActionResult<TodoList>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('todo_lists')
+    .insert(values as never)
+    .select(TODO_LIST_COLS)
+    .single();
+
+  if (error || !data) return fail(error?.message ?? 'Failed to create todo list');
+  return { ok: true, data };
+}
+
+async function updateTodoListRow(
+  values: TodoListUpdate,
+  match: { id: string; owner_id: string }
+): Promise<ActionResult<TodoList>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('todo_lists')
+    .update(values as never)
+    .eq('id', match.id)
+    .eq('owner_id', match.owner_id)
+    .select(TODO_LIST_COLS)
+    .single();
+
+  if (error || !data) return fail(error?.message ?? 'Failed to update todo list');
+  return { ok: true, data };
+}
+
+async function insertTodoItem(values: TodoItemInsert): Promise<ActionResult<TodoItem>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('todo_items')
+    .insert(values as never)
+    .select(TODO_ITEM_COLS)
+    .single();
+
+  if (error || !data) return fail(error?.message ?? 'Failed to create todo item');
+  return { ok: true, data };
+}
+
+async function updateTodoItemRow(
+  values: TodoItemUpdate,
+  match: { id: string; owner_id: string }
+): Promise<ActionResult<TodoItem>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('todo_items')
+    .update(values as never)
+    .eq('id', match.id)
+    .eq('owner_id', match.owner_id)
+    .select(TODO_ITEM_COLS)
+    .single();
+
+  if (error || !data) return fail(error?.message ?? 'Failed to update todo item');
+  return { ok: true, data };
+}
+
 export async function getTodoLists(options?: {
   includeArchived?: boolean;
   projectId?: string | null;
-}): Promise<TodoList[]> {
+}): Promise<ActionResult<TodoList[]>> {
   const ownerId = await getUserIdOrThrow();
   const supabase = await createClient();
 
@@ -55,28 +110,20 @@ export async function getTodoLists(options?: {
   }
 
   if (options?.projectId !== undefined) {
-    if (options.projectId === null) {
-      query = query.is('project_id', null);
-    } else {
-      query = query.eq('project_id', options.projectId);
-    }
+    query =
+      options.projectId === null
+        ? query.is('project_id', null)
+        : query.eq('project_id', options.projectId);
   }
 
   const { data, error } = await query;
-
-  if (error) {
-    throw new Error(`Failed to fetch todo lists: ${error.message}`);
-  }
-
-  return data || [];
+  if (error) return fail(`Failed to fetch todo lists: ${error.message}`);
+  return { ok: true, data: data || [] };
 }
 
-/**
- * Get a single todo list by ID
- */
 export async function getTodoListById(
   listId: string
-): Promise<TodoList | null> {
+): Promise<ActionResult<TodoList | null>> {
   const ownerId = await getUserIdOrThrow();
   const supabase = await createClient();
 
@@ -87,27 +134,22 @@ export async function getTodoListById(
     .eq('owner_id', ownerId)
     .single();
 
-  if (error || !data) return null;
-  return data as TodoList;
+  if (error) return { ok: true, data: null };
+  return { ok: true, data };
 }
 
-/**
- * Create a new todo list
- */
 export async function createTodoList(input: {
   title: string;
   project_id?: string | null;
   description?: string | null;
   color?: string | null;
-}): Promise<TodoList> {
+}): Promise<ActionResult<TodoList>> {
   if (!input.title || input.title.trim().length === 0) {
-    throw new Error('List title is required');
+    return fail('List title is required');
   }
 
   const ownerId = await getUserIdOrThrow();
   const supabase = await createClient();
-
-  // Get max position to append at end
   const { data: existingLists } = await supabase
     .from('todo_lists')
     .select('position')
@@ -115,10 +157,9 @@ export async function createTodoList(input: {
     .order('position', { ascending: false })
     .limit(1);
 
-  const position =
-    existingLists && existingLists.length > 0
-      ? ((existingLists[0] as { position: number }).position || 0) + 1
-      : 0;
+  const listPositions = (existingLists || []) as Pick<TodoList, 'position'>[];
+  const currentMax = listPositions[0]?.position ?? 0;
+  const position = existingLists && existingLists.length > 0 ? currentMax + 1 : 0;
 
   const insertData: TodoListInsert = {
     owner_id: ownerId,
@@ -129,22 +170,9 @@ export async function createTodoList(input: {
     position,
   };
 
-  const { data, error } = await supabase
-    .from('todo_lists')
-    .insert(insertData as any)
-    .select()
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to create todo list: ${error.message}`);
-  }
-
-  return data;
+  return insertTodoList(insertData);
 }
 
-/**
- * Update a todo list
- */
 export async function updateTodoList(
   id: string,
   updates: {
@@ -153,88 +181,33 @@ export async function updateTodoList(
     color?: string | null;
     project_id?: string | null;
   }
-): Promise<TodoList> {
+): Promise<ActionResult<TodoList>> {
   const ownerId = await getUserIdOrThrow();
-  const supabase = await createClient();
 
   const updateData: TodoListUpdate = {};
-  if (updates.title !== undefined) {
-    updateData.title = updates.title.trim();
-  }
+  if (updates.title !== undefined) updateData.title = updates.title.trim();
   if (updates.description !== undefined) {
     updateData.description = updates.description?.trim() || null;
   }
-  if (updates.color !== undefined) {
-    updateData.color = updates.color || null;
-  }
+  if (updates.color !== undefined) updateData.color = updates.color || null;
   if (updates.project_id !== undefined) {
     updateData.project_id = updates.project_id || null;
   }
 
-  const query: any = (supabase.from('todo_lists') as any).update(
-    updateData as any
-  );
-
-  const result: any = await query
-    .eq('id', id)
-    .eq('owner_id', ownerId)
-    .select()
-    .single();
-
-  const { data, error } = result;
-
-  if (error) {
-    throw new Error(`Failed to update todo list: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error('Todo list not found');
-  }
-
-  return data;
+  return updateTodoListRow(updateData, { id, owner_id: ownerId });
 }
 
-/**
- * Archive or unarchive a todo list
- */
 export async function archiveTodoList(
   id: string,
   isArchived: boolean
-): Promise<TodoList> {
+): Promise<ActionResult<TodoList>> {
   const ownerId = await getUserIdOrThrow();
-  const supabase = await createClient();
-
-  const updateData: TodoListUpdate = {
-    is_archived: isArchived,
-  };
-
-  const query: any = (supabase.from('todo_lists') as any).update(
-    updateData as any
-  );
-
-  const result: any = await query
-    .eq('id', id)
-    .eq('owner_id', ownerId)
-    .select()
-    .single();
-
-  const { data, error } = result;
-
-  if (error) {
-    throw new Error(`Failed to archive todo list: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error('Todo list not found');
-  }
-
-  return data;
+  return updateTodoListRow({ is_archived: isArchived }, { id, owner_id: ownerId });
 }
 
-/**
- * Delete a todo list
- */
-export async function deleteTodoList(id: string): Promise<void> {
+export async function deleteTodoList(
+  id: string
+): Promise<ActionResult<{ success: true }>> {
   const ownerId = await getUserIdOrThrow();
   const supabase = await createClient();
 
@@ -244,23 +217,14 @@ export async function deleteTodoList(id: string): Promise<void> {
     .eq('id', id)
     .eq('owner_id', ownerId);
 
-  if (error) {
-    throw new Error(`Failed to delete todo list: ${error.message}`);
-  }
+  if (error) return fail(`Failed to delete todo list: ${error.message}`);
+  return { ok: true, data: { success: true } };
 }
 
-// ============================================================================
-// Item Operations
-// ============================================================================
-
-/**
- * Get all items for a todo list
- */
-export async function getTodoItems(listId: string): Promise<TodoItem[]> {
+export async function getTodoItems(listId: string): Promise<ActionResult<TodoItem[]>> {
   const ownerId = await getUserIdOrThrow();
   const supabase = await createClient();
 
-  // Verify list belongs to user
   const { data: list } = await supabase
     .from('todo_lists')
     .select('id')
@@ -268,9 +232,7 @@ export async function getTodoItems(listId: string): Promise<TodoItem[]> {
     .eq('owner_id', ownerId)
     .single();
 
-  if (!list) {
-    throw new Error('Todo list not found');
-  }
+  if (!list) return fail('Todo list not found');
 
   const { data, error } = await supabase
     .from('todo_items')
@@ -280,20 +242,14 @@ export async function getTodoItems(listId: string): Promise<TodoItem[]> {
     .order('position', { ascending: true })
     .order('created_at', { ascending: false });
 
-  if (error) {
-    throw new Error(`Failed to fetch todo items: ${error.message}`);
-  }
-
-  return data || [];
+  if (error) return fail(`Failed to fetch todo items: ${error.message}`);
+  return { ok: true, data: data || [] };
 }
 
-/**
- * Get all items for multiple lists (e.g. all lists of a project)
- */
 export async function getTodoItemsByListIds(
   listIds: string[]
-): Promise<TodoItem[]> {
-  if (listIds.length === 0) return [];
+): Promise<ActionResult<TodoItem[]>> {
+  if (listIds.length === 0) return { ok: true, data: [] };
 
   const ownerId = await getUserIdOrThrow();
   const supabase = await createClient();
@@ -306,77 +262,30 @@ export async function getTodoItemsByListIds(
     .order('position', { ascending: true })
     .order('created_at', { ascending: false });
 
-  if (error) {
-    throw new Error(`Failed to fetch todo items: ${error.message}`);
-  }
-
-  return data || [];
+  if (error) return fail(`Failed to fetch todo items: ${error.message}`);
+  return { ok: true, data: data || [] };
 }
 
-/**
- * Create a new todo item
- */
 export async function createTodoItem(input: {
   list_id: string;
   content: string;
   due_date?: string | null;
-}): Promise<TodoItem> {
+}): Promise<ActionResult<TodoItem>> {
   if (!input.content || input.content.trim().length === 0) {
-    throw new Error('Item content is required');
+    return fail('Item content is required');
   }
 
-  const ownerId = await getUserIdOrThrow();
   const supabase = await createClient();
+  const { data, error } = await supabase.rpc('create_todo_item_atomic' as never, {
+    in_list_id: input.list_id,
+    in_content: input.content,
+    in_due_date: input.due_date || null,
+  } as never);
 
-  // Verify list belongs to user
-  const { data: list } = await supabase
-    .from('todo_lists')
-    .select('id')
-    .eq('id', input.list_id)
-    .eq('owner_id', ownerId)
-    .single();
-
-  if (!list) {
-    throw new Error('Todo list not found');
-  }
-
-  // Get max position to append at end
-  const { data: existingItems } = await supabase
-    .from('todo_items')
-    .select('position')
-    .eq('list_id', input.list_id)
-    .order('position', { ascending: false })
-    .limit(1);
-
-  const position =
-    existingItems && existingItems.length > 0
-      ? ((existingItems[0] as { position: number }).position || 0) + 1
-      : 0;
-
-  const insertData: TodoItemInsert = {
-    owner_id: ownerId,
-    list_id: input.list_id,
-    content: input.content.trim(),
-    due_date: input.due_date || null,
-    position,
-  };
-
-  const { data, error } = await supabase
-    .from('todo_items')
-    .insert(insertData as any)
-    .select()
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to create todo item: ${error.message}`);
-  }
-
-  return data;
+  if (error || !data) return fail(error?.message ?? 'Failed to create todo item');
+  return { ok: true, data: data as TodoItem };
 }
 
-/**
- * Update a todo item
- */
 export async function updateTodoItem(
   id: string,
   updates: {
@@ -384,90 +293,31 @@ export async function updateTodoItem(
     is_done?: boolean;
     due_date?: string | null;
   }
-): Promise<TodoItem> {
+): Promise<ActionResult<TodoItem>> {
   const ownerId = await getUserIdOrThrow();
-  const supabase = await createClient();
 
   const updateData: TodoItemUpdate = {};
-  if (updates.content !== undefined) {
-    updateData.content = updates.content.trim();
-  }
-  if (updates.is_done !== undefined) {
-    updateData.is_done = updates.is_done;
-  }
-  if (updates.due_date !== undefined) {
-    updateData.due_date = updates.due_date || null;
-  }
+  if (updates.content !== undefined) updateData.content = updates.content.trim();
+  if (updates.is_done !== undefined) updateData.is_done = updates.is_done;
+  if (updates.due_date !== undefined) updateData.due_date = updates.due_date || null;
 
-  const query: any = (supabase.from('todo_items') as any).update(
-    updateData as any
-  );
-
-  const result: any = await query
-    .eq('id', id)
-    .eq('owner_id', ownerId)
-    .select()
-    .single();
-
-  const { data, error } = result;
-
-  if (error) {
-    throw new Error(`Failed to update todo item: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error('Todo item not found');
-  }
-
-  return data;
+  return updateTodoItemRow(updateData, { id, owner_id: ownerId });
 }
 
-/**
- * Toggle todo item done status
- */
-export async function toggleTodoItem(id: string): Promise<TodoItem> {
-  const ownerId = await getUserIdOrThrow();
+export async function toggleTodoItem(id: string): Promise<ActionResult<TodoItem>> {
   const supabase = await createClient();
 
-  // Get current state
-  const { data: current } = await supabase
-    .from('todo_items')
-    .select('is_done')
-    .eq('id', id)
-    .eq('owner_id', ownerId)
-    .single();
+  const { data, error } = await supabase.rpc('toggle_todo_item_atomic' as never, {
+    in_item_id: id,
+  } as never);
 
-  if (!current) {
-    throw new Error('Todo item not found');
-  }
-
-  const updateData: TodoItemUpdate = {
-    is_done: !(current as { is_done: boolean }).is_done,
-  };
-
-  const query: any = (supabase.from('todo_items') as any).update(
-    updateData as any
-  );
-
-  const result: any = await query
-    .eq('id', id)
-    .eq('owner_id', ownerId)
-    .select()
-    .single();
-
-  const { data, error } = result;
-
-  if (error) {
-    throw new Error(`Failed to toggle todo item: ${error.message}`);
-  }
-
-  return data!;
+  if (error || !data) return fail(error?.message ?? 'Failed to toggle todo item');
+  return { ok: true, data: data as TodoItem };
 }
 
-/**
- * Delete a todo item
- */
-export async function deleteTodoItem(id: string): Promise<void> {
+export async function deleteTodoItem(
+  id: string
+): Promise<ActionResult<{ success: true }>> {
   const ownerId = await getUserIdOrThrow();
   const supabase = await createClient();
 
@@ -477,7 +327,6 @@ export async function deleteTodoItem(id: string): Promise<void> {
     .eq('id', id)
     .eq('owner_id', ownerId);
 
-  if (error) {
-    throw new Error(`Failed to delete todo item: ${error.message}`);
-  }
+  if (error) return fail(`Failed to delete todo item: ${error.message}`);
+  return { ok: true, data: { success: true } };
 }
