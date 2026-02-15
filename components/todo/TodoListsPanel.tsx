@@ -70,9 +70,9 @@ export default function TodoListsPanel({
     setCreating(false);
     setNewListTitle('');
 
-    if (result.data) {
+    if (result.ok) {
       onRefresh();
-    } else if (result.error) {
+    } else {
       alert(result.error);
     }
   };
@@ -83,12 +83,12 @@ export default function TodoListsPanel({
     const result = await deleteTodoListAction(listId);
     setDeletingId(null);
 
-    if (result.success) {
+    if (result.ok) {
       if (selectedListId === listId) {
         onSelectList(null);
       }
       onRefresh();
-    } else if (result.error) {
+    } else {
       alert(result.error);
     }
   };
@@ -100,12 +100,12 @@ export default function TodoListsPanel({
   ) => {
     e.stopPropagation();
     const result = await archiveTodoListAction(listId, isArchived);
-    if (result.data) {
+    if (result.ok) {
       if (selectedListId === listId && isArchived) {
         onSelectList(null);
       }
       onRefresh();
-    } else if (result.error) {
+    } else {
       alert(result.error);
     }
   };

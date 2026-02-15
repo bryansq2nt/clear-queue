@@ -2,22 +2,16 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Trash2, Check } from 'lucide-react';
 import { Database } from '@/lib/supabase/types';
 import { getProjectsForSidebar } from '@/app/actions/projects';
 import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
 import { signOut } from '@/app/actions/auth';
-import {
-  createTodoItemAction,
-  toggleTodoItemAction,
-  updateTodoItemAction,
-  deleteTodoItemAction,
-} from '@/app/todo/actions';
 import type { TodoItem } from '@/lib/todo/lists';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/components/I18nProvider';
+import { useProjectTodoBoard } from '@/app/todo/hooks/useProjectTodoBoard';
 
 type Project = Database['public']['Tables']['projects']['Row'];
 
@@ -35,15 +29,24 @@ export default function ProjectBoardClient({
   initialItems,
 }: ProjectBoardClientProps) {
   const { t } = useI18n();
-  const router = useRouter();
   const [projectName, setProjectName] = useState(initialProjectName);
   const [defaultListId, setDefaultListId] = useState(initialDefaultListId);
-  const [items, setItems] = useState<TodoItem[]>(initialItems);
   const [projects, setProjects] = useState<Project[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newTaskContent, setNewTaskContent] = useState('');
   const [adding, setAdding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    items,
+    error,
+    setError,
+    createItem,
+    toggleItem,
+    updateItem,
+    deleteItem,
+  } = useProjectTodoBoard({
+    defaultListId,
+    initialItems,
+  });
 
   const loadProjects = useCallback(async () => {
     const data = await getProjectsForSidebar();
@@ -61,51 +64,21 @@ export default function ProjectBoardClient({
 
     setError(null);
     setAdding(true);
-    const formData = new FormData();
-    formData.append('list_id', defaultListId);
-    formData.append('content', content);
-    const result = await createTodoItemAction(formData);
+    await createItem(content);
     setAdding(false);
     setNewTaskContent('');
-
-    if (result.data) {
-      setItems((prev) => [...prev, result.data!]);
-      router.refresh();
-    } else if (result.error) {
-      setError(result.error);
-    }
   };
 
   const handleToggle = async (item: TodoItem) => {
-    const result = await toggleTodoItemAction(item.id);
-    if (result.data) {
-      setItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, is_done: !i.is_done } : i))
-      );
-      router.refresh();
-    }
+    await toggleItem(item);
   };
 
   const handleUpdateContent = async (item: TodoItem, content: string) => {
-    const trimmed = content.trim();
-    if (trimmed === item.content) return;
-    if (!trimmed) return;
-
-    const result = await updateTodoItemAction(item.id, { content: trimmed });
-    if (result.data) {
-      setItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, content: trimmed } : i))
-      );
-      router.refresh();
-    }
+    await updateItem(item, content);
   };
 
   const handleDelete = async (item: TodoItem) => {
-    const result = await deleteTodoItemAction(item.id);
-    if (result.success) {
-      setItems((prev) => prev.filter((i) => i.id !== item.id));
-      router.refresh();
-    }
+    await deleteItem(item);
   };
 
   return (

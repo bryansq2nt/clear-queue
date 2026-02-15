@@ -8,10 +8,6 @@ import { Database } from '@/lib/supabase/types';
 import { getProjectsForSidebar } from '@/app/actions/projects';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import {
-  createTodoItemAction,
-  toggleTodoItemAction,
-  updateTodoItemAction,
-  deleteTodoItemAction,
   renameTodoListAction,
   updateTodoListAction,
   deleteTodoListAction,
@@ -38,6 +34,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/components/I18nProvider';
+import { useTodoListBoard } from '@/app/todo/hooks/useTodoListBoard';
 
 type Project = Database['public']['Tables']['projects']['Row'];
 
@@ -60,10 +57,20 @@ export default function ListBoardClient({
   const router = useRouter();
   const [listTitle, setListTitle] = useState(initialListTitle);
   const [projectId, setProjectId] = useState<string | null>(initialProjectId);
-  const [items, setItems] = useState<TodoItem[]>(initialItems);
   const [projects, setProjects] = useState<Project[]>([]);
   const [newTaskContent, setNewTaskContent] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const {
+    items,
+    error,
+    setError,
+    createItem,
+    toggleItem,
+    updateItem,
+    deleteItem,
+  } = useTodoListBoard({
+    listId,
+    initialItems,
+  });
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(initialListTitle);
   const [savingTitle, setSavingTitle] = useState(false);
@@ -92,42 +99,11 @@ export default function ListBoardClient({
       const trimmed = content.trim();
       if (!trimmed) return;
       setError(null);
-      const tempId = `opt-${Date.now()}`;
-      const optimisticItem: TodoItem = {
-        id: tempId,
-        owner_id: '',
-        list_id: listId,
-        content: trimmed,
-        is_done: false,
-        due_date: null,
-        position: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setItems((prev) => [...prev, optimisticItem]);
       setNewTaskContent('');
       newTaskInputRef.current?.focus();
-
-      createTodoItemAction(
-        (() => {
-          const fd = new FormData();
-          fd.append('list_id', listId);
-          fd.append('content', trimmed);
-          return fd;
-        })()
-      ).then((result) => {
-        if (result.data) {
-          setItems((prev) =>
-            prev.map((i) => (i.id === tempId ? result.data! : i))
-          );
-          router.refresh();
-        } else {
-          setItems((prev) => prev.filter((i) => i.id !== tempId));
-          setError(result.error ?? null);
-        }
-      });
+      createItem(trimmed);
     },
-    [listId, router]
+    [createItem, setError]
   );
 
   const handleNewTaskKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -139,38 +115,15 @@ export default function ListBoardClient({
   };
 
   const handleToggle = async (item: TodoItem) => {
-    if (item.id.startsWith('opt-')) return;
-    const result = await toggleTodoItemAction(item.id);
-    if (result.data) {
-      setItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, is_done: !i.is_done } : i))
-      );
-      router.refresh();
-    }
+    await toggleItem(item);
   };
 
   const handleUpdateContent = async (item: TodoItem, content: string) => {
-    if (item.id.startsWith('opt-')) return;
-    const trimmed = content.trim();
-    if (trimmed === item.content) return;
-    if (!trimmed) return;
-
-    const result = await updateTodoItemAction(item.id, { content: trimmed });
-    if (result.data) {
-      setItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, content: trimmed } : i))
-      );
-      router.refresh();
-    }
+    await updateItem(item, content);
   };
 
   const handleDelete = async (item: TodoItem) => {
-    if (item.id.startsWith('opt-')) return;
-    const result = await deleteTodoItemAction(item.id);
-    if (result.success) {
-      setItems((prev) => prev.filter((i) => i.id !== item.id));
-      router.refresh();
-    }
+    await deleteItem(item);
   };
 
   const handleSaveTitle = async () => {
@@ -183,11 +136,10 @@ export default function ListBoardClient({
     setSavingTitle(true);
     const result = await renameTodoListAction(listId, trimmed);
     setSavingTitle(false);
-    if (result.data) {
+    if (result.ok) {
       setListTitle(trimmed);
       setEditingTitle(false);
-      router.refresh();
-    } else if (result.error) {
+    } else {
       setError(result.error);
     }
   };
@@ -198,11 +150,10 @@ export default function ListBoardClient({
     setSavingProject(true);
     const result = await updateTodoListAction(listId, { project_id: value });
     setSavingProject(false);
-    if (result.data) {
+    if (result.ok) {
       setProjectId(value);
       setLinkProjectOpen(false);
-      router.refresh();
-    } else if (result.error) {
+    } else {
       setError(result.error);
     }
   };
@@ -212,9 +163,9 @@ export default function ListBoardClient({
     setDeletingList(true);
     const result = await deleteTodoListAction(listId);
     setDeletingList(false);
-    if (result.success) {
+    if (result.ok) {
       router.push('/todo');
-    } else if (result.error) {
+    } else {
       setError(result.error);
     }
   };

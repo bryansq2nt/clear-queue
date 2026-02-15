@@ -23,32 +23,14 @@ export async function createTask(formData: FormData) {
   const dueDate = formData.get('due_date') as string | null;
   const notes = formData.get('notes') as string | null;
 
-  // Get max order_index for this status
-  const { data: maxOrder } = await supabase
-    .from('tasks')
-    .select('order_index')
-    .eq('status', status)
-    .order('order_index', { ascending: false })
-    .limit(1)
-    .single();
-
-  const maxOrderRow = maxOrder as { order_index: number } | null;
-  const orderIndex =
-    maxOrderRow?.order_index != null ? maxOrderRow.order_index + 1 : 0;
-
-  const { data, error } = await supabase
-    .from('tasks')
-    .insert({
-      project_id: projectId,
-      title,
-      status,
-      priority,
-      due_date: dueDate || null,
-      notes: notes || null,
-      order_index: orderIndex,
-    } as never)
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('create_task_atomic' as never, {
+    in_project_id: projectId,
+    in_title: title,
+    in_status: status,
+    in_priority: priority,
+    in_due_date: dueDate || null,
+    in_notes: notes || null,
+  } as never);
 
   if (error) {
     return { error: error.message };
@@ -264,117 +246,15 @@ export async function updateTaskOrder(
   taskId: string,
   newStatus: TaskStatus,
   newOrderIndex: number,
-  oldStatus?: TaskStatus
+  _oldStatus?: TaskStatus
 ) {
   await requireAuth();
   const supabase = await createClient();
 
-  // Get the task being moved
-  const { data: task, error: taskError } = await supabase
-    .from('tasks')
-    .select('order_index, status')
-    .eq('id', taskId)
-    .single();
-
-  if (taskError || !task) {
-    return { error: taskError?.message || 'Task not found' };
-  }
-
-  const taskRow = task as { order_index: number; status: TaskStatus };
-  const oldIndex = taskRow.order_index;
-  const actualOldStatus = oldStatus || taskRow.status;
-
-  const statusesToFetch =
-    actualOldStatus === newStatus
-      ? [newStatus]
-      : [actualOldStatus, newStatus];
-
-  const { data: siblingTasks, error: siblingsError } = await supabase
-    .from('tasks')
-    .select('id, status, order_index')
-    .in('status', statusesToFetch)
-    .neq('id', taskId)
-    .order('order_index', { ascending: true });
-
-  if (siblingsError) {
-    return { error: siblingsError.message };
-  }
-
-  const reorderPayload: Array<{
-    id: string;
-    order_index: number;
-    status: TaskStatus;
-  }> = [];
-
-  const typedSiblings = (siblingTasks || []) as Array<{
-    id: string;
-    status: TaskStatus;
-    order_index: number;
-  }>;
-
-  const oldColumnTasks = typedSiblings.filter(
-    (sibling) => sibling.status === actualOldStatus
-  );
-  const newColumnTasks = typedSiblings.filter(
-    (sibling) => sibling.status === newStatus
-  );
-
-  if (actualOldStatus !== newStatus) {
-    for (const sibling of oldColumnTasks) {
-      if (sibling.order_index > oldIndex) {
-        reorderPayload.push({
-          id: sibling.id,
-          order_index: sibling.order_index - 1,
-          status: actualOldStatus,
-        });
-      }
-    }
-
-    for (const sibling of newColumnTasks) {
-      if (sibling.order_index >= newOrderIndex) {
-        reorderPayload.push({
-          id: sibling.id,
-          order_index: sibling.order_index + 1,
-          status: newStatus,
-        });
-      }
-    }
-  } else if (newOrderIndex > oldIndex) {
-    for (const sibling of newColumnTasks) {
-      if (
-        sibling.order_index > oldIndex &&
-        sibling.order_index <= newOrderIndex
-      ) {
-        reorderPayload.push({
-          id: sibling.id,
-          order_index: sibling.order_index - 1,
-          status: newStatus,
-        });
-      }
-    }
-  } else {
-    for (const sibling of newColumnTasks) {
-      if (
-        sibling.order_index >= newOrderIndex &&
-        sibling.order_index < oldIndex
-      ) {
-        reorderPayload.push({
-          id: sibling.id,
-          order_index: sibling.order_index + 1,
-          status: newStatus,
-        });
-      }
-    }
-  }
-
-  reorderPayload.push({
-    id: taskId,
-    order_index: newOrderIndex,
-    status: newStatus,
-  });
-
-  const { error } = await supabase.rpc('reorder_tasks_atomic' as never, {
-    task_data: reorderPayload,
+  const { error } = await supabase.rpc('move_task_atomic' as never, {
+    in_task_id: taskId,
+    in_new_status: newStatus,
+    in_new_order_index: newOrderIndex,
   } as never);
 
   if (error) {

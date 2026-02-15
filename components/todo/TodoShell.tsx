@@ -25,7 +25,7 @@ export default function TodoShell() {
     const result = await getTodoListsAction({
       includeArchived: showArchived,
     });
-    if (result.data) {
+    if (result.ok) {
       setLists(result.data);
     }
   }, [showArchived]);
@@ -33,7 +33,7 @@ export default function TodoShell() {
   // Load items for selected list
   const loadItems = async (listId: string) => {
     const result = await getTodoItemsAction(listId);
-    if (result.data) {
+    if (result.ok) {
       setItems(result.data);
     }
   };
