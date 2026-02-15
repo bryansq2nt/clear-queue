@@ -16,7 +16,7 @@ import {
   linkIdeaToProjectAction,
   unlinkIdeaFromProjectAction,
 } from './[id]/project-link-actions';
-import { loadIdeaDataAction } from './load-idea-data';
+import { getIdeaDataAction } from './load-idea-data';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -65,7 +65,7 @@ export default function IdeaDrawer({
   const loadIdeaData = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await loadIdeaDataAction(ideaId);
+      const result = await getIdeaDataAction(ideaId);
       if (result.error) {
         console.error('Failed to load idea:', result.error);
         return;
@@ -144,7 +144,7 @@ export default function IdeaDrawer({
         'link-project-form'
       ) as HTMLFormElement;
       form?.reset();
-      loadIdeaData();
+      router.refresh();
       onUpdate();
     } else if (result.error) {
       setLinkError(result.error);
@@ -163,7 +163,7 @@ export default function IdeaDrawer({
     const result = await unlinkIdeaFromProjectAction(linkId);
 
     if (result.success) {
-      loadIdeaData();
+      router.refresh();
       onUpdate();
     } else if (result.error) {
       alert(result.error);

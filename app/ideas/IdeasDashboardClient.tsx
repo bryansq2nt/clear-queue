@@ -23,7 +23,7 @@ import {
   updateBoardAction,
   addIdeaToBoardAction,
 } from './boards/actions';
-import { loadBoardDataAction } from './load-board-data';
+import { getBoardDataAction } from './load-board-data';
 
 interface Idea {
   id: string;
@@ -84,7 +84,7 @@ export default function IdeasDashboardClient({
   const loadBoardData = useCallback(async (boardId: string) => {
     setLoading(true);
     try {
-      const result = await loadBoardDataAction(boardId);
+      const result = await getBoardDataAction(boardId);
       if (result.error) {
         console.error('Failed to load board:', result.error);
         return;
@@ -141,10 +141,6 @@ export default function IdeasDashboardClient({
       await addIdeaToBoardAction(addFormData);
       router.refresh();
       setIsCreatingIdea(false);
-      // Reload board data
-      if (selectedBoardId) {
-        loadBoardData(selectedBoardId);
-      }
     }
   };
 
