@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
@@ -128,10 +129,10 @@ const TASK_COLS =
 const PROJECT_COLS =
   'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at';
 
-export async function getDashboardData(): Promise<{
+export const getDashboardData = cache(async (): Promise<{
   projects: Database['public']['Tables']['projects']['Row'][];
   tasks: Database['public']['Tables']['tasks']['Row'][];
-}> {
+}> => {
   await requireAuth();
   const supabase = await createClient();
   const { getUser } = await import('@/lib/auth');
@@ -150,10 +151,12 @@ export async function getDashboardData(): Promise<{
       .order('order_index', { ascending: true }),
   ]);
 
-  const projects = (projectsRes.data || []) as Database['public']['Tables']['projects']['Row'][];
-  const tasks = (tasksRes.data || []) as Database['public']['Tables']['tasks']['Row'][];
+  const projects = (projectsRes.data ||
+    []) as Database['public']['Tables']['projects']['Row'][];
+  const tasks = (tasksRes.data ||
+    []) as Database['public']['Tables']['tasks']['Row'][];
   return { projects, tasks };
-}
+});
 
 export async function getTasksByProjectId(projectId: string) {
   await requireAuth();

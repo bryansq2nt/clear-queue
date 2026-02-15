@@ -139,59 +139,52 @@ function calculateKPIs(tasks: Task[]) {
   };
 }
 
-export default function AnalyticsDashboard() {
+function computeDashboardState(projects: Project[], tasks: Task[]) {
+  const projectHealthData = projects.map((project: Project) => ({
+    ...project,
+    ...calculateProjectHealth(project.id, tasks),
+  }));
+  return {
+    projects,
+    tasks,
+    projectHealthData,
+    blockedTasks: getBlockedTasks(tasks, projects),
+    upcomingDeadlines: getUpcomingDeadlines(tasks, projects),
+    kpis: calculateKPIs(tasks),
+  };
+}
+
+type DashboardState = ReturnType<typeof computeDashboardState>;
+
+interface AnalyticsDashboardProps {
+  initialProjects: Project[];
+  initialTasks: Task[];
+}
+
+export default function AnalyticsDashboard({
+  initialProjects,
+  initialTasks,
+}: AnalyticsDashboardProps) {
   const { t } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
-  const [dashboardData, setDashboardData] = useState<{
-    projects: Project[];
-    tasks: Task[];
-    projectHealthData: any[];
-    blockedTasks: any[];
-    upcomingDeadlines: any[];
-    kpis: {
-      total: number;
-      blocked: number;
-      critical: number;
-      completed: number;
-    };
-  }>({
-    projects: [],
-    tasks: [],
-    projectHealthData: [],
-    blockedTasks: [],
-    upcomingDeadlines: [],
-    kpis: { total: 0, blocked: 0, critical: 0, completed: 0 },
-  });
+  const [dashboardData, setDashboardData] = useState<DashboardState>(() =>
+    computeDashboardState(initialProjects, initialTasks)
+  );
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    loadDashboardData();
   }, []);
 
   async function loadDashboardData() {
     setLoading(true);
     const { projects, tasks } = await getDashboardData();
-
-    const projectHealthData = projects.map((project: Project) => ({
-      ...project,
-      ...calculateProjectHealth(project.id, tasks),
-    }));
-
-    setDashboardData({
-      projects,
-      tasks,
-      projectHealthData,
-      blockedTasks: getBlockedTasks(tasks, projects),
-      upcomingDeadlines: getUpcomingDeadlines(tasks, projects),
-      kpis: calculateKPIs(tasks),
-    });
-
+    setDashboardData(computeDashboardState(projects, tasks));
     setLoading(false);
   }
 
