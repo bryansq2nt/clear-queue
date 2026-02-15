@@ -7,6 +7,10 @@ import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 
 type TaskStatus = Database['public']['Tables']['tasks']['Row']['status'];
+type TaskUpdate = Database['public']['Tables']['tasks']['Update'];
+type TaskWithProject = Database['public']['Tables']['tasks']['Row'] & {
+  projects: { id: string; name: string; color: string | null } | null;
+};
 
 export async function createTask(formData: FormData) {
   await requireAuth();
@@ -28,10 +32,9 @@ export async function createTask(formData: FormData) {
     .limit(1)
     .single();
 
+  const maxOrderRow = maxOrder as { order_index: number } | null;
   const orderIndex =
-    (maxOrder as any)?.order_index != null
-      ? (maxOrder as any).order_index + 1
-      : 0;
+    maxOrderRow?.order_index != null ? maxOrderRow.order_index + 1 : 0;
 
   const { data, error } = await supabase
     .from('tasks')
@@ -43,7 +46,7 @@ export async function createTask(formData: FormData) {
       due_date: dueDate || null,
       notes: notes || null,
       order_index: orderIndex,
-    } as any)
+    } as never)
     .select()
     .single();
 
@@ -68,7 +71,7 @@ export async function updateTask(id: string, formData: FormData) {
   const dueDate = formData.get('due_date') as string | null;
   const notes = formData.get('notes') as string | null;
 
-  const updates: any = {};
+  const updates: TaskUpdate = {};
   if (title) updates.title = title;
   if (projectId) updates.project_id = projectId;
   if (status) updates.status = status;
@@ -76,8 +79,9 @@ export async function updateTask(id: string, formData: FormData) {
   if (dueDate !== undefined) updates.due_date = dueDate || null;
   if (notes !== undefined) updates.notes = notes || null;
 
-  const { data, error } = await (supabase.from('tasks') as any)
-    .update(updates as any)
+  const { data, error } = await supabase
+    .from('tasks')
+    .update(updates as never)
     .eq('id', id)
     .select()
     .single();
@@ -173,9 +177,7 @@ export const getTasksByProjectId = cache(async (projectId: string) => {
 });
 
 export async function getCriticalTasks(): Promise<
-  (Database['public']['Tables']['tasks']['Row'] & {
-    projects: { id: string; name: string; color: string | null } | null;
-  })[]
+  TaskWithProject[]
 > {
   await requireAuth();
   const supabase = await createClient();
@@ -192,16 +194,14 @@ export async function getCriticalTasks(): Promise<
     .order('due_date', { ascending: true, nullsFirst: false })
     .limit(5);
   if (error) return [];
-  return (data || []) as any;
+  return (data || []) as TaskWithProject[];
 }
 
 export async function getRecentTasksPage(
   page: number,
   pageSize: number
 ): Promise<{
-  data: (Database['public']['Tables']['tasks']['Row'] & {
-    projects: { id: string; name: string; color: string | null } | null;
-  })[];
+  data: TaskWithProject[];
   count: number | null;
   error: Error | null;
 }> {
@@ -222,7 +222,7 @@ export async function getRecentTasksPage(
     .order('updated_at', { ascending: false })
     .range(from, to);
   return {
-    data: (data || []) as any,
+    data: (data || []) as TaskWithProject[],
     count: count ?? null,
     error: error ? new Error(error.message) : null,
   };
@@ -232,9 +232,7 @@ export async function getHighPriorityTasksPage(
   page: number,
   pageSize: number
 ): Promise<{
-  data: (Database['public']['Tables']['tasks']['Row'] & {
-    projects: { id: string; name: string; color: string | null } | null;
-  })[];
+  data: TaskWithProject[];
   count: number | null;
   error: Error | null;
 }> {
@@ -256,7 +254,7 @@ export async function getHighPriorityTasksPage(
     .order('due_date', { ascending: true, nullsFirst: false })
     .range(from, to);
   return {
-    data: (data || []) as any,
+    data: (data || []) as TaskWithProject[],
     count: count ?? null,
     error: error ? new Error(error.message) : null,
   };
@@ -282,85 +280,102 @@ export async function updateTaskOrder(
     return { error: taskError?.message || 'Task not found' };
   }
 
-  const taskData = task as any;
-  const oldIndex = taskData.order_index;
-  const actualOldStatus = oldStatus || taskData.status;
+  const taskRow = task as { order_index: number; status: TaskStatus };
+  const oldIndex = taskRow.order_index;
+  const actualOldStatus = oldStatus || taskRow.status;
 
-  // If status changed, we need to reorder both columns
+  const statusesToFetch =
+    actualOldStatus === newStatus
+      ? [newStatus]
+      : [actualOldStatus, newStatus];
+
+  const { data: siblingTasks, error: siblingsError } = await supabase
+    .from('tasks')
+    .select('id, status, order_index')
+    .in('status', statusesToFetch)
+    .neq('id', taskId)
+    .order('order_index', { ascending: true });
+
+  if (siblingsError) {
+    return { error: siblingsError.message };
+  }
+
+  const reorderPayload: Array<{
+    id: string;
+    order_index: number;
+    status: TaskStatus;
+  }> = [];
+
+  const typedSiblings = (siblingTasks || []) as Array<{
+    id: string;
+    status: TaskStatus;
+    order_index: number;
+  }>;
+
+  const oldColumnTasks = typedSiblings.filter(
+    (sibling) => sibling.status === actualOldStatus
+  );
+  const newColumnTasks = typedSiblings.filter(
+    (sibling) => sibling.status === newStatus
+  );
+
   if (actualOldStatus !== newStatus) {
-    // Get all tasks in old status column
-    const { data: oldColumnTasks } = await supabase
-      .from('tasks')
-      .select('id, order_index')
-      .eq('status', actualOldStatus)
-      .neq('id', taskId)
-      .order('order_index', { ascending: true });
-
-    // Get all tasks in new status column
-    const { data: newColumnTasks } = await supabase
-      .from('tasks')
-      .select('id, order_index')
-      .eq('status', newStatus)
-      .neq('id', taskId)
-      .order('order_index', { ascending: true });
-
-    // Update old column: shift tasks after oldIndex down by 1
-    if (oldColumnTasks) {
-      for (const t of oldColumnTasks as any[]) {
-        if (t.order_index > oldIndex) {
-          await (supabase.from('tasks') as any)
-            .update({ order_index: t.order_index - 1 } as any)
-            .eq('id', t.id);
-        }
+    for (const sibling of oldColumnTasks) {
+      if (sibling.order_index > oldIndex) {
+        reorderPayload.push({
+          id: sibling.id,
+          order_index: sibling.order_index - 1,
+          status: actualOldStatus,
+        });
       }
     }
 
-    // Update new column: shift tasks at or after newOrderIndex up by 1
-    if (newColumnTasks) {
-      for (const t of newColumnTasks as any[]) {
-        if (t.order_index >= newOrderIndex) {
-          await (supabase.from('tasks') as any)
-            .update({ order_index: t.order_index + 1 } as any)
-            .eq('id', t.id);
-        }
+    for (const sibling of newColumnTasks) {
+      if (sibling.order_index >= newOrderIndex) {
+        reorderPayload.push({
+          id: sibling.id,
+          order_index: sibling.order_index + 1,
+          status: newStatus,
+        });
+      }
+    }
+  } else if (newOrderIndex > oldIndex) {
+    for (const sibling of newColumnTasks) {
+      if (
+        sibling.order_index > oldIndex &&
+        sibling.order_index <= newOrderIndex
+      ) {
+        reorderPayload.push({
+          id: sibling.id,
+          order_index: sibling.order_index - 1,
+          status: newStatus,
+        });
       }
     }
   } else {
-    // Same column reordering
-    const { data: columnTasks } = await supabase
-      .from('tasks')
-      .select('id, order_index')
-      .eq('status', newStatus)
-      .neq('id', taskId)
-      .order('order_index', { ascending: true });
-
-    if (columnTasks) {
-      if (newOrderIndex > oldIndex) {
-        // Moving down: decrement tasks between oldIndex and newOrderIndex
-        for (const t of columnTasks as any[]) {
-          if (t.order_index > oldIndex && t.order_index <= newOrderIndex) {
-            await (supabase.from('tasks') as any)
-              .update({ order_index: t.order_index - 1 } as any)
-              .eq('id', t.id);
-          }
-        }
-      } else {
-        // Moving up: increment tasks between newOrderIndex and oldIndex
-        for (const t of columnTasks as any[]) {
-          if (t.order_index >= newOrderIndex && t.order_index < oldIndex) {
-            await (supabase.from('tasks') as any)
-              .update({ order_index: t.order_index + 1 } as any)
-              .eq('id', t.id);
-          }
-        }
+    for (const sibling of newColumnTasks) {
+      if (
+        sibling.order_index >= newOrderIndex &&
+        sibling.order_index < oldIndex
+      ) {
+        reorderPayload.push({
+          id: sibling.id,
+          order_index: sibling.order_index + 1,
+          status: newStatus,
+        });
       }
     }
   }
 
-  // Update the task itself
-  const { error } = await (supabase.from('tasks') as any)
-    .update({ status: newStatus, order_index: newOrderIndex } as any)
-    .eq('id', taskId);
+  reorderPayload.push({
+    id: taskId,
+    order_index: newOrderIndex,
+    status: newStatus,
+  });
+
+  const { error } = await supabase.rpc('reorder_tasks_atomic' as never, {
+    task_data: reorderPayload,
+  } as never);
 
   if (error) {
     return { error: error.message };
