@@ -13,8 +13,11 @@ import {
   formatCurrency as formatCurrencyFn,
   type Locale,
 } from '@/lib/i18n';
-import { getProfile } from '@/app/settings/profile/actions';
-import { getPreferencesOptional } from '@/app/settings/appearance/actions';
+import type { getProfileOptional } from '@/app/settings/profile/actions';
+import type { getPreferencesOptional } from '@/app/settings/appearance/actions';
+
+type Profile = Awaited<ReturnType<typeof getProfileOptional>>;
+type UserPreferences = Awaited<ReturnType<typeof getPreferencesOptional>>;
 
 const I18N_STORAGE_KEY = 'cq-i18n-prefs';
 
@@ -64,28 +67,35 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [prefs, setPrefsState] = useState<I18nPrefs>(DEFAULT_PREFS);
-  const [mounted, setMounted] = useState(false);
+function initialPrefsFromServer(
+  profile: Profile | null | undefined,
+  preferences: UserPreferences | null | undefined
+): I18nPrefs {
+  const stored = loadFromStorage();
+  return {
+    locale: (profile?.locale === 'es' ? 'es' : 'en') as Locale,
+    currency: preferences?.currency ?? stored.currency,
+  };
+}
+
+export function I18nProvider({
+  children,
+  initialProfile = null,
+  initialPreferences = null,
+}: {
+  children: ReactNode;
+  initialProfile?: Profile | null;
+  initialPreferences?: UserPreferences | null;
+}) {
+  const [prefs, setPrefsState] = useState<I18nPrefs>(() =>
+    initialPrefsFromServer(initialProfile, initialPreferences)
+  );
+  const [mounted, setMounted] = useState(true);
 
   useEffect(() => {
-    const stored = loadFromStorage();
-    setPrefsState(stored);
-
-    Promise.all([getProfile(), getPreferencesOptional()])
-      .then(([profile, preferences]) => {
-        const next: I18nPrefs = {
-          locale: (profile?.locale === 'es' ? 'es' : 'en') as Locale,
-          currency: preferences?.currency ?? stored.currency,
-        };
-        setPrefsState(next);
-        saveToStorage(next);
-      })
-      .catch(() => {
-        setPrefsState(stored);
-      });
-    setMounted(true);
-  }, []);
+    const next = initialPrefsFromServer(initialProfile, initialPreferences);
+    saveToStorage(next);
+  }, [initialProfile, initialPreferences]);
 
   const setPrefs = useCallback((partial: Partial<I18nPrefs>) => {
     setPrefsState((prev) => {

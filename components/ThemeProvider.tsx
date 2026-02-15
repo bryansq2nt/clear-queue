@@ -1,30 +1,32 @@
 'use client';
 
 import { useEffect } from 'react';
-import { getPreferencesOptional } from '@/app/settings/appearance/actions';
+import type { getPreferencesOptional } from '@/app/settings/appearance/actions';
 import { applyTheme, loadFromStorage, saveToStorage } from '@/lib/theme';
+
+type UserPreferences = Awaited<ReturnType<typeof getPreferencesOptional>>;
 
 export default function ThemeProvider({
   children,
+  initialPreferences = null,
 }: {
   children: React.ReactNode;
+  initialPreferences?: UserPreferences | null;
 }) {
   useEffect(() => {
     const stored = loadFromStorage();
-    applyTheme(stored);
-
-    getPreferencesOptional().then((prefs) => {
-      if (prefs) {
-        const next = {
-          theme_mode: prefs.theme_mode,
-          primary_color: prefs.primary_color,
-          secondary_color: prefs.secondary_color,
-          third_color: prefs.third_color,
-        };
-        saveToStorage(next);
-        applyTheme(next);
-      }
-    });
+    if (initialPreferences) {
+      const next = {
+        theme_mode: initialPreferences.theme_mode,
+        primary_color: initialPreferences.primary_color,
+        secondary_color: initialPreferences.secondary_color,
+        third_color: initialPreferences.third_color,
+      };
+      saveToStorage(next);
+      applyTheme(next);
+    } else {
+      applyTheme(stored);
+    }
 
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const handler = () => {
@@ -35,7 +37,7 @@ export default function ThemeProvider({
     };
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
-  }, []);
+  }, [initialPreferences]);
 
   return <>{children}</>;
 }

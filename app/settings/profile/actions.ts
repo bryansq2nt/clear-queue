@@ -2,7 +2,7 @@
 
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 import {
@@ -19,9 +19,21 @@ type UserAsset = Database['public']['Tables']['user_assets']['Row'];
 const PROFILE_COLS =
   'user_id, display_name, phone, timezone, locale, avatar_asset_id, created_at, updated_at';
 
+/** Optional profile fetch for layout; returns null when not authenticated. Use getProfile() in pages that require auth. */
+export const getProfileOptional = cache(async (): Promise<Profile | null> => {
+  const user = await getUser();
+  if (!user) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(PROFILE_COLS)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (error) return null;
+  return data ? (data as Profile) : null;
+});
+
 export const getProfile = cache(async (): Promise<Profile | null> => {
-  console.log('🔵 [SERVER ACTION] getProfile called');
-  console.trace('Call stack:');
   const user = await requireAuth();
   const supabase = await createClient();
 
@@ -55,26 +67,26 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   return inserted ? (inserted as Profile) : null;
 });
 
-export const getProfileWithAvatar = cache(async (): Promise<
-  (Profile & { avatar_asset: UserAsset | null }) | null
-> => {
-  console.log('🔵 [SERVER ACTION] getProfileWithAvatar called');
-  console.trace('Call stack:');
-  const profile = await getProfile();
-  if (!profile) return null;
-  if (!profile.avatar_asset_id) return { ...profile, avatar_asset: null };
+export const getProfileWithAvatar = cache(
+  async (): Promise<(Profile & { avatar_asset: UserAsset | null }) | null> => {
+    console.log('🔵 [SERVER ACTION] getProfileWithAvatar called');
+    console.trace('Call stack:');
+    const profile = await getProfile();
+    if (!profile) return null;
+    if (!profile.avatar_asset_id) return { ...profile, avatar_asset: null };
 
-  const supabase = await createClient();
-  const { data: asset } = await supabase
-    .from('user_assets')
-    .select(
-      'id, user_id, kind, bucket, path, mime_type, size_bytes, width, height, created_at'
-    )
-    .eq('id', profile.avatar_asset_id)
-    .single();
+    const supabase = await createClient();
+    const { data: asset } = await supabase
+      .from('user_assets')
+      .select(
+        'id, user_id, kind, bucket, path, mime_type, size_bytes, width, height, created_at'
+      )
+      .eq('id', profile.avatar_asset_id)
+      .single();
 
-  return { ...profile, avatar_asset: asset ? (asset as UserAsset) : null };
-});
+    return { ...profile, avatar_asset: asset ? (asset as UserAsset) : null };
+  }
+);
 
 export async function updateProfile(payload: {
   display_name?: string;
@@ -156,34 +168,34 @@ export async function uploadUserAsset(
   return doUploadUserAsset(file, kind);
 }
 
-export const getAssetSignedUrl = cache(async (
-  assetId: string
-): Promise<string | null> => {
-  console.log('🔵 [SERVER ACTION] getAssetSignedUrl called', { assetId });
-  console.trace('Call stack:');
-  const user = await requireAuth();
-  const supabase = await createClient();
+export const getAssetSignedUrl = cache(
+  async (assetId: string): Promise<string | null> => {
+    console.log('🔵 [SERVER ACTION] getAssetSignedUrl called', { assetId });
+    console.trace('Call stack:');
+    const user = await requireAuth();
+    const supabase = await createClient();
 
-  const { data, error: fetchError } = await supabase
-    .from('user_assets')
-    .select('id, user_id, path, bucket')
-    .eq('id', assetId)
-    .single();
+    const { data, error: fetchError } = await supabase
+      .from('user_assets')
+      .select('id, user_id, path, bucket')
+      .eq('id', assetId)
+      .single();
 
-  const asset = data as {
-    id: string;
-    user_id: string;
-    path: string;
-    bucket: string;
-  } | null;
-  if (fetchError || !asset || asset.user_id !== user.id) return null;
+    const asset = data as {
+      id: string;
+      user_id: string;
+      path: string;
+      bucket: string;
+    } | null;
+    if (fetchError || !asset || asset.user_id !== user.id) return null;
 
-  const { data: urlData } = await supabase.storage
-    .from(asset.bucket)
-    .createSignedUrl(asset.path, 3600);
+    const { data: urlData } = await supabase.storage
+      .from(asset.bucket)
+      .createSignedUrl(asset.path, 3600);
 
-  return urlData?.signedUrl ?? null;
-});
+    return urlData?.signedUrl ?? null;
+  }
+);
 
 export async function deleteUserAsset(
   assetId: string

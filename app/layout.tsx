@@ -5,6 +5,8 @@ import { Analytics } from '@vercel/analytics/next';
 import ThemeProvider from '@/components/ThemeProvider';
 import { I18nProvider } from '@/components/I18nProvider';
 import * as Sentry from '@sentry/nextjs';
+import { getProfileOptional } from '@/app/settings/profile/actions';
+import { getPreferencesOptional } from '@/app/settings/appearance/actions';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -57,19 +59,28 @@ const themeScript = `
 })();
 `;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [profile, preferences] = await Promise.all([
+    getProfileOptional(),
+    getPreferencesOptional(),
+  ]);
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className={inter.className}>
-        <ThemeProvider>
-          <I18nProvider>{children}</I18nProvider>
+        <ThemeProvider initialPreferences={preferences}>
+          <I18nProvider
+            initialProfile={profile}
+            initialPreferences={preferences}
+          >
+            {children}
+          </I18nProvider>
         </ThemeProvider>
         <Analytics />
       </body>

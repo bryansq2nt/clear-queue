@@ -13,43 +13,47 @@ type UserPreferences = Database['public']['Tables']['user_preferences']['Row'];
 const USER_PREF_COLS =
   'user_id, theme_mode, primary_color, secondary_color, third_color, currency, company_logo_asset_id, cover_image_asset_id, created_at, updated_at';
 
-export const getPreferences = cache(async (): Promise<UserPreferences | null> => {
-  const user = await requireAuth();
-  const supabase = await createClient();
+export const getPreferences = cache(
+  async (): Promise<UserPreferences | null> => {
+    const user = await requireAuth();
+    const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from('user_preferences')
-    .select(USER_PREF_COLS)
-    .eq('user_id', user.id)
-    .maybeSingle();
+    const { data, error } = await supabase
+      .from('user_preferences')
+      .select(USER_PREF_COLS)
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-  if (error) return null;
-  if (data) return data as UserPreferences;
+    if (error) return null;
+    if (data) return data as UserPreferences;
 
-  const insertPayload: Database['public']['Tables']['user_preferences']['Insert'] =
-    {
-      user_id: user.id,
-    };
-  const { data: inserted } = await supabase
-    .from('user_preferences')
-    .insert(insertPayload as never)
-    .select(USER_PREF_COLS)
-    .single();
+    const insertPayload: Database['public']['Tables']['user_preferences']['Insert'] =
+      {
+        user_id: user.id,
+      };
+    const { data: inserted } = await supabase
+      .from('user_preferences')
+      .insert(insertPayload as never)
+      .select(USER_PREF_COLS)
+      .single();
 
-  return inserted ? (inserted as UserPreferences) : null;
-});
+    return inserted ? (inserted as UserPreferences) : null;
+  }
+);
 
-export async function getPreferencesOptional(): Promise<UserPreferences | null> {
-  const user = await getUser();
-  if (!user) return null;
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from('user_preferences')
-    .select(USER_PREF_COLS)
-    .eq('user_id', user.id)
-    .maybeSingle();
-  return data ? (data as UserPreferences) : null;
-}
+export const getPreferencesOptional = cache(
+  async (): Promise<UserPreferences | null> => {
+    const user = await getUser();
+    if (!user) return null;
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('user_preferences')
+      .select(USER_PREF_COLS)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    return data ? (data as UserPreferences) : null;
+  }
+);
 
 export async function updatePreferences(payload: {
   theme_mode?: 'light' | 'dark' | 'system';
