@@ -332,12 +332,26 @@ export async function getProjectsWithTodoSummaryAction(): Promise<{
         {} as Record<string, string[]>
       );
 
+    const allListIds = lists.map((list) => list.id);
+    const allItems =
+      allListIds.length > 0 ? await getTodoItemsByListIds(allListIds) : [];
+    const itemsByListId = allItems.reduce(
+      (acc, item) => {
+        if (!acc[item.list_id]) {
+          acc[item.list_id] = [];
+        }
+        acc[item.list_id].push(item);
+        return acc;
+      },
+      {} as Record<string, TodoItem[]>
+    );
+
     const summaries: ProjectTodoSummary[] = [];
     for (const project of projects) {
       const listIds = projectListIds[project.id] || [];
       if (listIds.length === 0) continue;
 
-      const items = await getTodoItemsByListIds(listIds);
+      const items = listIds.flatMap((listId) => itemsByListId[listId] || []);
       const pending = items.filter((i) => !i.is_done);
       const previewItems = items.slice(0, 3);
 

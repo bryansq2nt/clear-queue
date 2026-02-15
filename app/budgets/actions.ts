@@ -7,12 +7,6 @@ import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 
 type Budget = Database['public']['Tables']['budgets']['Row'];
-type BudgetCategory = Database['public']['Tables']['budget_categories']['Row'];
-type BudgetItem = Database['public']['Tables']['budget_items']['Row'];
-
-type CategoryWithItems = BudgetCategory & {
-  budget_items: BudgetItem[];
-};
 
 // ============================================
 // GET ALL BUDGETS
@@ -181,7 +175,7 @@ export async function createBudget(formData: {
       description: formData.description || null,
       project_id: formData.project_id || null,
       owner_id: user.id,
-    } as any)
+    } as never)
     .select()
     .single();
 
@@ -208,18 +202,19 @@ export async function updateBudget(
   await requireAuth();
   const supabase = await createClient();
 
-  const updates: any = {};
+  const updates: Database['public']['Tables']['budgets']['Update'] = {};
   if (formData.name !== undefined) updates.name = formData.name;
   if (formData.description !== undefined)
     updates.description = formData.description || null;
   if (formData.project_id !== undefined)
     updates.project_id = formData.project_id || null;
 
-  const query: any = (supabase.from('budgets') as any).update(updates as any);
-
-  const result: any = await query.eq('id', budgetId).select().single();
-
-  const { data, error } = result;
+  const { data, error } = await supabase
+    .from('budgets')
+    .update(updates as never)
+    .eq('id', budgetId)
+    .select()
+    .single();
 
   if (error) {
     console.error('Error updating budget:', error);
@@ -256,113 +251,22 @@ export async function duplicateBudget(sourceBudgetId: string) {
   await requireAuth();
   const supabase = await createClient();
 
-  // Fetch source budget
-  const { data: sourceBudget, error: sourceBudgetError } = await supabase
-    .from('budgets')
-    .select(
-      'id, project_id, name, description, owner_id, created_at, updated_at'
-    )
-    .eq('id', sourceBudgetId)
-    .single();
+  const { data: newBudgetId, error } = await supabase.rpc(
+    'duplicate_budget_atomic' as never,
+    {
+      source_id: sourceBudgetId,
+      new_name: '',
+    } as never
+  );
 
-  if (sourceBudgetError || !sourceBudget) {
-    console.error('Error fetching source budget:', sourceBudgetError);
-    throw new Error('Budget not found');
-  }
-
-  const sourceBudgetData = sourceBudget as Budget;
-
-  // Create new budget
-  const { data: newBudget, error: createBudgetError } = await supabase
-    .from('budgets')
-    .insert({
-      name: `${sourceBudgetData.name} (Copy)`,
-      description: sourceBudgetData.description ?? null,
-      project_id: sourceBudgetData.project_id ?? null,
-    } as any)
-    .select()
-    .single();
-
-  if (createBudgetError || !newBudget) {
-    console.error('Error creating duplicated budget:', createBudgetError);
+  if (error || !newBudgetId) {
+    console.error('Error duplicating budget atomically:', error);
     throw new Error('Failed to duplicate budget');
   }
 
-  const newBudgetData = newBudget as Budget;
-
-  // Fetch categories with items
-  const { data: categories, error: categoriesError } = await supabase
-    .from('budget_categories')
-    .select(
-      `
-      *,
-      budget_items (*)
-    `
-    )
-    .eq('budget_id', sourceBudgetId)
-    .order('sort_order', { ascending: true });
-
-  if (categoriesError) {
-    console.error(
-      'Error fetching categories for duplication:',
-      categoriesError
-    );
-    // Budget duplicated, but no categories copied; still return new budget id.
-    revalidatePath('/budgets');
-    revalidatePath(`/budgets/${newBudgetData.id}`);
-    return { budgetId: newBudgetData.id };
-  }
-
-  const categoriesData = (categories || []) as CategoryWithItems[];
-
-  // Copy categories + items (sequential to keep mapping reliable)
-  for (const category of categoriesData) {
-    const { data: newCategory, error: newCategoryError } = await supabase
-      .from('budget_categories')
-      .insert({
-        budget_id: newBudgetData.id,
-        name: category.name,
-        description: category.description ?? null,
-        sort_order: category.sort_order ?? 0,
-      } as any)
-      .select()
-      .single();
-
-    if (newCategoryError || !newCategory) {
-      console.error('Error duplicating category:', newCategoryError);
-      throw new Error('Failed to duplicate budget');
-    }
-
-    const newCategoryId = (newCategory as BudgetCategory).id;
-    const items = (category.budget_items || []) as BudgetItem[];
-
-    if (items.length > 0) {
-      const itemInserts = items.map((item) => ({
-        category_id: newCategoryId,
-        name: item.name,
-        description: item.description ?? null,
-        quantity: item.quantity ?? 1,
-        unit_price: item.unit_price ?? 0,
-        link: item.link ?? null,
-        status: (item.status as any) ?? 'pending',
-        is_recurrent: item.is_recurrent ?? false,
-        notes: item.notes ?? null,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('budget_items')
-        .insert(itemInserts as any);
-
-      if (itemsError) {
-        console.error('Error duplicating items:', itemsError);
-        throw new Error('Failed to duplicate budget');
-      }
-    }
-  }
-
   revalidatePath('/budgets');
-  revalidatePath(`/budgets/${newBudgetData.id}`);
-  return { budgetId: newBudgetData.id };
+  revalidatePath(`/budgets/${newBudgetId}`);
+  return { budgetId: newBudgetId };
 }
 
 // ============================================
