@@ -64,7 +64,7 @@ export async function listIdeas(): Promise<Idea[]> {
 
   const { data, error } = await supabase
     .from('ideas')
-    .select('*')
+    .select('id, owner_id, title, description, created_at, updated_at')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -86,7 +86,7 @@ export async function getIdeaById(id: string): Promise<Idea | null> {
 
   const { data, error } = await supabase
     .from('ideas')
-    .select('*')
+    .select('id, owner_id, title, description, created_at, updated_at')
     .eq('id', id)
     .single();
 
@@ -120,7 +120,7 @@ export async function getIdeasByIds(ids: string[]): Promise<Idea[]> {
 
   const { data, error } = await supabase
     .from('ideas')
-    .select('*')
+    .select('id, owner_id, title, description, created_at, updated_at')
     .in('id', validIds);
 
   if (error) {

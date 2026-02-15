@@ -9,10 +9,12 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
-type Project = Database['public']['Tables']['projects']['Row'];
+
+/** Minimal project shape returned by task queryFn (id, name, color only). */
+type ProjectSummary = { id: string; name: string; color: string | null } | null;
 
 interface TaskWithProject extends Task {
-  projects: Project | null;
+  projects: ProjectSummary;
 }
 
 const STATUS_KEYS = {
@@ -113,7 +115,7 @@ export default function TaskListWidget({
 
     // Transform the data to flatten the projects relation
     const transformedTasks = (result.data || []).map((task: any) => {
-      let project: Project | null = null;
+      let project: ProjectSummary = null;
       if (task.projects) {
         if (Array.isArray(task.projects)) {
           project = task.projects.length > 0 ? task.projects[0] : null;

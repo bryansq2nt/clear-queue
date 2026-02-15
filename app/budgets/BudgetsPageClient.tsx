@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Database } from '@/lib/supabase/types';
 import { AppShell } from '@/components/AppShell';
 import { Plus } from 'lucide-react';
@@ -13,11 +13,30 @@ import { useI18n } from '@/components/I18nProvider';
 
 type Project = Database['public']['Tables']['projects']['Row'];
 
-export default function BudgetsPageClient() {
+interface BudgetWithProject {
+  id: string;
+  project_id: string | null;
+  name: string;
+  description: string | null;
+  owner_id: string;
+  created_at: string;
+  updated_at: string;
+  projects: { id: string; name: string } | null;
+}
+
+interface BudgetsPageClientProps {
+  initialProjects: Project[];
+  initialBudgets: BudgetWithProject[];
+}
+
+export default function BudgetsPageClient({
+  initialProjects,
+  initialBudgets,
+}: BudgetsPageClientProps) {
   const { t } = useI18n();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [budgets, setBudgets] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [budgets, setBudgets] = useState<any[]>(initialBudgets);
+  const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadProjects = useCallback(async () => {
@@ -31,11 +50,6 @@ export default function BudgetsPageClient() {
     setBudgets(data);
     setIsLoading(false);
   }, []);
-
-  useEffect(() => {
-    loadProjects();
-    loadBudgets();
-  }, [loadProjects, loadBudgets]);
 
   const handleModalClose = () => {
     setIsModalOpen(false);

@@ -5,7 +5,7 @@ import { getIdeaById } from '@/lib/idea-graph/ideas';
 import { listProjectLinksForIdea } from '@/lib/idea-graph/project-links';
 import { getProjectsByIds, listProjectsForPicker } from '@/lib/projects';
 
-export async function loadIdeaDataAction(ideaId: string) {
+export async function getIdeaDataAction(ideaId: string) {
   await requireAuth();
 
   const [idea, projectLinks, availableProjects] = await Promise.all([

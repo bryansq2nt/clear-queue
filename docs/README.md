@@ -10,7 +10,7 @@
 | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | [Estado de implementación (calidad y enforcement)](reports/IMPLEMENTATION_STATUS_REPORT.md) | Reglas ESLint custom, pre-commit, CI y estado de las violaciones.                                                                 |
 | [Reporte de fixes de arquitectura](reports/REPORTE-FIXES-ARQUITECTURA.md)                   | Resumen de los fixes aplicados (no-client-supabase, no-select-star, no-manual-refetch) y cómo se siguieron las reglas y patrones. |
-| [Optimización de carga del perfil](reports/REPORTE-OPTIMIZACION-PROFILE.md)                 | Migración del fetch de perfil desde useEffect (cliente) a servidor; cache() y reducción de POSTs; resultado ~3x más rápido.          |
+| [Optimización de carga del perfil](reports/REPORTE-OPTIMIZACION-PROFILE.md)                 | Migración del fetch de perfil desde useEffect (cliente) a servidor; cache() y reducción de POSTs; resultado ~3x más rápido.       |
 
 ---
 
@@ -35,9 +35,9 @@
 
 ## Anti-patrones
 
-| Documento                                                                 | Descripción                                                                 |
-| ------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| [Client-side data fetching en useEffect](anti-patterns/client-side-data-fetching.md) | ❌ Por qué no cargar datos iniciales en el cliente y cómo corregirlo.        |
+| Documento                                                                            | Descripción                                                           |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| [Client-side data fetching en useEffect](anti-patterns/client-side-data-fetching.md) | ❌ Por qué no cargar datos iniciales en el cliente y cómo corregirlo. |
 
 ---
 

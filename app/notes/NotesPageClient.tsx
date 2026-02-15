@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Database } from '@/lib/supabase/types';
 import Sidebar from '@/components/Sidebar';
@@ -55,21 +55,32 @@ function formatUpdatedAt(
   return d.toLocaleDateString(localeTag);
 }
 
-function NotesPageContent() {
+interface NotesPageContentProps {
+  initialProjects: Project[];
+  initialProjectList: { id: string; name: string }[];
+  initialNotes: Note[];
+  initialProjectFilter: string;
+}
+
+function NotesPageContent({
+  initialProjects,
+  initialProjectList,
+  initialNotes,
+  initialProjectFilter,
+}: NotesPageContentProps) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectIdFromUrl = searchParams.get('projectId');
 
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [projectList, setProjectList] = useState<
-    { id: string; name: string }[]
-  >([]);
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [projectList, setProjectList] =
+    useState<{ id: string; name: string }[]>(initialProjectList);
+  const [notes, setNotes] = useState<Note[]>(initialNotes);
   const [projectFilter, setProjectFilter] = useState<string>(
-    projectIdFromUrl || 'all'
+    projectIdFromUrl || initialProjectFilter
   );
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -92,13 +103,14 @@ function NotesPageContent() {
     setIsLoading(false);
   }, [projectFilter]);
 
+  const isFirstFilterRender = useRef(true);
   useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-  useEffect(() => {
+    if (isFirstFilterRender.current) {
+      isFirstFilterRender.current = false;
+      return;
+    }
     loadNotes();
-  }, [loadNotes]);
+  }, [projectFilter, loadNotes]);
 
   const projectNameById = (id: string) => {
     const p =
@@ -254,7 +266,19 @@ function NotesPageContent() {
   );
 }
 
-export default function NotesPageClient() {
+interface NotesPageClientProps {
+  initialProjects: Project[];
+  initialProjectList: { id: string; name: string }[];
+  initialNotes: Note[];
+  initialProjectFilter: string;
+}
+
+export default function NotesPageClient({
+  initialProjects,
+  initialProjectList,
+  initialNotes,
+  initialProjectFilter,
+}: NotesPageClientProps) {
   return (
     <Suspense
       fallback={
@@ -263,7 +287,12 @@ export default function NotesPageClient() {
         </div>
       }
     >
-      <NotesPageContent />
+      <NotesPageContent
+        initialProjects={initialProjects}
+        initialProjectList={initialProjectList}
+        initialNotes={initialNotes}
+        initialProjectFilter={initialProjectFilter}
+      />
     </Suspense>
   );
 }

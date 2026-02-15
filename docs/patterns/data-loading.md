@@ -35,21 +35,21 @@ export default async function FeaturePage() {
 
 ```typescript
 // app/[feature]/actions.ts
-'use server'
-import { cache } from 'react'
+'use server';
+import { cache } from 'react';
 
 // ✅ CORRECT: Wrapped with cache()
 export const getFeatureData = cache(async () => {
-  const supabase = await createClient()
-  const user = await requireAuth()
+  const supabase = await createClient();
+  const user = await requireAuth();
 
   const { data } = await supabase
     .from('features')
     .select('id, name, status')
-    .eq('user_id', user.id)
+    .eq('user_id', user.id);
 
-  return data
-})
+  return data;
+});
 
 // ❌ WRONG: Don't cache mutations
 export async function updateFeature(id: string, updates: object) {
@@ -137,9 +137,9 @@ With `cache()`:
 
 ```typescript
 // Multiple components call this in same render
-const data1 = await getFeatureData() // → DB query
-const data2 = await getFeatureData() // → cached (0ms)
-const data3 = await getFeatureData() // → cached (0ms)
+const data1 = await getFeatureData(); // → DB query
+const data2 = await getFeatureData(); // → cached (0ms)
+const data3 = await getFeatureData(); // → cached (0ms)
 
 // Result: 1 DB query instead of 3
 ```
@@ -151,13 +151,13 @@ const data3 = await getFeatureData() // → cached (0ms)
 ### ❌ Mistake 1: useEffect Fetch
 
 ```typescript
-'use client'
+'use client';
 function MyPage() {
-  const [data, setData] = useState([])
+  const [data, setData] = useState([]);
 
   useEffect(() => {
-    fetchData().then(setData) // ❌ WRONG
-  }, [])
+    fetchData().then(setData); // ❌ WRONG
+  }, []);
 }
 ```
 
@@ -171,10 +171,10 @@ function MyPage() {
 ### ❌ Mistake 2: No cache() on Reads
 
 ```typescript
-'use server'
+'use server';
 // ❌ WRONG: Not cached
 export async function getData() {
-  return supabase.from('table').select()
+  return supabase.from('table').select();
 }
 ```
 
@@ -186,13 +186,13 @@ export async function getData() {
 ### ❌ Mistake 3: cache() on Mutations
 
 ```typescript
-'use server'
-import { cache } from 'react'
+'use server';
+import { cache } from 'react';
 
 // ❌ WRONG: Mutations should NOT be cached
 export const updateData = cache(async (id, data) => {
-  return supabase.from('table').update(data).eq('id', id)
-})
+  return supabase.from('table').update(data).eq('id', id);
+});
 ```
 
 **Why wrong:**

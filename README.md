@@ -18,6 +18,11 @@ A personal project and task management system built with Next.js 14, TypeScript,
 - **Analytics Dashboard**: View project health, KPIs, blocked tasks, and upcoming deadlines
 - **Authentication**: Secure admin-only access via Supabase Auth
 
+## Documentación
+
+- **[docs/README.md](docs/README.md)** ? Índice de documentación (reportes, audits, patrones, reglas ESLint).
+- **Calidad:** reglas custom en `docs/eslint-rules-README.md`; estado de implementación en `docs/reports/IMPLEMENTATION_STATUS_REPORT.md`.
+
 ## Tech Stack
 
 - **Next.js 14+** (App Router with TypeScript)

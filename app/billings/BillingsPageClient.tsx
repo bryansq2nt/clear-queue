@@ -41,16 +41,26 @@ type ClientProject = {
   category: string;
 };
 
-export default function BillingsPageClient() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+interface BillingsPageClientProps {
+  initialProjects: Project[];
+  initialClients: Client[];
+  initialBillings: Billing[];
+}
+
+export default function BillingsPageClient({
+  initialProjects,
+  initialClients,
+  initialBillings,
+}: BillingsPageClientProps) {
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [clients, setClients] = useState<Client[]>(initialClients);
   const [clientProjects, setClientProjects] = useState<ClientProject[]>([]);
   const [projectsWithoutClient, setProjectsWithoutClient] = useState<
     ClientProject[]
   >([]);
-  const [billings, setBillings] = useState<Billing[]>([]);
+  const [billings, setBillings] = useState<Billing[]>(initialBillings);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingBilling, setEditingBilling] = useState<Billing | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -82,12 +92,6 @@ export default function BillingsPageClient() {
     setBillings(data as Billing[]);
     setIsLoading(false);
   }, []);
-
-  useEffect(() => {
-    loadProjects();
-    loadClients();
-    loadBillings();
-  }, [loadProjects, loadClients, loadBillings]);
 
   useEffect(() => {
     if (form.client_id) {

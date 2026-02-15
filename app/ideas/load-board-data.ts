@@ -5,7 +5,7 @@ import { getBoardById, listBoardItems } from '@/lib/idea-graph/boards';
 import { getIdeasByIds } from '@/lib/idea-graph/ideas';
 import { listConnections } from '@/lib/idea-graph/connections';
 
-export async function loadBoardDataAction(boardId: string) {
+export async function getBoardDataAction(boardId: string) {
   await requireAuth();
 
   const board = await getBoardById(boardId);

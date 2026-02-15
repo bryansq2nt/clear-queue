@@ -76,7 +76,7 @@ export async function listProjectLinksForIdea(
 
   const { data, error } = await supabase
     .from('idea_project_links')
-    .select('*')
+    .select('id, owner_id, idea_id, project_id, role, created_at')
     .eq('idea_id', ideaId)
     .order('created_at', { ascending: false });
 
@@ -101,7 +101,7 @@ export async function listProjectLinksForProject(
 
   const { data, error } = await supabase
     .from('idea_project_links')
-    .select('*')
+    .select('id, owner_id, idea_id, project_id, role, created_at')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false });
 
@@ -129,7 +129,7 @@ export async function listProjectLinksForProjectIds(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('idea_project_links')
-    .select('*')
+    .select('id, owner_id, idea_id, project_id, role, created_at')
     .in('project_id', validIds)
     .order('created_at', { ascending: false });
 

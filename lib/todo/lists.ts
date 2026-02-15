@@ -13,6 +13,11 @@ type TodoItemUpdate = Database['public']['Tables']['todo_items']['Update'];
 // Export the Row types for use in components
 export type { TodoList, TodoItem };
 
+const TODO_LIST_COLS =
+  'id, owner_id, project_id, title, description, color, position, is_archived, created_at, updated_at';
+const TODO_ITEM_COLS =
+  'id, owner_id, list_id, content, is_done, due_date, position, created_at, updated_at';
+
 /**
  * Helper to get the current user ID or throw an error
  */
@@ -40,7 +45,7 @@ export async function getTodoLists(options?: {
 
   let query = supabase
     .from('todo_lists')
-    .select('*')
+    .select(TODO_LIST_COLS)
     .eq('owner_id', ownerId)
     .order('position', { ascending: true })
     .order('created_at', { ascending: false });
@@ -77,7 +82,7 @@ export async function getTodoListById(
 
   const { data, error } = await supabase
     .from('todo_lists')
-    .select('*')
+    .select(TODO_LIST_COLS)
     .eq('id', listId)
     .eq('owner_id', ownerId)
     .single();
@@ -269,7 +274,7 @@ export async function getTodoItems(listId: string): Promise<TodoItem[]> {
 
   const { data, error } = await supabase
     .from('todo_items')
-    .select('*')
+    .select(TODO_ITEM_COLS)
     .eq('list_id', listId)
     .eq('owner_id', ownerId)
     .order('position', { ascending: true })
@@ -295,7 +300,7 @@ export async function getTodoItemsByListIds(
 
   const { data, error } = await supabase
     .from('todo_items')
-    .select('*')
+    .select(TODO_ITEM_COLS)
     .in('list_id', listIds)
     .eq('owner_id', ownerId)
     .order('position', { ascending: true })

@@ -27,7 +27,9 @@ export async function getBudgetWithData(budgetId: string) {
   // Get budget
   const { data: budget, error: budgetError } = await supabase
     .from('budgets')
-    .select('id, project_id, name, description, owner_id, created_at, updated_at')
+    .select(
+      'id, project_id, name, description, owner_id, created_at, updated_at'
+    )
     .eq('id', budgetId)
     .single();
 

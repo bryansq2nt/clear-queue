@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
@@ -16,13 +17,15 @@ type CategoryWithItems = BudgetCategory & {
 // ============================================
 // GET ALL BUDGETS
 // ============================================
-export async function getBudgets() {
+export const getBudgets = cache(async () => {
   await requireAuth();
   const supabase = await createClient();
 
   const { data: budgets, error } = await supabase
     .from('budgets')
-    .select('id, project_id, name, description, owner_id, created_at, updated_at')
+    .select(
+      'id, project_id, name, description, owner_id, created_at, updated_at'
+    )
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -68,7 +71,7 @@ export async function getBudgets() {
     ...budget,
     projects: budget.project_id ? projectsMap[budget.project_id] || null : null,
   })) as (Budget & { projects: { id: string; name: string } | null })[];
-}
+});
 
 // ============================================
 // GET BUDGET STATS (para cards)
@@ -256,7 +259,9 @@ export async function duplicateBudget(sourceBudgetId: string) {
   // Fetch source budget
   const { data: sourceBudget, error: sourceBudgetError } = await supabase
     .from('budgets')
-    .select('id, project_id, name, description, owner_id, created_at, updated_at')
+    .select(
+      'id, project_id, name, description, owner_id, created_at, updated_at'
+    )
     .eq('id', sourceBudgetId)
     .single();
 
@@ -363,7 +368,7 @@ export async function duplicateBudget(sourceBudgetId: string) {
 // ============================================
 // GET PROJECTS (para dropdown)
 // ============================================
-export async function getProjects() {
+export const getProjects = cache(async () => {
   await requireAuth();
   const supabase = await createClient();
 
@@ -379,4 +384,4 @@ export async function getProjects() {
 
   // Type assertion for projects
   return (data || []) as { id: string; name: string }[];
-}
+});

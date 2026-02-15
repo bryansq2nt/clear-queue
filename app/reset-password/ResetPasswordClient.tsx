@@ -47,7 +47,9 @@ export default function ResetPasswordClient() {
           setReady(true);
         })
         .catch((err) => {
-          setError(err?.error || err?.message || 'Invalid or expired reset link.');
+          setError(
+            err?.error || err?.message || 'Invalid or expired reset link.'
+          );
         });
     } else {
       getSessionStatus().then(({ hasSession }) => {

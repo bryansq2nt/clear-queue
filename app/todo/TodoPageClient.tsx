@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Database } from '@/lib/supabase/types';
 import { getProjectsForSidebar } from '@/app/actions/projects';
 import { AppShell } from '@/components/AppShell';
@@ -9,28 +9,20 @@ import { useI18n } from '@/components/I18nProvider';
 
 type Project = Database['public']['Tables']['projects']['Row'];
 
-export default function TodoPageClient() {
+interface TodoPageClientProps {
+  initialProjects: Project[];
+}
+
+export default function TodoPageClient({
+  initialProjects,
+}: TodoPageClientProps) {
   const { t } = useI18n();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
 
   const loadProjects = useCallback(async () => {
     const data = await getProjectsForSidebar();
     setProjects(data);
-    setLoading(false);
   }, []);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-lg">{t('common.loading')}</div>
-      </div>
-    );
-  }
 
   return (
     <AppShell

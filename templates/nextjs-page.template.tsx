@@ -135,4 +135,4 @@ export default function FeatureClient({ initialFeatures }: Props) {
  */
 
 // Keep file as valid module (template is reference-only; copy sections to real files)
-export {}
+export {};

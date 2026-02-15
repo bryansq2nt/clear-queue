@@ -73,7 +73,9 @@ export async function listBoards(): Promise<IdeaBoard[]> {
 
   const { data, error } = await supabase
     .from('idea_boards')
-    .select('*')
+    .select(
+      'id, owner_id, name, description, project_id, created_at, updated_at'
+    )
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -145,7 +147,9 @@ export async function getBoardById(id: string): Promise<IdeaBoard | null> {
 
   const { data, error } = await supabase
     .from('idea_boards')
-    .select('*')
+    .select(
+      'id, owner_id, name, description, project_id, created_at, updated_at'
+    )
     .eq('id', id)
     .single();
 
@@ -286,7 +290,7 @@ export async function listBoardItems(
 
   const { data, error } = await supabase
     .from('idea_board_items')
-    .select('*')
+    .select('id, owner_id, board_id, idea_id, x, y, created_at, updated_at')
     .eq('board_id', boardId)
     .order('created_at', { ascending: true });
 

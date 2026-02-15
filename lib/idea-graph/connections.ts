@@ -77,7 +77,7 @@ export async function listConnections(): Promise<IdeaConnection[]> {
 
   const { data, error } = await supabase
     .from('idea_connections')
-    .select('*')
+    .select('id, owner_id, from_idea_id, to_idea_id, type, created_at')
     .order('created_at', { ascending: false });
 
   if (error) {

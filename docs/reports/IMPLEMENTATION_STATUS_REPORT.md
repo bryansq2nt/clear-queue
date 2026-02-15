@@ -650,10 +650,16 @@ project-root/
 │       └── no-manual-refetch-after-action.js
 ├── app/
 │   └── EslintRulesViolationsClient.tsx   # (intentional violations for testing)
-├── eslint-rules-README.md                # (doc for the custom ESLint rules)
 ├── CONTRIBUTING.md                       # (pre-commit and local check instructions)
 ├── package.json                          # (scripts, lint-staged, devDependencies)
-└── IMPLEMENTATION_STATUS_REPORT.md       # (this file)
+└── docs/
+    ├── README.md                         # (índice de documentación)
+    ├── eslint-rules-README.md            # (doc for the custom ESLint rules)
+    ├── reports/
+    │   ├── IMPLEMENTATION_STATUS_REPORT.md  # (this file)
+    │   └── REPORTE-FIXES-ARQUITECTURA.md   # (reporte de fixes aplicados)
+    ├── audits/                           # (phase2–7 y otros audits)
+    └── patterns/                         # (server-actions, database-queries, transactions)
 ```
 
 ---

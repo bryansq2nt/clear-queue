@@ -202,48 +202,48 @@ export type SocialLinks = {
 /** All businesses for the current user, with client name (for list view). */
 export type BusinessWithClient = Business & { client_name: string | null };
 
-export async function getBusinesses(
-  search?: string
-): Promise<BusinessWithClient[]> {
-  const user = await requireAuth();
-  const supabase = await createClient();
-  const businessCols =
-    'id, owner_id, client_id, name, tagline, description, email, address_line1, address_line2, city, state, postal_code, website, social_links, notes, created_at, updated_at';
-  let query = supabase
-    .from('businesses')
-    .select(businessCols)
-    .eq('owner_id', user.id)
-    .order('name', { ascending: true });
-  if (search?.trim()) {
-    const term = `%${search.trim()}%`;
-    query = query.or(`name.ilike.${term},tagline.ilike.${term}`);
+export const getBusinesses = cache(
+  async (search?: string): Promise<BusinessWithClient[]> => {
+    const user = await requireAuth();
+    const supabase = await createClient();
+    const businessCols =
+      'id, owner_id, client_id, name, tagline, description, email, address_line1, address_line2, city, state, postal_code, website, social_links, notes, created_at, updated_at';
+    let query = supabase
+      .from('businesses')
+      .select(businessCols)
+      .eq('owner_id', user.id)
+      .order('name', { ascending: true });
+    if (search?.trim()) {
+      const term = `%${search.trim()}%`;
+      query = query.or(`name.ilike.${term},tagline.ilike.${term}`);
+    }
+    const { data: businessList, error } = await query;
+    if (error || !businessList?.length)
+      return (businessList as BusinessWithClient[]) || [];
+    const clientIds = [
+      ...new Set((businessList as Business[]).map((b) => b.client_id)),
+    ];
+    const { data: clientsData } = await supabase
+      .from('clients')
+      .select('id, full_name')
+      .in('id', clientIds);
+    const clientsList = (clientsData || []) as {
+      id: string;
+      full_name: string;
+    }[];
+    const nameByClientId = clientsList.reduce(
+      (acc, c) => {
+        acc[c.id] = c.full_name;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+    return (businessList as Business[]).map((b) => ({
+      ...b,
+      client_name: nameByClientId[b.client_id] ?? null,
+    })) as BusinessWithClient[];
   }
-  const { data: businessList, error } = await query;
-  if (error || !businessList?.length)
-    return (businessList as BusinessWithClient[]) || [];
-  const clientIds = [
-    ...new Set((businessList as Business[]).map((b) => b.client_id)),
-  ];
-  const { data: clientsData } = await supabase
-    .from('clients')
-    .select('id, full_name')
-    .in('id', clientIds);
-  const clientsList = (clientsData || []) as {
-    id: string;
-    full_name: string;
-  }[];
-  const nameByClientId = clientsList.reduce(
-    (acc, c) => {
-      acc[c.id] = c.full_name;
-      return acc;
-    },
-    {} as Record<string, string>
-  );
-  return (businessList as Business[]).map((b) => ({
-    ...b,
-    client_name: nameByClientId[b.client_id] ?? null,
-  })) as BusinessWithClient[];
-}
+);
 
 export async function getBusinessesByClientId(
   clientId: string

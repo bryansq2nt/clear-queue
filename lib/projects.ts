@@ -46,7 +46,9 @@ export async function getProjectsByIds(ids: string[]): Promise<Project[]> {
 
   const { data, error } = await supabase
     .from('projects')
-    .select('*')
+    .select(
+      'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
+    )
     .in('id', validIds);
 
   if (error) {

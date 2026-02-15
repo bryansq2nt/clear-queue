@@ -6,7 +6,5 @@ export default async function AnalyticsPage() {
   await requireAuth();
   const { projects, tasks } = await getDashboardData();
 
-  return (
-    <AnalyticsDashboard initialProjects={projects} initialTasks={tasks} />
-  );
+  return <AnalyticsDashboard initialProjects={projects} initialTasks={tasks} />;
 }

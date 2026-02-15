@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
@@ -8,29 +9,31 @@ import { Database } from '@/lib/supabase/types';
 type Note = Database['public']['Tables']['notes']['Row'];
 type NoteLink = Database['public']['Tables']['note_links']['Row'];
 
-export async function getNotes(options?: {
-  projectId?: string;
-}): Promise<Note[]> {
-  const user = await requireAuth();
-  const supabase = await createClient();
+export const getNotes = cache(
+  async (options?: { projectId?: string }): Promise<Note[]> => {
+    const user = await requireAuth();
+    const supabase = await createClient();
 
-  let query = supabase
-    .from('notes')
-    .select('*')
-    .eq('owner_id', user.id)
-    .order('updated_at', { ascending: false });
+    const noteCols =
+      'id, owner_id, project_id, title, content, created_at, updated_at';
+    let query = supabase
+      .from('notes')
+      .select(noteCols)
+      .eq('owner_id', user.id)
+      .order('updated_at', { ascending: false });
 
-  if (options?.projectId?.trim()) {
-    query = query.eq('project_id', options.projectId.trim());
+    if (options?.projectId?.trim()) {
+      query = query.eq('project_id', options.projectId.trim());
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('Error fetching notes:', error);
+      return [];
+    }
+    return (data as Note[]) || [];
   }
-
-  const { data, error } = await query;
-  if (error) {
-    console.error('Error fetching notes:', error);
-    return [];
-  }
-  return (data as Note[]) || [];
-}
+);
 
 export async function getNoteById(noteId: string): Promise<Note | null> {
   await requireAuth();
@@ -38,7 +41,7 @@ export async function getNoteById(noteId: string): Promise<Note | null> {
 
   const { data, error } = await supabase
     .from('notes')
-    .select('*')
+    .select('id, owner_id, project_id, title, content, created_at, updated_at')
     .eq('id', noteId)
     .single();
 
@@ -73,7 +76,7 @@ export async function createNote(params: {
   const { data, error } = await supabase
     .from('notes')
     .insert(insertPayload as never)
-    .select()
+    .select('id, owner_id, project_id, title, content, created_at, updated_at')
     .single();
 
   if (error) return { error: error.message };
@@ -105,7 +108,7 @@ export async function updateNote(
     .from('notes')
     .update(updates as never)
     .eq('id', noteId)
-    .select()
+    .select('id, owner_id, project_id, title, content, created_at, updated_at')
     .single();
 
   if (error) return { error: error.message };
@@ -137,7 +140,7 @@ export async function getNoteLinks(noteId: string): Promise<NoteLink[]> {
 
   const { data, error } = await supabase
     .from('note_links')
-    .select('*')
+    .select('id, note_id, title, url, created_at')
     .eq('note_id', noteId)
     .order('created_at', { ascending: true });
 

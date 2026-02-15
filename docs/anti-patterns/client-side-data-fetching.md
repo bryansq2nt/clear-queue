@@ -244,9 +244,9 @@ Follow this checklist:
 5. **Update client to receive props**
 
    ```typescript
-   'use client'
+   'use client';
    export default function ClientComponent({ data }) {
-     const [localData, setLocalData] = useState(data)
+     const [localData, setLocalData] = useState(data);
      // Remove useEffect
    }
    ```

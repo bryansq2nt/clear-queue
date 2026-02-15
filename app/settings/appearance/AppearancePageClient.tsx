@@ -56,35 +56,48 @@ const THEME_MODE_KEYS: Record<ThemeMode, string> = {
   system: 'theme_system',
 };
 
-export default function AppearancePageClient() {
+function defaultForm(p: Preferences | null) {
+  return {
+    theme_mode: (p?.theme_mode ?? 'system') as ThemeMode,
+    primary_color: p?.primary_color ?? '#05668D',
+    secondary_color: p?.secondary_color ?? '#0B132B',
+    third_color: p?.third_color ?? '#F4F7FB',
+  };
+}
+
+interface AppearancePageClientProps {
+  initialPrefs: Preferences | null;
+  initialCompanyLogoUrl: string | null;
+  initialCoverImageUrl: string | null;
+}
+
+export default function AppearancePageClient({
+  initialPrefs,
+  initialCompanyLogoUrl,
+  initialCoverImageUrl,
+}: AppearancePageClientProps) {
   const { t } = useI18n();
-  const [prefs, setPrefs] = useState<Preferences | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [prefs, setPrefs] = useState<Preferences | null>(initialPrefs);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
-  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(
+    initialCompanyLogoUrl
+  );
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(
+    initialCoverImageUrl
+  );
   const logoInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
-  const [form, setForm] = useState({
-    theme_mode: 'system' as ThemeMode,
-    primary_color: '#05668D',
-    secondary_color: '#0B132B',
-    third_color: '#F4F7FB',
-  });
+  const [form, setForm] = useState(() => defaultForm(initialPrefs));
 
   const loadPrefs = useCallback(async () => {
     setIsLoading(true);
     const p = await getPreferences();
     setPrefs(p);
     if (p) {
-      setForm({
-        theme_mode: p.theme_mode as ThemeMode,
-        primary_color: p.primary_color,
-        secondary_color: p.secondary_color,
-        third_color: p.third_color,
-      });
+      setForm(defaultForm(p));
       if (p.company_logo_asset_id) {
         const url = await getAssetSignedUrl(p.company_logo_asset_id);
         setCompanyLogoUrl(url);
@@ -96,10 +109,6 @@ export default function AppearancePageClient() {
     }
     setIsLoading(false);
   }, []);
-
-  useEffect(() => {
-    loadPrefs();
-  }, [loadPrefs]);
 
   // Only apply theme from form after preferences have loaded (avoids flashing default theme on navigate)
   useEffect(() => {

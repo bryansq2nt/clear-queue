@@ -11,21 +11,24 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setIsLoading(true);
     setError(null);
 
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     const result = await signIn(formData);
 
     if (result?.error) {
       setError(result.error);
-      setIsLoading(false);
     }
+    setIsLoading(false);
   }
 
   return (
     <form
-      action={handleSubmit}
+      onSubmit={handleSubmit}
       className="space-y-4 bg-white p-6 rounded-lg shadow-lg"
     >
       {error && (

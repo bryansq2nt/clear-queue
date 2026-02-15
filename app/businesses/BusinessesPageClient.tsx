@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Database } from '@/lib/supabase/types';
 import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
@@ -16,11 +16,20 @@ import { EditBusinessModal } from '@/app/clients/components/EditBusinessModal';
 type Project = Database['public']['Tables']['projects']['Row'];
 type Business = Database['public']['Tables']['businesses']['Row'];
 
-export default function BusinessesPageClient() {
+interface BusinessesPageClientProps {
+  initialProjects: Project[];
+  initialBusinesses: BusinessWithClient[];
+}
+
+export default function BusinessesPageClient({
+  initialProjects,
+  initialBusinesses,
+}: BusinessesPageClientProps) {
   const { t } = useI18n();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [businesses, setBusinesses] = useState<BusinessWithClient[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [businesses, setBusinesses] =
+    useState<BusinessWithClient[]>(initialBusinesses);
+  const [isLoading, setIsLoading] = useState(false);
   const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -36,14 +45,6 @@ export default function BusinessesPageClient() {
     setBusinesses(data);
     setIsLoading(false);
   }, []);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-  useEffect(() => {
-    loadBusinesses();
-  }, [loadBusinesses]);
 
   return (
     <div className="flex flex-col h-screen bg-background">

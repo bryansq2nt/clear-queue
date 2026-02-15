@@ -9,12 +9,13 @@ import ProjectsPageClient from './ProjectsPageClient';
 
 export default async function ProjectsPage() {
   await requireAuth();
-  const [projectsList, projectRows, clientsRes, favoritesRes] = await Promise.all([
-    getProjectsList(),
-    getProjectsForSidebar(),
-    getClients(),
-    getFavoriteProjectIds(),
-  ]);
+  const [projectsList, projectRows, clientsRes, favoritesRes] =
+    await Promise.all([
+      getProjectsList(),
+      getProjectsForSidebar(),
+      getClients(),
+      getFavoriteProjectIds(),
+    ]);
   return (
     <ProjectsPageClient
       initialProjects={projectsList}
