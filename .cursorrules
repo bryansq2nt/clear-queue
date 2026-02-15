@@ -21,6 +21,57 @@ Follow these rules for all code generation and edits in this repo.
 
 ---
 
+## Data Loading (CRITICAL)
+
+- **ALWAYS** fetch initial page data in Server Components (page.tsx)
+- **NEVER** use useEffect to fetch data on component mount
+- **ALWAYS** wrap read-only server actions with React cache()
+- **ALWAYS** pass data to client components as props
+
+### Pattern
+
+```typescript
+// page.tsx (Server Component)
+export default async function Page() {
+  const data = await getDataAction() // ← Server-side
+  return <PageClient initialData={data} />
+}
+
+// actions.ts
+import { cache } from 'react'
+export const getDataAction = cache(async () => { ... })
+
+// PageClient.tsx
+'use client'
+export default function PageClient({ initialData }) {
+  const [data, setData] = useState(initialData) // ← From props
+  // NO useEffect to fetch initial data
+}
+```
+
+### Forbidden
+
+```typescript
+// ❌ NEVER DO THIS
+'use client'
+export default function Page() {
+  useEffect(() => {
+    fetchData() // ❌ FORBIDDEN for initial page data
+  }, [])
+}
+```
+
+### Before Generating ANY Page Component
+
+1. Check: Is this initial page data? → Fetch server-side
+2. Check: Is action read-only? → Wrap with cache()
+3. Check: Does client need data? → Pass as props
+4. NEVER create useEffect for initial data fetch
+
+Refer to: docs/patterns/data-loading.md
+
+---
+
 ## Before Generating Code
 
 1. **Check** `docs/patterns/` for the relevant pattern (server-actions.md, database-queries.md, transactions.md).
