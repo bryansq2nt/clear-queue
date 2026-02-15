@@ -1,27 +1,34 @@
-'use client'
+'use client';
 
-import { cn } from '@/lib/utils'
-import { GlobalHeader } from './GlobalHeader'
+import { cn } from '@/lib/utils';
+import { GlobalHeader } from './GlobalHeader';
 
 interface DetailLayoutProps {
   /** e.g. /budgets, /clients */
-  backHref: string
+  backHref: string;
   /** i18n key or text for back link; empty string = only arrow icon */
-  backLabel?: string
+  backLabel?: string;
   /** Page title shown in header */
-  title: string
-  children: React.ReactNode
+  title: string;
+  children: React.ReactNode;
   /** Optional class for main content area (e.g. p-4 sm:p-6 max-w-7xl mx-auto) */
-  contentClassName?: string
+  contentClassName?: string;
   /** Optional actions (Edit, Delete, etc.) shown in header */
-  actions?: React.ReactNode
+  actions?: React.ReactNode;
 }
 
 /**
  * Full-height layout for detail views: GlobalHeader (back + title only), no sidebar/search.
  * Mobile-friendly and responsive.
  */
-export function DetailLayout({ backHref, backLabel = '', title, children, contentClassName, actions }: DetailLayoutProps) {
+export function DetailLayout({
+  backHref,
+  backLabel = '',
+  title,
+  children,
+  contentClassName,
+  actions,
+}: DetailLayoutProps) {
   return (
     <div className="flex flex-col h-screen bg-background">
       <GlobalHeader
@@ -34,5 +41,5 @@ export function DetailLayout({ backHref, backLabel = '', title, children, conten
         {children}
       </main>
     </div>
-  )
+  );
 }

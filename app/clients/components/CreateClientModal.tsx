@@ -1,69 +1,79 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { X, Users, ChevronDown, ChevronUp } from 'lucide-react'
-import { useI18n } from '@/components/I18nProvider'
-import { createClientAction } from '../actions'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import PhoneInput from 'react-phone-number-input'
-import 'react-phone-number-input/style.css'
+import { useState, useEffect } from 'react';
+import { X, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { useI18n } from '@/components/I18nProvider';
+import { createClientAction } from '../actions';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 interface CreateClientModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onCreated?: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  onCreated?: () => void;
 }
 
-export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientModalProps) {
-  const { t } = useI18n()
+export function CreateClientModal({
+  isOpen,
+  onClose,
+  onCreated,
+}: CreateClientModalProps) {
+  const { t } = useI18n();
   const GENDER_OPTIONS = [
     { value: 'male', label: t('clients.gender_male') },
     { value: 'female', label: t('clients.gender_female') },
     { value: 'not_specified', label: t('clients.gender_not_specified') },
-  ]
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [gender, setGender] = useState<string>('not_specified')
-  const [phone, setPhone] = useState<string>('')
-  const [showOptional, setShowOptional] = useState(false)
+  ];
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [gender, setGender] = useState<string>('not_specified');
+  const [phone, setPhone] = useState<string>('');
+  const [showOptional, setShowOptional] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setError(null)
-    const form = e.currentTarget
-    const formData = new FormData(form)
-    formData.set('gender', gender === 'not_specified' ? '' : gender)
-    formData.set('phone', phone?.trim() || '')
-    setIsSubmitting(true)
-    const result = await createClientAction(formData)
-    setIsSubmitting(false)
+    e.preventDefault();
+    setError(null);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    formData.set('gender', gender === 'not_specified' ? '' : gender);
+    formData.set('phone', phone?.trim() || '');
+    setIsSubmitting(true);
+    const result = await createClientAction(formData);
+    setIsSubmitting(false);
     if (result.error) {
-      setError(result.error)
-      return
+      setError(result.error);
+      return;
     }
-    form.reset()
-    setPhone('')
-    onClose()
-    onCreated?.()
-  }
+    form.reset();
+    setPhone('');
+    onClose();
+    onCreated?.();
+  };
 
   useEffect(() => {
-    if (!isOpen) setPhone('')
-  }, [isOpen])
+    if (!isOpen) setPhone('');
+  }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleEsc)
-    return () => window.removeEventListener('keydown', handleEsc)
-  }, [isOpen, onClose])
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -73,7 +83,9 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
             <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
               <Users className="w-5 h-5 text-primary-foreground" />
             </div>
-            <h2 className="text-lg font-semibold text-foreground">{t('clients.new_client')}</h2>
+            <h2 className="text-lg font-semibold text-foreground">
+              {t('clients.new_client')}
+            </h2>
           </div>
           <button
             type="button"
@@ -86,14 +98,32 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
 
         <form onSubmit={handleSubmit} className="p-4 space-y-2.5">
           {error && (
-            <div className="bg-destructive/10 text-destructive text-sm p-2.5 rounded-md">{error}</div>
+            <div className="bg-destructive/10 text-destructive text-sm p-2.5 rounded-md">
+              {error}
+            </div>
           )}
           <div>
-            <Label htmlFor="full_name" className="text-sm font-medium text-foreground">{t('clients.full_name')}</Label>
-            <Input id="full_name" name="full_name" required placeholder={t('clients.full_name_placeholder')} className="mt-0.5 h-8 text-sm border-input bg-background" />
+            <Label
+              htmlFor="full_name"
+              className="text-sm font-medium text-foreground"
+            >
+              {t('clients.full_name')}
+            </Label>
+            <Input
+              id="full_name"
+              name="full_name"
+              required
+              placeholder={t('clients.full_name_placeholder')}
+              className="mt-0.5 h-8 text-sm border-input bg-background"
+            />
           </div>
           <div>
-            <Label htmlFor="phone" className="text-sm font-medium text-foreground">{t('clients.phone')}</Label>
+            <Label
+              htmlFor="phone"
+              className="text-sm font-medium text-foreground"
+            >
+              {t('clients.phone')}
+            </Label>
             <PhoneInput
               id="phone"
               international
@@ -105,29 +135,87 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
             />
           </div>
           <div>
-            <Label htmlFor="email" className="text-sm font-medium text-foreground">{t('auth.email')}</Label>
-            <Input id="email" name="email" type="email" placeholder={t('clients.email_placeholder')} className="mt-0.5 h-8 text-sm border-input bg-background" />
+            <Label
+              htmlFor="email"
+              className="text-sm font-medium text-foreground"
+            >
+              {t('auth.email')}
+            </Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder={t('clients.email_placeholder')}
+              className="mt-0.5 h-8 text-sm border-input bg-background"
+            />
           </div>
           <div>
-            <Label htmlFor="address_line1" className="text-sm font-medium text-foreground">{t('clients.address_line1')}</Label>
-            <Input id="address_line1" name="address_line1" placeholder={t('clients.address_placeholder')} className="mt-0.5 h-8 text-sm border-input bg-background" />
+            <Label
+              htmlFor="address_line1"
+              className="text-sm font-medium text-foreground"
+            >
+              {t('clients.address_line1')}
+            </Label>
+            <Input
+              id="address_line1"
+              name="address_line1"
+              placeholder={t('clients.address_placeholder')}
+              className="mt-0.5 h-8 text-sm border-input bg-background"
+            />
           </div>
           <div>
-            <Label htmlFor="address_line2" className="text-sm font-medium text-foreground">{t('clients.address_line2')}</Label>
-            <Input id="address_line2" name="address_line2" placeholder={t('clients.apt_placeholder')} className="mt-0.5 h-8 text-sm border-input bg-background" />
+            <Label
+              htmlFor="address_line2"
+              className="text-sm font-medium text-foreground"
+            >
+              {t('clients.address_line2')}
+            </Label>
+            <Input
+              id="address_line2"
+              name="address_line2"
+              placeholder={t('clients.apt_placeholder')}
+              className="mt-0.5 h-8 text-sm border-input bg-background"
+            />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <Label htmlFor="city" className="text-sm font-medium text-foreground">{t('clients.city')}</Label>
-              <Input id="city" name="city" className="mt-0.5 h-8 text-sm border-input bg-background" />
+              <Label
+                htmlFor="city"
+                className="text-sm font-medium text-foreground"
+              >
+                {t('clients.city')}
+              </Label>
+              <Input
+                id="city"
+                name="city"
+                className="mt-0.5 h-8 text-sm border-input bg-background"
+              />
             </div>
             <div>
-              <Label htmlFor="state" className="text-sm font-medium text-foreground">{t('clients.state')}</Label>
-              <Input id="state" name="state" className="mt-0.5 h-8 text-sm border-input bg-background" />
+              <Label
+                htmlFor="state"
+                className="text-sm font-medium text-foreground"
+              >
+                {t('clients.state')}
+              </Label>
+              <Input
+                id="state"
+                name="state"
+                className="mt-0.5 h-8 text-sm border-input bg-background"
+              />
             </div>
             <div>
-              <Label htmlFor="postal_code" className="text-sm font-medium text-foreground">{t('clients.postal_code')}</Label>
-              <Input id="postal_code" name="postal_code" className="mt-0.5 h-8 text-sm border-input bg-background" />
+              <Label
+                htmlFor="postal_code"
+                className="text-sm font-medium text-foreground"
+              >
+                {t('clients.postal_code')}
+              </Label>
+              <Input
+                id="postal_code"
+                name="postal_code"
+                className="mt-0.5 h-8 text-sm border-input bg-background"
+              />
             </div>
           </div>
           <button
@@ -135,31 +223,67 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
             onClick={() => setShowOptional((v) => !v)}
             className="flex items-center gap-2 w-full text-sm text-muted-foreground hover:text-foreground py-1.5 rounded-md hover:bg-accent/50 transition-colors"
           >
-            {showOptional ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+            {showOptional ? (
+              <ChevronUp className="w-4 h-4 shrink-0" />
+            ) : (
+              <ChevronDown className="w-4 h-4 shrink-0" />
+            )}
             <span>{t('clients.optional_details')}</span>
           </button>
           {showOptional && (
             <>
               <div>
-                <Label htmlFor="gender" className="text-sm font-medium text-foreground">{t('clients.gender')}</Label>
+                <Label
+                  htmlFor="gender"
+                  className="text-sm font-medium text-foreground"
+                >
+                  {t('clients.gender')}
+                </Label>
                 <Select value={gender} onValueChange={setGender}>
-                  <SelectTrigger id="gender" className="mt-0.5 h-8 text-sm border-input bg-background">
+                  <SelectTrigger
+                    id="gender"
+                    className="mt-0.5 h-8 text-sm border-input bg-background"
+                  >
                     <SelectValue placeholder={t('common.select')} />
                   </SelectTrigger>
                   <SelectContent>
                     {GENDER_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="preferences" className="text-sm font-medium text-foreground">{t('clients.preferences')}</Label>
-                <Textarea id="preferences" name="preferences" rows={1} placeholder={t('clients.optional')} className="mt-0.5 text-sm min-h-[2rem] border-input bg-background resize-none" />
+                <Label
+                  htmlFor="preferences"
+                  className="text-sm font-medium text-foreground"
+                >
+                  {t('clients.preferences')}
+                </Label>
+                <Textarea
+                  id="preferences"
+                  name="preferences"
+                  rows={1}
+                  placeholder={t('clients.optional')}
+                  className="mt-0.5 text-sm min-h-[2rem] border-input bg-background resize-none"
+                />
               </div>
               <div>
-                <Label htmlFor="notes" className="text-sm font-medium text-foreground">{t('clients.notes')}</Label>
-                <Textarea id="notes" name="notes" rows={1} placeholder={t('clients.optional')} className="mt-0.5 text-sm min-h-[2rem] border-input bg-background resize-none" />
+                <Label
+                  htmlFor="notes"
+                  className="text-sm font-medium text-foreground"
+                >
+                  {t('clients.notes')}
+                </Label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  rows={1}
+                  placeholder={t('clients.optional')}
+                  className="mt-0.5 text-sm min-h-[2rem] border-input bg-background resize-none"
+                />
               </div>
             </>
           )}
@@ -176,11 +300,13 @@ export function CreateClientModal({ isOpen, onClose, onCreated }: CreateClientMo
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 font-medium"
             >
-              {isSubmitting ? t('clients.creating') : t('clients.create_client')}
+              {isSubmitting
+                ? t('clients.creating')
+                : t('clients.create_client')}
             </button>
           </div>
         </form>
       </div>
     </div>
-  )
+  );
 }

@@ -1,12 +1,12 @@
-import { requireAuth } from '@/lib/auth'
-import ProjectKanbanClient from '@/components/ProjectKanbanClient'
+import { requireAuth } from '@/lib/auth';
+import ProjectKanbanClient from '@/components/ProjectKanbanClient';
 
 export default async function ProjectPage({
   params,
 }: {
-  params: { id: string }
+  params: { id: string };
 }) {
-  await requireAuth()
+  await requireAuth();
 
-  return <ProjectKanbanClient projectId={params.id} />
+  return <ProjectKanbanClient projectId={params.id} />;
 }

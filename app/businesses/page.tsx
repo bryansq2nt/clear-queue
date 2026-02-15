@@ -1,8 +1,8 @@
-import { requireAuth } from '@/lib/auth'
-import BusinessesPageClient from './BusinessesPageClient'
+import { requireAuth } from '@/lib/auth';
+import BusinessesPageClient from './BusinessesPageClient';
 
 export default async function BusinessesPage() {
-  await requireAuth()
+  await requireAuth();
 
-  return <BusinessesPageClient />
+  return <BusinessesPageClient />;
 }

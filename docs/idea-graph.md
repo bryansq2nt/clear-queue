@@ -24,18 +24,21 @@ Idea Graph is a thinking and connection module that exists before execution. It 
 ## Core Entities
 
 ### Ideas
+
 - **Global entities** that exist independently of projects
 - Have a title, description, and optional metadata (tags, color, creation date)
 - Can be created, edited, and deleted
 - Exist in a global namespace accessible from anywhere in the system
 
 ### Connections
+
 - **Directed or undirected relationships** between two ideas
 - Represent conceptual links (e.g., "relates to", "depends on", "contradicts", "extends")
 - Can be created, edited, and deleted
 - Form the graph structure that allows navigation between related ideas
 
 ### Boards
+
 - **Visual workspaces** for organizing and viewing subsets of ideas
 - Allow users to place ideas on a canvas for spatial organization
 - Boards are views/filters, not containers—ideas remain global
@@ -43,6 +46,7 @@ Idea Graph is a thinking and connection module that exists before execution. It 
 - Support different layouts and arrangements for different thinking contexts
 
 ### Project Links
+
 - **Bidirectional relationships** between ideas and projects
 - An idea can link to multiple projects
 - A project can link to multiple ideas
@@ -63,6 +67,7 @@ Idea Graph is a thinking and connection module that exists before execution. It 
 ## User Flows (MVP)
 
 ### Create Idea
+
 1. User navigates to Idea Graph section
 2. User clicks "Create Idea" or uses keyboard shortcut
 3. Modal/form appears with fields: title (required), description (optional), tags (optional)
@@ -70,6 +75,7 @@ Idea Graph is a thinking and connection module that exists before execution. It 
 5. Idea appears in global idea list and can be added to boards
 
 ### Connect Ideas
+
 1. User selects an idea (from board or list view)
 2. User clicks "Connect" or drags from idea to another idea
 3. User selects connection type (optional—default is "relates to")
@@ -77,6 +83,7 @@ Idea Graph is a thinking and connection module that exists before execution. It 
 5. Both ideas show the connection in their detail views
 
 ### Create Board
+
 1. User navigates to Idea Graph section
 2. User clicks "New Board"
 3. User provides board name
@@ -84,6 +91,7 @@ Idea Graph is a thinking and connection module that exists before execution. It 
 5. User can start adding ideas to the board
 
 ### Place Idea on Board
+
 1. User is viewing a board (canvas view)
 2. User drags idea from sidebar/library onto board, or uses "Add to Board" action
 3. Idea appears on board at dropped position
@@ -91,6 +99,7 @@ Idea Graph is a thinking and connection module that exists before execution. It 
 5. Same idea can be added to multiple boards
 
 ### Link Idea to Project
+
 1. User views idea detail/sidebar
 2. User clicks "Link to Project"
 3. User selects project(s) from dropdown/list

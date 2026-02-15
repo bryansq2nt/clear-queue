@@ -1,39 +1,42 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { signUp } from '@/app/actions/auth'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import Link from 'next/link'
+import { useState } from 'react';
+import { signUp } from '@/app/actions/auth';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 
 export default function SignupForm() {
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(formData: FormData) {
-    setIsLoading(true)
-    setError(null)
-    setSuccess(null)
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
 
-    const result = await signUp(formData)
+    const result = await signUp(formData);
 
     if (result?.error) {
-      setError(result.error)
-      setIsLoading(false)
-      return
+      setError(result.error);
+      setIsLoading(false);
+      return;
     }
 
     if (result?.success && result?.message) {
-      setSuccess(result.message)
-      setIsLoading(false)
-      return
+      setSuccess(result.message);
+      setIsLoading(false);
+      return;
     }
   }
 
   return (
-    <form action={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow-lg">
+    <form
+      action={handleSubmit}
+      className="space-y-4 bg-white p-6 rounded-lg shadow-lg"
+    >
       {error && (
         <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
           {error}
@@ -76,5 +79,5 @@ export default function SignupForm() {
         </Link>
       </p>
     </form>
-  )
+  );
 }

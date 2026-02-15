@@ -1,25 +1,25 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
+import Link from 'next/link';
 
 interface Idea {
-  id: string
-  title: string
-  description: string | null
+  id: string;
+  title: string;
+  description: string | null;
 }
 
 interface BoardItem {
-  id: string
-  idea_id: string
-  x: number
-  y: number
-  idea: Idea
+  id: string;
+  idea_id: string;
+  x: number;
+  y: number;
+  idea: Idea;
 }
 
 export default function CanvasView({ items }: { items: BoardItem[] }) {
   // World dimensions (large enough for positioning)
-  const WORLD_WIDTH = 2000
-  const WORLD_HEIGHT = 2000
+  const WORLD_WIDTH = 2000;
+  const WORLD_HEIGHT = 2000;
 
   return (
     <div className="flex-1 overflow-auto bg-background">
@@ -65,5 +65,5 @@ export default function CanvasView({ items }: { items: BoardItem[] }) {
         )}
       </div>
     </div>
-  )
+  );
 }

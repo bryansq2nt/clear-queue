@@ -1,21 +1,21 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { useI18n } from '@/components/I18nProvider'
-import { X, Edit2 } from 'lucide-react'
-import { updateBudget } from '../../actions'
+import { useEffect, useState } from 'react';
+import { useI18n } from '@/components/I18nProvider';
+import { X, Edit2 } from 'lucide-react';
+import { updateBudget } from '../../actions';
 
 interface EditBudgetModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onUpdated: () => void
-  projects: { id: string; name: string }[]
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdated: () => void;
+  projects: { id: string; name: string }[];
   budget: {
-    id: string
-    name: string
-    description: string | null
-    project_id: string | null
-  }
+    id: string;
+    name: string;
+    description: string | null;
+    project_id: string | null;
+  };
 }
 
 export function EditBudgetModal({
@@ -25,62 +25,62 @@ export function EditBudgetModal({
   projects,
   budget,
 }: EditBudgetModalProps) {
-  const { t } = useI18n()
-  const [name, setName] = useState(budget.name)
-  const [description, setDescription] = useState(budget.description ?? '')
-  const [projectId, setProjectId] = useState<string>(budget.project_id ?? '')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { t } = useI18n();
+  const [name, setName] = useState(budget.name);
+  const [description, setDescription] = useState(budget.description ?? '');
+  const [projectId, setProjectId] = useState<string>(budget.project_id ?? '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen) return
-    setName(budget.name)
-    setDescription(budget.description ?? '')
-    setProjectId(budget.project_id ?? '')
-    setError(null)
-  }, [isOpen, budget.id, budget.name, budget.description, budget.project_id])
+    if (!isOpen) return;
+    setName(budget.name);
+    setDescription(budget.description ?? '');
+    setProjectId(budget.project_id ?? '');
+    setError(null);
+  }, [isOpen, budget.id, budget.name, budget.description, budget.project_id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
+    e.preventDefault();
+    setError(null);
 
-    const nextName = name.trim()
-    const nextDescription = description.trim()
+    const nextName = name.trim();
+    const nextDescription = description.trim();
 
     if (!nextName) {
-      setError(t('budgets.name_required'))
-      return
+      setError(t('budgets.name_required'));
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       await updateBudget(budget.id, {
         name: nextName,
         description: nextDescription,
         project_id: projectId,
-      })
-      onClose()
-      onUpdated()
+      });
+      onClose();
+      onUpdated();
     } catch (err) {
-      console.error('Error updating budget:', err)
-      setError(t('budgets.update_error'))
+      console.error('Error updating budget:', err);
+      setError(t('budgets.update_error'));
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
+      if (e.key === 'Escape') onClose();
+    };
 
-    window.addEventListener('keydown', handleEsc)
-    return () => window.removeEventListener('keydown', handleEsc)
-  }, [isOpen, onClose])
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -107,12 +107,13 @@ export function EditBudgetModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+          {error && <p className="text-sm text-destructive">{error}</p>}
 
           <div>
-            <label htmlFor="edit-budget-name" className="block text-sm font-medium text-foreground mb-2">
+            <label
+              htmlFor="edit-budget-name"
+              className="block text-sm font-medium text-foreground mb-2"
+            >
               {t('budgets.budget_name_label')}
             </label>
             <input
@@ -127,7 +128,10 @@ export function EditBudgetModal({
           </div>
 
           <div>
-            <label htmlFor="edit-budget-project" className="block text-sm font-medium text-foreground mb-2">
+            <label
+              htmlFor="edit-budget-project"
+              className="block text-sm font-medium text-foreground mb-2"
+            >
               {t('budgets.project_optional')}
             </label>
             <select
@@ -146,7 +150,10 @@ export function EditBudgetModal({
           </div>
 
           <div>
-            <label htmlFor="edit-budget-description" className="block text-sm font-medium text-foreground mb-2">
+            <label
+              htmlFor="edit-budget-description"
+              className="block text-sm font-medium text-foreground mb-2"
+            >
               {t('budgets.description_optional')}
             </label>
             <textarea
@@ -177,5 +184,5 @@ export function EditBudgetModal({
         </form>
       </div>
     </div>
-  )
+  );
 }

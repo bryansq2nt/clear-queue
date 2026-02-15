@@ -1,19 +1,19 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useI18n } from '@/components/I18nProvider'
-import { X, Package } from 'lucide-react'
-import { createItem } from '../actions'
-import { Database } from '@/lib/supabase/types'
+import { useState, useEffect } from 'react';
+import { useI18n } from '@/components/I18nProvider';
+import { X, Package } from 'lucide-react';
+import { createItem } from '../actions';
+import { Database } from '@/lib/supabase/types';
 
-type BudgetItem = Database['public']['Tables']['budget_items']['Row']
+type BudgetItem = Database['public']['Tables']['budget_items']['Row'];
 
 interface CreateItemModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onCreated?: (item: BudgetItem) => void
-  categoryId: string
-  budgetId: string
+  isOpen: boolean;
+  onClose: () => void;
+  onCreated?: (item: BudgetItem) => void;
+  categoryId: string;
+  budgetId: string;
 }
 
 export function CreateItemModal({
@@ -23,53 +23,55 @@ export function CreateItemModal({
   categoryId,
   budgetId,
 }: CreateItemModalProps) {
-  const { t } = useI18n()
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [quantity, setQuantity] = useState('1')
-  const [unitPrice, setUnitPrice] = useState('0')
-  const [link, setLink] = useState('')
-  const [status, setStatus] = useState<'pending' | 'quoted' | 'acquired'>('pending')
-  const [isRecurrent, setIsRecurrent] = useState(false)
-  const [notes, setNotes] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { t } = useI18n();
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [quantity, setQuantity] = useState('1');
+  const [unitPrice, setUnitPrice] = useState('0');
+  const [link, setLink] = useState('');
+  const [status, setStatus] = useState<'pending' | 'quoted' | 'acquired'>(
+    'pending'
+  );
+  const [isRecurrent, setIsRecurrent] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset form when modal opens/closes
   useEffect(() => {
     if (!isOpen) {
-      setName('')
-      setDescription('')
-      setQuantity('1')
-      setUnitPrice('0')
-      setLink('')
-      setStatus('pending')
-      setIsRecurrent(false)
-      setNotes('')
+      setName('');
+      setDescription('');
+      setQuantity('1');
+      setUnitPrice('0');
+      setLink('');
+      setStatus('pending');
+      setIsRecurrent(false);
+      setNotes('');
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     if (!name.trim()) {
-      alert('Please enter an item name')
-      return
+      alert('Please enter an item name');
+      return;
     }
 
-    const qty = parseFloat(quantity)
-    const price = parseFloat(unitPrice)
+    const qty = parseFloat(quantity);
+    const price = parseFloat(unitPrice);
 
     if (isNaN(qty) || qty <= 0) {
-      alert('Quantity must be greater than 0')
-      return
+      alert('Quantity must be greater than 0');
+      return;
     }
 
     if (isNaN(price) || price < 0) {
-      alert('Unit price must be 0 or greater')
-      return
+      alert('Unit price must be 0 or greater');
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       const created = await createItem({
         category_id: categoryId,
@@ -81,33 +83,33 @@ export function CreateItemModal({
         status,
         is_recurrent: isRecurrent,
         notes: notes.trim() || undefined,
-      })
+      });
 
-      onCreated?.(created as BudgetItem)
-      onClose()
+      onCreated?.(created as BudgetItem);
+      onClose();
     } catch (error) {
-      console.error('Error creating item:', error)
-      alert('Failed to create item')
+      console.error('Error creating item:', error);
+      alert('Failed to create item');
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   // Close on ESC key
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose()
+        onClose();
       }
-    }
+    };
 
-    window.addEventListener('keydown', handleEsc)
-    return () => window.removeEventListener('keydown', handleEsc)
-  }, [isOpen, onClose])
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -211,12 +213,20 @@ export function CreateItemModal({
               </label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as 'pending' | 'quoted' | 'acquired')}
+                onChange={(e) =>
+                  setStatus(e.target.value as 'pending' | 'quoted' | 'acquired')
+                }
                 className="w-full h-8 px-3 text-sm border border-input rounded-md bg-background text-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
               >
-                <option value="pending">{t('budgets.item_status_pending')}</option>
-                <option value="quoted">{t('budgets.item_status_quoted')}</option>
-                <option value="acquired">{t('budgets.item_status_acquired')}</option>
+                <option value="pending">
+                  {t('budgets.item_status_pending')}
+                </option>
+                <option value="quoted">
+                  {t('budgets.item_status_quoted')}
+                </option>
+                <option value="acquired">
+                  {t('budgets.item_status_acquired')}
+                </option>
               </select>
             </div>
             <div className="flex items-center gap-2 pb-0.5">
@@ -227,7 +237,10 @@ export function CreateItemModal({
                 onChange={(e) => setIsRecurrent(e.target.checked)}
                 className="w-4 h-4 rounded border-input text-primary focus:ring-ring"
               />
-              <label htmlFor="isRecurrent" className="text-sm font-medium text-foreground whitespace-nowrap">
+              <label
+                htmlFor="isRecurrent"
+                className="text-sm font-medium text-foreground whitespace-nowrap"
+              >
                 {t('budgets.recurrent_item_label')}
               </label>
             </div>
@@ -259,11 +272,13 @@ export function CreateItemModal({
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isSubmitting ? t('budgets.creating_item') : t('budgets.create_item')}
+              {isSubmitting
+                ? t('budgets.creating_item')
+                : t('budgets.create_item')}
             </button>
           </div>
         </form>
       </div>
     </div>
-  )
+  );
 }

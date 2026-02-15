@@ -1,0 +1,30 @@
+# Cursor AI — Project Rules
+
+Follow these rules for all code generation and edits in this repo.
+
+---
+
+## Database Queries
+
+- **ALWAYS** use explicit field selection (never `SELECT *` or `.select('*')`).
+- **ALWAYS** scope by `project_id` when querying tasks.
+- **ALWAYS** scope by `owner_id` or `user_id` when querying user-owned data.
+- **ALWAYS** use RPC functions for multi-step operations that must be atomic.
+
+---
+
+## Server Actions
+
+- **ALWAYS** use the `'use server'` directive in server action files.
+- **ALWAYS** call `revalidatePath` (or `revalidateTag`) after mutations — never rely on manual refetch (e.g. no `load*()` after an action in the same handler).
+- **NEVER** use `createClient()` from `@/lib/supabase/client` in components. Use server actions or server components with `@/lib/supabase/server` only.
+
+---
+
+## Before Generating Code
+
+1. **Check** `docs/patterns/` for the relevant pattern (server-actions.md, database-queries.md, transactions.md).
+2. **Use** `templates/` for boilerplate (server-action.template.ts, rpc-function.template.sql, optimistic-update.template.ts).
+3. **Follow** CURSOR_RULES.md strictly when it exists in the repo.
+
+**Reference `docs/patterns/` before every code generation.**

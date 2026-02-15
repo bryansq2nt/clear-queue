@@ -1,76 +1,78 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import TodoListsPanel from './TodoListsPanel'
-import TodoListView from './TodoListView'
-import { TodoList, TodoItem } from '@/lib/todo/lists'
-import { getTodoListsAction, getTodoItemsAction } from '@/app/todo/actions'
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import TodoListsPanel from './TodoListsPanel';
+import TodoListView from './TodoListView';
+import { TodoList, TodoItem } from '@/lib/todo/lists';
+import { getTodoListsAction, getTodoItemsAction } from '@/app/todo/actions';
 
 export default function TodoShell() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const listIdParam = searchParams.get('list')
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const listIdParam = searchParams.get('list');
 
-  const [lists, setLists] = useState<TodoList[]>([])
-  const [selectedListId, setSelectedListId] = useState<string | null>(listIdParam)
-  const [items, setItems] = useState<TodoItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showArchived, setShowArchived] = useState(false)
+  const [lists, setLists] = useState<TodoList[]>([]);
+  const [selectedListId, setSelectedListId] = useState<string | null>(
+    listIdParam
+  );
+  const [items, setItems] = useState<TodoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Load lists
   const loadLists = useCallback(async () => {
     const result = await getTodoListsAction({
       includeArchived: showArchived,
-    })
+    });
     if (result.data) {
-      setLists(result.data)
+      setLists(result.data);
     }
-  }, [showArchived])
+  }, [showArchived]);
 
   // Load items for selected list
   const loadItems = async (listId: string) => {
-    const result = await getTodoItemsAction(listId)
+    const result = await getTodoItemsAction(listId);
     if (result.data) {
-      setItems(result.data)
+      setItems(result.data);
     }
-  }
+  };
 
   useEffect(() => {
-    loadLists()
-    setLoading(false)
-  }, [loadLists])
+    loadLists();
+    setLoading(false);
+  }, [loadLists]);
 
   useEffect(() => {
     if (selectedListId) {
-      loadItems(selectedListId)
+      loadItems(selectedListId);
       // Update URL without navigation
-      router.replace(`/todo?list=${selectedListId}`, { scroll: false })
+      router.replace(`/todo?list=${selectedListId}`, { scroll: false });
     } else {
-      setItems([])
-      router.replace('/todo', { scroll: false })
+      setItems([]);
+      router.replace('/todo', { scroll: false });
     }
-  }, [selectedListId, router])
+  }, [selectedListId, router]);
 
   const handleSelectList = (listId: string | null) => {
-    setSelectedListId(listId)
-  }
+    setSelectedListId(listId);
+  };
 
   const handleRefresh = () => {
-    loadLists()
+    loadLists();
     if (selectedListId) {
-      loadItems(selectedListId)
+      loadItems(selectedListId);
     }
-  }
+  };
 
-  const selectedList = lists.find((l) => l.id === selectedListId) || null
+  const selectedList = lists.find((l) => l.id === selectedListId) || null;
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-lg text-slate-600">Loading...</div>
       </div>
-    )
+    );
   }
 
   return (
@@ -94,5 +96,5 @@ export default function TodoShell() {
         />
       </div>
     </div>
-  )
+  );
 }

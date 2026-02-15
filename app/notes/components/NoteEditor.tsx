@@ -1,43 +1,43 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { useI18n } from '@/components/I18nProvider'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { useI18n } from '@/components/I18nProvider';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from '@/components/ui/dropdown-menu';
 import {
   createNote,
   updateNote,
   deleteNote,
   addNoteLink,
   deleteNoteLink,
-} from '@/app/notes/actions'
-import { getProjects } from '@/app/budgets/actions'
-import { Link2, Plus, Trash2, Check, Save } from 'lucide-react'
-import { Database } from '@/lib/supabase/types'
+} from '@/app/notes/actions';
+import { getProjects } from '@/app/budgets/actions';
+import { Link2, Plus, Trash2, Check, Save } from 'lucide-react';
+import { Database } from '@/lib/supabase/types';
 
-type NoteLink = Database['public']['Tables']['note_links']['Row']
+type NoteLink = Database['public']['Tables']['note_links']['Row'];
 
-export type LocalLink = { id: string; title?: string; url: string }
+export type LocalLink = { id: string; title?: string; url: string };
 
-const AUTOSAVE_DELAY_MS = 1500
+const AUTOSAVE_DELAY_MS = 1500;
 const MIN_VALID_URL = (url: string) => {
-  const u = url.trim()
-  return u.length > 0 && (u.startsWith('http://') || u.startsWith('https://'))
-}
+  const u = url.trim();
+  return u.length > 0 && (u.startsWith('http://') || u.startsWith('https://'));
+};
 
 export interface NoteEditorProps {
-  mode: 'create' | 'edit'
-  noteId?: string
-  initialNote: { title: string; content: string; project_id: string }
-  initialLinks: NoteLink[] | LocalLink[]
-  preselectedProjectId?: string | null
+  mode: 'create' | 'edit';
+  noteId?: string;
+  initialNote: { title: string; content: string; project_id: string };
+  initialLinks: NoteLink[] | LocalLink[];
+  preselectedProjectId?: string | null;
 }
 
 export function NoteEditor({
@@ -47,167 +47,197 @@ export function NoteEditor({
   initialLinks,
   preselectedProjectId,
 }: NoteEditorProps) {
-  const { t } = useI18n()
-  const router = useRouter()
-  const [title, setTitle] = useState(initialNote.title)
-  const [content, setContent] = useState(initialNote.content)
-  const [projectId, setProjectId] = useState(initialNote.project_id || preselectedProjectId || '')
-  const [projects, setProjects] = useState<{ id: string; name: string }[]>([])
-  const [links, setLinks] = useState<(NoteLink | LocalLink)[]>(initialLinks)
-  const [saving, setSaving] = useState(false)
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
-  const [error, setError] = useState<string | null>(null)
-  const [showAddLink, setShowAddLink] = useState(false)
-  const [newLinkTitle, setNewLinkTitle] = useState('')
-  const [newLinkUrl, setNewLinkUrl] = useState('')
-  const lastSavedRef = useRef<{ title: string; content: string; project_id: string }>(initialNote)
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { t } = useI18n();
+  const router = useRouter();
+  const [title, setTitle] = useState(initialNote.title);
+  const [content, setContent] = useState(initialNote.content);
+  const [projectId, setProjectId] = useState(
+    initialNote.project_id || preselectedProjectId || ''
+  );
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const [links, setLinks] = useState<(NoteLink | LocalLink)[]>(initialLinks);
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>(
+    'idle'
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [showAddLink, setShowAddLink] = useState(false);
+  const [newLinkTitle, setNewLinkTitle] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
+  const lastSavedRef = useRef<{
+    title: string;
+    content: string;
+    project_id: string;
+  }>(initialNote);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isEdit = mode === 'edit'
+  const isEdit = mode === 'edit';
 
   const loadProjects = useCallback(async () => {
-    const list = await getProjects()
-    setProjects(list)
-    if (preselectedProjectId && list.some((p) => p.id === preselectedProjectId)) {
-      setProjectId((prev) => prev || preselectedProjectId!)
+    const list = await getProjects();
+    setProjects(list);
+    if (
+      preselectedProjectId &&
+      list.some((p) => p.id === preselectedProjectId)
+    ) {
+      setProjectId((prev) => prev || preselectedProjectId!);
     }
-  }, [preselectedProjectId])
+  }, [preselectedProjectId]);
 
   useEffect(() => {
-    loadProjects()
-  }, [loadProjects])
+    loadProjects();
+  }, [loadProjects]);
 
   useEffect(() => {
-    setTitle(initialNote.title)
-    setContent(initialNote.content)
-    setProjectId(initialNote.project_id || preselectedProjectId || '')
-    setLinks(initialLinks)
-    lastSavedRef.current = initialNote
-  }, [initialNote, initialLinks, preselectedProjectId])
+    setTitle(initialNote.title);
+    setContent(initialNote.content);
+    setProjectId(initialNote.project_id || preselectedProjectId || '');
+    setLinks(initialLinks);
+    lastSavedRef.current = initialNote;
+  }, [initialNote, initialLinks, preselectedProjectId]);
 
   const hasChanges = useCallback(() => {
-    const t = title.trim()
-    const c = content
-    const p = projectId
-    const last = lastSavedRef.current
-    return t !== last.title || c !== last.content || p !== last.project_id
-  }, [title, content, projectId])
+    const t = title.trim();
+    const c = content;
+    const p = projectId;
+    const last = lastSavedRef.current;
+    return t !== last.title || c !== last.content || p !== last.project_id;
+  }, [title, content, projectId]);
 
   const performSave = useCallback(async () => {
-    if (!isEdit || !noteId) return
-    setError(null)
-    setSaveStatus('saving')
+    if (!isEdit || !noteId) return;
+    setError(null);
+    setSaveStatus('saving');
     const result = await updateNote(noteId, {
       title: title.trim(),
       content,
       project_id: projectId,
-    })
-    setSaving(false)
-    setSaveStatus(result.error ? 'idle' : 'saved')
+    });
+    setSaving(false);
+    setSaveStatus(result.error ? 'idle' : 'saved');
     if (result.error) {
-      setError(result.error)
-      return
+      setError(result.error);
+      return;
     }
-    lastSavedRef.current = { title: title.trim(), content, project_id: projectId }
-    router.refresh()
-    setTimeout(() => setSaveStatus('idle'), 2000)
-  }, [isEdit, noteId, title, content, projectId, router])
+    lastSavedRef.current = {
+      title: title.trim(),
+      content,
+      project_id: projectId,
+    };
+    router.refresh();
+    setTimeout(() => setSaveStatus('idle'), 2000);
+  }, [isEdit, noteId, title, content, projectId, router]);
 
   useEffect(() => {
-    if (!isEdit || !noteId) return
-    if (!hasChanges()) return
-    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
+    if (!isEdit || !noteId) return;
+    if (!hasChanges()) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(() => {
-      performSave()
-      autosaveTimerRef.current = null
-    }, AUTOSAVE_DELAY_MS)
+      performSave();
+      autosaveTimerRef.current = null;
+    }, AUTOSAVE_DELAY_MS);
     return () => {
-      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
-    }
-  }, [title, content, projectId, isEdit, noteId, hasChanges, performSave])
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [title, content, projectId, isEdit, noteId, hasChanges, performSave]);
 
   const handleSaveClick = async () => {
     if (isEdit) {
-      await performSave()
-      return
+      await performSave();
+      return;
     }
-    setError(null)
-    setSaving(true)
+    setError(null);
+    setSaving(true);
     if (!projectId) {
-      setError(t('notes.error_select_project'))
-      setSaving(false)
-      return
+      setError(t('notes.error_select_project'));
+      setSaving(false);
+      return;
     }
-    const trimmedTitle = title.trim()
+    const trimmedTitle = title.trim();
     if (!trimmedTitle) {
-      setError(t('notes.error_title_required'))
-      setSaving(false)
-      return
+      setError(t('notes.error_title_required'));
+      setSaving(false);
+      return;
     }
     const result = await createNote({
       project_id: projectId,
       title: trimmedTitle,
       content: content ?? '',
-    })
+    });
     if (result.error) {
-      setError(result.error)
-      setSaving(false)
-      return
+      setError(result.error);
+      setSaving(false);
+      return;
     }
-    const newId = result.data!.id
+    const newId = result.data!.id;
     for (const link of links as LocalLink[]) {
-      const url = link.url.trim()
-      if (!url || !MIN_VALID_URL(url)) continue
-      await addNoteLink(newId, { title: link.title?.trim() || null, url })
+      const url = link.url.trim();
+      if (!url || !MIN_VALID_URL(url)) continue;
+      await addNoteLink(newId, { title: link.title?.trim() || null, url });
     }
-    setSaving(false)
-    router.push(`/notes/${newId}`)
-  }
+    setSaving(false);
+    router.push(`/notes/${newId}`);
+  };
 
   const handleDelete = async () => {
-    if (!isEdit || !noteId) return
-    if (!confirm(t('notes.delete_note_confirm'))) return
-    const { error: err } = await deleteNote(noteId)
-    if (err) alert(err)
-    else router.push('/notes')
-  }
+    if (!isEdit || !noteId) return;
+    if (!confirm(t('notes.delete_note_confirm'))) return;
+    const { error: err } = await deleteNote(noteId);
+    if (err) alert(err);
+    else router.push('/notes');
+  };
 
   const addLink = (e: React.FormEvent) => {
-    e.preventDefault()
-    const url = newLinkUrl.trim()
-    if (!url) return
+    e.preventDefault();
+    const url = newLinkUrl.trim();
+    if (!url) return;
     if (!MIN_VALID_URL(url)) {
-      setError(t('notes.error_invalid_url'))
-      return
+      setError(t('notes.error_invalid_url'));
+      return;
     }
-    setError(null)
+    setError(null);
     if (isEdit && noteId) {
-      addNoteLink(noteId, { title: newLinkTitle.trim() || null, url }).then((res) => {
-        if (res.data) setLinks((prev) => [...prev, res.data!])
-        if (res.error) setError(res.error)
-        else router.refresh()
-      })
+      addNoteLink(noteId, { title: newLinkTitle.trim() || null, url }).then(
+        (res) => {
+          if (res.data) setLinks((prev) => [...prev, res.data!]);
+          if (res.error) setError(res.error);
+          else router.refresh();
+        }
+      );
     } else {
-      setLinks((prev) => [...prev, { id: `local-${Date.now()}`, title: newLinkTitle.trim() || undefined, url }])
+      setLinks((prev) => [
+        ...prev,
+        {
+          id: `local-${Date.now()}`,
+          title: newLinkTitle.trim() || undefined,
+          url,
+        },
+      ]);
     }
-    setNewLinkTitle('')
-    setNewLinkUrl('')
-    setShowAddLink(false)
-  }
+    setNewLinkTitle('');
+    setNewLinkUrl('');
+    setShowAddLink(false);
+  };
 
   const removeLink = (link: NoteLink | LocalLink) => {
     if ('note_id' in link && link.note_id) {
-      deleteNoteLink(link.id).then(() => setLinks((prev) => prev.filter((l) => l.id !== link.id)))
-      router.refresh()
+      deleteNoteLink(link.id).then(() =>
+        setLinks((prev) => prev.filter((l) => l.id !== link.id))
+      );
+      router.refresh();
     } else {
-      setLinks((prev) => prev.filter((l) => l.id !== link.id))
+      setLinks((prev) => prev.filter((l) => l.id !== link.id));
     }
-  }
+  };
 
-  const linkHref = (url: string) => (url.startsWith('http') ? url : `https://${url}`)
-  const linkLabel = (link: NoteLink | LocalLink) => (link.title && link.title.trim() ? link.title.trim() : link.url)
+  const linkHref = (url: string) =>
+    url.startsWith('http') ? url : `https://${url}`;
+  const linkLabel = (link: NoteLink | LocalLink) =>
+    link.title && link.title.trim() ? link.title.trim() : link.url;
 
-  const selectedProjectName = projects.find((p) => p.id === projectId)?.name ?? t('notes.project_placeholder')
+  const selectedProjectName =
+    projects.find((p) => p.id === projectId)?.name ??
+    t('notes.project_placeholder');
 
   return (
     <div className="max-w-6xl mx-auto w-full">
@@ -221,7 +251,12 @@ export function NoteEditor({
             </span>
           )}
           {noteId && (
-            <Button size="sm" variant="outline" onClick={handleDelete} className="text-red-600 hover:text-red-700 border-red-200 dark:border-red-800">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDelete}
+              className="text-red-600 hover:text-red-700 border-red-200 dark:border-red-800"
+            >
               {t('common.delete')}
             </Button>
           )}
@@ -240,11 +275,23 @@ export function NoteEditor({
             <Link2 className="h-6 w-6" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" side="top" className="max-h-[min(60vh,320px)] overflow-y-auto">
+        <DropdownMenuContent
+          align="end"
+          side="top"
+          className="max-h-[min(60vh,320px)] overflow-y-auto"
+        >
           {projects.map((p) => (
-            <DropdownMenuItem key={p.id} onClick={() => setProjectId(p.id)} className="flex items-center justify-between gap-2">
-              <span className={projectId === p.id ? 'font-medium' : ''}>{p.name}</span>
-              {projectId === p.id ? <Check className="w-4 h-4 shrink-0" /> : null}
+            <DropdownMenuItem
+              key={p.id}
+              onClick={() => setProjectId(p.id)}
+              className="flex items-center justify-between gap-2"
+            >
+              <span className={projectId === p.id ? 'font-medium' : ''}>
+                {p.name}
+              </span>
+              {projectId === p.id ? (
+                <Check className="w-4 h-4 shrink-0" />
+              ) : null}
             </DropdownMenuItem>
           ))}
           {projects.length === 0 && (
@@ -294,65 +341,90 @@ export function NoteEditor({
               <summary className="lg:list-none lg:pointer-events-none cursor-pointer list-none flex items-center gap-2 mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300 [&::-webkit-details-marker]:hidden">
                 <Link2 className="w-4 h-4 flex-shrink-0" />
                 {t('notes.links_section')}
-                <span className="lg:hidden ml-1 opacity-70 group-open:rotate-180">▼</span>
+                <span className="lg:hidden ml-1 opacity-70 group-open:rotate-180">
+                  ▼
+                </span>
               </summary>
-            {showAddLink ? (
-              <form onSubmit={addLink} className="space-y-2 p-3 rounded-lg bg-slate-100 dark:bg-gray-800 mb-4">
-                <Input
-                  value={newLinkTitle}
-                  onChange={(e) => setNewLinkTitle(e.target.value)}
-                  placeholder={t('notes.link_label_placeholder')}
-                  className="text-sm"
-                />
-                <Input
-                  value={newLinkUrl}
-                  onChange={(e) => setNewLinkUrl(e.target.value)}
-                  placeholder={t('notes.link_url_placeholder')}
-                  type="url"
-                  className="text-sm"
-                />
-                <div className="flex gap-2">
-                  <Button type="submit" size="sm">{t('notes.add')}</Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => { setShowAddLink(false); setNewLinkTitle(''); setNewLinkUrl(''); }}>{t('common.cancel')}</Button>
-                </div>
-              </form>
-            ) : (
-              <Button variant="outline" size="sm" onClick={() => setShowAddLink(true)} className="mb-4">
-                <Plus className="w-4 h-4 mr-1" />
-                {t('notes.add_link')}
-              </Button>
-            )}
-            {links.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">{t('notes.no_links_yet')}</p>
-            ) : (
-              <ul className="space-y-2">
-                {links.map((link) => (
-                  <li key={link.id} className="flex items-center gap-2 group">
-                    <a
-                      href={linkHref(link.url)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 min-w-0 truncate text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      {linkLabel(link)}
-                    </a>
+              {showAddLink ? (
+                <form
+                  onSubmit={addLink}
+                  className="space-y-2 p-3 rounded-lg bg-slate-100 dark:bg-gray-800 mb-4"
+                >
+                  <Input
+                    value={newLinkTitle}
+                    onChange={(e) => setNewLinkTitle(e.target.value)}
+                    placeholder={t('notes.link_label_placeholder')}
+                    className="text-sm"
+                  />
+                  <Input
+                    value={newLinkUrl}
+                    onChange={(e) => setNewLinkUrl(e.target.value)}
+                    placeholder={t('notes.link_url_placeholder')}
+                    type="url"
+                    className="text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button type="submit" size="sm">
+                      {t('notes.add')}
+                    </Button>
                     <Button
                       type="button"
-                      variant="ghost"
                       size="sm"
-                      className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-700 h-8 w-8 p-0 flex-shrink-0"
-                      onClick={() => removeLink(link)}
+                      variant="ghost"
+                      onClick={() => {
+                        setShowAddLink(false);
+                        setNewLinkTitle('');
+                        setNewLinkUrl('');
+                      }}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {t('common.cancel')}
                     </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                  </div>
+                </form>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAddLink(true)}
+                  className="mb-4"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  {t('notes.add_link')}
+                </Button>
+              )}
+              {links.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {t('notes.no_links_yet')}
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {links.map((link) => (
+                    <li key={link.id} className="flex items-center gap-2 group">
+                      <a
+                        href={linkHref(link.url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 min-w-0 truncate text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        {linkLabel(link)}
+                      </a>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-700 h-8 w-8 p-0 flex-shrink-0"
+                        onClick={() => removeLink(link)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </details>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

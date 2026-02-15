@@ -5,6 +5,7 @@
 ### 7.1.1 Dependency graph + circular dependency scan
 
 ### 📊 MODULE DEPENDENCY GRAPH
+
 ```mermaid
 graph TD
     AA[app/actions/*] --> O[lib/* + next/*]
@@ -34,17 +35,21 @@ graph TD
 **Circular Dependencies Found:** **0** (inside scoped modules: `app/actions`, `app/clients`, `app/businesses`, `app/billings`, `app/project`, `components`).
 
 **Details:**
+
 - I scanned all local TypeScript imports in the scoped folders and ran SCC (strongly connected component) detection across those files.
 - No file-to-file cycle was detected in this scope.
 - There is still **high hub coupling** (especially through `components/I18nProvider.tsx`, `app/clients/actions.ts`, and `components/Sidebar.tsx`), but not a strict circular import.
 
 ### Full scoped import inventory (ALL local imports)
+
 #### app/actions/
+
 - `app/actions/auth.ts` -> `lib/supabase/server.ts`
 - `app/actions/projects.ts` -> `lib/supabase/server.ts`, `lib/auth.ts`, `lib/constants.ts`
 - `app/actions/tasks.ts` -> `lib/supabase/server.ts`, `lib/auth.ts`, `lib/supabase/types.ts`
 
 #### app/clients/
+
 - `app/clients/ClientsPageClient.tsx` -> `lib/supabase/client.ts`, `lib/supabase/types.ts`, `components/Sidebar.tsx`, `components/TopBar.tsx`, `components/I18nProvider.tsx`, `app/actions/auth.ts`, `app/clients/actions.ts`, `app/clients/components/ClientCard.tsx`, `app/clients/components/CreateClientModal.tsx`, `app/clients/components/EditClientModal.tsx`, `app/clients/components/EmptyState.tsx`
 - `app/clients/[id]/ClientDetailClient.tsx` -> `lib/supabase/client.ts`, `lib/supabase/types.ts`, `components/DetailLayout.tsx`, `components/I18nProvider.tsx`, `lib/formatPhone.ts`, `app/clients/actions.ts`, `components/ui/dropdown-menu.tsx`, `components/ui/input.tsx`, `components/ui/label.tsx`, `components/ui/button.tsx`, `app/clients/components/EditClientModal.tsx`, `app/clients/components/BusinessCard.tsx`, `app/clients/components/CreateBusinessModal.tsx`, `app/clients/components/EditBusinessModal.tsx`
 - `app/clients/[id]/page.tsx` -> `lib/auth.ts`, `app/clients/actions.ts`, `app/clients/[id]/ClientDetailClient.tsx`
@@ -59,6 +64,7 @@ graph TD
 - `app/clients/page.tsx` -> `lib/auth.ts`, `app/clients/ClientsPageClient.tsx`
 
 #### app/businesses/
+
 - `app/businesses/BusinessesPageClient.tsx` -> `lib/supabase/client.ts`, `lib/supabase/types.ts`, `components/Sidebar.tsx`, `components/TopBar.tsx`, `components/I18nProvider.tsx`, `app/actions/auth.ts`, `app/clients/actions.ts`, `app/clients/components/BusinessCard.tsx`, `app/clients/components/CreateBusinessModal.tsx`, `app/clients/components/EditBusinessModal.tsx`
 - `app/businesses/[id]/BusinessDetailClient.tsx` -> `components/I18nProvider.tsx`, `components/DetailLayout.tsx`, `app/clients/actions.ts`, `app/businesses/actions.ts`, `app/clients/components/EditBusinessModal.tsx`, `components/ui/dropdown-menu.tsx`, `components/ui/input.tsx`, `components/ui/label.tsx`, `components/ui/textarea.tsx`, `components/ui/button.tsx`, `components/ui/select.tsx`, `components/ui/dialog.tsx`, `lib/supabase/types.ts`
 - `app/businesses/[id]/page.tsx` -> `lib/auth.ts`, `app/clients/actions.ts`, `app/businesses/[id]/BusinessDetailClient.tsx`
@@ -66,14 +72,17 @@ graph TD
 - `app/businesses/page.tsx` -> `lib/auth.ts`, `app/businesses/BusinessesPageClient.tsx`
 
 #### app/billings/
+
 - `app/billings/BillingsPageClient.tsx` -> `components/I18nProvider.tsx`, `lib/supabase/client.ts`, `lib/supabase/types.ts`, `components/Sidebar.tsx`, `components/TopBar.tsx`, `app/actions/auth.ts`, `app/billings/actions.ts`, `app/clients/actions.ts`
 - `app/billings/actions.ts` -> `lib/supabase/server.ts`, `lib/auth.ts`, `lib/supabase/types.ts`
 - `app/billings/page.tsx` -> `lib/auth.ts`, `app/billings/BillingsPageClient.tsx`
 
 #### app/project/
+
 - `app/project/[id]/page.tsx` -> `lib/auth.ts`, `components/ProjectKanbanClient.tsx`
 
 #### components/
+
 - `components/AddProjectModal.tsx` -> `components/I18nProvider.tsx`, `app/actions/projects.ts`, `app/clients/actions.ts`, `components/ui/dialog.tsx`, `components/ui/button.tsx`, `components/ui/input.tsx`, `components/ui/label.tsx`, `components/ui/select.tsx`, `lib/constants.ts`, `lib/supabase/types.ts`
 - `components/AddTaskModal.tsx` -> `components/I18nProvider.tsx`, `app/actions/tasks.ts`, `lib/supabase/types.ts`, `components/ui/dialog.tsx`, `components/ui/button.tsx`, `components/ui/input.tsx`, `components/ui/label.tsx`, `components/ui/textarea.tsx`, `components/ui/select.tsx`
 - `components/AnalyticsDashboard.tsx` -> `components/I18nProvider.tsx`, `lib/supabase/client.ts`, `lib/supabase/types.ts`, `components/Sidebar.tsx`, `components/dashboard/DashboardFocusTasksSection.tsx`
@@ -118,35 +127,37 @@ graph TD
 - `components/ui/tabs.tsx` -> `lib/utils.ts`
 - `components/ui/textarea.tsx` -> `lib/utils.ts`
 
-
 ### 7.1.2 Coupling metrics
 
 ### 📈 COUPLING METRICS
 
 Coupling score heuristic used:
+
 - **HIGH:** imported by >= 10 scoped files, or imports from >= 5 cross-module files.
 - **MEDIUM:** imported by 4–9 scoped files, or imports from 2–4 cross-module files.
 - **LOW:** below those thresholds.
 
-| Module/File | Imports FROM other scoped modules | Imported BY other scoped files | Coupling Score |
-|---|---:|---:|---|
-| `components/I18nProvider.tsx` | 0 | 29 | HIGH (cross-cutting hub) |
-| `app/clients/actions.ts` | 0 | 16 | HIGH (data/service hub) |
-| `components/Sidebar.tsx` | 1 | 6 | HIGH (UI + behavior hub) |
-| `app/businesses/[id]/BusinessDetailClient.tsx` | 11 | 1 | HIGH (orchestration-heavy leaf) |
-| `app/businesses/BusinessesPageClient.tsx` | 8 | 1 | HIGH |
-| `app/clients/[id]/ClientDetailClient.tsx` | 6 | 1 | HIGH |
-| `app/billings/BillingsPageClient.tsx` | 5 | 1 | MEDIUM-HIGH |
-| `app/actions/projects.ts` | 0 | 4 | MEDIUM |
-| `app/actions/tasks.ts` | 0 | 4 | MEDIUM |
-| `app/project/[id]/page.tsx` | 1 | 0 | LOW |
+| Module/File                                    | Imports FROM other scoped modules | Imported BY other scoped files | Coupling Score                  |
+| ---------------------------------------------- | --------------------------------: | -----------------------------: | ------------------------------- |
+| `components/I18nProvider.tsx`                  |                                 0 |                             29 | HIGH (cross-cutting hub)        |
+| `app/clients/actions.ts`                       |                                 0 |                             16 | HIGH (data/service hub)         |
+| `components/Sidebar.tsx`                       |                                 1 |                              6 | HIGH (UI + behavior hub)        |
+| `app/businesses/[id]/BusinessDetailClient.tsx` |                                11 |                              1 | HIGH (orchestration-heavy leaf) |
+| `app/businesses/BusinessesPageClient.tsx`      |                                 8 |                              1 | HIGH                            |
+| `app/clients/[id]/ClientDetailClient.tsx`      |                                 6 |                              1 | HIGH                            |
+| `app/billings/BillingsPageClient.tsx`          |                                 5 |                              1 | MEDIUM-HIGH                     |
+| `app/actions/projects.ts`                      |                                 0 |                              4 | MEDIUM                          |
+| `app/actions/tasks.ts`                         |                                 0 |                              4 | MEDIUM                          |
+| `app/project/[id]/page.tsx`                    |                                 1 |                              0 | LOW                             |
 
 **Highly coupled modules (need refactoring):**
+
 1. `components/I18nProvider.tsx` — imported by 29 scoped files (global concern with high fan-in).
 2. `app/clients/actions.ts` — imported by 16 scoped files (domain action hub used outside clients module).
 3. `components/Sidebar.tsx` — central shared shell UI, with multiple action dependencies.
 
 **Decoupled modules (good):**
+
 1. `app/project/[id]/page.tsx` — minimal dependencies, clean route wrapper role.
 2. `app/actions/auth.ts` — focused auth action surface with moderate/contained usage.
 
@@ -163,6 +174,7 @@ Coupling score heuristic used:
 **Used by:** dozens of components/pages (todo, ideas, billings, businesses, clients, notes, sidebar, topbar, etc.).
 
 **State shared:**
+
 ```typescript
 {
   locale: 'en' | 'es',
@@ -176,11 +188,13 @@ Coupling score heuristic used:
 **Coupling risk:** HIGH
 
 **Problems:**
+
 1. Very high fan-in makes i18n provider a cross-cutting runtime dependency.
 2. Locale/currency updates can trigger broad re-render cascades.
 3. Presentation + preference persistence + remote bootstrap are bundled together.
 
 **Refactor suggestion:**
+
 - Split transport/bootstrap concern from pure translation access.
 - Memoize selector-style hooks (`useLocale`, `useCurrency`) for narrower updates.
 
@@ -189,6 +203,7 @@ Coupling score heuristic used:
 **Location:** `lib/theme.ts`, consumed by `components/ThemeProvider.tsx` and bootstrapped in `app/layout.tsx`.
 
 **State shared:**
+
 ```typescript
 localStorage['cq-theme-prefs']
 {
@@ -202,11 +217,13 @@ localStorage['cq-theme-prefs']
 **Coupling risk:** HIGH
 
 **Problems:**
+
 1. Same persisted state is read in multiple lifecycle paths (layout bootstrap + provider).
 2. Theme application mutates global `document.documentElement` CSS variables.
 3. Hard to test deterministically in SSR/client mixed code.
 
 **Refactor suggestion:**
+
 - Centralize theme hydration to one authoritative layer and expose read-only derived tokens to UI.
 
 ### 🌍 SHARED STATE #3: I18n preferences persistence (`cq-i18n-prefs`)
@@ -214,18 +231,21 @@ localStorage['cq-theme-prefs']
 **Location:** `components/I18nProvider.tsx`
 
 **State shared:**
+
 ```typescript
-localStorage['cq-i18n-prefs'] = { locale, currency }
+localStorage['cq-i18n-prefs'] = { locale, currency };
 ```
 
 **Coupling risk:** MEDIUM-HIGH
 
 **Problems:**
+
 1. Persisted client state is merged with profile/preferences server data.
 2. Conflict resolution behavior is embedded in provider mount flow.
 3. Any consumer implicitly depends on this merge order.
 
 **Refactor suggestion:**
+
 - Extract preference reconciliation strategy into dedicated service function with tests.
 
 ### 🌍 SHARED STATE #4: Sidebar collapsed preference (`sidebar-collapsed`)
@@ -233,17 +253,20 @@ localStorage['cq-i18n-prefs'] = { locale, currency }
 **Location:** `components/Sidebar.tsx`
 
 **State shared:**
+
 ```typescript
-localStorage['sidebar-collapsed'] = 'true' | 'false'
+localStorage['sidebar-collapsed'] = 'true' | 'false';
 ```
 
 **Coupling risk:** MEDIUM
 
 **Problems:**
+
 1. UI layout preference is persisted globally and silently reused.
 2. Breakpoint behavior + persisted behavior are mixed in one component.
 
 **Refactor suggestion:**
+
 - Move shell UI preferences into a `useShellPrefs` hook/service to isolate persistence concern.
 
 ### 🌍 SHARED STATE #5: Auth/session state via Supabase cookies + `getUser()`
@@ -253,6 +276,7 @@ localStorage['sidebar-collapsed'] = 'true' | 'false'
 **Used by:** many route pages/actions via `requireAuth`/`getUser`.
 
 **State shared:**
+
 ```typescript
 cookie-backed Supabase auth session
 ```
@@ -260,11 +284,13 @@ cookie-backed Supabase auth session
 **Coupling risk:** HIGH
 
 **Problems:**
+
 1. Authentication state is globally ambient and repeatedly loaded ad-hoc.
 2. Domain actions/pages are tightly coupled to runtime cookie availability.
 3. Hard to isolate in unit tests without auth-aware harness.
 
 **Refactor suggestion:**
+
 - Add a thin auth boundary interface (adapter) and pass identity context into domain services.
 
 ---
@@ -280,6 +306,7 @@ cookie-backed Supabase auth session
 **Imported by:** 16 files
 
 **Responsibilities currently mixed:**
+
 1. Client CRUD
 2. Business CRUD
 3. Cross-link queries (client ↔ business)
@@ -290,6 +317,7 @@ cookie-backed Supabase auth session
 **Violation:** Single Responsibility Principle
 
 **Refactor suggestion:**
+
 ```
 app/clients/actions/
 ├── clients.ts            # client CRUD
@@ -308,6 +336,7 @@ app/clients/actions/
 **Imported by:** 10 files (repo-wide) / 6 in scoped set
 
 **Responsibilities currently mixed:**
+
 1. Navigation rendering
 2. Mobile drawer state and behavior
 3. Desktop collapse persistence
@@ -319,6 +348,7 @@ app/clients/actions/
 **Violation:** UI composition + business orchestration mixed in one component
 
 **Refactor suggestion:**
+
 ```
 components/sidebar/
 ├── SidebarView.tsx
@@ -337,6 +367,7 @@ components/sidebar/
 **Imported by:** route page
 
 **Responsibilities currently mixed:**
+
 1. Business profile editing
 2. Contact/channel normalization
 3. Related clients lookup logic
@@ -348,6 +379,7 @@ components/sidebar/
 **Violation:** Multiple domain + UI concerns in one route client
 
 **Refactor suggestion:**
+
 ```
 app/businesses/[id]/
 ├── BusinessDetailClient.tsx   # composition only
@@ -374,6 +406,7 @@ app/businesses/[id]/
 **Location:** `app/billings/BillingsPageClient.tsx`
 
 **Violation snippet (UI owns analytics logic):**
+
 ```typescript
 const filtered = useMemo(() => {
   const q = searchQuery.trim().toLowerCase()
@@ -396,6 +429,7 @@ const summary = useMemo(() => {
 **Location:** `components/Sidebar.tsx`
 
 **Violation snippet:**
+
 ```typescript
 async function handleArchive(project: Project) {
   if (project.category === 'archived') await unarchiveProject(project.id)
@@ -432,6 +466,7 @@ async function handleDelete(project: Project) {
 **Location:** `app/budgets/[id]/components/ItemsList.tsx`
 
 **Violation snippet:**
+
 ```typescript
 const handleBulkDelete = async () => {
   const ids = Array.from(selectedIds)

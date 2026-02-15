@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useI18n } from '@/components/I18nProvider'
-import { createProject } from '@/app/actions/projects'
-import { getClients, getBusinessesByClientId } from '@/app/clients/actions'
+import { useState, useEffect } from 'react';
+import { useI18n } from '@/components/I18nProvider';
+import { createProject } from '@/app/actions/projects';
+import { getClients, getBusinessesByClientId } from '@/app/clients/actions';
 import {
   Dialog,
   DialogContent,
@@ -11,32 +11,54 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog'
-import { Button } from './ui/button'
-import { Input } from './ui/input'
-import { Label } from './ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import { PROJECT_CATEGORIES } from '@/lib/constants'
-import type { Database } from '@/lib/supabase/types'
+} from './ui/dialog';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
+import { PROJECT_CATEGORIES } from '@/lib/constants';
+import type { Database } from '@/lib/supabase/types';
 
-type Client = Database['public']['Tables']['clients']['Row']
-type Business = Database['public']['Tables']['businesses']['Row']
+type Client = Database['public']['Tables']['clients']['Row'];
+type Business = Database['public']['Tables']['businesses']['Row'];
 
 interface AddProjectModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onProjectAdded: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  onProjectAdded: () => void;
   /** When opening from business detail, pre-fill client and business. */
-  defaultClientId?: string
-  defaultBusinessId?: string
+  defaultClientId?: string;
+  defaultBusinessId?: string;
 }
 
 const COLORS = [
-  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
-  '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
-  '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
-  '#ec4899', '#f43f5e', '#94a3b8', '#64748b', '#475569',
-]
+  '#ef4444',
+  '#f97316',
+  '#f59e0b',
+  '#eab308',
+  '#84cc16',
+  '#22c55e',
+  '#10b981',
+  '#14b8a6',
+  '#06b6d4',
+  '#0ea5e9',
+  '#3b82f6',
+  '#6366f1',
+  '#8b5cf6',
+  '#a855f7',
+  '#d946ef',
+  '#ec4899',
+  '#f43f5e',
+  '#94a3b8',
+  '#64748b',
+  '#475569',
+];
 
 export function AddProjectModal({
   isOpen,
@@ -45,65 +67,65 @@ export function AddProjectModal({
   defaultClientId,
   defaultBusinessId,
 }: AddProjectModalProps) {
-  const { t } = useI18n()
-  const [name, setName] = useState('')
-  const [category, setCategory] = useState<string>('business')
-  const [selectedColor, setSelectedColor] = useState<string | null>(null)
-  const [clientId, setClientId] = useState<string>('')
-  const [businessId, setBusinessId] = useState<string>('')
-  const [clients, setClients] = useState<Client[]>([])
-  const [businesses, setBusinesses] = useState<Business[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { t } = useI18n();
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState<string>('business');
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string>('');
+  const [businessId, setBusinessId] = useState<string>('');
+  const [clients, setClients] = useState<Client[]>([]);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) getClients().then(setClients)
-  }, [isOpen])
+    if (isOpen) getClients().then(setClients);
+  }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen && defaultClientId) setClientId(defaultClientId)
-  }, [isOpen, defaultClientId])
+    if (isOpen && defaultClientId) setClientId(defaultClientId);
+  }, [isOpen, defaultClientId]);
   useEffect(() => {
-    if (isOpen && defaultBusinessId) setBusinessId(defaultBusinessId)
-  }, [isOpen, defaultBusinessId])
+    if (isOpen && defaultBusinessId) setBusinessId(defaultBusinessId);
+  }, [isOpen, defaultBusinessId]);
 
   useEffect(() => {
     if (!clientId) {
-      setBusinesses([])
-      setBusinessId('')
-      return
+      setBusinesses([]);
+      setBusinessId('');
+      return;
     }
     getBusinessesByClientId(clientId).then((list) => {
-      setBusinesses(list)
-      setBusinessId((prev) => (list.some((b) => b.id === prev) ? prev : ''))
-    })
-  }, [clientId])
+      setBusinesses(list);
+      setBusinessId((prev) => (list.some((b) => b.id === prev) ? prev : ''));
+    });
+  }, [clientId]);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
 
-    const formData = new FormData()
-    formData.append('name', name)
-    formData.append('category', category)
-    if (selectedColor) formData.append('color', selectedColor)
-    if (clientId) formData.append('client_id', clientId)
-    if (businessId) formData.append('business_id', businessId)
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('category', category);
+    if (selectedColor) formData.append('color', selectedColor);
+    if (clientId) formData.append('client_id', clientId);
+    if (businessId) formData.append('business_id', businessId);
 
-    const result = await createProject(formData)
+    const result = await createProject(formData);
 
     if (result.error) {
-      setError(result.error)
-      setIsLoading(false)
+      setError(result.error);
+      setIsLoading(false);
     } else {
-      setName('')
-      setCategory('business')
-      setSelectedColor(null)
-      setClientId('')
-      setBusinessId('')
-      onProjectAdded()
-      onClose()
+      setName('');
+      setCategory('business');
+      setSelectedColor(null);
+      setClientId('');
+      setBusinessId('');
+      onProjectAdded();
+      onClose();
     }
   }
 
@@ -133,22 +155,29 @@ export function AddProjectModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {PROJECT_CATEGORIES.filter(c => c.key !== 'archived').map(cat => (
-                    <SelectItem key={cat.key} value={cat.key}>
-                      {t(`categories.${cat.key}`)}
-                    </SelectItem>
-                  ))}
+                  {PROJECT_CATEGORIES.filter((c) => c.key !== 'archived').map(
+                    (cat) => (
+                      <SelectItem key={cat.key} value={cat.key}>
+                        {t(`categories.${cat.key}`)}
+                      </SelectItem>
+                    )
+                  )}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="client">{t('projects.client_optional')}</Label>
-              <Select value={clientId || 'none'} onValueChange={(v) => setClientId(v === 'none' ? '' : v)}>
+              <Select
+                value={clientId || 'none'}
+                onValueChange={(v) => setClientId(v === 'none' ? '' : v)}
+              >
                 <SelectTrigger id="client">
                   <SelectValue placeholder={t('projects.select_client')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">{t('projects.no_client')}</SelectItem>
+                  <SelectItem value="none">
+                    {t('projects.no_client')}
+                  </SelectItem>
                   {clients.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.full_name}
@@ -159,13 +188,20 @@ export function AddProjectModal({
             </div>
             {clientId && (
               <div className="space-y-2">
-                <Label htmlFor="business">{t('projects.business_optional')}</Label>
-                <Select value={businessId || 'none'} onValueChange={(v) => setBusinessId(v === 'none' ? '' : v)}>
+                <Label htmlFor="business">
+                  {t('projects.business_optional')}
+                </Label>
+                <Select
+                  value={businessId || 'none'}
+                  onValueChange={(v) => setBusinessId(v === 'none' ? '' : v)}
+                >
                   <SelectTrigger id="business">
                     <SelectValue placeholder={t('projects.select_business')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">{t('projects.no_business')}</SelectItem>
+                    <SelectItem value="none">
+                      {t('projects.no_business')}
+                    </SelectItem>
                     {businesses.map((b) => (
                       <SelectItem key={b.id} value={b.id}>
                         {b.name}
@@ -178,11 +214,13 @@ export function AddProjectModal({
             <div className="space-y-2">
               <Label>{t('projects.color_optional')}</Label>
               <div className="grid grid-cols-10 gap-2">
-                {COLORS.map(color => (
+                {COLORS.map((color) => (
                   <button
                     key={color}
                     type="button"
-                    onClick={() => setSelectedColor(selectedColor === color ? null : color)}
+                    onClick={() =>
+                      setSelectedColor(selectedColor === color ? null : color)
+                    }
                     className={`w-8 h-8 rounded-full border-2 transition-all ${
                       selectedColor === color
                         ? 'border-slate-900 scale-110'
@@ -204,11 +242,13 @@ export function AddProjectModal({
               {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? t('projects.creating') : t('projects.create_project')}
+              {isLoading
+                ? t('projects.creating')
+                : t('projects.create_project')}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,23 +1,23 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useI18n } from '@/components/I18nProvider'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useState } from 'react';
+import { useI18n } from '@/components/I18nProvider';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Layout, Plus, MoreVertical, Edit, Trash2, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { deleteBoardAction } from './boards/actions'
+} from '@/components/ui/dropdown-menu';
+import { Layout, Plus, MoreVertical, Edit, Trash2, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { deleteBoardAction } from './boards/actions';
 
 interface Board {
-  id: string
-  name: string
-  description: string | null
+  id: string;
+  name: string;
+  description: string | null;
 }
 
 export default function BoardsSidebar({
@@ -34,39 +34,39 @@ export default function BoardsSidebar({
   onEditBoard,
   onClose,
 }: {
-  boards: Board[]
-  selectedBoardId: string | null
-  onSelectBoard: (boardId: string | null) => void
-  onRefresh: () => void
-  isCreatingBoard: boolean
-  newBoardName: string
-  onNewBoardNameChange: (value: string) => void
-  onCreateBoard: () => void
-  onCancelNewBoard: () => void
-  onStartCreateBoard: () => void
-  onEditBoard: (boardId: string) => void
-  onClose?: () => void
+  boards: Board[];
+  selectedBoardId: string | null;
+  onSelectBoard: (boardId: string | null) => void;
+  onRefresh: () => void;
+  isCreatingBoard: boolean;
+  newBoardName: string;
+  onNewBoardNameChange: (value: string) => void;
+  onCreateBoard: () => void;
+  onCancelNewBoard: () => void;
+  onStartCreateBoard: () => void;
+  onEditBoard: (boardId: string) => void;
+  onClose?: () => void;
 }) {
-  const { t } = useI18n()
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const { t } = useI18n();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleDelete = async (boardId: string) => {
     if (!confirm(t('ideas.delete_board_confirm'))) {
-      return
+      return;
     }
 
-    setDeletingId(boardId)
-    const result = await deleteBoardAction(boardId)
-    setDeletingId(null)
+    setDeletingId(boardId);
+    const result = await deleteBoardAction(boardId);
+    setDeletingId(null);
 
     if (result.success) {
       if (selectedBoardId === boardId) {
-        const nextBoard = boards.find((b) => b.id !== boardId)
-        onSelectBoard(nextBoard?.id || null)
+        const nextBoard = boards.find((b) => b.id !== boardId);
+        onSelectBoard(nextBoard?.id || null);
       }
-      onRefresh()
+      onRefresh();
     }
-  }
+  };
 
   return (
     <div className="w-72 h-full bg-card border-r border-border flex flex-col overflow-hidden shadow-xl">
@@ -108,7 +108,10 @@ export default function BoardsSidebar({
                 <Layout className="w-4 h-4 flex-shrink-0" />
                 <span className="truncate flex-1 min-w-0">{board.name}</span>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuTrigger
+                    asChild
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       className="p-1 hover:bg-accent rounded transition-opacity flex-shrink-0 opacity-70 hover:opacity-100"
                       onClick={(e) => e.stopPropagation()}
@@ -117,7 +120,10 @@ export default function BoardsSidebar({
                       <MoreVertical className="w-4 h-4" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuContent
+                    align="end"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <DropdownMenuItem onClick={() => onEditBoard(board.id)}>
                       <Edit className="w-4 h-4 mr-2" />
                       {t('common.edit')}
@@ -128,7 +134,9 @@ export default function BoardsSidebar({
                       className="text-destructive focus:text-destructive"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      {deletingId === board.id ? t('ideas.deleting') : t('common.delete')}
+                      {deletingId === board.id
+                        ? t('ideas.deleting')
+                        : t('common.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -145,8 +153,8 @@ export default function BoardsSidebar({
               placeholder={t('ideas.board_name_placeholder')}
               className="w-full"
               onKeyDown={(e) => {
-                if (e.key === 'Enter') onCreateBoard()
-                if (e.key === 'Escape') onCancelNewBoard()
+                if (e.key === 'Enter') onCreateBoard();
+                if (e.key === 'Escape') onCancelNewBoard();
               }}
               autoFocus
             />
@@ -172,5 +180,5 @@ export default function BoardsSidebar({
         )}
       </div>
     </div>
-  )
+  );
 }

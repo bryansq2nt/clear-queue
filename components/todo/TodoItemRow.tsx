@@ -1,76 +1,76 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Trash2 } from 'lucide-react'
-import { TodoItem } from '@/lib/todo/lists'
+import { useState } from 'react';
+import { Trash2 } from 'lucide-react';
+import { TodoItem } from '@/lib/todo/lists';
 import {
   toggleTodoItemAction,
   updateTodoItemAction,
   deleteTodoItemAction,
-} from '@/app/todo/actions'
-import { cn } from '@/lib/utils'
+} from '@/app/todo/actions';
+import { cn } from '@/lib/utils';
 
 interface TodoItemRowProps {
-  item: TodoItem
-  onRefresh: () => void
+  item: TodoItem;
+  onRefresh: () => void;
 }
 
 export default function TodoItemRow({ item, onRefresh }: TodoItemRowProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedContent, setEditedContent] = useState(item.content)
-  const [isToggling, setIsToggling] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState(item.content);
+  const [isToggling, setIsToggling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleToggle = async () => {
-    setIsToggling(true)
-    const result = await toggleTodoItemAction(item.id)
-    setIsToggling(false)
+    setIsToggling(true);
+    const result = await toggleTodoItemAction(item.id);
+    setIsToggling(false);
 
     if (result.data) {
-      onRefresh()
+      onRefresh();
     } else if (result.error) {
-      alert(result.error)
+      alert(result.error);
     }
-  }
+  };
 
   const handleSave = async () => {
     if (!editedContent.trim()) {
-      setEditedContent(item.content)
-      setIsEditing(false)
-      return
+      setEditedContent(item.content);
+      setIsEditing(false);
+      return;
     }
 
     if (editedContent === item.content) {
-      setIsEditing(false)
-      return
+      setIsEditing(false);
+      return;
     }
 
     const result = await updateTodoItemAction(item.id, {
       content: editedContent,
-    })
+    });
 
     if (result.data) {
-      setIsEditing(false)
-      onRefresh()
+      setIsEditing(false);
+      onRefresh();
     } else if (result.error) {
-      alert(result.error)
-      setEditedContent(item.content)
+      alert(result.error);
+      setEditedContent(item.content);
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!confirm('Delete this item?')) return
+    if (!confirm('Delete this item?')) return;
 
-    setIsDeleting(true)
-    const result = await deleteTodoItemAction(item.id)
-    setIsDeleting(false)
+    setIsDeleting(true);
+    const result = await deleteTodoItemAction(item.id);
+    setIsDeleting(false);
 
     if (result.success) {
-      onRefresh()
+      onRefresh();
     } else if (result.error) {
-      alert(result.error)
+      alert(result.error);
     }
-  }
+  };
 
   return (
     <div className="group flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
@@ -93,10 +93,10 @@ export default function TodoItemRow({ item, onRefresh }: TodoItemRowProps) {
             onBlur={handleSave}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                handleSave()
+                handleSave();
               } else if (e.key === 'Escape') {
-                setEditedContent(item.content)
-                setIsEditing(false)
+                setEditedContent(item.content);
+                setIsEditing(false);
               }
             }}
             autoFocus
@@ -107,9 +107,7 @@ export default function TodoItemRow({ item, onRefresh }: TodoItemRowProps) {
             onClick={() => setIsEditing(true)}
             className={cn(
               'text-sm cursor-text',
-              item.is_done
-                ? 'text-slate-400 line-through'
-                : 'text-slate-900'
+              item.is_done ? 'text-slate-400 line-through' : 'text-slate-900'
             )}
           >
             {item.content}
@@ -132,5 +130,5 @@ export default function TodoItemRow({ item, onRefresh }: TodoItemRowProps) {
         <Trash2 className="w-4 h-4 text-red-600" />
       </button>
     </div>
-  )
+  );
 }

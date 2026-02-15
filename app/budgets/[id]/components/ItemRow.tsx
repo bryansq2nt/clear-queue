@@ -1,28 +1,34 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { useI18n } from '@/components/I18nProvider'
-import { Edit, Trash2, ExternalLink, RefreshCw, GripVertical } from 'lucide-react'
-import { Database } from '@/lib/supabase/types'
+import { useEffect, useState } from 'react';
+import { useI18n } from '@/components/I18nProvider';
+import {
+  Edit,
+  Trash2,
+  ExternalLink,
+  RefreshCw,
+  GripVertical,
+} from 'lucide-react';
+import { Database } from '@/lib/supabase/types';
 
-type BudgetItem = Database['public']['Tables']['budget_items']['Row']
+type BudgetItem = Database['public']['Tables']['budget_items']['Row'];
 
 interface ItemRowProps {
-  item: BudgetItem
-  budgetId: string
-  onEdit: (item: BudgetItem) => void
-  onDelete: (itemId: string) => void
-  selectionMode?: boolean
-  selected?: boolean
-  onToggleSelected?: (itemId: string) => void
-  flash?: boolean
-  updated?: boolean
-  deleting?: boolean
+  item: BudgetItem;
+  budgetId: string;
+  onEdit: (item: BudgetItem) => void;
+  onDelete: (itemId: string) => void;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelected?: (itemId: string) => void;
+  flash?: boolean;
+  updated?: boolean;
+  deleting?: boolean;
   dragHandle?: {
-    setActivatorNodeRef: (node: any) => void
-    attributes: any
-    listeners: any
-  }
+    setActivatorNodeRef: (node: any) => void;
+    attributes: any;
+    listeners: any;
+  };
 }
 
 export function ItemRow({
@@ -38,67 +44,69 @@ export function ItemRow({
   deleting = false,
   dragHandle,
 }: ItemRowProps) {
-  const { t } = useI18n()
-  const [showMenu, setShowMenu] = useState(false)
+  const { t } = useI18n();
+  const [showMenu, setShowMenu] = useState(false);
   // Start highlighted immediately when the row mounts with flash=true
-  const [isFlashing, setIsFlashing] = useState(flash)
+  const [isFlashing, setIsFlashing] = useState(flash);
   // Start "entering" when created so it animates in
-  const [isEntering, setIsEntering] = useState(flash)
-  const [isDeleteFading, setIsDeleteFading] = useState(false)
+  const [isEntering, setIsEntering] = useState(flash);
+  const [isDeleteFading, setIsDeleteFading] = useState(false);
 
   useEffect(() => {
     if (!flash) {
-      setIsFlashing(false)
-      return
+      setIsFlashing(false);
+      return;
     }
 
     // Ensure it's highlighted now, then fade out
-    setIsFlashing(true)
+    setIsFlashing(true);
     // Make sure it animates in (opacity/translate) instead of appearing instantly
-    setIsEntering(true)
-    const raf = window.requestAnimationFrame(() => setIsEntering(false))
+    setIsEntering(true);
+    const raf = window.requestAnimationFrame(() => setIsEntering(false));
 
-    const t = setTimeout(() => setIsFlashing(false), 1600)
+    const t = setTimeout(() => setIsFlashing(false), 1600);
     return () => {
-      window.cancelAnimationFrame(raf)
-      clearTimeout(t)
-    }
-  }, [flash])
+      window.cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
+  }, [flash]);
 
   useEffect(() => {
     if (!deleting) {
-      setIsDeleteFading(false)
-      return
+      setIsDeleteFading(false);
+      return;
     }
 
     // Start the fade-out immediately (next paint) so it feels snappy.
-    const raf = window.requestAnimationFrame(() => setIsDeleteFading(true))
-    return () => window.cancelAnimationFrame(raf)
-  }, [deleting])
+    const raf = window.requestAnimationFrame(() => setIsDeleteFading(true));
+    return () => window.cancelAnimationFrame(raf);
+  }, [deleting]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
-    }).format(amount)
-  }
+    }).format(amount);
+  };
 
-  const subtotal = Number(item.quantity) * Number(item.unit_price)
+  const subtotal = Number(item.quantity) * Number(item.unit_price);
 
   const statusColors = {
-    pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+    pending:
+      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
     quoted: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    acquired: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  }
+    acquired:
+      'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  };
 
   const statusLabels = {
     pending: t('budgets.item_status_pending'),
     quoted: t('budgets.item_status_quoted'),
     acquired: t('budgets.item_status_acquired'),
-  }
+  };
 
-  const showUpdated = updated && !deleting && !isFlashing
+  const showUpdated = updated && !deleting && !isFlashing;
 
   return (
     <div
@@ -116,14 +124,16 @@ export function ItemRow({
           : ''
       } ${deleting && isDeleteFading ? 'opacity-0 scale-[0.96]' : ''}`}
       onClick={() => {
-        if (deleting) return
-        if (!selectionMode) return
-        onToggleSelected?.(item.id)
+        if (deleting) return;
+        if (!selectionMode) return;
+        onToggleSelected?.(item.id);
       }}
     >
       <div
         className={`flex items-start gap-4 transition-[opacity,transform] duration-300 ease-out ${
-          !deleting && isEntering ? 'opacity-0 -translate-y-1' : 'opacity-100 translate-y-0'
+          !deleting && isEntering
+            ? 'opacity-0 -translate-y-1'
+            : 'opacity-100 translate-y-0'
         }`}
       >
         <div className="pt-1 flex items-start gap-2">
@@ -181,7 +191,9 @@ export function ItemRow({
           {/* Metadata Row */}
           <div className="flex items-center gap-3 flex-wrap mt-2">
             {/* Status */}
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[item.status]}`}>
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[item.status]}`}
+            >
               {statusLabels[item.status]}
             </span>
 
@@ -228,8 +240,8 @@ export function ItemRow({
           <div className="relative flex-shrink-0">
             <button
               onClick={(e) => {
-                e.stopPropagation()
-                setShowMenu(!showMenu)
+                e.stopPropagation();
+                setShowMenu(!showMenu);
               }}
               className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
             >
@@ -241,16 +253,16 @@ export function ItemRow({
                 <div
                   className="fixed inset-0 z-10"
                   onClick={(e) => {
-                    e.stopPropagation()
-                    setShowMenu(false)
+                    e.stopPropagation();
+                    setShowMenu(false);
                   }}
                 />
                 <div className="absolute top-10 right-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-20 min-w-[160px]">
                   <button
                     onClick={(e) => {
-                      e.stopPropagation()
-                      setShowMenu(false)
-                      onEdit(item)
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      onEdit(item);
                     }}
                     className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
@@ -259,9 +271,9 @@ export function ItemRow({
                   </button>
                   <button
                     onClick={(e) => {
-                      e.stopPropagation()
-                      setShowMenu(false)
-                      onDelete(item.id)
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      onDelete(item.id);
                     }}
                     className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
                   >
@@ -275,5 +287,5 @@ export function ItemRow({
         )}
       </div>
     </div>
-  )
+  );
 }

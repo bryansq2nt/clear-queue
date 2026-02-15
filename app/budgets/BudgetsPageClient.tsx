@@ -1,53 +1,46 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Database } from '@/lib/supabase/types'
-import { AppShell } from '@/components/AppShell'
-import { Plus } from 'lucide-react'
-import { getBudgets } from './actions'
-import { BudgetCard } from './components/BudgetCard'
-import { CreateBudgetModal } from './components/CreateBudgetModal'
-import { EmptyState } from './components/EmptyState'
-import { useI18n } from '@/components/I18nProvider'
+import { useState, useEffect, useCallback } from 'react';
+import { Database } from '@/lib/supabase/types';
+import { AppShell } from '@/components/AppShell';
+import { Plus } from 'lucide-react';
+import { getBudgets } from './actions';
+import { getProjectsForSidebar } from '@/app/actions/projects';
+import { BudgetCard } from './components/BudgetCard';
+import { CreateBudgetModal } from './components/CreateBudgetModal';
+import { EmptyState } from './components/EmptyState';
+import { useI18n } from '@/components/I18nProvider';
 
-type Project = Database['public']['Tables']['projects']['Row']
+type Project = Database['public']['Tables']['projects']['Row'];
 
 export default function BudgetsPageClient() {
-  const { t } = useI18n()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [budgets, setBudgets] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const supabase = createClient()
+  const { t } = useI18n();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [budgets, setBudgets] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadProjects = useCallback(async () => {
-    const { data } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: true })
-
-    if (data) {
-      setProjects(data as Project[])
-    }
-  }, [supabase])
+    const data = await getProjectsForSidebar();
+    setProjects(data);
+  }, []);
 
   const loadBudgets = useCallback(async () => {
-    setIsLoading(true)
-    const data = await getBudgets()
-    setBudgets(data)
-    setIsLoading(false)
-  }, [])
+    setIsLoading(true);
+    const data = await getBudgets();
+    setBudgets(data);
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
-    loadProjects()
-    loadBudgets()
-  }, [loadProjects, loadBudgets])
+    loadProjects();
+    loadBudgets();
+  }, [loadProjects, loadBudgets]);
 
   const handleModalClose = () => {
-    setIsModalOpen(false)
-    loadBudgets()
-  }
+    setIsModalOpen(false);
+    loadBudgets();
+  };
 
   if (isLoading) {
     return (
@@ -67,7 +60,7 @@ export default function BudgetsPageClient() {
           <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </AppShell>
-    )
+    );
   }
 
   return (
@@ -112,10 +105,7 @@ export default function BudgetsPageClient() {
         <Plus className="h-6 w-6" />
       </button>
 
-      <CreateBudgetModal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-      />
+      <CreateBudgetModal isOpen={isModalOpen} onClose={handleModalClose} />
     </AppShell>
-  )
+  );
 }

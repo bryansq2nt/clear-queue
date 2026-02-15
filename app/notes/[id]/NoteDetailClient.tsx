@@ -1,16 +1,16 @@
-'use client'
+'use client';
 
-import { Database } from '@/lib/supabase/types'
-import { useI18n } from '@/components/I18nProvider'
-import { DetailLayout } from '@/components/DetailLayout'
-import { NoteEditor } from '../components/NoteEditor'
+import { Database } from '@/lib/supabase/types';
+import { useI18n } from '@/components/I18nProvider';
+import { DetailLayout } from '@/components/DetailLayout';
+import { NoteEditor } from '../components/NoteEditor';
 
-type NoteLink = Database['public']['Tables']['note_links']['Row']
+type NoteLink = Database['public']['Tables']['note_links']['Row'];
 
 interface NoteDetailClientProps {
-  noteId: string
-  initialNote: { title: string; content: string; project_id: string }
-  initialLinks: NoteLink[]
+  noteId: string;
+  initialNote: { title: string; content: string; project_id: string };
+  initialLinks: NoteLink[];
 }
 
 export default function NoteDetailClient({
@@ -18,7 +18,7 @@ export default function NoteDetailClient({
   initialNote,
   initialLinks,
 }: NoteDetailClientProps) {
-  const { t } = useI18n()
+  const { t } = useI18n();
 
   return (
     <DetailLayout
@@ -34,5 +34,5 @@ export default function NoteDetailClient({
         initialLinks={initialLinks}
       />
     </DetailLayout>
-  )
+  );
 }

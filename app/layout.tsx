@@ -1,15 +1,19 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Analytics } from "@vercel/analytics/next"
-import ThemeProvider from "@/components/ThemeProvider";
-import { I18nProvider } from "@/components/I18nProvider";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { Analytics } from '@vercel/analytics/next';
+import ThemeProvider from '@/components/ThemeProvider';
+import { I18nProvider } from '@/components/I18nProvider';
+import * as Sentry from '@sentry/nextjs';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "Mutech Labs - Project Manager",
-  description: "A personal project and task management system",
+  title: 'Mutech Labs - Project Manager',
+  description: 'A personal project and task management system',
+  other: {
+    ...Sentry.getTraceData(),
+  },
 };
 
 const themeScript = `

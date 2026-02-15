@@ -1,11 +1,11 @@
-import { requireAuth } from '@/lib/auth'
-import SettingsLayoutClient from './SettingsLayoutClient'
+import { requireAuth } from '@/lib/auth';
+import SettingsLayoutClient from './SettingsLayoutClient';
 
 export default async function SettingsLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  await requireAuth()
-  return <SettingsLayoutClient>{children}</SettingsLayoutClient>
+  await requireAuth();
+  return <SettingsLayoutClient>{children}</SettingsLayoutClient>;
 }

@@ -1,53 +1,49 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Database } from '@/lib/supabase/types'
-import Sidebar from '@/components/Sidebar'
-import TopBar from '@/components/TopBar'
-import { useI18n } from '@/components/I18nProvider'
-import { signOut } from '@/app/actions/auth'
-import { Plus } from 'lucide-react'
-import { getBusinesses, type BusinessWithClient } from '@/app/clients/actions'
-import { BusinessCard } from '@/app/clients/components/BusinessCard'
-import { CreateBusinessModal } from '@/app/clients/components/CreateBusinessModal'
-import { EditBusinessModal } from '@/app/clients/components/EditBusinessModal'
+import { useState, useEffect, useCallback } from 'react';
+import { Database } from '@/lib/supabase/types';
+import Sidebar from '@/components/Sidebar';
+import TopBar from '@/components/TopBar';
+import { useI18n } from '@/components/I18nProvider';
+import { signOut } from '@/app/actions/auth';
+import { Plus } from 'lucide-react';
+import { getProjectsForSidebar } from '@/app/actions/projects';
+import { getBusinesses, type BusinessWithClient } from '@/app/clients/actions';
+import { BusinessCard } from '@/app/clients/components/BusinessCard';
+import { CreateBusinessModal } from '@/app/clients/components/CreateBusinessModal';
+import { EditBusinessModal } from '@/app/clients/components/EditBusinessModal';
 
-type Project = Database['public']['Tables']['projects']['Row']
-type Business = Database['public']['Tables']['businesses']['Row']
+type Project = Database['public']['Tables']['projects']['Row'];
+type Business = Database['public']['Tables']['businesses']['Row'];
 
 export default function BusinessesPageClient() {
-  const { t } = useI18n()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [businesses, setBusinesses] = useState<BusinessWithClient[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [editingBusiness, setEditingBusiness] = useState<Business | null>(null)
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const supabase = createClient()
+  const { t } = useI18n();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [businesses, setBusinesses] = useState<BusinessWithClient[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const loadProjects = useCallback(async () => {
-    const { data } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: true })
-    if (data) setProjects(data as Project[])
-  }, [supabase])
+    const data = await getProjectsForSidebar();
+    setProjects(data);
+  }, []);
 
   const loadBusinesses = useCallback(async () => {
-    setIsLoading(true)
-    const data = await getBusinesses()
-    setBusinesses(data)
-    setIsLoading(false)
-  }, [])
+    setIsLoading(true);
+    const data = await getBusinesses();
+    setBusinesses(data);
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
-    loadProjects()
-  }, [loadProjects])
+    loadProjects();
+  }, [loadProjects]);
 
   useEffect(() => {
-    loadBusinesses()
-  }, [loadBusinesses])
+    loadBusinesses();
+  }, [loadBusinesses]);
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -86,26 +82,26 @@ export default function BusinessesPageClient() {
             </p>
           ) : (
             <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {businesses.map((b) => (
-                <BusinessCard
-                  key={b.id}
-                  business={b}
-                  clientName={b.client_name}
-                  clientId={b.client_id}
-                  onDeleted={loadBusinesses}
-                  onEdit={setEditingBusiness}
-                />
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsCreateModalOpen(true)}
-              aria-label={t('businesses.add_business')}
-              className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
-            >
-              <Plus className="h-6 w-6" />
-            </button>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {businesses.map((b) => (
+                  <BusinessCard
+                    key={b.id}
+                    business={b}
+                    clientName={b.client_name}
+                    clientId={b.client_id}
+                    onDeleted={loadBusinesses}
+                    onEdit={setEditingBusiness}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(true)}
+                aria-label={t('businesses.add_business')}
+                className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
+              >
+                <Plus className="h-6 w-6" />
+              </button>
             </>
           )}
         </div>
@@ -115,8 +111,8 @@ export default function BusinessesPageClient() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={() => {
-          loadBusinesses()
-          setIsCreateModalOpen(false)
+          loadBusinesses();
+          setIsCreateModalOpen(false);
         }}
       />
       <EditBusinessModal
@@ -124,10 +120,10 @@ export default function BusinessesPageClient() {
         isOpen={!!editingBusiness}
         onClose={() => setEditingBusiness(null)}
         onUpdated={() => {
-          loadBusinesses()
-          setEditingBusiness(null)
+          loadBusinesses();
+          setEditingBusiness(null);
         }}
       />
     </div>
-  )
+  );
 }

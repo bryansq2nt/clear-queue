@@ -1,66 +1,62 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Database } from '@/lib/supabase/types'
-import Sidebar from '@/components/Sidebar'
-import TopBar from '@/components/TopBar'
-import { useI18n } from '@/components/I18nProvider'
-import { signOut } from '@/app/actions/auth'
-import { Plus } from 'lucide-react'
-import { getClients } from './actions'
-import { ClientCard } from './components/ClientCard'
-import { CreateClientModal } from './components/CreateClientModal'
-import { EditClientModal } from './components/EditClientModal'
-import { EmptyState } from './components/EmptyState'
+import { useState, useEffect, useCallback } from 'react';
+import { Database } from '@/lib/supabase/types';
+import Sidebar from '@/components/Sidebar';
+import TopBar from '@/components/TopBar';
+import { useI18n } from '@/components/I18nProvider';
+import { signOut } from '@/app/actions/auth';
+import { Plus } from 'lucide-react';
+import { getProjectsForSidebar } from '@/app/actions/projects';
+import { getClients } from './actions';
+import { ClientCard } from './components/ClientCard';
+import { CreateClientModal } from './components/CreateClientModal';
+import { EditClientModal } from './components/EditClientModal';
+import { EmptyState } from './components/EmptyState';
 
-type Project = Database['public']['Tables']['projects']['Row']
-type Client = Database['public']['Tables']['clients']['Row']
+type Project = Database['public']['Tables']['projects']['Row'];
+type Client = Database['public']['Tables']['clients']['Row'];
 
 export default function ClientsPageClient() {
-  const { t } = useI18n()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [clients, setClients] = useState<Client[]>([])
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [editingClient, setEditingClient] = useState<Client | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const supabase = createClient()
+  const { t } = useI18n();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const loadProjects = useCallback(async () => {
-    const { data } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: true })
-    if (data) setProjects(data as Project[])
-  }, [supabase])
+    const data = await getProjectsForSidebar();
+    setProjects(data);
+  }, []);
 
   const loadClients = useCallback(async () => {
-    setIsLoading(true)
-    const data = await getClients()
-    setClients(data)
-    setIsLoading(false)
-  }, [])
+    setIsLoading(true);
+    const data = await getClients();
+    setClients(data);
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
-    loadProjects()
-  }, [loadProjects])
+    loadProjects();
+  }, [loadProjects]);
 
   useEffect(() => {
-    loadClients()
-  }, [loadClients])
+    loadClients();
+  }, [loadClients]);
 
   const filteredClients = searchQuery.trim()
     ? clients.filter((c) => {
-        const q = searchQuery.toLowerCase()
+        const q = searchQuery.toLowerCase();
         return (
           c.full_name.toLowerCase().includes(q) ||
-          (c.email?.toLowerCase().includes(q)) ||
-          (c.phone?.toLowerCase().includes(q))
-        )
+          c.email?.toLowerCase().includes(q) ||
+          c.phone?.toLowerCase().includes(q)
+        );
       })
-    : clients
+    : clients;
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -147,10 +143,10 @@ export default function ClientsPageClient() {
         isOpen={!!editingClient}
         onClose={() => setEditingClient(null)}
         onUpdated={() => {
-          loadClients()
-          setEditingClient(null)
+          loadClients();
+          setEditingClient(null);
         }}
       />
     </div>
-  )
+  );
 }

@@ -1,77 +1,87 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Database } from '@/lib/supabase/types'
-import KanbanBoard from './KanbanBoard'
-import Sidebar from './Sidebar'
-import TopBar from './TopBar'
-import RightPanel from './RightPanel'
-import { signOut } from '@/app/actions/auth'
+import { useState, useEffect, useCallback } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { Database } from '@/lib/supabase/types';
+import KanbanBoard from './KanbanBoard';
+import Sidebar from './Sidebar';
+import TopBar from './TopBar';
+import RightPanel from './RightPanel';
+import { signOut } from '@/app/actions/auth';
 
-type Project = Database['public']['Tables']['projects']['Row']
-type Task = Database['public']['Tables']['tasks']['Row']
+type Project = Database['public']['Tables']['projects']['Row'];
+type Task = Database['public']['Tables']['tasks']['Row'];
 
 export default function DashboardClient() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [selectedProject, setSelectedProject] = useState<string | null>(null)
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [showArchived, setShowArchived] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const supabase = createClient()
+  const supabase = createClient();
 
   const loadData = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
 
     const [projectsRes, tasksRes] = await Promise.all([
-      supabase.from('projects').select('*').order('created_at', { ascending: true }),
-      supabase.from('tasks').select('*').order('order_index', { ascending: true }),
-    ])
+      supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('tasks')
+        .select('*')
+        .order('order_index', { ascending: true }),
+    ]);
 
-    if (projectsRes.data) setProjects(projectsRes.data)
-    if (tasksRes.data) setTasks(tasksRes.data)
+    if (projectsRes.data) setProjects(projectsRes.data);
+    if (tasksRes.data) setTasks(tasksRes.data);
 
-    setLoading(false)
-  }, [supabase])
+    setLoading(false);
+  }, [supabase]);
 
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    loadData();
+  }, [loadData]);
 
-  const filteredTasks = tasks.filter(task => {
-    if (selectedProject && task.project_id !== selectedProject) return false
-    if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
+  const filteredTasks = tasks.filter((task) => {
+    if (selectedProject && task.project_id !== selectedProject) return false;
+    if (
+      searchQuery &&
+      !task.title.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+      return false;
 
     // Filter out archived projects if showArchived is false
     if (!showArchived) {
-      const taskProject = projects.find(p => p.id === task.project_id)
-      if (taskProject && taskProject.category === 'archived') return false
+      const taskProject = projects.find((p) => p.id === task.project_id);
+      if (taskProject && taskProject.category === 'archived') return false;
     }
 
-    return true
-  })
+    return true;
+  });
 
-  const today = new Date().toISOString().split('T')[0]
-  const todayTasks = filteredTasks.filter(task => {
-    if (!task.due_date) return false
-    return task.due_date <= today && task.status !== 'done'
-  })
+  const today = new Date().toISOString().split('T')[0];
+  const todayTasks = filteredTasks.filter((task) => {
+    if (!task.due_date) return false;
+    return task.due_date <= today && task.status !== 'done';
+  });
 
   const nextUpTasks = filteredTasks
-    .filter(task => task.status === 'next')
+    .filter((task) => task.status === 'next')
     .sort((a, b) => b.priority - a.priority)
-    .slice(0, 5)
+    .slice(0, 5);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-lg">Loading...</div>
       </div>
-    )
+    );
   }
 
   return (
@@ -116,5 +126,5 @@ export default function DashboardClient() {
         />
       </div>
     </div>
-  )
+  );
 }

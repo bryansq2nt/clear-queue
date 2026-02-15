@@ -1,19 +1,19 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { Pencil, Trash2, MoreVertical } from 'lucide-react'
-import { TodoList, TodoItem } from '@/lib/todo/lists'
-import TodoItemRow from './TodoItemRow'
+import { useState, useEffect } from 'react';
+import { Pencil, Trash2, MoreVertical } from 'lucide-react';
+import { TodoList, TodoItem } from '@/lib/todo/lists';
+import TodoItemRow from './TodoItemRow';
 import {
   renameTodoListAction,
   deleteTodoListAction,
   createTodoItemAction,
-} from '@/app/todo/actions'
+} from '@/app/todo/actions';
 
 interface TodoListViewProps {
-  list: TodoList | null
-  items: TodoItem[]
-  onRefresh: () => void
+  list: TodoList | null;
+  items: TodoItem[];
+  onRefresh: () => void;
 }
 
 export default function TodoListView({
@@ -21,73 +21,73 @@ export default function TodoListView({
   items,
   onRefresh,
 }: TodoListViewProps) {
-  const [newItemContent, setNewItemContent] = useState('')
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [editedTitle, setEditedTitle] = useState(list?.title || '')
-  const [creating, setCreating] = useState(false)
-  const [renaming, setRenaming] = useState(false)
-  const [showMenu, setShowMenu] = useState(false)
+  const [newItemContent, setNewItemContent] = useState('');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(list?.title || '');
+  const [creating, setCreating] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   // Update edited title when list changes
   useEffect(() => {
     if (list) {
-      setEditedTitle(list.title)
-      setIsEditingTitle(false)
+      setEditedTitle(list.title);
+      setIsEditingTitle(false);
     }
-  }, [list])
+  }, [list]);
 
   const handleCreateItem = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newItemContent.trim() || !list) return
+    e.preventDefault();
+    if (!newItemContent.trim() || !list) return;
 
-    setCreating(true)
-    const formData = new FormData()
-    formData.append('list_id', list.id)
-    formData.append('content', newItemContent)
-    const result = await createTodoItemAction(formData)
-    setCreating(false)
-    setNewItemContent('')
+    setCreating(true);
+    const formData = new FormData();
+    formData.append('list_id', list.id);
+    formData.append('content', newItemContent);
+    const result = await createTodoItemAction(formData);
+    setCreating(false);
+    setNewItemContent('');
 
     if (result.data) {
-      onRefresh()
+      onRefresh();
     } else if (result.error) {
-      alert(result.error)
+      alert(result.error);
     }
-  }
+  };
 
   const handleRename = async () => {
     if (!list || !editedTitle.trim() || editedTitle === list.title) {
-      setIsEditingTitle(false)
-      setEditedTitle(list?.title || '')
-      return
+      setIsEditingTitle(false);
+      setEditedTitle(list?.title || '');
+      return;
     }
 
-    setRenaming(true)
-    const result = await renameTodoListAction(list.id, editedTitle)
-    setRenaming(false)
+    setRenaming(true);
+    const result = await renameTodoListAction(list.id, editedTitle);
+    setRenaming(false);
 
     if (result.data) {
-      setIsEditingTitle(false)
-      onRefresh()
+      setIsEditingTitle(false);
+      onRefresh();
     } else if (result.error) {
-      alert(result.error)
-      setEditedTitle(list.title)
+      alert(result.error);
+      setEditedTitle(list.title);
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!list) return
+    if (!list) return;
     if (!confirm('Delete this list? All items will be deleted too.')) {
-      return
+      return;
     }
 
-    const result = await deleteTodoListAction(list.id)
+    const result = await deleteTodoListAction(list.id);
     if (result.success) {
-      onRefresh()
+      onRefresh();
     } else if (result.error) {
-      alert(result.error)
+      alert(result.error);
     }
-  }
+  };
 
   if (!list) {
     return (
@@ -99,7 +99,7 @@ export default function TodoListView({
           </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -116,10 +116,10 @@ export default function TodoListView({
                 onBlur={handleRename}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    handleRename()
+                    handleRename();
                   } else if (e.key === 'Escape') {
-                    setIsEditingTitle(false)
-                    setEditedTitle(list.title)
+                    setIsEditingTitle(false);
+                    setEditedTitle(list.title);
                   }
                 }}
                 autoFocus
@@ -161,8 +161,8 @@ export default function TodoListView({
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-md shadow-lg z-20">
                   <button
                     onClick={() => {
-                      setShowMenu(false)
-                      handleDelete()
+                      setShowMenu(false);
+                      handleDelete();
                     }}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-slate-50"
                   >
@@ -200,15 +200,11 @@ export default function TodoListView({
         ) : (
           <div className="divide-y divide-slate-100">
             {items.map((item) => (
-              <TodoItemRow
-                key={item.id}
-                item={item}
-                onRefresh={onRefresh}
-              />
+              <TodoItemRow key={item.id} item={item} onRefresh={onRefresh} />
             ))}
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

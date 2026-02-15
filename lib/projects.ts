@@ -1,7 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
-import { Database } from '@/lib/supabase/types'
+import { createClient } from '@/lib/supabase/server';
+import { Database } from '@/lib/supabase/types';
 
-type Project = Database['public']['Tables']['projects']['Row']
+type Project = Database['public']['Tables']['projects']['Row'];
 
 /**
  * List all projects for picker/selection (returns id and display name)
@@ -9,22 +9,22 @@ type Project = Database['public']['Tables']['projects']['Row']
 export async function listProjectsForPicker(): Promise<
   { id: string; name: string }[]
 > {
-  const supabase = await createClient()
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('projects')
     .select('id, name')
-    .order('name', { ascending: true })
+    .order('name', { ascending: true });
 
   if (error) {
-    throw new Error(`Failed to list projects: ${error.message}`)
+    throw new Error(`Failed to list projects: ${error.message}`);
   }
 
   // @ts-ignore - Supabase type inference issue with generated types
   return (data || []).map((p: { id: string; name: string }) => ({
     id: p.id,
     name: p.name || 'Unnamed Project',
-  }))
+  }));
 }
 
 /**
@@ -32,26 +32,26 @@ export async function listProjectsForPicker(): Promise<
  */
 export async function getProjectsByIds(ids: string[]): Promise<Project[]> {
   if (!ids || ids.length === 0) {
-    return []
+    return [];
   }
 
   // Filter out empty/invalid IDs
-  const validIds = ids.filter((id) => id && id.trim().length > 0)
+  const validIds = ids.filter((id) => id && id.trim().length > 0);
 
   if (validIds.length === 0) {
-    return []
+    return [];
   }
 
-  const supabase = await createClient()
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('projects')
     .select('*')
-    .in('id', validIds)
+    .in('id', validIds);
 
   if (error) {
-    throw new Error(`Failed to get projects by IDs: ${error.message}`)
+    throw new Error(`Failed to get projects by IDs: ${error.message}`);
   }
 
-  return data || []
+  return data || [];
 }

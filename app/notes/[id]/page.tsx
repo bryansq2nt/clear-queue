@@ -1,17 +1,17 @@
-import { requireAuth } from '@/lib/auth'
-import { getNoteById, getNoteLinks } from '@/app/notes/actions'
-import { notFound } from 'next/navigation'
-import NoteDetailClient from './NoteDetailClient'
+import { requireAuth } from '@/lib/auth';
+import { getNoteById, getNoteLinks } from '@/app/notes/actions';
+import { notFound } from 'next/navigation';
+import NoteDetailClient from './NoteDetailClient';
 
 export default async function NoteDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }) {
-  await requireAuth()
-  const { id } = await params
-  const [note, links] = await Promise.all([getNoteById(id), getNoteLinks(id)])
-  if (!note) notFound()
+  await requireAuth();
+  const { id } = await params;
+  const [note, links] = await Promise.all([getNoteById(id), getNoteLinks(id)]);
+  if (!note) notFound();
 
   return (
     <NoteDetailClient
@@ -23,5 +23,5 @@ export default async function NoteDetailPage({
       }}
       initialLinks={links}
     />
-  )
+  );
 }

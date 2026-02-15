@@ -1,28 +1,28 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { useI18n } from '@/components/I18nProvider'
-import { Plus, List, Trash2, Archive, ArchiveRestore } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { TodoList } from '@/lib/todo/lists'
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { useI18n } from '@/components/I18nProvider';
+import { Plus, List, Trash2, Archive, ArchiveRestore } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { TodoList } from '@/lib/todo/lists';
 import {
   createTodoListAction,
   deleteTodoListAction,
   archiveTodoListAction,
-} from '@/app/todo/actions'
-import { createClient } from '@/lib/supabase/client'
-import { Database } from '@/lib/supabase/types'
+} from '@/app/todo/actions';
+import { createClient } from '@/lib/supabase/client';
+import { Database } from '@/lib/supabase/types';
 
-type Project = Database['public']['Tables']['projects']['Row']
+type Project = Database['public']['Tables']['projects']['Row'];
 
 interface TodoListsPanelProps {
-  lists: TodoList[]
-  selectedListId: string | null
-  onSelectList: (listId: string | null) => void
-  onRefresh: () => void
-  showArchived: boolean
-  onShowArchivedChange: (show: boolean) => void
+  lists: TodoList[];
+  selectedListId: string | null;
+  onSelectList: (listId: string | null) => void;
+  onRefresh: () => void;
+  showArchived: boolean;
+  onShowArchivedChange: (show: boolean) => void;
 }
 
 export default function TodoListsPanel({
@@ -33,12 +33,12 @@ export default function TodoListsPanel({
   showArchived,
   onShowArchivedChange,
 }: TodoListsPanelProps) {
-  const { t } = useI18n()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [creating, setCreating] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [newListTitle, setNewListTitle] = useState('')
-  const supabase = createClient()
+  const { t } = useI18n();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [newListTitle, setNewListTitle] = useState('');
+  const supabase = createClient();
 
   // Load projects
   useEffect(() => {
@@ -47,69 +47,76 @@ export default function TodoListsPanel({
       .select('*')
       .order('created_at', { ascending: true })
       .then(({ data }) => {
-        if (data) setProjects(data)
-      })
-  }, [supabase])
+        if (data) setProjects(data);
+      });
+  }, [supabase]);
 
   // Group lists by project
-  const unassignedLists = lists.filter((l) => !l.project_id && !l.is_archived)
-  const archivedLists = lists.filter((l) => l.is_archived)
+  const unassignedLists = lists.filter((l) => !l.project_id && !l.is_archived);
+  const archivedLists = lists.filter((l) => l.is_archived);
 
-  const listsByProject = projects.reduce((acc, project) => {
-    const projectLists = lists.filter(
-      (l) => l.project_id === project.id && !l.is_archived
-    )
-    if (projectLists.length > 0) {
-      acc[project.id] = { project, lists: projectLists }
-    }
-    return acc
-  }, {} as Record<string, { project: Project; lists: TodoList[] }>)
+  const listsByProject = projects.reduce(
+    (acc, project) => {
+      const projectLists = lists.filter(
+        (l) => l.project_id === project.id && !l.is_archived
+      );
+      if (projectLists.length > 0) {
+        acc[project.id] = { project, lists: projectLists };
+      }
+      return acc;
+    },
+    {} as Record<string, { project: Project; lists: TodoList[] }>
+  );
 
   const handleCreateList = async () => {
-    if (!newListTitle.trim()) return
+    if (!newListTitle.trim()) return;
 
-    setCreating(true)
-    const formData = new FormData()
-    formData.append('title', newListTitle)
-    const result = await createTodoListAction(formData)
-    setCreating(false)
-    setNewListTitle('')
+    setCreating(true);
+    const formData = new FormData();
+    formData.append('title', newListTitle);
+    const result = await createTodoListAction(formData);
+    setCreating(false);
+    setNewListTitle('');
 
     if (result.data) {
-      onRefresh()
+      onRefresh();
     } else if (result.error) {
-      alert(result.error)
+      alert(result.error);
     }
-  }
+  };
 
   const handleDelete = async (listId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setDeletingId(listId)
-    const result = await deleteTodoListAction(listId)
-    setDeletingId(null)
+    e.stopPropagation();
+    setDeletingId(listId);
+    const result = await deleteTodoListAction(listId);
+    setDeletingId(null);
 
     if (result.success) {
       if (selectedListId === listId) {
-        onSelectList(null)
+        onSelectList(null);
       }
-      onRefresh()
+      onRefresh();
     } else if (result.error) {
-      alert(result.error)
+      alert(result.error);
     }
-  }
+  };
 
-  const handleArchive = async (listId: string, isArchived: boolean, e: React.MouseEvent) => {
-    e.stopPropagation()
-    const result = await archiveTodoListAction(listId, isArchived)
+  const handleArchive = async (
+    listId: string,
+    isArchived: boolean,
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation();
+    const result = await archiveTodoListAction(listId, isArchived);
     if (result.data) {
       if (selectedListId === listId && isArchived) {
-        onSelectList(null)
+        onSelectList(null);
       }
-      onRefresh()
+      onRefresh();
     } else if (result.error) {
-      alert(result.error)
+      alert(result.error);
     }
-  }
+  };
 
   return (
     <div className="w-64 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
@@ -129,7 +136,7 @@ export default function TodoListsPanel({
               onChange={(e) => setNewListTitle(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  handleCreateList()
+                  handleCreateList();
                 }
               }}
               placeholder="New list..."
@@ -155,7 +162,10 @@ export default function TodoListsPanel({
             onChange={(e) => onShowArchivedChange(e.target.checked)}
             className="w-4 h-4"
           />
-          <label htmlFor="showArchived" className="text-sm text-slate-600 cursor-pointer">
+          <label
+            htmlFor="showArchived"
+            className="text-sm text-slate-600 cursor-pointer"
+          >
             Show archived
           </label>
         </div>
@@ -184,26 +194,28 @@ export default function TodoListsPanel({
           )}
 
           {/* Lists by Project */}
-          {Object.values(listsByProject).map(({ project, lists: projectLists }) => (
-            <div key={project.id}>
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 px-2">
-                {project.name}
-              </h4>
-              <div className="space-y-1">
-                {projectLists.map((list) => (
-                  <ListRow
-                    key={list.id}
-                    list={list}
-                    isSelected={selectedListId === list.id}
-                    onSelect={() => onSelectList(list.id)}
-                    onDelete={(e) => handleDelete(list.id, e)}
-                    onArchive={(e) => handleArchive(list.id, true, e)}
-                    deleting={deletingId === list.id}
-                  />
-                ))}
+          {Object.values(listsByProject).map(
+            ({ project, lists: projectLists }) => (
+              <div key={project.id}>
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 px-2">
+                  {project.name}
+                </h4>
+                <div className="space-y-1">
+                  {projectLists.map((list) => (
+                    <ListRow
+                      key={list.id}
+                      list={list}
+                      isSelected={selectedListId === list.id}
+                      onSelect={() => onSelectList(list.id)}
+                      onDelete={(e) => handleDelete(list.id, e)}
+                      onArchive={(e) => handleArchive(list.id, true, e)}
+                      deleting={deletingId === list.id}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          )}
 
           {/* Archived Lists */}
           {showArchived && archivedLists.length > 0 && (
@@ -236,7 +248,7 @@ export default function TodoListsPanel({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function ListRow({
@@ -248,13 +260,13 @@ function ListRow({
   deleting,
   isArchived = false,
 }: {
-  list: TodoList
-  isSelected: boolean
-  onSelect: () => void
-  onDelete: (e: React.MouseEvent) => void
-  onArchive: (e: React.MouseEvent) => void
-  deleting: boolean
-  isArchived?: boolean
+  list: TodoList;
+  isSelected: boolean;
+  onSelect: () => void;
+  onDelete: (e: React.MouseEvent) => void;
+  onArchive: (e: React.MouseEvent) => void;
+  deleting: boolean;
+  isArchived?: boolean;
 }) {
   return (
     <div
@@ -291,5 +303,5 @@ function ListRow({
         </button>
       </div>
     </div>
-  )
+  );
 }

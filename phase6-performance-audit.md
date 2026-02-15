@@ -17,6 +17,7 @@ Recommended sequencing: (1) remove the highest-blast-radius query amplification 
 **Location:** `app/todo/actions.ts:303-338`
 
 **Code Pattern:**
+
 ```typescript
 const projects = await getProjects()
 ...
@@ -30,11 +31,13 @@ for (const project of projects) {
 ```
 
 **Impact:**
+
 - Query count scales with project count: `1 (projects) + 1 (lists) + N (items-by-project)`.
 - With 25 projects: ~27 queries for one summary load.
 - If each round-trip is ~120ms, total serialized latency approaches multi-second UX stalls.
 
 **Suggested Fix:**
+
 - Fetch all items once by all list IDs, then aggregate in memory by `project_id`.
 - Or move to a single SQL/RPC that returns project summary counts + previews.
 
@@ -47,20 +50,26 @@ for (const project of projects) {
 **Location:** `app/actions/tasks.ts:173-181`
 
 **Code Pattern:**
+
 ```typescript
 for (const t of oldColumnTasks as any[]) {
   if (t.order_index > oldIndex) {
-    await supabase.from('tasks').update({ order_index: t.order_index - 1 }).eq('id', t.id)
+    await supabase
+      .from('tasks')
+      .update({ order_index: t.order_index - 1 })
+      .eq('id', t.id);
   }
 }
 ```
 
 **Impact:**
+
 - One DB update per affected row.
 - 100 tasks shifted = 100 discrete update statements.
 - Adds lock contention and high tail latency under concurrent drag-and-drop.
 
 **Suggested Fix:**
+
 - Replace per-row updates with a set-based `UPDATE ... WHERE ...` in one SQL function.
 - Wrap reorder in one atomic RPC/transaction.
 
@@ -73,19 +82,25 @@ for (const t of oldColumnTasks as any[]) {
 **Location:** `app/actions/tasks.ts:185-193`
 
 **Code Pattern:**
+
 ```typescript
 for (const t of newColumnTasks as any[]) {
   if (t.order_index >= newOrderIndex) {
-    await supabase.from('tasks').update({ order_index: t.order_index + 1 }).eq('id', t.id)
+    await supabase
+      .from('tasks')
+      .update({ order_index: t.order_index + 1 })
+      .eq('id', t.id);
   }
 }
 ```
 
 **Impact:**
+
 - Same query amplification as Pattern #2.
 - Worst case doubles when moving between columns (old + new column loops).
 
 **Suggested Fix:**
+
 - Single transaction with two set-based updates scoped by `project_id` + `status`.
 
 **Priority:** **P0**.
@@ -97,6 +112,7 @@ for (const t of newColumnTasks as any[]) {
 **Location:** `app/budgets/actions.ts:309-351`
 
 **Code Pattern:**
+
 ```typescript
 for (const category of categoriesData) {
   const { data: newCategory } = await supabase.from('budget_categories').insert(...).select().single()
@@ -106,11 +122,13 @@ for (const category of categoriesData) {
 ```
 
 **Impact:**
+
 - `1 insert category + 1 insert items` per category.
 - 30 categories ⇒ up to 60 separate writes during one duplicate operation.
 - Highly sensitive to network jitter/timeouts midway.
 
 **Suggested Fix:**
+
 - Use one RPC to duplicate budget tree server-side in SQL.
 - Return mapping/new IDs from a single transaction.
 
@@ -123,20 +141,23 @@ for (const category of categoriesData) {
 **Location:** `app/budgets/[id]/actions.ts:220-228` and `app/budgets/[id]/actions.ts:435-440`
 
 **Code Pattern:**
+
 ```typescript
 const updates = categoryIds.map((id, index) =>
   supabase.from('budget_categories').update({ sort_order: index }).eq('id', id)
-)
-await Promise.all(updates)
+);
+await Promise.all(updates);
 ```
 
 (and similarly for `budget_items`).
 
 **Impact:**
+
 - Parallelized but still N separate SQL updates.
 - Large reorder payloads increase statement overhead and lock conflicts.
 
 **Suggested Fix:**
+
 - Bulk update via one SQL statement (`UPDATE ... FROM unnest(...)`) in RPC.
 
 **Priority:** **P1**.
@@ -148,36 +169,46 @@ await Promise.all(updates)
 > Requirement target met: **10+** optimization candidates.
 
 ### 📊 Query #1
+
 **Location:** `components/AnalyticsDashboard.tsx:48-57`
+
 ```typescript
-supabase.from('projects').select('*')
-supabase.from('tasks').select('*')
+supabase.from('projects').select('*');
+supabase.from('tasks').select('*');
 ```
+
 **Used fields:** projects: `id,name,color,category`; tasks: `id,project_id,status,priority,due_date,updated_at,title`.
 **Optimization:** select only referenced fields.
 
 ---
 
 ### 📊 Query #2
+
 **Location:** `components/DashboardClient.tsx:30-33`
+
 ```typescript
-supabase.from('projects').select('*')
-supabase.from('tasks').select('*')
+supabase.from('projects').select('*');
+supabase.from('tasks').select('*');
 ```
+
 **Used fields:** filtered/render fields only; not full row payload.
 **Optimization:** explicit projection + server aggregate for counts.
 
 ---
 
 ### 📊 Query #3
+
 **Location:** `components/ProjectKanbanClient.tsx:113-117`
+
 ```typescript
 supabase.from('projects').select('*').order(...)
 supabase.from('projects').select('*').eq('id', projectId).single()
 supabase.from('tasks').select('*').eq('project_id', projectId)
 ```
+
 **Issue:** full-table `projects` rowset + full single project + full tasks payload in one load.
 **Optimization:**
+
 - list query: `id,name,color,category`
 - single query: `id,name,color,category,client_id,business_id`
 - tasks query: only fields rendered in board cards.
@@ -185,118 +216,154 @@ supabase.from('tasks').select('*').eq('project_id', projectId)
 ---
 
 ### 📊 Query #4
+
 **Location:** `app/billings/BillingsPageClient.tsx:54-56`
+
 ```typescript
-supabase.from('projects').select('*').order('created_at')
+supabase.from('projects').select('*').order('created_at');
 ```
+
 **Used fields:** project selector needs `id,name,color,category`.
 **Optimization:** narrow projection to selector fields.
 
 ---
 
 ### 📊 Query #5
+
 **Location:** `app/clients/actions.ts:14-17`
+
 ```typescript
-supabase.from('clients').select('*').order('full_name')
+supabase.from('clients').select('*').order('full_name');
 ```
+
 **Used fields:** list/search pages mostly use identity/contact subset.
 **Optimization:** split “list view” selector from “detail view” selector.
 
 ---
 
 ### 📊 Query #6
+
 **Location:** `app/clients/actions.ts:38-41`
+
 ```typescript
-supabase.from('clients').select('*').eq('id', id).single()
+supabase.from('clients').select('*').eq('id', id).single();
 ```
+
 **Used fields:** depends on details page, but still can avoid heavy JSON/text columns unless opened.
 **Optimization:** staged fetch (basic info first, details lazily).
 
 ---
 
 ### 📊 Query #7
+
 **Location:** `app/clients/actions.ts:185-187`
+
 ```typescript
-supabase.from('businesses').select('*').eq('owner_id', user.id)
+supabase.from('businesses').select('*').eq('owner_id', user.id);
 ```
+
 **Used fields:** business list + client label mapping.
 **Optimization:** list projection + fetch large/rare columns on detail route.
 
 ---
 
 ### 📊 Query #8
+
 **Location:** `lib/todo/lists.ts:41-46`
+
 ```typescript
-supabase.from('todo_lists').select('*').eq('owner_id', ownerId)
+supabase.from('todo_lists').select('*').eq('owner_id', ownerId);
 ```
+
 **Used fields:** panel/list view often needs subset (`id,title,project_id,is_archived,position`).
 **Optimization:** use lightweight list projection and separate detail fetch.
 
 ---
 
 ### 📊 Query #9
+
 **Location:** `lib/todo/lists.ts:267-273` and `291-297`
+
 ```typescript
-supabase.from('todo_items').select('*').eq('list_id', listId)
-supabase.from('todo_items').select('*').in('list_id', listIds)
+supabase.from('todo_items').select('*').eq('list_id', listId);
+supabase.from('todo_items').select('*').in('list_id', listIds);
 ```
+
 **Used fields:** board summary generally uses completion/content/date subset.
 **Optimization:** project-specific summary query should fetch minimal columns + counts.
 
 ---
 
 ### 📊 Query #10
+
 **Location:** `components/todo/TodoListsPanel.tsx:45-48`
+
 ```typescript
-supabase.from('projects').select('*').order('created_at')
+supabase.from('projects').select('*').order('created_at');
 ```
+
 **Used fields:** sidebar grouping needs only basic project identity fields.
 **Optimization:** `select('id,name,color,category')`.
 
 ---
 
 ### 📊 Query #11
+
 **Location:** `app/todo/TodoPageClient.tsx:19-22`
+
 ```typescript
-supabase.from('projects').select('*').order('created_at')
+supabase.from('projects').select('*').order('created_at');
 ```
+
 **Optimization:** same as above; avoid full row hydration on every todo page mount.
 
 ---
 
 ### 📊 Query #12
+
 **Location:** `app/settings/SettingsLayoutClient.tsx:27`
+
 ```typescript
-supabase.from('projects').select('*').order('created_at')
+supabase.from('projects').select('*').order('created_at');
 ```
+
 **Optimization:** settings layout only needs sidebar-safe project subset.
 
 ---
 
 ### 📊 Query #13
+
 **Location:** `app/notes/NotesPageClient.tsx:66-69`
+
 ```typescript
-supabase.from('projects').select('*').order('created_at')
+supabase.from('projects').select('*').order('created_at');
 ```
+
 **Issue:** duplicated with additional `getProjects()` call right after.
 **Optimization:** one source of truth for project list and typed lightweight projection.
 
 ---
 
 ### 📊 Query #14
+
 **Location:** `app/ideas/IdeasPageClient.tsx:31-34`
+
 ```typescript
-supabase.from('projects').select('*').order('created_at')
+supabase.from('projects').select('*').order('created_at');
 ```
+
 **Optimization:** shared cached project list query (same projection as other shells).
 
 ---
 
 ### 📊 Query #15
+
 **Location:** `app/budgets/BudgetsPageClient.tsx:25-28`
+
 ```typescript
-supabase.from('projects').select('*').order('created_at')
+supabase.from('projects').select('*').order('created_at');
 ```
+
 **Optimization:** use shell-level shared project cache + lightweight projection.
 
 ---
@@ -308,6 +375,7 @@ supabase.from('projects').select('*').order('created_at')
 ### 💾 Cache Opportunity #1: Shared projects list across app shells
 
 **Evidence locations:**
+
 - `components/DashboardClient.tsx:30-33`
 - `app/clients/ClientsPageClient.tsx:31-37`
 - `app/billings/BillingsPageClient.tsx:54-57`
@@ -320,6 +388,7 @@ supabase.from('projects').select('*').order('created_at')
 **Pattern:** Same `projects` query repeated per route/mount.
 
 **Recommendation:**
+
 - Centralize in React Query/SWR key `['projects','sidebar']` with 2–5 min staleTime.
 - Invalidate only on project create/update/archive/delete actions.
 
@@ -334,6 +403,7 @@ supabase.from('projects').select('*').order('created_at')
 **Pattern:** Both dashboard variants fetch overlapping data from scratch.
 
 **Recommendation:**
+
 - Use shared query keys + derived selectors for charts/KPIs.
 - Optionally precompute summary view server-side (RPC/materialized endpoint).
 
@@ -348,6 +418,7 @@ supabase.from('projects').select('*').order('created_at')
 **Pattern:** Same project/tasks can be refetched repeatedly (initial mount + post-action reload).
 
 **Recommendation:**
+
 - Split keys: `['project',id]`, `['projectTasks',id]`.
 - Invalidate `projectTasks` on create/update/delete/reorder instead of full reload.
 
@@ -362,6 +433,7 @@ supabase.from('projects').select('*').order('created_at')
 **Pattern:** Billings page repeatedly loads projects + clients + billings; supporting maps are rebuilt each load.
 
 **Recommendation:**
+
 - Cache `clients-lite` and `projects-lite` for form selectors.
 - Cache billings list with background refresh and optimistic mutation updates.
 
@@ -376,6 +448,7 @@ supabase.from('projects').select('*').order('created_at')
 **Pattern:** Repeated list/project reads with no memoized shared cache layer.
 
 **Recommendation:**
+
 - Cache todo lists by owner and project scope.
 - Cache projects-lite once and reuse in panel/grouping views.
 
@@ -390,6 +463,7 @@ supabase.from('projects').select('*').order('created_at')
 **Pattern:** `supabase.from('projects').select('*')` plus `getProjects()` in same loader.
 
 **Recommendation:**
+
 - Remove one of the two reads; keep a single cached source.
 
 **Expected gain:** immediate 50% reduction for that data slice on notes page load.

@@ -1,10 +1,10 @@
-'use client'
+'use client';
 
-import { Users } from 'lucide-react'
-import { useI18n } from '@/components/I18nProvider'
+import { Users } from 'lucide-react';
+import { useI18n } from '@/components/I18nProvider';
 
 export function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
-  const { t } = useI18n()
+  const { t } = useI18n();
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
       <div className="mx-auto w-24 h-24 bg-primary rounded-full flex items-center justify-center mb-6">
@@ -27,5 +27,5 @@ export function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
         {t('clients.new_client')}
       </button>
     </div>
-  )
+  );
 }

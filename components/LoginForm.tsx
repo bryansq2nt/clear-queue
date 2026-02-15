@@ -1,30 +1,33 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { signIn } from '@/app/actions/auth'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { useState } from 'react';
+import Link from 'next/link';
+import { signIn } from '@/app/actions/auth';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function LoginForm() {
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(formData: FormData) {
-    setIsLoading(true)
-    setError(null)
-    
-    const result = await signIn(formData)
-    
+    setIsLoading(true);
+    setError(null);
+
+    const result = await signIn(formData);
+
     if (result?.error) {
-      setError(result.error)
-      setIsLoading(false)
+      setError(result.error);
+      setIsLoading(false);
     }
   }
 
   return (
-    <form action={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow-lg">
+    <form
+      action={handleSubmit}
+      className="space-y-4 bg-white p-6 rounded-lg shadow-lg"
+    >
       {error && (
         <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
           {error}
@@ -54,16 +57,22 @@ export default function LoginForm() {
         {isLoading ? 'Signing in...' : 'Sign In'}
       </Button>
       <p className="text-center text-sm text-slate-600">
-        <Link href="/forgot-password" className="font-medium text-primary hover:underline">
+        <Link
+          href="/forgot-password"
+          className="font-medium text-primary hover:underline"
+        >
           Forgot your password?
         </Link>
       </p>
       <p className="text-center text-sm text-slate-600">
         Don&apos;t have an account?{' '}
-        <Link href="/signup" className="font-medium text-primary hover:underline">
+        <Link
+          href="/signup"
+          className="font-medium text-primary hover:underline"
+        >
           Sign up
         </Link>
       </p>
     </form>
-  )
+  );
 }

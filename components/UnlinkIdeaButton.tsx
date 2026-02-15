@@ -1,11 +1,11 @@
-'use client'
+'use client';
 
-import { useRouter } from 'next/navigation'
-import { Button } from './ui/button'
-import { unlinkIdeaFromProjectAction } from '@/app/ideas/[id]/project-link-actions'
+import { useRouter } from 'next/navigation';
+import { Button } from './ui/button';
+import { unlinkIdeaFromProjectAction } from '@/app/ideas/[id]/project-link-actions';
 
 export default function UnlinkButton({ linkId }: { linkId: string }) {
-  const router = useRouter()
+  const router = useRouter();
 
   async function handleUnlink() {
     if (
@@ -13,15 +13,15 @@ export default function UnlinkButton({ linkId }: { linkId: string }) {
         'Are you sure you want to unlink this idea? This action cannot be undone.'
       )
     ) {
-      return
+      return;
     }
 
-    const result = await unlinkIdeaFromProjectAction(linkId)
+    const result = await unlinkIdeaFromProjectAction(linkId);
 
     if (result.success) {
-      router.refresh()
+      router.refresh();
     } else if (result.error) {
-      alert(result.error)
+      alert(result.error);
     }
   }
 
@@ -29,5 +29,5 @@ export default function UnlinkButton({ linkId }: { linkId: string }) {
     <Button variant="outline" size="sm" onClick={handleUnlink}>
       Unlink
     </Button>
-  )
+  );
 }

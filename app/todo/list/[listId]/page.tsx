@@ -1,24 +1,24 @@
-import { requireAuth } from '@/lib/auth'
-import { getTodoListWithItemsAction } from '@/app/todo/actions'
-import { notFound } from 'next/navigation'
-import ListBoardClient from './ListBoardClient'
+import { requireAuth } from '@/lib/auth';
+import { getTodoListWithItemsAction } from '@/app/todo/actions';
+import { notFound } from 'next/navigation';
+import ListBoardClient from './ListBoardClient';
 
 export default async function TodoListPage({
   params,
 }: {
-  params: Promise<{ listId: string }>
+  params: Promise<{ listId: string }>;
 }) {
-  await requireAuth()
-  const { listId } = await params
-  const result = await getTodoListWithItemsAction(listId)
+  await requireAuth();
+  const { listId } = await params;
+  const result = await getTodoListWithItemsAction(listId);
 
   if (result.error || !result.data) {
-    notFound()
+    notFound();
   }
 
-  const { list, items, projectName } = result.data
+  const { list, items, projectName } = result.data;
   if (!list) {
-    notFound()
+    notFound();
   }
 
   return (
@@ -29,5 +29,5 @@ export default async function TodoListPage({
       initialProjectName={projectName}
       initialItems={items}
     />
-  )
+  );
 }

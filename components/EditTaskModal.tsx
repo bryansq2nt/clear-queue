@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useI18n } from '@/components/I18nProvider'
-import { updateTask, deleteTask } from '@/app/actions/tasks'
-import { Database } from '@/lib/supabase/types'
+import { useState } from 'react';
+import { useI18n } from '@/components/I18nProvider';
+import { updateTask, deleteTask } from '@/app/actions/tasks';
+import { Database } from '@/lib/supabase/types';
 import {
   Dialog,
   DialogContent,
@@ -11,26 +11,26 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog'
-import { Button } from './ui/button'
-import { Input } from './ui/input'
-import { Label } from './ui/label'
-import { Textarea } from './ui/textarea'
+} from './ui/dialog';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from './ui/select'
+} from './ui/select';
 
-type Task = Database['public']['Tables']['tasks']['Row']
+type Task = Database['public']['Tables']['tasks']['Row'];
 
 interface EditTaskModalProps {
-  task: Task
-  isOpen: boolean
-  onClose: () => void
-  onTaskUpdate: () => void
+  task: Task;
+  isOpen: boolean;
+  onClose: () => void;
+  onTaskUpdate: () => void;
 }
 
 export function EditTaskModal({
@@ -39,52 +39,52 @@ export function EditTaskModal({
   onClose,
   onTaskUpdate,
 }: EditTaskModalProps) {
-  const { t } = useI18n()
-  const [title, setTitle] = useState(task.title)
-  const [status, setStatus] = useState<Task['status']>(task.status)
-  const [priority, setPriority] = useState(task.priority.toString())
-  const [dueDate, setDueDate] = useState(task.due_date || '')
-  const [notes, setNotes] = useState(task.notes || '')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { t } = useI18n();
+  const [title, setTitle] = useState(task.title);
+  const [status, setStatus] = useState<Task['status']>(task.status);
+  const [priority, setPriority] = useState(task.priority.toString());
+  const [dueDate, setDueDate] = useState(task.due_date || '');
+  const [notes, setNotes] = useState(task.notes || '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
 
-    const formData = new FormData()
-    formData.append('title', title)
-    formData.append('project_id', task.project_id) // Use task's existing project_id
-    formData.append('status', status)
-    formData.append('priority', priority)
-    formData.append('due_date', dueDate || '')
-    formData.append('notes', notes || '')
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('project_id', task.project_id); // Use task's existing project_id
+    formData.append('status', status);
+    formData.append('priority', priority);
+    formData.append('due_date', dueDate || '');
+    formData.append('notes', notes || '');
 
-    const result = await updateTask(task.id, formData)
+    const result = await updateTask(task.id, formData);
 
     if (result.error) {
-      setError(result.error)
-      setIsLoading(false)
+      setError(result.error);
+      setIsLoading(false);
     } else {
-      onTaskUpdate()
-      onClose()
+      onTaskUpdate();
+      onClose();
     }
   }
 
   async function handleDelete() {
-    if (!confirm(t('tasks.delete_confirm'))) return
+    if (!confirm(t('tasks.delete_confirm'))) return;
 
-    setIsDeleting(true)
-    const result = await deleteTask(task.id)
+    setIsDeleting(true);
+    const result = await deleteTask(task.id);
 
     if (result.error) {
-      setError(result.error)
-      setIsDeleting(false)
+      setError(result.error);
+      setIsDeleting(false);
     } else {
-      onTaskUpdate()
-      onClose()
+      onTaskUpdate();
+      onClose();
     }
   }
 
@@ -94,12 +94,19 @@ export function EditTaskModal({
         <DialogHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
           <div className="space-y-1.5">
             <DialogTitle>{t('tasks.edit_task')}</DialogTitle>
-            <DialogDescription>{t('tasks.edit_task_description')}</DialogDescription>
+            <DialogDescription>
+              {t('tasks.edit_task_description')}
+            </DialogDescription>
           </div>
           <p className="text-xs text-muted-foreground shrink-0 pt-0.5 pr-8">
-            {t('tasks.created')} {new Date(task.created_at).toLocaleDateString()}
+            {t('tasks.created')}{' '}
+            {new Date(task.created_at).toLocaleDateString()}
             {task.updated_at && (
-              <> · {t('tasks.updated')} {new Date(task.updated_at).toLocaleDateString()}</>
+              <>
+                {' '}
+                · {t('tasks.updated')}{' '}
+                {new Date(task.updated_at).toLocaleDateString()}
+              </>
             )}
           </p>
         </DialogHeader>
@@ -117,14 +124,19 @@ export function EditTaskModal({
             </div>
             <div className="space-y-2">
               <Label htmlFor="status">{t('tasks.status_label')}</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as Task['status'])}>
+              <Select
+                value={status}
+                onValueChange={(v) => setStatus(v as Task['status'])}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="backlog">{t('kanban.backlog')}</SelectItem>
                   <SelectItem value="next">{t('kanban.next')}</SelectItem>
-                  <SelectItem value="in_progress">{t('kanban.in_progress')}</SelectItem>
+                  <SelectItem value="in_progress">
+                    {t('kanban.in_progress')}
+                  </SelectItem>
                   <SelectItem value="blocked">{t('kanban.blocked')}</SelectItem>
                   <SelectItem value="done">{t('kanban.done')}</SelectItem>
                 </SelectContent>
@@ -138,11 +150,15 @@ export function EditTaskModal({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">{t('tasks.priority_lowest')}</SelectItem>
+                    <SelectItem value="1">
+                      {t('tasks.priority_lowest')}
+                    </SelectItem>
                     <SelectItem value="2">2</SelectItem>
                     <SelectItem value="3">3</SelectItem>
                     <SelectItem value="4">4</SelectItem>
-                    <SelectItem value="5">{t('tasks.priority_highest')}</SelectItem>
+                    <SelectItem value="5">
+                      {t('tasks.priority_highest')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -193,5 +209,5 @@ export function EditTaskModal({
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,21 +1,35 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { useI18n } from '@/components/I18nProvider'
-import { MoreVertical, Edit, Trash2, Phone, Mail, Copy, Send } from 'lucide-react'
+import Link from 'next/link';
+import { useI18n } from '@/components/I18nProvider';
+import {
+  MoreVertical,
+  Edit,
+  Trash2,
+  Phone,
+  Mail,
+  Copy,
+  Send,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { deleteClientAction } from '../actions'
-import { formatPhoneDisplay } from '@/lib/formatPhone'
-import { Database } from '@/lib/supabase/types'
+} from '@/components/ui/dropdown-menu';
+import { deleteClientAction } from '../actions';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { Database } from '@/lib/supabase/types';
 
-type Client = Database['public']['Tables']['clients']['Row']
+type Client = Database['public']['Tables']['clients']['Row'];
 
-function EmailAction({ email, t }: { email: string; t: (key: string) => string }) {
+function EmailAction({
+  email,
+  t,
+}: {
+  email: string;
+  t: (key: string) => string;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -30,8 +44,8 @@ function EmailAction({ email, t }: { email: string; t: (key: string) => string }
       <DropdownMenuContent align="start">
         <DropdownMenuItem
           onClick={(e) => {
-            e.stopPropagation()
-            void navigator.clipboard.writeText(email)
+            e.stopPropagation();
+            void navigator.clipboard.writeText(email);
           }}
         >
           <Copy className="w-4 h-4 mr-2" />
@@ -45,30 +59,34 @@ function EmailAction({ email, t }: { email: string; t: (key: string) => string }
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }
 
 interface ClientCardProps {
-  client: Client
-  onDeleted?: () => void
-  onEdit?: (client: Client) => void
+  client: Client;
+  onDeleted?: () => void;
+  onEdit?: (client: Client) => void;
 }
 
 export function ClientCard({ client, onDeleted, onEdit }: ClientCardProps) {
-  const { t } = useI18n()
+  const { t } = useI18n();
   const handleDelete = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!confirm(`Delete "${client.full_name}"? This will also remove their businesses and unlink from projects.`)) {
-      return
+    e.preventDefault();
+    e.stopPropagation();
+    if (
+      !confirm(
+        `Delete "${client.full_name}"? This will also remove their businesses and unlink from projects.`
+      )
+    ) {
+      return;
     }
-    const { error } = await deleteClientAction(client.id)
+    const { error } = await deleteClientAction(client.id);
     if (error) {
-      alert(error)
-      return
+      alert(error);
+      return;
     }
-    onDeleted?.()
-  }
+    onDeleted?.();
+  };
 
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border p-5 hover:shadow-md transition-all relative group">
@@ -84,21 +102,21 @@ export function ClientCard({ client, onDeleted, onEdit }: ClientCardProps) {
               onClick={(e) => e.stopPropagation()}
             >
               <Phone className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="truncate">{formatPhoneDisplay(client.phone)}</span>
+              <span className="truncate">
+                {formatPhoneDisplay(client.phone)}
+              </span>
             </a>
           )}
-          {client.email && (
-            <EmailAction email={client.email} t={t} />
-          )}
+          {client.email && <EmailAction email={client.email} t={t} />}
         </Link>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
-        <button
-          className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent text-muted-foreground hover:text-foreground flex-shrink-0"
-          onClick={(e) => e.preventDefault()}
-        >
-          <MoreVertical className="w-4 h-4" />
-        </button>
+            <button
+              className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent text-muted-foreground hover:text-foreground flex-shrink-0"
+              onClick={(e) => e.preventDefault()}
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {onEdit && (
@@ -118,5 +136,5 @@ export function ClientCard({ client, onDeleted, onEdit }: ClientCardProps) {
         </DropdownMenu>
       </div>
     </div>
-  )
+  );
 }

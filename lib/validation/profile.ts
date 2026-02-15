@@ -6,8 +6,8 @@
  * - locale: 'es' | 'en'
  */
 
-const DISPLAY_NAME_MIN = 1
-const DISPLAY_NAME_MAX = 100
+const DISPLAY_NAME_MIN = 1;
+const DISPLAY_NAME_MAX = 100;
 
 export const TIMEZONE_OPTIONS = [
   'America/New_York',
@@ -44,13 +44,13 @@ export const TIMEZONE_OPTIONS = [
   'Australia/Melbourne',
   'Pacific/Auckland',
   'UTC',
-] as const
+] as const;
 
-type TimezoneOption = (typeof TIMEZONE_OPTIONS)[number]
-const ALLOWED_TIMEZONES = new Set<TimezoneOption>(TIMEZONE_OPTIONS)
+type TimezoneOption = (typeof TIMEZONE_OPTIONS)[number];
+const ALLOWED_TIMEZONES = new Set<TimezoneOption>(TIMEZONE_OPTIONS);
 
-const ALLOWED_LOCALES = ['es', 'en'] as const
-export type AllowedLocale = (typeof ALLOWED_LOCALES)[number]
+const ALLOWED_LOCALES = ['es', 'en'] as const;
+export type AllowedLocale = (typeof ALLOWED_LOCALES)[number];
 
 export const CURRENCY_OPTIONS = [
   { code: 'USD', label: 'US Dollar (USD)' },
@@ -58,52 +58,68 @@ export const CURRENCY_OPTIONS = [
   { code: 'GBP', label: 'British Pound (GBP)' },
   { code: 'CAD', label: 'Canadian Dollar (CAD)' },
   { code: 'MXN', label: 'Mexican Peso (MXN)' },
-] as const
+] as const;
 
-type CurrencyCode = (typeof CURRENCY_OPTIONS)[number]['code']
-const ALLOWED_CURRENCIES = new Set<CurrencyCode>(CURRENCY_OPTIONS.map((c) => c.code))
+type CurrencyCode = (typeof CURRENCY_OPTIONS)[number]['code'];
+const ALLOWED_CURRENCIES = new Set<CurrencyCode>(
+  CURRENCY_OPTIONS.map((c) => c.code)
+);
 
 export function validateCurrency(
   value: unknown
 ): { ok: true; value: string } | { ok: false; error: string } {
-  const s = typeof value === 'string' ? value.trim().toUpperCase() : ''
-  if (!s) return { ok: false, error: 'Currency is required' }
+  const s = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  if (!s) return { ok: false, error: 'Currency is required' };
   if (!ALLOWED_CURRENCIES.has(s as CurrencyCode)) {
-    return { ok: false, error: 'Invalid currency. Choose USD, EUR, GBP, CAD, or MXN.' }
+    return {
+      ok: false,
+      error: 'Invalid currency. Choose USD, EUR, GBP, CAD, or MXN.',
+    };
   }
-  return { ok: true, value: s }
+  return { ok: true, value: s };
 }
 
-export function validateDisplayName(value: unknown): { ok: true; value: string } | { ok: false; error: string } {
-  const s = typeof value === 'string' ? value.trim() : ''
-  if (!s) return { ok: false, error: 'Display name is required' }
+export function validateDisplayName(
+  value: unknown
+): { ok: true; value: string } | { ok: false; error: string } {
+  const s = typeof value === 'string' ? value.trim() : '';
+  if (!s) return { ok: false, error: 'Display name is required' };
   if (s.length < DISPLAY_NAME_MIN || s.length > DISPLAY_NAME_MAX) {
-    return { ok: false, error: `Display name must be between ${DISPLAY_NAME_MIN} and ${DISPLAY_NAME_MAX} characters` }
+    return {
+      ok: false,
+      error: `Display name must be between ${DISPLAY_NAME_MIN} and ${DISPLAY_NAME_MAX} characters`,
+    };
   }
-  return { ok: true, value: s }
+  return { ok: true, value: s };
 }
 
-export function validatePhone(value: unknown): { ok: true; value: string | null } | { ok: false; error: string } {
-  if (value == null || value === '') return { ok: true, value: null }
-  const s = String(value).trim()
-  if (!s) return { ok: true, value: null }
-  if (s.length > 30) return { ok: false, error: 'Phone number is too long' }
-  return { ok: true, value: s }
+export function validatePhone(
+  value: unknown
+): { ok: true; value: string | null } | { ok: false; error: string } {
+  if (value == null || value === '') return { ok: true, value: null };
+  const s = String(value).trim();
+  if (!s) return { ok: true, value: null };
+  if (s.length > 30) return { ok: false, error: 'Phone number is too long' };
+  return { ok: true, value: s };
 }
 
-export function validateTimezone(value: unknown): { ok: true; value: string } | { ok: false; error: string } {
-  const s = typeof value === 'string' ? value.trim() : ''
-  if (!s) return { ok: false, error: 'Timezone is required' }
+export function validateTimezone(
+  value: unknown
+): { ok: true; value: string } | { ok: false; error: string } {
+  const s = typeof value === 'string' ? value.trim() : '';
+  if (!s) return { ok: false, error: 'Timezone is required' };
   if (!ALLOWED_TIMEZONES.has(s as TimezoneOption)) {
-    return { ok: false, error: 'Invalid timezone' }
+    return { ok: false, error: 'Invalid timezone' };
   }
-  return { ok: true, value: s }
+  return { ok: true, value: s };
 }
 
-export function validateLocale(value: unknown): { ok: true; value: AllowedLocale } | { ok: false; error: string } {
-  const s = typeof value === 'string' ? value.trim().toLowerCase() : ''
+export function validateLocale(
+  value: unknown
+): { ok: true; value: AllowedLocale } | { ok: false; error: string } {
+  const s = typeof value === 'string' ? value.trim().toLowerCase() : '';
   if (!ALLOWED_LOCALES.includes(s as AllowedLocale)) {
-    return { ok: false, error: 'Locale must be es or en' }
+    return { ok: false, error: 'Locale must be es or en' };
   }
-  return { ok: true, value: s as AllowedLocale }
+  return { ok: true, value: s as AllowedLocale };
 }

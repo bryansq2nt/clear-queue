@@ -1,31 +1,31 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Input } from '@/components/ui/input'
-import Link from 'next/link'
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import Link from 'next/link';
 
 interface Idea {
-  id: string
-  title: string
-  description: string | null
-  created_at: string
+  id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
 }
 
 export default function IdeasListClient({
   initialIdeas,
 }: {
-  initialIdeas: Idea[]
+  initialIdeas: Idea[];
 }) {
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState('');
 
   const filteredIdeas = initialIdeas.filter((idea) => {
-    if (!searchQuery.trim()) return true
-    const query = searchQuery.toLowerCase()
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
     return (
       idea.title?.toLowerCase().includes(query) ||
       idea.description?.toLowerCase().includes(query)
-    )
-  })
+    );
+  });
 
   return (
     <div>
@@ -67,5 +67,5 @@ export default function IdeasListClient({
         </div>
       )}
     </div>
-  )
+  );
 }

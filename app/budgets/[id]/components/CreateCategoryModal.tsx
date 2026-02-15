@@ -1,18 +1,18 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useI18n } from '@/components/I18nProvider'
-import { X, FolderPlus } from 'lucide-react'
-import { createCategory } from '../actions'
-import { Database } from '@/lib/supabase/types'
+import { useState, useEffect } from 'react';
+import { useI18n } from '@/components/I18nProvider';
+import { X, FolderPlus } from 'lucide-react';
+import { createCategory } from '../actions';
+import { Database } from '@/lib/supabase/types';
 
-type BudgetCategory = Database['public']['Tables']['budget_categories']['Row']
+type BudgetCategory = Database['public']['Tables']['budget_categories']['Row'];
 
 interface CreateCategoryModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onCreated?: (category: BudgetCategory) => void
-  budgetId: string
+  isOpen: boolean;
+  onClose: () => void;
+  onCreated?: (category: BudgetCategory) => void;
+  budgetId: string;
 }
 
 export function CreateCategoryModal({
@@ -21,63 +21,63 @@ export function CreateCategoryModal({
   onCreated,
   budgetId,
 }: CreateCategoryModalProps) {
-  const { t } = useI18n()
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { t } = useI18n();
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset form when modal opens/closes
   useEffect(() => {
     if (!isOpen) {
-      setName('')
-      setDescription('')
+      setName('');
+      setDescription('');
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     if (!name.trim()) {
-      alert('Please enter a category name')
-      return
+      alert('Please enter a category name');
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       const created = await createCategory({
         budget_id: budgetId,
         name: name.trim(),
         description: description.trim() || undefined,
-      })
-      
+      });
+
       // Reset form
-      setName('')
-      setDescription('')
-      onCreated?.(created as BudgetCategory)
-      onClose()
+      setName('');
+      setDescription('');
+      onCreated?.(created as BudgetCategory);
+      onClose();
     } catch (error) {
-      console.error('Error creating category:', error)
-      alert('Failed to create category')
+      console.error('Error creating category:', error);
+      alert('Failed to create category');
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   // Close on ESC key
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose()
+        onClose();
       }
-    }
+    };
 
-    window.addEventListener('keydown', handleEsc)
-    return () => window.removeEventListener('keydown', handleEsc)
-  }, [isOpen, onClose])
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -143,11 +143,13 @@ export function CreateCategoryModal({
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isSubmitting ? t('budgets.creating_category') : t('budgets.create_category')}
+              {isSubmitting
+                ? t('budgets.creating_category')
+                : t('budgets.create_category')}
             </button>
           </div>
         </form>
       </div>
     </div>
-  )
+  );
 }

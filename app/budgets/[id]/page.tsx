@@ -1,12 +1,12 @@
-import { requireAuth } from '@/lib/auth'
-import BudgetDetailClient from './BudgetDetailClient'
+import { requireAuth } from '@/lib/auth';
+import BudgetDetailClient from './BudgetDetailClient';
 
 export default async function BudgetPage({
   params,
 }: {
-  params: { id: string }
+  params: { id: string };
 }) {
-  await requireAuth()
+  await requireAuth();
 
-  return <BudgetDetailClient budgetId={params.id} />
+  return <BudgetDetailClient budgetId={params.id} />;
 }

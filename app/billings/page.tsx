@@ -1,7 +1,7 @@
-import { requireAuth } from '@/lib/auth'
-import BillingsPageClient from './BillingsPageClient'
+import { requireAuth } from '@/lib/auth';
+import BillingsPageClient from './BillingsPageClient';
 
 export default async function BillingsPage() {
-  await requireAuth()
-  return <BillingsPageClient />
+  await requireAuth();
+  return <BillingsPageClient />;
 }

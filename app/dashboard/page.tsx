@@ -1,8 +1,8 @@
-import { requireAuth } from '@/lib/auth'
-import AnalyticsDashboard from '@/components/AnalyticsDashboard'
+import { requireAuth } from '@/lib/auth';
+import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 
 export default async function Dashboard() {
-  await requireAuth()
+  await requireAuth();
 
-  return <AnalyticsDashboard />
+  return <AnalyticsDashboard />;
 }

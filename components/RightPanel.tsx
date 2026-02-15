@@ -1,43 +1,53 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { useI18n } from '@/components/I18nProvider'
-import { Database } from '@/lib/supabase/types'
-import TaskCard from './TaskCard'
-import { FileText, Plus } from 'lucide-react'
+import Link from 'next/link';
+import { useI18n } from '@/components/I18nProvider';
+import { Database } from '@/lib/supabase/types';
+import TaskCard from './TaskCard';
+import { FileText, Plus } from 'lucide-react';
 
-type Task = Database['public']['Tables']['tasks']['Row']
-type Project = Database['public']['Tables']['projects']['Row']
-type Note = Database['public']['Tables']['notes']['Row']
+type Task = Database['public']['Tables']['tasks']['Row'];
+type Project = Database['public']['Tables']['projects']['Row'];
+type Note = Database['public']['Tables']['notes']['Row'];
 
 interface RightPanelProps {
-  todayTasks: Task[]
-  nextUpTasks: Task[]
-  projects: Project[]
-  projectId?: string
-  projectNotes?: Note[]
+  todayTasks: Task[];
+  nextUpTasks: Task[];
+  projects: Project[];
+  projectId?: string;
+  projectNotes?: Note[];
 }
 
-export default function RightPanel({ todayTasks, nextUpTasks, projects, projectId, projectNotes = [] }: RightPanelProps) {
-  const { t } = useI18n()
-  const notes = projectNotes.slice(0, 5)
+export default function RightPanel({
+  todayTasks,
+  nextUpTasks,
+  projects,
+  projectId,
+  projectNotes = [],
+}: RightPanelProps) {
+  const { t } = useI18n();
+  const notes = projectNotes.slice(0, 5);
 
   return (
     <div className="w-80 bg-card border-l border-border p-4 overflow-y-auto">
       <div className="space-y-6">
         <div>
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg px-4 py-3 mb-3 shadow-md">
-            <h2 className="text-base font-bold text-white">{t('right_panel.today')}</h2>
+            <h2 className="text-base font-bold text-white">
+              {t('right_panel.today')}
+            </h2>
           </div>
           <div className="space-y-2">
             {todayTasks.length === 0 ? (
-              <p className="text-sm text-slate-500">{t('right_panel.no_tasks_today')}</p>
+              <p className="text-sm text-slate-500">
+                {t('right_panel.no_tasks_today')}
+              </p>
             ) : (
-              todayTasks.map(task => (
+              todayTasks.map((task) => (
                 <TaskCard
                   key={task.id}
                   task={task}
-                  project={projects.find(p => p.id === task.project_id)}
+                  project={projects.find((p) => p.id === task.project_id)}
                   onTaskUpdate={() => {}}
                 />
               ))
@@ -46,17 +56,21 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects, projectI
         </div>
         <div>
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg px-4 py-3 mb-3 shadow-md">
-            <h2 className="text-base font-bold text-white">{t('right_panel.next_up')}</h2>
+            <h2 className="text-base font-bold text-white">
+              {t('right_panel.next_up')}
+            </h2>
           </div>
           <div className="space-y-2">
             {nextUpTasks.length === 0 ? (
-              <p className="text-sm text-slate-500">{t('right_panel.no_tasks_next')}</p>
+              <p className="text-sm text-slate-500">
+                {t('right_panel.no_tasks_next')}
+              </p>
             ) : (
-              nextUpTasks.map(task => (
+              nextUpTasks.map((task) => (
                 <TaskCard
                   key={task.id}
                   task={task}
-                  project={projects.find(p => p.id === task.project_id)}
+                  project={projects.find((p) => p.id === task.project_id)}
                   onTaskUpdate={() => {}}
                 />
               ))
@@ -73,9 +87,11 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects, projectI
             </div>
             <div className="space-y-2">
               {notes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('right_panel.no_notes')}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t('right_panel.no_notes')}
+                </p>
               ) : (
-                notes.map(note => (
+                notes.map((note) => (
                   <Link
                     key={note.id}
                     href={`/notes/${note.id}`}
@@ -105,5 +121,5 @@ export default function RightPanel({ todayTasks, nextUpTasks, projects, projectI
         )}
       </div>
     </div>
-  )
+  );
 }

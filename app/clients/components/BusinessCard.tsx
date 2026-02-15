@@ -1,20 +1,37 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { useI18n } from '@/components/I18nProvider'
-import { useRouter } from 'next/navigation'
-import { Building2, Globe, MoreVertical, Edit, Trash2, Mail, MapPin, Copy, Send, User } from 'lucide-react'
+import Link from 'next/link';
+import { useI18n } from '@/components/I18nProvider';
+import { useRouter } from 'next/navigation';
+import {
+  Building2,
+  Globe,
+  MoreVertical,
+  Edit,
+  Trash2,
+  Mail,
+  MapPin,
+  Copy,
+  Send,
+  User,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { deleteBusinessAction } from '../actions'
-import { Database } from '@/lib/supabase/types'
-import type { SocialLinks } from '../actions'
+} from '@/components/ui/dropdown-menu';
+import { deleteBusinessAction } from '../actions';
+import { Database } from '@/lib/supabase/types';
+import type { SocialLinks } from '../actions';
 
-function EmailAction({ email, t }: { email: string; t: (key: string) => string }) {
+function EmailAction({
+  email,
+  t,
+}: {
+  email: string;
+  t: (key: string) => string;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
@@ -27,7 +44,9 @@ function EmailAction({ email, t }: { email: string; t: (key: string) => string }
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <DropdownMenuItem onClick={() => void navigator.clipboard.writeText(email)}>
+        <DropdownMenuItem
+          onClick={() => void navigator.clipboard.writeText(email)}
+        >
           <Copy className="w-4 h-4 mr-2" />
           {t('clients.copy_email')}
         </DropdownMenuItem>
@@ -39,65 +58,80 @@ function EmailAction({ email, t }: { email: string; t: (key: string) => string }
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }
 
-type Business = Database['public']['Tables']['businesses']['Row']
+type Business = Database['public']['Tables']['businesses']['Row'];
 
-const SOCIAL_ICONS: { key: keyof SocialLinks; label: string; href?: string }[] = [
-  { key: 'instagram', label: 'Instagram' },
-  { key: 'facebook', label: 'Facebook' },
-  { key: 'tiktok', label: 'TikTok' },
-  { key: 'youtube', label: 'YouTube' },
-]
+const SOCIAL_ICONS: { key: keyof SocialLinks; label: string; href?: string }[] =
+  [
+    { key: 'instagram', label: 'Instagram' },
+    { key: 'facebook', label: 'Facebook' },
+    { key: 'tiktok', label: 'TikTok' },
+    { key: 'youtube', label: 'YouTube' },
+  ];
 
 function getSocialLinks(links: unknown): SocialLinks {
   if (links && typeof links === 'object' && !Array.isArray(links)) {
-    return links as SocialLinks
+    return links as SocialLinks;
   }
-  return {}
+  return {};
 }
 
 interface BusinessCardProps {
-  business: Business
-  onDeleted?: () => void
-  onEdit?: (business: Business) => void
+  business: Business;
+  onDeleted?: () => void;
+  onEdit?: (business: Business) => void;
   /** When set (e.g. on global businesses list), show client name and link to client */
-  clientName?: string | null
-  clientId?: string
+  clientName?: string | null;
+  clientId?: string;
   /** When true, clicking the card opens the business detail page (default true) */
-  linkToDetail?: boolean
+  linkToDetail?: boolean;
 }
 
-export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId, linkToDetail = true }: BusinessCardProps) {
-  const { t } = useI18n()
-  const router = useRouter()
-  const social = getSocialLinks(business.social_links)
+export function BusinessCard({
+  business,
+  onDeleted,
+  onEdit,
+  clientName,
+  clientId,
+  linkToDetail = true,
+}: BusinessCardProps) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const social = getSocialLinks(business.social_links);
 
   const handleCardClick = (e: React.MouseEvent) => {
-    if (!linkToDetail) return
-    if ((e.target as HTMLElement).closest('button, a, [role="menuitem"]')) return
-    router.push(`/businesses/${business.id}`)
-  }
+    if (!linkToDetail) return;
+    if ((e.target as HTMLElement).closest('button, a, [role="menuitem"]'))
+      return;
+    router.push(`/businesses/${business.id}`);
+  };
 
   const handleDelete = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!confirm(`Delete "${business.name}"? This cannot be undone.`)) return
-    const { error } = await deleteBusinessAction(business.id)
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(`Delete "${business.name}"? This cannot be undone.`)) return;
+    const { error } = await deleteBusinessAction(business.id);
     if (error) {
-      alert(error)
-      return
+      alert(error);
+      return;
     }
-    onDeleted?.()
-  }
+    onDeleted?.();
+  };
 
   return (
     <div
       role={linkToDetail ? 'button' : undefined}
       tabIndex={linkToDetail ? 0 : undefined}
       onClick={linkToDetail ? handleCardClick : undefined}
-      onKeyDown={linkToDetail ? (e) => e.key === 'Enter' && handleCardClick(e as unknown as React.MouseEvent) : undefined}
+      onKeyDown={
+        linkToDetail
+          ? (e) =>
+              e.key === 'Enter' &&
+              handleCardClick(e as unknown as React.MouseEvent)
+          : undefined
+      }
       className={`bg-card rounded-lg shadow-sm border border-border p-5 transition-all relative group ${linkToDetail ? 'cursor-pointer hover:shadow-md' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -112,7 +146,9 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
               className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground hover:text-foreground"
             >
               <User className="w-3.5 h-3.5" />
-              <span className="truncate">{clientName || t('clients.view_client')}</span>
+              <span className="truncate">
+                {clientName || t('clients.view_client')}
+              </span>
             </Link>
           )}
           {business.tagline && (
@@ -127,7 +163,11 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
           )}
           {business.website && (
             <a
-              href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
+              href={
+                business.website.startsWith('http')
+                  ? business.website
+                  : `https://${business.website}`
+              }
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
@@ -138,11 +178,18 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
             </a>
           )}
           {Object.keys(social).length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="flex flex-wrap gap-2 mt-2"
+              onClick={(e) => e.stopPropagation()}
+            >
               {SOCIAL_ICONS.filter((s) => social[s.key]).map((s) => (
                 <a
                   key={s.key}
-                  href={social[s.key]!.startsWith('http') ? social[s.key]! : `https://${social[s.key]}`}
+                  href={
+                    social[s.key]!.startsWith('http')
+                      ? social[s.key]!
+                      : `https://${social[s.key]}`
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -156,13 +203,15 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
             const parts = [
               business.address_line1,
               business.address_line2,
-              [business.city, business.state, business.postal_code].filter(Boolean).join(', '),
-            ].filter(Boolean)
-            const fullAddress = parts.join(', ')
+              [business.city, business.state, business.postal_code]
+                .filter(Boolean)
+                .join(', '),
+            ].filter(Boolean);
+            const fullAddress = parts.join(', ');
             const mapsUrl = fullAddress
               ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`
-              : null
-            if (!mapsUrl) return null
+              : null;
+            if (!mapsUrl) return null;
             return (
               <a
                 href={mapsUrl}
@@ -174,7 +223,7 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
                 <MapPin className="w-3.5 h-3.5" />
                 <span className="line-clamp-1">{fullAddress}</span>
               </a>
-            )
+            );
           })()}
         </div>
         <DropdownMenu>
@@ -194,7 +243,10 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
                 {t('common.edit')}
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem onClick={handleDelete} className="text-red-600 focus:text-red-600">
+            <DropdownMenuItem
+              onClick={handleDelete}
+              className="text-red-600 focus:text-red-600"
+            >
               <Trash2 className="w-4 h-4 mr-2" />
               {t('common.delete')}
             </DropdownMenuItem>
@@ -202,5 +254,5 @@ export function BusinessCard({ business, onDeleted, onEdit, clientName, clientId
         </DropdownMenu>
       </div>
     </div>
-  )
+  );
 }

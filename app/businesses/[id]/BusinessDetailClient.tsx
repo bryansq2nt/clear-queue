@@ -1,21 +1,21 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useI18n } from '@/components/I18nProvider'
-import { DetailLayout } from '@/components/DetailLayout'
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useI18n } from '@/components/I18nProvider';
+import { DetailLayout } from '@/components/DetailLayout';
 import {
   getBusinessById,
   getProjectsByBusinessId,
   getClients,
   updateBusinessFieldsAction,
-} from '@/app/clients/actions'
+} from '@/app/clients/actions';
 import {
   listProjectsWithBusinessIdAction,
   linkProjectToBusinessAction,
-} from '@/app/businesses/actions'
-import { EditBusinessModal } from '@/app/clients/components/EditBusinessModal'
+} from '@/app/businesses/actions';
+import { EditBusinessModal } from '@/app/clients/components/EditBusinessModal';
 import {
   User,
   Mail,
@@ -29,56 +29,62 @@ import {
   Plus,
   Check,
   X,
-} from 'lucide-react'
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog'
-import type { SocialLinks } from '@/app/clients/actions'
-import type { Database } from '@/lib/supabase/types'
+} from '@/components/ui/dialog';
+import type { SocialLinks } from '@/app/clients/actions';
+import type { Database } from '@/lib/supabase/types';
 
-type Business = Database['public']['Tables']['businesses']['Row']
-type Client = Database['public']['Tables']['clients']['Row']
+type Business = Database['public']['Tables']['businesses']['Row'];
+type Client = Database['public']['Tables']['clients']['Row'];
 
-type ProjectSummary = { id: string; name: string; color: string | null; category: string }
+type ProjectSummary = {
+  id: string;
+  name: string;
+  color: string | null;
+  category: string;
+};
 
-const SOCIAL_KEYS = ['instagram', 'facebook', 'tiktok', 'youtube'] as const
+const SOCIAL_KEYS = ['instagram', 'facebook', 'tiktok', 'youtube'] as const;
 const SOCIAL_LABELS: Record<string, string> = {
   instagram: 'Instagram',
   facebook: 'Facebook',
   tiktok: 'TikTok',
   youtube: 'YouTube',
-}
+};
 
 function getSocialLinks(links: unknown): SocialLinks {
-  if (links && typeof links === 'object' && !Array.isArray(links)) return links as SocialLinks
-  return {}
+  if (links && typeof links === 'object' && !Array.isArray(links))
+    return links as SocialLinks;
+  return {};
 }
 
 interface BusinessDetailClientProps {
-  businessId: string
-  initialBusiness: Business
-  clientName: string | null
+  businessId: string;
+  initialBusiness: Business;
+  clientName: string | null;
 }
 
 export default function BusinessDetailClient({
@@ -86,120 +92,130 @@ export default function BusinessDetailClient({
   initialBusiness,
   clientName,
 }: BusinessDetailClientProps) {
-  const { t } = useI18n()
-  const router = useRouter()
-  const [business, setBusiness] = useState<Business>(initialBusiness)
-  const [relatedProjects, setRelatedProjects] = useState<ProjectSummary[]>([])
-  const [clients, setClients] = useState<Client[]>([])
-  const [projectsLoading, setProjectsLoading] = useState(true)
-  const [editingField, setEditingField] = useState<string | null>(null)
-  const [editingValue, setEditingValue] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [linkProjectOpen, setLinkProjectOpen] = useState(false)
-  const [projectsForLink, setProjectsForLink] = useState<{ id: string; name: string; business_id: string | null }[]>([])
-  const [linkProjectId, setLinkProjectId] = useState('')
-  const [linkProjectSaving, setLinkProjectSaving] = useState(false)
-  const [addSocialOpen, setAddSocialOpen] = useState(false)
-  const [newSocialKey, setNewSocialKey] = useState<string>('instagram')
-  const [newSocialUrl, setNewSocialUrl] = useState('')
-  const [editModalOpen, setEditModalOpen] = useState(false)
+  const { t } = useI18n();
+  const router = useRouter();
+  const [business, setBusiness] = useState<Business>(initialBusiness);
+  const [relatedProjects, setRelatedProjects] = useState<ProjectSummary[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [linkProjectOpen, setLinkProjectOpen] = useState(false);
+  const [projectsForLink, setProjectsForLink] = useState<
+    { id: string; name: string; business_id: string | null }[]
+  >([]);
+  const [linkProjectId, setLinkProjectId] = useState('');
+  const [linkProjectSaving, setLinkProjectSaving] = useState(false);
+  const [addSocialOpen, setAddSocialOpen] = useState(false);
+  const [newSocialKey, setNewSocialKey] = useState<string>('instagram');
+  const [newSocialUrl, setNewSocialUrl] = useState('');
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   useEffect(() => {
-    setBusiness(initialBusiness)
-  }, [initialBusiness])
+    setBusiness(initialBusiness);
+  }, [initialBusiness]);
 
   const loadBusiness = useCallback(async () => {
-    const updated = await getBusinessById(businessId)
-    if (updated) setBusiness(updated)
-  }, [businessId])
+    const updated = await getBusinessById(businessId);
+    if (updated) setBusiness(updated);
+  }, [businessId]);
 
   const loadRelatedData = useCallback(async () => {
-    setProjectsLoading(true)
-    const projects = await getProjectsByBusinessId(businessId)
-    setRelatedProjects(projects)
-    setProjectsLoading(false)
-  }, [businessId])
+    setProjectsLoading(true);
+    const projects = await getProjectsByBusinessId(businessId);
+    setRelatedProjects(projects);
+    setProjectsLoading(false);
+  }, [businessId]);
 
   useEffect(() => {
-    loadRelatedData()
-  }, [loadRelatedData])
+    loadRelatedData();
+  }, [loadRelatedData]);
 
   useEffect(() => {
-    if (linkProjectOpen) listProjectsWithBusinessIdAction().then(setProjectsForLink)
-  }, [linkProjectOpen])
+    if (linkProjectOpen)
+      listProjectsWithBusinessIdAction().then(setProjectsForLink);
+  }, [linkProjectOpen]);
   useEffect(() => {
-    if (editModalOpen) getClients().then(setClients)
-  }, [editModalOpen])
+    if (editModalOpen) getClients().then(setClients);
+  }, [editModalOpen]);
 
   const saveField = useCallback(
     async (field: string, value: string) => {
-      setSaving(true)
-      const trimmed = value.trim()
-      const payload: Record<string, string | null> = {}
-      if (field === 'name') payload.name = trimmed || business.name
-      else if (field === 'tagline') payload.tagline = trimmed || null
-      else if (field === 'description') payload.description = trimmed || null
-      else if (field === 'website') payload.website = trimmed || null
-      else if (field === 'email') payload.email = trimmed || null
-      else if (field === 'address_line1') payload.address_line1 = trimmed || null
-      else if (field === 'address_line2') payload.address_line2 = trimmed || null
-      else if (field === 'city') payload.city = trimmed || null
-      else if (field === 'state') payload.state = trimmed || null
-      else if (field === 'postal_code') payload.postal_code = trimmed || null
-      else if (field === 'notes') payload.notes = trimmed || null
-      else if (field === 'client_id') payload.client_id = trimmed || business.client_id
-      const result = await updateBusinessFieldsAction(businessId, payload)
-      setSaving(false)
-      setEditingField(null)
-      if (result.data) setBusiness(result.data)
-      if (result.error) alert(result.error)
-      if (field === 'client_id') router.refresh()
+      setSaving(true);
+      const trimmed = value.trim();
+      const payload: Record<string, string | null> = {};
+      if (field === 'name') payload.name = trimmed || business.name;
+      else if (field === 'tagline') payload.tagline = trimmed || null;
+      else if (field === 'description') payload.description = trimmed || null;
+      else if (field === 'website') payload.website = trimmed || null;
+      else if (field === 'email') payload.email = trimmed || null;
+      else if (field === 'address_line1')
+        payload.address_line1 = trimmed || null;
+      else if (field === 'address_line2')
+        payload.address_line2 = trimmed || null;
+      else if (field === 'city') payload.city = trimmed || null;
+      else if (field === 'state') payload.state = trimmed || null;
+      else if (field === 'postal_code') payload.postal_code = trimmed || null;
+      else if (field === 'notes') payload.notes = trimmed || null;
+      else if (field === 'client_id')
+        payload.client_id = trimmed || business.client_id;
+      const result = await updateBusinessFieldsAction(businessId, payload);
+      setSaving(false);
+      setEditingField(null);
+      if (result.data) setBusiness(result.data);
+      if (result.error) alert(result.error);
+      if (field === 'client_id') router.refresh();
     },
     [businessId, business.name, business.client_id, router]
-  )
+  );
 
   const startEdit = (field: string, current: string | null) => {
-    setEditingField(field)
-    setEditingValue(current ?? '')
-  }
+    setEditingField(field);
+    setEditingValue(current ?? '');
+  };
 
-  const social = getSocialLinks(business.social_links)
+  const social = getSocialLinks(business.social_links);
   const addressParts = [
     business.address_line1,
     business.address_line2,
-    [business.city, business.state, business.postal_code].filter(Boolean).join(', '),
-  ].filter(Boolean)
+    [business.city, business.state, business.postal_code]
+      .filter(Boolean)
+      .join(', '),
+  ].filter(Boolean);
   const mapsUrl =
     addressParts.length > 0
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressParts.join(', '))}`
-      : null
+      : null;
 
   const handleAddSocial = async () => {
-    const url = newSocialUrl.trim()
-    if (!url) return
-    const next = { ...social, [newSocialKey]: url }
-    const result = await updateBusinessFieldsAction(businessId, { social_links: next })
+    const url = newSocialUrl.trim();
+    if (!url) return;
+    const next = { ...social, [newSocialKey]: url };
+    const result = await updateBusinessFieldsAction(businessId, {
+      social_links: next,
+    });
     if (result.data) {
-      setBusiness(result.data)
-      setNewSocialUrl('')
-      setAddSocialOpen(false)
+      setBusiness(result.data);
+      setNewSocialUrl('');
+      setAddSocialOpen(false);
     }
-    if (result.error) alert(result.error)
-  }
+    if (result.error) alert(result.error);
+  };
 
   const handleLinkProject = async () => {
-    if (!linkProjectId) return
-    setLinkProjectSaving(true)
-    const result = await linkProjectToBusinessAction(linkProjectId, businessId)
-    setLinkProjectSaving(false)
-    if (result.error) alert(result.error)
+    if (!linkProjectId) return;
+    setLinkProjectSaving(true);
+    const result = await linkProjectToBusinessAction(linkProjectId, businessId);
+    setLinkProjectSaving(false);
+    if (result.error) alert(result.error);
     else {
-      setLinkProjectOpen(false)
-      setLinkProjectId('')
-      loadRelatedData()
-      router.refresh()
+      setLinkProjectOpen(false);
+      setLinkProjectId('');
+      loadRelatedData();
+      router.refresh();
     }
-  }
+  };
 
   return (
     <DetailLayout
@@ -239,7 +255,9 @@ export default function BusinessDetailClient({
                 saving={saving}
               />
               <div className="sm:col-span-2">
-                <Label className="text-muted-foreground text-xs">{t('businesses.description_label')}</Label>
+                <Label className="text-muted-foreground text-xs">
+                  {t('businesses.description_label')}
+                </Label>
                 {editingField === 'description' ? (
                   <div className="mt-1 flex gap-2">
                     <Textarea
@@ -249,10 +267,19 @@ export default function BusinessDetailClient({
                       placeholder={t('businesses.optional_placeholder')}
                     />
                     <div className="flex flex-col gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => saveField('description', editingValue)} disabled={saving}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => saveField('description', editingValue)}
+                        disabled={saving}
+                      >
                         <Check className="w-4 h-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => setEditingField(null)}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setEditingField(null)}
+                      >
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
@@ -260,10 +287,14 @@ export default function BusinessDetailClient({
                 ) : (
                   <p
                     className="mt-1 text-foreground cursor-pointer hover:bg-accent/50 rounded p-2 -m-2 flex items-center gap-2"
-                    onClick={() => startEdit('description', business.description ?? '')}
+                    onClick={() =>
+                      startEdit('description', business.description ?? '')
+                    }
                   >
                     {business.description || (
-                      <span className="text-muted-foreground italic">{t('businesses.optional_placeholder')}</span>
+                      <span className="text-muted-foreground italic">
+                        {t('businesses.optional_placeholder')}
+                      </span>
                     )}
                     <Edit className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                   </p>
@@ -281,15 +312,21 @@ export default function BusinessDetailClient({
                 saving={saving}
               />
               <div>
-                <Label className="text-muted-foreground text-xs">{t('businesses.client_label')}</Label>
+                <Label className="text-muted-foreground text-xs">
+                  {t('businesses.client_label')}
+                </Label>
                 {editingField === 'client_id' ? (
                   <div className="mt-1 flex gap-2 items-center">
                     <Select
                       value={editingValue || 'none'}
-                      onValueChange={(v) => setEditingValue(v === 'none' ? '' : v)}
+                      onValueChange={(v) =>
+                        setEditingValue(v === 'none' ? '' : v)
+                      }
                     >
                       <SelectTrigger className="h-8 text-sm border-input bg-background">
-                        <SelectValue placeholder={t('businesses.select_client')} />
+                        <SelectValue
+                          placeholder={t('businesses.select_client')}
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">—</SelectItem>
@@ -300,10 +337,19 @@ export default function BusinessDetailClient({
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button size="icon" variant="ghost" onClick={() => saveField('client_id', editingValue)} disabled={saving}>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => saveField('client_id', editingValue)}
+                      disabled={saving}
+                    >
                       <Check className="w-4 h-4" />
                     </Button>
-                    <Button size="icon" variant="ghost" onClick={() => setEditingField(null)}>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setEditingField(null)}
+                    >
                       <X className="w-4 h-4" />
                     </Button>
                   </div>
@@ -311,13 +357,17 @@ export default function BusinessDetailClient({
                   <p
                     className="mt-1 text-foreground cursor-pointer hover:bg-accent/50 rounded p-2 -m-2 flex items-center gap-2"
                     onClick={() => {
-                      setEditingField('client_id')
-                      setEditingValue(business.client_id)
-                      if (clients.length === 0) getClients().then(setClients)
+                      setEditingField('client_id');
+                      setEditingValue(business.client_id);
+                      if (clients.length === 0) getClients().then(setClients);
                     }}
                   >
                     {clientName ? (
-                      <Link href={`/clients/${business.client_id}`} className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+                      <Link
+                        href={`/clients/${business.client_id}`}
+                        className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {clientName}
                       </Link>
                     ) : (
@@ -356,7 +406,9 @@ export default function BusinessDetailClient({
                 onEditChange={setEditingValue}
                 onSave={() => saveField('address_line1', editingValue)}
                 onCancel={() => setEditingField(null)}
-                onStartEdit={() => startEdit('address_line1', business.address_line1 ?? '')}
+                onStartEdit={() =>
+                  startEdit('address_line1', business.address_line1 ?? '')
+                }
                 saving={saving}
               />
               <DetailRow
@@ -367,7 +419,9 @@ export default function BusinessDetailClient({
                 onEditChange={setEditingValue}
                 onSave={() => saveField('address_line2', editingValue)}
                 onCancel={() => setEditingField(null)}
-                onStartEdit={() => startEdit('address_line2', business.address_line2 ?? '')}
+                onStartEdit={() =>
+                  startEdit('address_line2', business.address_line2 ?? '')
+                }
                 saving={saving}
               />
               <div className="grid grid-cols-3 gap-2">
@@ -401,7 +455,9 @@ export default function BusinessDetailClient({
                   onEditChange={setEditingValue}
                   onSave={() => saveField('postal_code', editingValue)}
                   onCancel={() => setEditingField(null)}
-                  onStartEdit={() => startEdit('postal_code', business.postal_code ?? '')}
+                  onStartEdit={() =>
+                    startEdit('postal_code', business.postal_code ?? '')
+                  }
                   saving={saving}
                 />
               </div>
@@ -431,7 +487,9 @@ export default function BusinessDetailClient({
                   <a
                     key={k}
                     href={
-                      social[k]!.startsWith('http') ? social[k]! : `https://${social[k]}`
+                      social[k]!.startsWith('http')
+                        ? social[k]!
+                        : `https://${social[k]}`
                     }
                     target="_blank"
                     rel="noopener noreferrer"
@@ -465,10 +523,21 @@ export default function BusinessDetailClient({
                   className="h-8 text-sm"
                 />
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={handleAddSocial} disabled={!newSocialUrl.trim()}>
+                  <Button
+                    size="sm"
+                    onClick={handleAddSocial}
+                    disabled={!newSocialUrl.trim()}
+                  >
                     {t('common.save')}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => { setAddSocialOpen(false); setNewSocialUrl('') }}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setAddSocialOpen(false);
+                      setNewSocialUrl('');
+                    }}
+                  >
                     {t('common.cancel')}
                   </Button>
                 </div>
@@ -494,9 +563,13 @@ export default function BusinessDetailClient({
               </Button>
             </div>
             {projectsLoading ? (
-              <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+              <p className="text-sm text-muted-foreground">
+                {t('common.loading')}
+              </p>
             ) : relatedProjects.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('businesses.no_related_projects')}</p>
+              <p className="text-sm text-muted-foreground">
+                {t('businesses.no_related_projects')}
+              </p>
             ) : (
               <ul className="space-y-2">
                 {relatedProjects.map((p) => (
@@ -528,10 +601,19 @@ export default function BusinessDetailClient({
                   placeholder={t('businesses.optional_placeholder')}
                 />
                 <div className="flex flex-col gap-1">
-                  <Button size="icon" variant="ghost" onClick={() => saveField('notes', editingValue)} disabled={saving}>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => saveField('notes', editingValue)}
+                    disabled={saving}
+                  >
                     <Check className="w-4 h-4" />
                   </Button>
-                  <Button size="icon" variant="ghost" onClick={() => setEditingField(null)}>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setEditingField(null)}
+                  >
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
@@ -542,7 +624,9 @@ export default function BusinessDetailClient({
                 onClick={() => startEdit('notes', business.notes ?? '')}
               >
                 {business.notes || (
-                  <span className="text-muted-foreground italic">{t('businesses.optional_placeholder')}</span>
+                  <span className="text-muted-foreground italic">
+                    {t('businesses.optional_placeholder')}
+                  </span>
                 )}
               </p>
             )}
@@ -578,7 +662,10 @@ export default function BusinessDetailClient({
             <Button variant="outline" onClick={() => setLinkProjectOpen(false)}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleLinkProject} disabled={!linkProjectId || linkProjectSaving}>
+            <Button
+              onClick={handleLinkProject}
+              disabled={!linkProjectId || linkProjectSaving}
+            >
               {linkProjectSaving ? t('common.loading') : t('common.save')}
             </Button>
           </DialogFooter>
@@ -598,14 +685,14 @@ export default function BusinessDetailClient({
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
         onUpdated={async () => {
-          setEditModalOpen(false)
-          await loadBusiness()
-          await loadRelatedData()
-          router.refresh()
+          setEditModalOpen(false);
+          await loadBusiness();
+          await loadRelatedData();
+          router.refresh();
         }}
       />
     </DetailLayout>
-  )
+  );
 }
 
 function DetailRow({
@@ -619,15 +706,15 @@ function DetailRow({
   onStartEdit,
   saving,
 }: {
-  label: string
-  value: string
-  editing: boolean
-  editValue: string
-  onEditChange: (v: string) => void
-  onSave: () => void
-  onCancel: () => void
-  onStartEdit: () => void
-  saving: boolean
+  label: string;
+  value: string;
+  editing: boolean;
+  editValue: string;
+  onEditChange: (v: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onStartEdit: () => void;
+  saving: boolean;
 }) {
   return (
     <div>
@@ -640,7 +727,12 @@ function DetailRow({
             onKeyDown={(e) => e.key === 'Enter' && onSave()}
             className="h-8 text-sm border-input bg-background"
           />
-          <Button size="icon" variant="ghost" onClick={onSave} disabled={saving}>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onSave}
+            disabled={saving}
+          >
             <Check className="w-4 h-4" />
           </Button>
           <Button size="icon" variant="ghost" onClick={onCancel}>
@@ -657,15 +749,15 @@ function DetailRow({
         </p>
       )}
     </div>
-  )
+  );
 }
 
 function EmailAction({
   email,
   t,
 }: {
-  email: string
-  t: (key: string) => string
+  email: string;
+  t: (key: string) => string;
 }) {
   return (
     <DropdownMenu>
@@ -679,7 +771,9 @@ function EmailAction({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <DropdownMenuItem onClick={() => void navigator.clipboard.writeText(email)}>
+        <DropdownMenuItem
+          onClick={() => void navigator.clipboard.writeText(email)}
+        >
           <Copy className="w-4 h-4 mr-2" />
           {t('clients.copy_email')}
         </DropdownMenuItem>
@@ -691,5 +785,5 @@ function EmailAction({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

@@ -1,42 +1,42 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { useI18n } from '@/components/I18nProvider'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { useState, useEffect, useCallback } from 'react';
+import { useI18n } from '@/components/I18nProvider';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { updateIdeaAction, deleteIdeaAction } from './actions'
+} from '@/components/ui/dialog';
+import { updateIdeaAction, deleteIdeaAction } from './actions';
 import {
   linkIdeaToProjectAction,
   unlinkIdeaFromProjectAction,
-} from './[id]/project-link-actions'
-import { loadIdeaDataAction } from './load-idea-data'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+} from './[id]/project-link-actions';
+import { loadIdeaDataAction } from './load-idea-data';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface Idea {
-  id: string
-  title: string
-  description: string | null
+  id: string;
+  title: string;
+  description: string | null;
 }
 
 interface Project {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 interface ProjectLink {
-  id: string
-  project_id: string
-  role: string | null
-  created_at: string
-  project?: Project
+  id: string;
+  project_id: string;
+  role: string | null;
+  created_at: string;
+  project?: Project;
 }
 
 export default function IdeaDrawer({
@@ -45,109 +45,109 @@ export default function IdeaDrawer({
   onClose,
   onUpdate,
 }: {
-  ideaId: string
-  isOpen: boolean
-  onClose: () => void
-  onUpdate: () => void
+  ideaId: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdate: () => void;
 }) {
-  const { t } = useI18n()
-  const router = useRouter()
-  const [idea, setIdea] = useState<Idea | null>(null)
-  const [projectLinks, setProjectLinks] = useState<ProjectLink[]>([])
+  const { t } = useI18n();
+  const router = useRouter();
+  const [idea, setIdea] = useState<Idea | null>(null);
+  const [projectLinks, setProjectLinks] = useState<ProjectLink[]>([]);
   const [availableProjects, setAvailableProjects] = useState<
     { id: string; name: string }[]
-  >([])
-  const [isEditing, setIsEditing] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [linkError, setLinkError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-
-
+  >([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const loadIdeaData = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const result = await loadIdeaDataAction(ideaId)
+      const result = await loadIdeaDataAction(ideaId);
       if (result.error) {
-        console.error('Failed to load idea:', result.error)
-        return
+        console.error('Failed to load idea:', result.error);
+        return;
       }
       if (!result.idea) {
-        console.error('Idea not found')
-        return
+        console.error('Idea not found');
+        return;
       }
-      setIdea(result.idea)
-      setProjectLinks(result.projectLinks ?? [])
-      setAvailableProjects(result.availableProjects ?? [])
+      setIdea(result.idea);
+      setProjectLinks(result.projectLinks ?? []);
+      setAvailableProjects(result.availableProjects ?? []);
     } catch (error) {
-      console.error('Failed to load idea data:', error)
+      console.error('Failed to load idea data:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [ideaId])
+  }, [ideaId]);
 
   useEffect(() => {
     if (isOpen && ideaId) {
-      loadIdeaData()
+      loadIdeaData();
     }
-  }, [isOpen, ideaId, loadIdeaData])
+  }, [isOpen, ideaId, loadIdeaData]);
 
   async function handleUpdate(formData: FormData) {
-    if (!idea) return
+    if (!idea) return;
 
-    formData.append('id', idea.id)
-    const result = await updateIdeaAction(formData)
+    formData.append('id', idea.id);
+    const result = await updateIdeaAction(formData);
 
     if (result.data) {
-      setIdea(result.data)
-      setIsEditing(false)
-      onUpdate()
+      setIdea(result.data);
+      setIsEditing(false);
+      onUpdate();
     } else if (result.error) {
-      alert(result.error)
+      alert(result.error);
     }
   }
 
   async function handleDelete() {
-    if (!idea) return
+    if (!idea) return;
 
     if (!confirm(t('ideas.delete_idea_confirm'))) {
-      return
+      return;
     }
 
-    setIsDeleting(true)
-    const result = await deleteIdeaAction(idea.id)
+    setIsDeleting(true);
+    const result = await deleteIdeaAction(idea.id);
 
     if (result.success) {
-      onClose()
-      onUpdate()
-      router.refresh()
+      onClose();
+      onUpdate();
+      router.refresh();
     } else if (result.error) {
-      alert(result.error)
-      setIsDeleting(false)
+      alert(result.error);
+      setIsDeleting(false);
     }
   }
 
   async function handleLinkProject(formData: FormData) {
-    if (!idea) return
+    if (!idea) return;
 
-    setLinkError(null)
-    const projectId = formData.get('projectId') as string
-    const role = formData.get('role') as string | null
+    setLinkError(null);
+    const projectId = formData.get('projectId') as string;
+    const role = formData.get('role') as string | null;
 
     if (!projectId) {
-      setLinkError('Please select a project')
-      return
+      setLinkError('Please select a project');
+      return;
     }
 
-    const result = await linkIdeaToProjectAction(idea.id, projectId, role)
+    const result = await linkIdeaToProjectAction(idea.id, projectId, role);
 
     if (result.data) {
-      const form = document.getElementById('link-project-form') as HTMLFormElement
-      form?.reset()
-      loadIdeaData()
-      onUpdate()
+      const form = document.getElementById(
+        'link-project-form'
+      ) as HTMLFormElement;
+      form?.reset();
+      loadIdeaData();
+      onUpdate();
     } else if (result.error) {
-      setLinkError(result.error)
+      setLinkError(result.error);
     }
   }
 
@@ -157,20 +157,20 @@ export default function IdeaDrawer({
         'Are you sure you want to unlink this project? This action cannot be undone.'
       )
     ) {
-      return
+      return;
     }
 
-    const result = await unlinkIdeaFromProjectAction(linkId)
+    const result = await unlinkIdeaFromProjectAction(linkId);
 
     if (result.success) {
-      loadIdeaData()
-      onUpdate()
+      loadIdeaData();
+      onUpdate();
     } else if (result.error) {
-      alert(result.error)
+      alert(result.error);
     }
   }
 
-  if (!idea) return null
+  if (!idea) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -264,5 +264,5 @@ export default function IdeaDrawer({
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

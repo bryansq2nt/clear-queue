@@ -1,46 +1,54 @@
-'use client'
+'use client';
 
-import { Database } from '@/lib/supabase/types'
-import { Input } from './ui/input'
-import { Button } from './ui/button'
-import Link from 'next/link'
-import { Search, LogOut, CheckSquare, FileText, FolderOpen, Menu, ArrowLeft } from 'lucide-react'
-import { useState } from 'react'
-import { AddProjectModal } from './AddProjectModal'
-import { EditProjectModal } from './EditProjectModal'
-import { ProjectResourcesModal } from './ProjectResourcesModal'
-import { useI18n } from '@/components/I18nProvider'
-import { cn } from '@/lib/utils'
+import { Database } from '@/lib/supabase/types';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import Link from 'next/link';
+import {
+  Search,
+  LogOut,
+  CheckSquare,
+  FileText,
+  FolderOpen,
+  Menu,
+  ArrowLeft,
+} from 'lucide-react';
+import { useState } from 'react';
+import { AddProjectModal } from './AddProjectModal';
+import { EditProjectModal } from './EditProjectModal';
+import { ProjectResourcesModal } from './ProjectResourcesModal';
+import { useI18n } from '@/components/I18nProvider';
+import { cn } from '@/lib/utils';
 
-type Project = Database['public']['Tables']['projects']['Row']
+type Project = Database['public']['Tables']['projects']['Row'];
 
 interface TopBarProps {
-  searchQuery?: string
-  onSearchChange?: (query: string) => void
-  onSignOut: () => void
-  onProjectAdded?: () => void
-  onProjectUpdated?: () => void
-  projectName: string
-  currentProject?: Project | null
-  selectionMode?: boolean
-  onToggleSelectionMode?: () => void
-  onOpenSidebar?: () => void
-  resourcesInSidebar?: boolean
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  onSignOut: () => void;
+  onProjectAdded?: () => void;
+  onProjectUpdated?: () => void;
+  projectName: string;
+  currentProject?: Project | null;
+  selectionMode?: boolean;
+  onToggleSelectionMode?: () => void;
+  onOpenSidebar?: () => void;
+  resourcesInSidebar?: boolean;
   /** Detail view: back link + title only, no sidebar menu, no task search */
-  backHref?: string
-  backLabel?: string
+  backHref?: string;
+  backLabel?: string;
   /** Optional actions (e.g. Edit, Delete) shown in header when in detail view */
-  actions?: React.ReactNode
+  actions?: React.ReactNode;
   /** Minimal header: only menu + title, no Add Project / logout / search (e.g. for Clients list) */
-  minimal?: boolean
+  minimal?: boolean;
   /** When true, show sidebar menu button on all screen sizes (e.g. when sidebar is overlay-only) */
-  showSidebarButtonAlways?: boolean
+  showSidebarButtonAlways?: boolean;
   /** Controlled open state for Resources modal (e.g. so parent can open from bottom bar on mobile) */
-  resourcesModalOpen?: boolean
-  onResourcesModalOpenChange?: (open: boolean) => void
+  resourcesModalOpen?: boolean;
+  onResourcesModalOpenChange?: (open: boolean) => void;
   /** Controlled open state for Edit modal */
-  editModalOpen?: boolean
-  onEditModalOpenChange?: (open: boolean) => void
+  editModalOpen?: boolean;
+  onEditModalOpenChange?: (open: boolean) => void;
 }
 
 export default function TopBar({
@@ -65,17 +73,25 @@ export default function TopBar({
   editModalOpen: editModalOpenProp,
   onEditModalOpenChange,
 }: TopBarProps) {
-  const isDetailView = !!backHref
-  const { t } = useI18n()
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [isEditModalOpenInternal, setIsEditModalOpenInternal] = useState(false)
-  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false)
-  const [isResourcesModalOpenInternal, setIsResourcesModalOpenInternal] = useState(false)
+  const isDetailView = !!backHref;
+  const { t } = useI18n();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpenInternal, setIsEditModalOpenInternal] = useState(false);
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+  const [isResourcesModalOpenInternal, setIsResourcesModalOpenInternal] =
+    useState(false);
 
-  const isEditModalOpen = editModalOpenProp ?? isEditModalOpenInternal
-  const setEditModalOpen = (open: boolean) => (onEditModalOpenChange ? onEditModalOpenChange(open) : setIsEditModalOpenInternal(open))
-  const isResourcesModalOpen = resourcesModalOpenProp ?? isResourcesModalOpenInternal
-  const setResourcesModalOpen = (open: boolean) => (onResourcesModalOpenChange ? onResourcesModalOpenChange(open) : setIsResourcesModalOpenInternal(open))
+  const isEditModalOpen = editModalOpenProp ?? isEditModalOpenInternal;
+  const setEditModalOpen = (open: boolean) =>
+    onEditModalOpenChange
+      ? onEditModalOpenChange(open)
+      : setIsEditModalOpenInternal(open);
+  const isResourcesModalOpen =
+    resourcesModalOpenProp ?? isResourcesModalOpenInternal;
+  const setResourcesModalOpen = (open: boolean) =>
+    onResourcesModalOpenChange
+      ? onResourcesModalOpenChange(open)
+      : setIsResourcesModalOpenInternal(open);
 
   return (
     <>
@@ -90,7 +106,9 @@ export default function TopBar({
               >
                 <ArrowLeft className="w-4 h-4" />
                 {backLabel?.trim() ? (
-                  <span className="hidden sm:inline truncate max-w-[120px]">{backLabel}</span>
+                  <span className="hidden sm:inline truncate max-w-[120px]">
+                    {backLabel}
+                  </span>
                 ) : null}
               </Link>
             )}
@@ -98,14 +116,19 @@ export default function TopBar({
               <button
                 type="button"
                 onClick={onOpenSidebar}
-                className={cn('flex-shrink-0 p-2 rounded-lg hover:bg-primary-foreground/10 focus:outline-none focus:ring-2 focus:ring-primary-foreground/50', !showSidebarButtonAlways && 'md:hidden')}
+                className={cn(
+                  'flex-shrink-0 p-2 rounded-lg hover:bg-primary-foreground/10 focus:outline-none focus:ring-2 focus:ring-primary-foreground/50',
+                  !showSidebarButtonAlways && 'md:hidden'
+                )}
                 aria-label={t('sidebar.navigation')}
               >
                 <Menu className="w-5 h-5" />
               </button>
             )}
             <h1 className="text-base md:text-xl font-bold truncate min-w-0 flex-1">
-              {backHref || minimal ? projectName : `${projectName} – ${t('topbar.task_board')}`}
+              {backHref || minimal
+                ? projectName
+                : `${projectName} – ${t('topbar.task_board')}`}
             </h1>
             {isDetailView && actions != null && (
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -115,18 +138,32 @@ export default function TopBar({
           </div>
           {!minimal && (
             <>
-              <div className={cn("flex items-center gap-2 flex-wrap", isDetailView && "hidden lg:flex")}>
-                {onToggleSelectionMode && !(isDetailView && resourcesInSidebar) && (
-                  <Button
-                    onClick={onToggleSelectionMode}
-                    variant={selectionMode ? "default" : "outline"}
-                    size="sm"
-                    className={selectionMode ? "bg-primary-foreground text-primary hover:bg-primary-foreground/90" : "bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"}
-                  >
-                    <CheckSquare className="w-4 h-4 md:mr-2" />
-                    <span className="hidden md:inline">{selectionMode ? t('topbar.cancel_selection') : t('topbar.select')}</span>
-                  </Button>
+              <div
+                className={cn(
+                  'flex items-center gap-2 flex-wrap',
+                  isDetailView && 'hidden lg:flex'
                 )}
+              >
+                {onToggleSelectionMode &&
+                  !(isDetailView && resourcesInSidebar) && (
+                    <Button
+                      onClick={onToggleSelectionMode}
+                      variant={selectionMode ? 'default' : 'outline'}
+                      size="sm"
+                      className={
+                        selectionMode
+                          ? 'bg-primary-foreground text-primary hover:bg-primary-foreground/90'
+                          : 'bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90'
+                      }
+                    >
+                      <CheckSquare className="w-4 h-4 md:mr-2" />
+                      <span className="hidden md:inline">
+                        {selectionMode
+                          ? t('topbar.cancel_selection')
+                          : t('topbar.select')}
+                      </span>
+                    </Button>
+                  )}
                 {currentProject ? (
                   <>
                     {(!isDetailView || !resourcesInSidebar) && (
@@ -135,8 +172,8 @@ export default function TopBar({
                         variant="outline"
                         size="sm"
                         className={cn(
-                          "bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90",
-                          resourcesInSidebar && "lg:hidden"
+                          'bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90',
+                          resourcesInSidebar && 'lg:hidden'
                         )}
                       >
                         <FolderOpen className="w-4 h-4 md:mr-2" />
@@ -144,15 +181,15 @@ export default function TopBar({
                       </Button>
                     )}
                     {!isDetailView && (
-                    <Button
-                      onClick={() => setIsNotesModalOpen(true)}
-                      variant="outline"
-                      size="sm"
-                      className="bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"
-                    >
-                      <FileText className="w-4 h-4 md:mr-2" />
-                      {t('sidebar.notes')}
-                    </Button>
+                      <Button
+                        onClick={() => setIsNotesModalOpen(true)}
+                        variant="outline"
+                        size="sm"
+                        className="bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90"
+                      >
+                        <FileText className="w-4 h-4 md:mr-2" />
+                        {t('sidebar.notes')}
+                      </Button>
                     )}
                     {!isDetailView && (
                       <Button
@@ -176,7 +213,13 @@ export default function TopBar({
                   </Button>
                 ) : null}
                 {!isDetailView && (
-                  <Button variant="ghost" size="icon" onClick={() => onSignOut()} className="text-primary-foreground hover:bg-primary/80" aria-label="Sign out">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onSignOut()}
+                    className="text-primary-foreground hover:bg-primary/80"
+                    aria-label="Sign out"
+                  >
                     <LogOut className="w-4 h-4" />
                   </Button>
                 )}
@@ -202,8 +245,8 @@ export default function TopBar({
             isOpen={isEditModalOpen}
             onClose={() => setEditModalOpen(false)}
             onProjectUpdated={() => {
-              onProjectUpdated()
-              setEditModalOpen(false)
+              onProjectUpdated();
+              setEditModalOpen(false);
             }}
             project={currentProject}
             defaultTab="details"
@@ -212,7 +255,7 @@ export default function TopBar({
             isOpen={isNotesModalOpen}
             onClose={() => setIsNotesModalOpen(false)}
             onProjectUpdated={() => {
-              onProjectUpdated()
+              onProjectUpdated();
             }}
             project={currentProject}
             defaultTab="notes"
@@ -232,5 +275,5 @@ export default function TopBar({
         />
       )}
     </>
-  )
+  );
 }

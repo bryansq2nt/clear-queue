@@ -1,34 +1,34 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { DetailLayout } from '@/components/DetailLayout'
-import { useI18n } from '@/components/I18nProvider'
-import { deleteBoardAction, addIdeaToBoardAction } from '../actions'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { DetailLayout } from '@/components/DetailLayout';
+import { useI18n } from '@/components/I18nProvider';
+import { deleteBoardAction, addIdeaToBoardAction } from '../actions';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface Board {
-  id: string
-  name: string
-  description: string | null
-  created_at: string
-  updated_at: string
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Idea {
-  id: string
-  title: string
-  description: string | null
+  id: string;
+  title: string;
+  description: string | null;
 }
 
 interface BoardItem {
-  id: string
-  idea_id: string
-  x: number
-  y: number
-  idea?: Idea
+  id: string;
+  idea_id: string;
+  x: number;
+  y: number;
+  idea?: Idea;
 }
 
 export default function BoardDetailClient({
@@ -36,14 +36,14 @@ export default function BoardDetailClient({
   boardItems,
   availableIdeas,
 }: {
-  board: Board
-  boardItems: BoardItem[]
-  availableIdeas: Idea[]
+  board: Board;
+  boardItems: BoardItem[];
+  availableIdeas: Idea[];
 }) {
-  const { t } = useI18n()
-  const router = useRouter()
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { t } = useI18n();
+  const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleDelete() {
     if (
@@ -51,41 +51,41 @@ export default function BoardDetailClient({
         'Are you sure you want to delete this board? This action cannot be undone.'
       )
     ) {
-      return
+      return;
     }
 
-    setIsDeleting(true)
-    const result = await deleteBoardAction(board.id)
+    setIsDeleting(true);
+    const result = await deleteBoardAction(board.id);
 
     if (result.success) {
-      router.push('/ideas/boards')
+      router.push('/ideas/boards');
     } else if (result.error) {
-      alert(result.error)
-      setIsDeleting(false)
+      alert(result.error);
+      setIsDeleting(false);
     }
   }
 
   async function handleAddIdea(formData: FormData) {
-    setError(null)
-    formData.append('boardId', board.id)
+    setError(null);
+    formData.append('boardId', board.id);
 
-    const result = await addIdeaToBoardAction(formData)
+    const result = await addIdeaToBoardAction(formData);
 
     if (result.data) {
       // Reset form
-      const form = document.getElementById('add-idea-form') as HTMLFormElement
-      form?.reset()
-      router.refresh()
+      const form = document.getElementById('add-idea-form') as HTMLFormElement;
+      form?.reset();
+      router.refresh();
     } else if (result.error) {
-      setError(result.error)
+      setError(result.error);
     }
   }
 
   // Filter out ideas that are already in the board
-  const existingIdeaIds = new Set(boardItems.map((item) => item.idea_id))
+  const existingIdeaIds = new Set(boardItems.map((item) => item.idea_id));
   const availableIdeasToAdd = availableIdeas.filter(
     (idea) => !existingIdeaIds.has(idea.id)
-  )
+  );
 
   return (
     <DetailLayout
@@ -105,13 +105,13 @@ export default function BoardDetailClient({
       contentClassName="p-4 sm:p-6 max-w-4xl mx-auto"
     >
       <div className="space-y-6">
-      {board.description && (
-        <div className="bg-card rounded-lg border border-border p-4">
-          <p className="text-muted-foreground whitespace-pre-wrap text-sm">
-            {board.description}
-          </p>
-        </div>
-      )}
+        {board.description && (
+          <div className="bg-card rounded-lg border border-border p-4">
+            <p className="text-muted-foreground whitespace-pre-wrap text-sm">
+              {board.description}
+            </p>
+          </div>
+        )}
         <div className="text-sm text-muted-foreground">
           <p>Created: {new Date(board.created_at).toLocaleString()}</p>
           {board.updated_at !== board.created_at && (
@@ -123,16 +123,9 @@ export default function BoardDetailClient({
       {/* Add Idea to Board */}
       <div className="bg-white rounded-lg border p-6">
         <h2 className="text-xl font-semibold mb-4">Add idea to this board</h2>
-        <form
-          id="add-idea-form"
-          action={handleAddIdea}
-          className="space-y-4"
-        >
+        <form id="add-idea-form" action={handleAddIdea} className="space-y-4">
           <div>
-            <label
-              htmlFor="ideaId"
-              className="block text-sm font-medium mb-2"
-            >
+            <label htmlFor="ideaId" className="block text-sm font-medium mb-2">
               Idea <span className="text-red-500">*</span>
             </label>
             {availableIdeasToAdd.length === 0 ? (
@@ -160,25 +153,13 @@ export default function BoardDetailClient({
               <label htmlFor="x" className="block text-sm font-medium mb-2">
                 X Position (optional)
               </label>
-              <Input
-                id="x"
-                name="x"
-                type="number"
-                step="0.1"
-                placeholder="0"
-              />
+              <Input id="x" name="x" type="number" step="0.1" placeholder="0" />
             </div>
             <div>
               <label htmlFor="y" className="block text-sm font-medium mb-2">
                 Y Position (optional)
               </label>
-              <Input
-                id="y"
-                name="y"
-                type="number"
-                step="0.1"
-                placeholder="0"
-              />
+              <Input id="y" name="y" type="number" step="0.1" placeholder="0" />
             </div>
           </div>
           {error && (
@@ -186,10 +167,7 @@ export default function BoardDetailClient({
               {error}
             </div>
           )}
-          <Button
-            type="submit"
-            disabled={availableIdeasToAdd.length === 0}
-          >
+          <Button type="submit" disabled={availableIdeasToAdd.length === 0}>
             Add Idea to Board
           </Button>
         </form>
@@ -215,9 +193,7 @@ export default function BoardDetailClient({
                       href={`/ideas/${item.idea.id}`}
                       className="block hover:text-primary"
                     >
-                      <h3 className="font-semibold mb-1">
-                        {item.idea.title}
-                      </h3>
+                      <h3 className="font-semibold mb-1">{item.idea.title}</h3>
                       {item.idea.description && (
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {item.idea.description}
@@ -245,5 +221,5 @@ export default function BoardDetailClient({
         )}
       </div>
     </DetailLayout>
-  )
+  );
 }

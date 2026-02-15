@@ -1,7 +1,7 @@
-import { requireAuth } from '@/lib/auth'
-import NotesPageClient from './NotesPageClient'
+import { requireAuth } from '@/lib/auth';
+import NotesPageClient from './NotesPageClient';
 
 export default async function NotesPage() {
-  await requireAuth()
-  return <NotesPageClient />
+  await requireAuth();
+  return <NotesPageClient />;
 }

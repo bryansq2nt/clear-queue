@@ -1,37 +1,37 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useI18n } from '@/components/I18nProvider'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { updateIdeaAction, deleteIdeaAction } from '../actions'
+import { useState } from 'react';
+import { useI18n } from '@/components/I18nProvider';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { updateIdeaAction, deleteIdeaAction } from '../actions';
 import {
   linkIdeaToProjectAction,
   unlinkIdeaFromProjectAction,
-} from './project-link-actions'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+} from './project-link-actions';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface Idea {
-  id: string
-  title: string
-  description: string | null
-  created_at: string
-  updated_at: string
+  id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Project {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 interface ProjectLink {
-  id: string
-  project_id: string
-  role: string | null
-  created_at: string
-  project?: Project
+  id: string;
+  project_id: string;
+  role: string | null;
+  created_at: string;
+  project?: Project;
 }
 
 export default function IdeaDetailClient({
@@ -39,88 +39,90 @@ export default function IdeaDetailClient({
   projectLinks: initialProjectLinks,
   availableProjects,
 }: {
-  idea: Idea
-  projectLinks: ProjectLink[]
-  availableProjects: { id: string; name: string }[]
+  idea: Idea;
+  projectLinks: ProjectLink[];
+  availableProjects: { id: string; name: string }[];
 }) {
-  const { t } = useI18n()
-  const router = useRouter()
-  const [isEditing, setIsEditing] = useState(false)
-  const [idea, setIdea] = useState(initialIdea)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [projectLinks, setProjectLinks] = useState(initialProjectLinks)
-  const [linkError, setLinkError] = useState<string | null>(null)
+  const { t } = useI18n();
+  const router = useRouter();
+  const [isEditing, setIsEditing] = useState(false);
+  const [idea, setIdea] = useState(initialIdea);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [projectLinks, setProjectLinks] = useState(initialProjectLinks);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   async function handleUpdate(formData: FormData) {
-    formData.append('id', idea.id)
-    const result = await updateIdeaAction(formData)
+    formData.append('id', idea.id);
+    const result = await updateIdeaAction(formData);
 
     if (result.data) {
-      setIdea(result.data)
-      setIsEditing(false)
-      router.refresh()
+      setIdea(result.data);
+      setIsEditing(false);
+      router.refresh();
     } else if (result.error) {
-      alert(result.error)
+      alert(result.error);
     }
   }
 
   async function handleDelete() {
     if (!confirm(t('ideas.delete_idea_confirm'))) {
-      return
+      return;
     }
 
-    setIsDeleting(true)
-    const result = await deleteIdeaAction(idea.id)
+    setIsDeleting(true);
+    const result = await deleteIdeaAction(idea.id);
 
     if (result.success) {
-      router.push('/ideas')
+      router.push('/ideas');
     } else if (result.error) {
-      alert(result.error)
-      setIsDeleting(false)
+      alert(result.error);
+      setIsDeleting(false);
     }
   }
 
   async function handleLinkProject(formData: FormData) {
-    setLinkError(null)
-    const projectId = formData.get('projectId') as string
-    const role = formData.get('role') as string | null
+    setLinkError(null);
+    const projectId = formData.get('projectId') as string;
+    const role = formData.get('role') as string | null;
 
     if (!projectId) {
-      setLinkError(t('ideas.please_select_project'))
-      return
+      setLinkError(t('ideas.please_select_project'));
+      return;
     }
 
-    const result = await linkIdeaToProjectAction(idea.id, projectId, role)
+    const result = await linkIdeaToProjectAction(idea.id, projectId, role);
 
     if (result.data) {
       // Reset form
-      const form = document.getElementById('link-project-form') as HTMLFormElement
-      form?.reset()
-      router.refresh()
+      const form = document.getElementById(
+        'link-project-form'
+      ) as HTMLFormElement;
+      form?.reset();
+      router.refresh();
     } else if (result.error) {
-      setLinkError(result.error)
+      setLinkError(result.error);
     }
   }
 
   async function handleUnlink(linkId: string) {
     if (!confirm(t('ideas.unlink_confirm'))) {
-      return
+      return;
     }
 
-    const result = await unlinkIdeaFromProjectAction(linkId)
+    const result = await unlinkIdeaFromProjectAction(linkId);
 
     if (result.success) {
-      router.refresh()
+      router.refresh();
     } else if (result.error) {
-      alert(result.error)
+      alert(result.error);
     }
   }
 
   // Filter out projects that are already linked
-  const linkedProjectIds = new Set(projectLinks.map((link) => link.project_id))
+  const linkedProjectIds = new Set(projectLinks.map((link) => link.project_id));
   const availableProjectsToLink = availableProjects.filter(
     (p) => !linkedProjectIds.has(p.id)
-  )
+  );
 
   return (
     <div className="space-y-6">
@@ -129,10 +131,7 @@ export default function IdeaDetailClient({
         {isEditing ? (
           <form action={handleUpdate} className="space-y-4">
             <div>
-              <label
-                htmlFor="title"
-                className="block text-sm font-medium mb-2"
-              >
+              <label htmlFor="title" className="block text-sm font-medium mb-2">
                 {t('ideas.title_label')}
               </label>
               <Input
@@ -174,10 +173,7 @@ export default function IdeaDetailClient({
             <div className="flex items-start justify-between mb-4">
               <h1 className="text-3xl font-bold">{idea.title}</h1>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditing(true)}
-                >
+                <Button variant="outline" onClick={() => setIsEditing(true)}>
                   {t('common.edit')}
                 </Button>
                 <Button
@@ -198,11 +194,13 @@ export default function IdeaDetailClient({
             )}
             <div className="text-sm text-muted-foreground">
               <p>
-                {t('ideas.created')}: {new Date(idea.created_at).toLocaleString()}
+                {t('ideas.created')}:{' '}
+                {new Date(idea.created_at).toLocaleString()}
               </p>
               {idea.updated_at !== idea.created_at && (
                 <p>
-                  {t('ideas.updated')}: {new Date(idea.updated_at).toLocaleString()}
+                  {t('ideas.updated')}:{' '}
+                  {new Date(idea.updated_at).toLocaleString()}
                 </p>
               )}
             </div>
@@ -210,5 +208,5 @@ export default function IdeaDetailClient({
         )}
       </div>
     </div>
-  )
+  );
 }

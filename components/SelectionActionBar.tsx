@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Button } from './ui/button'
-import { Trash2, X } from 'lucide-react'
+import { useState } from 'react';
+import { Button } from './ui/button';
+import { Trash2, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,28 +10,33 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog'
+} from './ui/dialog';
 
 interface SelectionActionBarProps {
-  selectedCount: number
-  onDelete: () => void
-  onCancel: () => void
-  isDeleting?: boolean
+  selectedCount: number;
+  onDelete: () => void;
+  onCancel: () => void;
+  isDeleting?: boolean;
 }
 
-export function SelectionActionBar({ selectedCount, onDelete, onCancel, isDeleting = false }: SelectionActionBarProps) {
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+export function SelectionActionBar({
+  selectedCount,
+  onDelete,
+  onCancel,
+  isDeleting = false,
+}: SelectionActionBarProps) {
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   function handleDeleteClick() {
-    setShowConfirmDialog(true)
+    setShowConfirmDialog(true);
   }
 
   function handleConfirmDelete() {
-    setShowConfirmDialog(false)
-    onDelete()
+    setShowConfirmDialog(false);
+    onDelete();
   }
 
-  if (selectedCount === 0) return null
+  if (selectedCount === 0) return null;
 
   return (
     <>
@@ -67,7 +72,9 @@ export function SelectionActionBar({ selectedCount, onDelete, onCancel, isDeleti
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete {selectedCount} {selectedCount === 1 ? 'task' : 'tasks'}?</DialogTitle>
+            <DialogTitle>
+              Delete {selectedCount} {selectedCount === 1 ? 'task' : 'tasks'}?
+            </DialogTitle>
             <DialogDescription>This can&apos;t be undone.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -89,5 +96,5 @@ export function SelectionActionBar({ selectedCount, onDelete, onCancel, isDeleti
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

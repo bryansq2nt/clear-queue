@@ -1,22 +1,22 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { Menu, ArrowLeft } from 'lucide-react'
-import { useI18n } from '@/components/I18nProvider'
-import { cn } from '@/lib/utils'
+import Link from 'next/link';
+import { Menu, ArrowLeft } from 'lucide-react';
+import { useI18n } from '@/components/I18nProvider';
+import { cn } from '@/lib/utils';
 
 export interface GlobalHeaderProps {
   /** Page title */
-  title: string
+  title: string;
   /** If set, show back link instead of menu button */
-  backHref?: string
-  backLabel?: string
+  backHref?: string;
+  backLabel?: string;
   /** If set and no backHref, show menu button to open sidebar (mobile + desktop) */
-  onOpenSidebar?: () => void
+  onOpenSidebar?: () => void;
   /** When true, show sidebar menu button on all screen sizes (e.g. when sidebar is overlay-only) */
-  showSidebarButtonAlways?: boolean
+  showSidebarButtonAlways?: boolean;
   /** Optional right-side action (icon button or custom node) */
-  rightAction?: React.ReactNode
+  rightAction?: React.ReactNode;
 }
 
 /**
@@ -31,7 +31,7 @@ export function GlobalHeader({
   showSidebarButtonAlways = false,
   rightAction,
 }: GlobalHeaderProps) {
-  const { t } = useI18n()
+  const { t } = useI18n();
 
   return (
     <header className="bg-primary text-primary-foreground shadow flex-shrink-0">
@@ -40,18 +40,25 @@ export function GlobalHeader({
           <Link
             href={backHref}
             className="flex-shrink-0 inline-flex items-center gap-1.5 text-sm text-primary-foreground/90 hover:text-primary-foreground py-1 pr-2"
-            aria-label={backLabel && backLabel.trim() ? undefined : t('common.back')}
+            aria-label={
+              backLabel && backLabel.trim() ? undefined : t('common.back')
+            }
           >
             <ArrowLeft className="w-4 h-4" />
             {backLabel && backLabel.trim() ? (
-              <span className="hidden sm:inline truncate max-w-[120px]">{backLabel}</span>
+              <span className="hidden sm:inline truncate max-w-[120px]">
+                {backLabel}
+              </span>
             ) : null}
           </Link>
         ) : onOpenSidebar != null ? (
           <button
             type="button"
             onClick={onOpenSidebar}
-            className={cn('flex-shrink-0 p-2 rounded-lg hover:bg-primary-foreground/10 focus:outline-none focus:ring-2 focus:ring-primary-foreground/50', !showSidebarButtonAlways && 'md:hidden')}
+            className={cn(
+              'flex-shrink-0 p-2 rounded-lg hover:bg-primary-foreground/10 focus:outline-none focus:ring-2 focus:ring-primary-foreground/50',
+              !showSidebarButtonAlways && 'md:hidden'
+            )}
             aria-label={t('sidebar.navigation')}
           >
             <Menu className="w-5 h-5" />
@@ -61,11 +68,9 @@ export function GlobalHeader({
           {title}
         </h1>
         {rightAction != null ? (
-          <div className="flex items-center flex-shrink-0">
-            {rightAction}
-          </div>
+          <div className="flex items-center flex-shrink-0">{rightAction}</div>
         ) : null}
       </div>
     </header>
-  )
+  );
 }

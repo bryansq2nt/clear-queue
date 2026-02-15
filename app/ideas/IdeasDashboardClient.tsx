@@ -1,56 +1,56 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { useI18n } from '@/components/I18nProvider'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { useState, useEffect, useCallback } from 'react';
+import { useI18n } from '@/components/I18nProvider';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog'
-import { Plus, PanelLeftOpen, Pencil } from 'lucide-react'
-import BoardsSidebar from './BoardsSidebar'
-import IdeaGraphCanvas from './IdeaGraphCanvas'
-import IdeaDrawer from './IdeaDrawer'
-import { createIdeaAction } from './actions'
+} from '@/components/ui/dialog';
+import { Plus, PanelLeftOpen, Pencil } from 'lucide-react';
+import BoardsSidebar from './BoardsSidebar';
+import IdeaGraphCanvas from './IdeaGraphCanvas';
+import IdeaDrawer from './IdeaDrawer';
+import { createIdeaAction } from './actions';
 import {
   createBoardAction,
   updateBoardAction,
   addIdeaToBoardAction,
-} from './boards/actions'
-import { loadBoardDataAction } from './load-board-data'
+} from './boards/actions';
+import { loadBoardDataAction } from './load-board-data';
 
 interface Idea {
-  id: string
-  title: string
-  description: string | null
+  id: string;
+  title: string;
+  description: string | null;
 }
 
 interface Board {
-  id: string
-  name: string
-  description: string | null
-  project_id?: string | null
+  id: string;
+  name: string;
+  description: string | null;
+  project_id?: string | null;
 }
 
 interface BoardItem {
-  id: string
-  idea_id: string
-  x: number
-  y: number
-  idea: Idea
+  id: string;
+  idea_id: string;
+  x: number;
+  y: number;
+  idea: Idea;
 }
 
 interface Connection {
-  id: string
-  from_idea_id: string
-  to_idea_id: string
-  type: string
+  id: string;
+  from_idea_id: string;
+  to_idea_id: string;
+  type: string;
 }
 
 export default function IdeasDashboardClient({
@@ -58,42 +58,42 @@ export default function IdeasDashboardClient({
   initialIdeas,
   initialProjects = [],
 }: {
-  initialBoards: Board[]
-  initialIdeas: Idea[]
-  initialProjects?: { id: string; name: string }[]
+  initialBoards: Board[];
+  initialIdeas: Idea[];
+  initialProjects?: { id: string; name: string }[];
 }) {
-  const { t } = useI18n()
-  const router = useRouter()
-  const [boards, setBoards] = useState(initialBoards)
+  const { t } = useI18n();
+  const router = useRouter();
+  const [boards, setBoards] = useState(initialBoards);
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(
     initialBoards.length > 0 ? initialBoards[0].id : null
-  )
-  const [boardItems, setBoardItems] = useState<BoardItem[]>([])
-  const [connections, setConnections] = useState<Connection[]>([])
-  const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
-  const [isCreatingIdea, setIsCreatingIdea] = useState(false)
-  const [isCreatingBoard, setIsCreatingBoard] = useState(false)
-  const [isEditingBoard, setIsEditingBoard] = useState(false)
-  const [isSavingBoard, setIsSavingBoard] = useState(false)
-  const [boardEditError, setBoardEditError] = useState<string | null>(null)
-  const [newBoardName, setNewBoardName] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [boardsPanelOpen, setBoardsPanelOpen] = useState(false)
+  );
+  const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null);
+  const [isCreatingIdea, setIsCreatingIdea] = useState(false);
+  const [isCreatingBoard, setIsCreatingBoard] = useState(false);
+  const [isEditingBoard, setIsEditingBoard] = useState(false);
+  const [isSavingBoard, setIsSavingBoard] = useState(false);
+  const [boardEditError, setBoardEditError] = useState<string | null>(null);
+  const [newBoardName, setNewBoardName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [boardsPanelOpen, setBoardsPanelOpen] = useState(false);
 
   // Load board data when board is selected
   const loadBoardData = useCallback(async (boardId: string) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const result = await loadBoardDataAction(boardId)
+      const result = await loadBoardDataAction(boardId);
       if (result.error) {
-        console.error('Failed to load board:', result.error)
-        return
+        console.error('Failed to load board:', result.error);
+        return;
       }
       // Filter out items without valid ideas (type-safe)
-      const items = result.items || []
+      const items = result.items || [];
       const validItems: BoardItem[] = items
         .map((item) => {
-          if (!item.idea) return null
+          if (!item.idea) return null;
           return {
             id: item.id,
             idea_id: item.idea_id,
@@ -104,109 +104,109 @@ export default function IdeasDashboardClient({
               title: item.idea.title,
               description: item.idea.description,
             },
-          }
+          };
         })
-        .filter((item): item is BoardItem => item !== null)
-      setBoardItems(validItems)
-      setConnections(result.connections || [])
+        .filter((item): item is BoardItem => item !== null);
+      setBoardItems(validItems);
+      setConnections(result.connections || []);
       if (result.board) {
         setBoards((prev) =>
           prev.map((b) =>
             b.id === result.board!.id ? { ...b, ...result.board } : b
           )
-        )
+        );
       }
     } catch (error) {
-      console.error('Failed to load board data:', error)
+      console.error('Failed to load board data:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
     if (selectedBoardId) {
-      loadBoardData(selectedBoardId)
+      loadBoardData(selectedBoardId);
     }
-  }, [selectedBoardId, loadBoardData])
+  }, [selectedBoardId, loadBoardData]);
 
   const handleCreateIdea = async (formData: FormData) => {
-    const result = await createIdeaAction(formData)
+    const result = await createIdeaAction(formData);
     if (result.data && selectedBoardId) {
       // Add idea to current board at default position
-      const addFormData = new FormData()
-      addFormData.append('boardId', selectedBoardId)
-      addFormData.append('ideaId', result.data.id)
-      addFormData.append('x', '400')
-      addFormData.append('y', '300')
-      await addIdeaToBoardAction(addFormData)
-      router.refresh()
-      setIsCreatingIdea(false)
+      const addFormData = new FormData();
+      addFormData.append('boardId', selectedBoardId);
+      addFormData.append('ideaId', result.data.id);
+      addFormData.append('x', '400');
+      addFormData.append('y', '300');
+      await addIdeaToBoardAction(addFormData);
+      router.refresh();
+      setIsCreatingIdea(false);
       // Reload board data
       if (selectedBoardId) {
-        loadBoardData(selectedBoardId)
+        loadBoardData(selectedBoardId);
       }
     }
-  }
+  };
 
   const handleCreateBoard = async () => {
-    if (!newBoardName.trim()) return
+    if (!newBoardName.trim()) return;
 
-    const formData = new FormData()
-    formData.append('name', newBoardName)
-    const result = await createBoardAction(formData)
+    const formData = new FormData();
+    formData.append('name', newBoardName);
+    const result = await createBoardAction(formData);
     if (result.data) {
-      setBoards([result.data, ...boards])
-      setSelectedBoardId(result.data.id)
-      setNewBoardName('')
-      setIsCreatingBoard(false)
-      router.refresh()
+      setBoards([result.data, ...boards]);
+      setSelectedBoardId(result.data.id);
+      setNewBoardName('');
+      setIsCreatingBoard(false);
+      router.refresh();
     }
-  }
+  };
 
   const handleNodeClick = (ideaId: string) => {
-    setSelectedIdeaId(ideaId)
-  }
+    setSelectedIdeaId(ideaId);
+  };
 
   const handleCloseDrawer = () => {
-    setSelectedIdeaId(null)
-  }
+    setSelectedIdeaId(null);
+  };
 
   const handleRefresh = () => {
-    router.refresh()
+    router.refresh();
     if (selectedBoardId) {
-      loadBoardData(selectedBoardId)
+      loadBoardData(selectedBoardId);
     }
-  }
+  };
 
   const selectedBoard = selectedBoardId
     ? boards.find((b) => b.id === selectedBoardId)
-    : null
+    : null;
 
   const handleUpdateBoard = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!selectedBoardId) return
-    setBoardEditError(null)
-    setIsSavingBoard(true)
-    const form = e.currentTarget
-    const formData = new FormData(form)
-    formData.set('id', selectedBoardId)
+    e.preventDefault();
+    if (!selectedBoardId) return;
+    setBoardEditError(null);
+    setIsSavingBoard(true);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    formData.set('id', selectedBoardId);
     try {
-      const result = await updateBoardAction(formData)
+      const result = await updateBoardAction(formData);
       if (result.data) {
         setBoards((prev) =>
           prev.map((b) =>
             b.id === selectedBoardId ? { ...b, ...result.data } : b
           )
-        )
-        setIsEditingBoard(false)
-        router.refresh()
+        );
+        setIsEditingBoard(false);
+        router.refresh();
       } else {
-        setBoardEditError(result.error ?? t('common.error'))
+        setBoardEditError(result.error ?? t('common.error'));
       }
     } finally {
-      setIsSavingBoard(false)
+      setIsSavingBoard(false);
     }
-  }
+  };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -242,21 +242,27 @@ export default function IdeasDashboardClient({
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
-              ) : <span className="w-9" />}
+              ) : (
+                <span className="w-9" />
+              )}
             </div>
           </div>
         </div>
 
         {/* Boards overlay: no layout space when closed */}
         {boardsPanelOpen && (
-          <div className="fixed inset-0 z-40 flex flex-row animate-in fade-in duration-200" aria-modal="true" role="dialog">
+          <div
+            className="fixed inset-0 z-40 flex flex-row animate-in fade-in duration-200"
+            aria-modal="true"
+            role="dialog"
+          >
             <div className="animate-in slide-in-from-left-2 duration-200 flex-shrink-0">
               <BoardsSidebar
                 boards={boards}
                 selectedBoardId={selectedBoardId}
                 onSelectBoard={(id) => {
-                  setSelectedBoardId(id)
-                  setBoardsPanelOpen(false)
+                  setSelectedBoardId(id);
+                  setBoardsPanelOpen(false);
                 }}
                 onRefresh={handleRefresh}
                 isCreatingBoard={isCreatingBoard}
@@ -264,14 +270,14 @@ export default function IdeasDashboardClient({
                 onNewBoardNameChange={setNewBoardName}
                 onCreateBoard={handleCreateBoard}
                 onCancelNewBoard={() => {
-                  setIsCreatingBoard(false)
-                  setNewBoardName('')
+                  setIsCreatingBoard(false);
+                  setNewBoardName('');
                 }}
                 onStartCreateBoard={() => setIsCreatingBoard(true)}
                 onEditBoard={(boardId) => {
-                  setSelectedBoardId(boardId)
-                  setIsEditingBoard(true)
-                  setBoardsPanelOpen(false)
+                  setSelectedBoardId(boardId);
+                  setIsEditingBoard(true);
+                  setBoardsPanelOpen(false);
                 }}
                 onClose={() => setBoardsPanelOpen(false)}
               />
@@ -332,7 +338,11 @@ export default function IdeasDashboardClient({
               autoFocus
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsCreatingIdea(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCreatingIdea(false)}
+              >
                 {t('common.cancel')}
               </Button>
               <Button type="submit">{t('common.add')}</Button>
@@ -346,8 +356,8 @@ export default function IdeasDashboardClient({
         open={isEditingBoard && !!selectedBoard}
         onOpenChange={(open) => {
           if (!open) {
-            setIsEditingBoard(false)
-            setBoardEditError(null)
+            setIsEditingBoard(false);
+            setBoardEditError(null);
           }
         }}
       >
@@ -359,7 +369,9 @@ export default function IdeasDashboardClient({
             <form onSubmit={handleUpdateBoard} className="space-y-4">
               <input type="hidden" name="id" value={selectedBoard.id} />
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t('ideas.board_name_placeholder')}</label>
+                <label className="text-sm font-medium">
+                  {t('ideas.board_name_placeholder')}
+                </label>
                 <Input
                   name="name"
                   defaultValue={selectedBoard.name}
@@ -405,8 +417,8 @@ export default function IdeasDashboardClient({
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    setIsEditingBoard(false)
-                    setBoardEditError(null)
+                    setIsEditingBoard(false);
+                    setBoardEditError(null);
                   }}
                 >
                   {t('common.cancel')}
@@ -430,5 +442,5 @@ export default function IdeasDashboardClient({
         />
       )}
     </div>
-  )
+  );
 }

@@ -3,6 +3,7 @@
 ## 1. Resumen Ejecutivo
 
 ### Conteo por severidad
+
 - **Critical:** 0
 - **High:** 3
 - **Medium:** 4
@@ -10,6 +11,7 @@
 - **Info:** 1
 
 ### Top 5 hallazgos por riesgo
+
 1. **SEC-001 (High):** Políticas RLS `FOR UPDATE` sin `WITH CHECK` en `budget_categories` y `budget_items`, permitiendo reasignaciones de filas a recursos fuera del tenant si se conoce un UUID válido.
 2. **SEC-002 (High):** Política RLS `FOR UPDATE` sin `WITH CHECK` en `business_media`, con mismo patrón de reasignación potencial cruzada.
 3. **SEC-003 (High):** Trigger de integridad en `projects` no valida pertenencia (`owner_id`) de `client_id`/`business_id`, permitiendo referencias cruzadas entre tenants.
@@ -21,6 +23,7 @@
 ## 2. Tabla de Hallazgos (lista priorizada)
 
 ### SEC-001
+
 - **ID:** SEC-001
 - **Severidad:** High
 - **Categoría:** Security
@@ -32,6 +35,7 @@
 - **Notas:** Patrón similar al de `business_media` (SEC-002).
 
 ### SEC-002
+
 - **ID:** SEC-002
 - **Severidad:** High
 - **Categoría:** Security
@@ -43,6 +47,7 @@
 - **Notas:** Mismo anti-patrón de RLS que SEC-001.
 
 ### SEC-003
+
 - **ID:** SEC-003
 - **Severidad:** High
 - **Categoría:** Security
@@ -54,6 +59,7 @@
 - **Notas:** Relacionado con controles de autorización a nivel de datos, no de autenticación.
 
 ### PERF-001
+
 - **ID:** PERF-001
 - **Severidad:** Medium
 - **Categoría:** Performance
@@ -65,6 +71,7 @@
 - **Notas:** También incrementa carga de DB por operación de drag-and-drop.
 
 ### PERF-002
+
 - **ID:** PERF-002
 - **Severidad:** Medium
 - **Categoría:** Performance
@@ -76,6 +83,7 @@
 - **Notas:** Hallazgo de optimización, no de autorización.
 
 ### VIBE-001
+
 - **ID:** VIBE-001
 - **Severidad:** Medium
 - **Categoría:** Vibe
@@ -87,6 +95,7 @@
 - **Notas:** Se combina con validaciones parciales en server actions.
 
 ### VIBE-002
+
 - **ID:** VIBE-002
 - **Severidad:** Medium
 - **Categoría:** Vibe
@@ -98,6 +107,7 @@
 - **Notas:** No implica bypass directo de RLS, pero sí robustez limitada.
 
 ### SEC-004
+
 - **ID:** SEC-004
 - **Severidad:** Low
 - **Categoría:** Security
@@ -109,6 +119,7 @@
 - **Notas:** Riesgo más de hardening e higiene de mensajes.
 
 ### PERF-003
+
 - **ID:** PERF-003
 - **Severidad:** Low
 - **Categoría:** Performance
@@ -120,6 +131,7 @@
 - **Notas:** Impacto incremental en carga del servidor.
 
 ### MAINT-001
+
 - **ID:** MAINT-001
 - **Severidad:** Low
 - **Categoría:** Maintainability
@@ -131,6 +143,7 @@
 - **Notas:** Relacionado con deuda técnica operativa.
 
 ### INFO-001
+
 - **ID:** INFO-001
 - **Severidad:** Info
 - **Categoría:** Security
@@ -146,9 +159,11 @@
 ## 3. Mapa de Superficie de Ataque (si aplica)
 
 ### Middleware
+
 - `middleware.ts` (protección por prefijos de ruta: `/dashboard`, `/project`, `/ideas`, `/todo`, `/budgets`, `/clients`, `/businesses`, `/notes`).
 
 ### Server actions (entrada mutante/lectura sensible)
+
 - Auth: `app/actions/auth.ts`
 - Projects/Favorites: `app/actions/projects.ts`
 - Tasks: `app/actions/tasks.ts`
@@ -160,6 +175,7 @@
 - Idea boards/canvas: `app/ideas/boards/actions.ts`, `app/ideas/boards/[id]/canvas/actions.ts`, `app/ideas/boards/[id]/canvas/connection-actions.ts`, `app/ideas/boards/[id]/canvas/batch-actions.ts`
 
 ### Capa de datos / políticas
+
 - Migraciones RLS y esquema en `supabase/migrations/*.sql` (proyectos, tareas, presupuestos, ideas, clientes, negocios, notas, listas TODO).
 
 ---

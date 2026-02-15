@@ -1,16 +1,16 @@
-import { Database } from '@/lib/supabase/types'
+import { Database } from '@/lib/supabase/types';
 
-type TaskStatus = Database['public']['Tables']['tasks']['Row']['status']
+type TaskStatus = Database['public']['Tables']['tasks']['Row']['status'];
 
 export interface StatusCardStyles {
-  bg: string
-  border: string
-  hover: string
+  bg: string;
+  border: string;
+  hover: string;
 }
 
 export interface StatusColumnStyles {
-  bg: string
-  border: string
+  bg: string;
+  border: string;
 }
 
 /**
@@ -43,9 +43,9 @@ export function getStatusCardClasses(status: TaskStatus): StatusCardStyles {
       border: 'border-emerald-200',
       hover: 'hover:bg-emerald-50',
     },
-  }
+  };
 
-  return styles[status] || styles.backlog
+  return styles[status] || styles.backlog;
 }
 
 /**
@@ -73,7 +73,7 @@ export function getStatusColumnClasses(status: TaskStatus): StatusColumnStyles {
       bg: 'bg-emerald-50/30',
       border: 'border-emerald-200/50',
     },
-  }
+  };
 
-  return styles[status] || styles.backlog
+  return styles[status] || styles.backlog;
 }

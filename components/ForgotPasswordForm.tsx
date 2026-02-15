@@ -1,59 +1,66 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { useState } from 'react';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function ForgotPasswordForm() {
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
-    setSuccess(null)
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
 
-    const form = e.currentTarget
-    const email = (form.elements.namedItem('email') as HTMLInputElement).value?.trim()
+    const form = e.currentTarget;
+    const email = (
+      form.elements.namedItem('email') as HTMLInputElement
+    ).value?.trim();
     if (!email) {
-      setError('Email is required')
-      setIsLoading(false)
-      return
+      setError('Email is required');
+      setIsLoading(false);
+      return;
     }
 
     const redirectTo =
       typeof window !== 'undefined'
         ? `${window.location.origin}/reset-password`
-        : `${process.env.NEXT_PUBLIC_SITE_URL || ''}/reset-password`
+        : `${process.env.NEXT_PUBLIC_SITE_URL || ''}/reset-password`;
 
-    const supabase = createClient()
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    })
+    const supabase = createClient();
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      email,
+      {
+        redirectTo,
+      }
+    );
 
     if (resetError) {
-      const message =
-        resetError.message?.toLowerCase().includes('rate limit')
-          ? 'Too many reset emails sent. Please try again in about an hour.'
-          : resetError.message
-      setError(message)
-      setIsLoading(false)
-      return
+      const message = resetError.message?.toLowerCase().includes('rate limit')
+        ? 'Too many reset emails sent. Please try again in about an hour.'
+        : resetError.message;
+      setError(message);
+      setIsLoading(false);
+      return;
     }
 
     setSuccess(
       'Check your email for a link to reset your password. Open the link in this same browser.'
-    )
-    setIsLoading(false)
+    );
+    setIsLoading(false);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow-lg">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 bg-white p-6 rounded-lg shadow-lg"
+    >
       {error && (
         <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
           {error}
@@ -83,5 +90,5 @@ export default function ForgotPasswordForm() {
         </Link>
       </p>
     </form>
-  )
+  );
 }

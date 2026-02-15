@@ -1,33 +1,33 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import Sidebar from './Sidebar'
-import { GlobalHeader } from './GlobalHeader'
-import { Database } from '@/lib/supabase/types'
-import { cn } from '@/lib/utils'
+import { useState } from 'react';
+import Sidebar from './Sidebar';
+import { GlobalHeader } from './GlobalHeader';
+import { Database } from '@/lib/supabase/types';
+import { cn } from '@/lib/utils';
 
-type Project = Database['public']['Tables']['projects']['Row']
+type Project = Database['public']['Tables']['projects']['Row'];
 
 export interface AppShellProps {
   /** Header title */
-  title: string
+  title: string;
   /** If set, show back link instead of sidebar menu button */
-  backHref?: string
-  backLabel?: string
+  backHref?: string;
+  backLabel?: string;
   /** Optional right-side action in header */
-  rightAction?: React.ReactNode
+  rightAction?: React.ReactNode;
   /** Sidebar: project list and selection state */
-  projects: Project[]
-  selectedProject?: string | null
-  selectedCategory?: string | null
-  showArchived?: boolean
-  onSelectProject?: (projectId: string | null) => void
-  onCategoryChange?: (category: string | null) => void
-  onShowArchivedChange?: (show: boolean) => void
-  onProjectUpdated?: () => void
-  children: React.ReactNode
+  projects: Project[];
+  selectedProject?: string | null;
+  selectedCategory?: string | null;
+  showArchived?: boolean;
+  onSelectProject?: (projectId: string | null) => void;
+  onCategoryChange?: (category: string | null) => void;
+  onShowArchivedChange?: (show: boolean) => void;
+  onProjectUpdated?: () => void;
+  children: React.ReactNode;
   /** Optional class for main content area */
-  contentClassName?: string
+  contentClassName?: string;
 }
 
 /**
@@ -50,7 +50,7 @@ export function AppShell({
   children,
   contentClassName,
 }: AppShellProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -58,7 +58,9 @@ export function AppShell({
         title={title}
         backHref={backHref}
         backLabel={backLabel}
-        onOpenSidebar={backHref == null ? () => setSidebarOpen(true) : undefined}
+        onOpenSidebar={
+          backHref == null ? () => setSidebarOpen(true) : undefined
+        }
         showSidebarButtonAlways
         rightAction={rightAction}
       />
@@ -81,5 +83,5 @@ export function AppShell({
         </main>
       </div>
     </div>
-  )
+  );
 }

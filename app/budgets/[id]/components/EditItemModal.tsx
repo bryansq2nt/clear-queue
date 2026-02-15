@@ -1,69 +1,77 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useI18n } from '@/components/I18nProvider'
-import { X, Package } from 'lucide-react'
-import { updateItem } from '../actions'
-import { Database } from '@/lib/supabase/types'
+import { useState, useEffect } from 'react';
+import { useI18n } from '@/components/I18nProvider';
+import { X, Package } from 'lucide-react';
+import { updateItem } from '../actions';
+import { Database } from '@/lib/supabase/types';
 
-type BudgetItem = Database['public']['Tables']['budget_items']['Row']
+type BudgetItem = Database['public']['Tables']['budget_items']['Row'];
 
 interface EditItemModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onUpdated?: (item: BudgetItem) => void
-  item: BudgetItem
-  budgetId: string
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdated?: (item: BudgetItem) => void;
+  item: BudgetItem;
+  budgetId: string;
 }
 
-export function EditItemModal({ isOpen, onClose, onUpdated, item, budgetId }: EditItemModalProps) {
-  const { t } = useI18n()
-  const [name, setName] = useState(item.name)
-  const [description, setDescription] = useState(item.description || '')
-  const [quantity, setQuantity] = useState(String(item.quantity))
-  const [unitPrice, setUnitPrice] = useState(String(item.unit_price))
-  const [link, setLink] = useState(item.link || '')
-  const [status, setStatus] = useState<'pending' | 'quoted' | 'acquired'>(item.status)
-  const [isRecurrent, setIsRecurrent] = useState(item.is_recurrent)
-  const [notes, setNotes] = useState(item.notes || '')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+export function EditItemModal({
+  isOpen,
+  onClose,
+  onUpdated,
+  item,
+  budgetId,
+}: EditItemModalProps) {
+  const { t } = useI18n();
+  const [name, setName] = useState(item.name);
+  const [description, setDescription] = useState(item.description || '');
+  const [quantity, setQuantity] = useState(String(item.quantity));
+  const [unitPrice, setUnitPrice] = useState(String(item.unit_price));
+  const [link, setLink] = useState(item.link || '');
+  const [status, setStatus] = useState<'pending' | 'quoted' | 'acquired'>(
+    item.status
+  );
+  const [isRecurrent, setIsRecurrent] = useState(item.is_recurrent);
+  const [notes, setNotes] = useState(item.notes || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Update form when item changes
   useEffect(() => {
     if (item) {
-      setName(item.name)
-      setDescription(item.description || '')
-      setQuantity(String(item.quantity))
-      setUnitPrice(String(item.unit_price))
-      setLink(item.link || '')
-      setStatus(item.status)
-      setIsRecurrent(item.is_recurrent)
-      setNotes(item.notes || '')
+      setName(item.name);
+      setDescription(item.description || '');
+      setQuantity(String(item.quantity));
+      setUnitPrice(String(item.unit_price));
+      setLink(item.link || '');
+      setStatus(item.status);
+      setIsRecurrent(item.is_recurrent);
+      setNotes(item.notes || '');
     }
-  }, [item])
+  }, [item]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     if (!name.trim()) {
-      alert('Please enter an item name')
-      return
+      alert('Please enter an item name');
+      return;
     }
 
-    const qty = parseFloat(quantity)
-    const price = parseFloat(unitPrice)
+    const qty = parseFloat(quantity);
+    const price = parseFloat(unitPrice);
 
     if (isNaN(qty) || qty <= 0) {
-      alert('Quantity must be greater than 0')
-      return
+      alert('Quantity must be greater than 0');
+      return;
     }
 
     if (isNaN(price) || price < 0) {
-      alert('Unit price must be 0 or greater')
-      return
+      alert('Unit price must be 0 or greater');
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       const updated = await updateItem(item.id, budgetId, {
         name: name.trim(),
@@ -74,33 +82,33 @@ export function EditItemModal({ isOpen, onClose, onUpdated, item, budgetId }: Ed
         status,
         is_recurrent: isRecurrent,
         notes: notes.trim() || undefined,
-      })
-      
-      onUpdated?.(updated as BudgetItem)
-      onClose()
+      });
+
+      onUpdated?.(updated as BudgetItem);
+      onClose();
     } catch (error) {
-      console.error('Error updating item:', error)
-      alert('Failed to update item')
+      console.error('Error updating item:', error);
+      alert('Failed to update item');
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   // Close on ESC key
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose()
+        onClose();
       }
-    }
+    };
 
-    window.addEventListener('keydown', handleEsc)
-    return () => window.removeEventListener('keydown', handleEsc)
-  }, [isOpen, onClose])
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -209,12 +217,18 @@ export function EditItemModal({ isOpen, onClose, onUpdated, item, budgetId }: Ed
             </label>
             <select
               value={status}
-              onChange={(e) => setStatus(e.target.value as 'pending' | 'quoted' | 'acquired')}
+              onChange={(e) =>
+                setStatus(e.target.value as 'pending' | 'quoted' | 'acquired')
+              }
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
             >
-              <option value="pending">{t('budgets.item_status_pending')}</option>
+              <option value="pending">
+                {t('budgets.item_status_pending')}
+              </option>
               <option value="quoted">{t('budgets.item_status_quoted')}</option>
-              <option value="acquired">{t('budgets.item_status_acquired')}</option>
+              <option value="acquired">
+                {t('budgets.item_status_acquired')}
+              </option>
             </select>
           </div>
 
@@ -227,7 +241,10 @@ export function EditItemModal({ isOpen, onClose, onUpdated, item, budgetId }: Ed
               onChange={(e) => setIsRecurrent(e.target.checked)}
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
-            <label htmlFor="isRecurrent" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label
+              htmlFor="isRecurrent"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
               {t('budgets.recurrent_item_label')}
             </label>
           </div>
@@ -260,11 +277,13 @@ export function EditItemModal({ isOpen, onClose, onUpdated, item, budgetId }: Ed
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isSubmitting ? t('budgets.updating_item') : t('budgets.update_item')}
+              {isSubmitting
+                ? t('budgets.updating_item')
+                : t('budgets.update_item')}
             </button>
           </div>
         </form>
       </div>
     </div>
-  )
+  );
 }

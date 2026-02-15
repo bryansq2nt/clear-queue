@@ -7,14 +7,14 @@ Este documento recopila **todo** lo que se implementó en el chat (~3 horas) par
 ## 1. Resumen de alcance (lo que hay que recrear)
 
 - **Headers normalizados**: Misma estructura y estilo en todas las pantallas (título, acciones, búsqueda cuando aplique).
-- **Sidebar colapsable**: En desktop se puede colapsar a iconos (localStorage); en móvil drawer con overlay. *(Parcialmente hecho.)*
+- **Sidebar colapsable**: En desktop se puede colapsar a iconos (localStorage); en móvil drawer con overlay. _(Parcialmente hecho.)_
 - **Vistas singulares (detalle)**: En proyecto, presupuesto, lista de ideas, cliente, empresa, nota, etc. **no se muestra el Sidebar**; solo un **botón “Volver atrás”** y un header compacto/normalizado.
 - **Floating Action Buttons (FABs)**: Añadidos donde tiene sentido (por ejemplo: añadir tarea en Kanban, añadir ítem en presupuesto, añadir negocio a cliente, etc.).
 - **Formularios de creación/edición**: Clientes, empresas, ítems (y similares) en **layout vertical**, **ocupando menos espacio** (sin grids de 2–3 columnas amplios).
-- **Panel de recursos del proyecto**: Columna derecha en vista de proyecto (Presupuestos, Notas, Ideas, Listas); en móvil modal. *(Hecho.)*
-- **Kanban**: En pantallas grandes columnas horizontales; en pequeñas acordeón; columnas colapsables en desktop. *(Hecho.)*
-- **Modal “Editar tablero” (Ideas)**: onSubmit, estados de guardado/error, cierre al éxito. *(Hecho.)*
-- **Locales**: Claves `resources.*`, `sidebar.collapse`/`expand`, `kanban.tasks_count_one`, etc. *(Hecho.)*
+- **Panel de recursos del proyecto**: Columna derecha en vista de proyecto (Presupuestos, Notas, Ideas, Listas); en móvil modal. _(Hecho.)_
+- **Kanban**: En pantallas grandes columnas horizontales; en pequeñas acordeón; columnas colapsables en desktop. _(Hecho.)_
+- **Modal “Editar tablero” (Ideas)**: onSubmit, estados de guardado/error, cierre al éxito. _(Hecho.)_
+- **Locales**: Claves `resources.*`, `sidebar.collapse`/`expand`, `kanban.tasks_count_one`, etc. _(Hecho.)_
 
 ---
 
@@ -46,15 +46,15 @@ Este documento recopila **todo** lo que se implementó en el chat (~3 horas) par
 
 En cada una de estas rutas/páginas, **quitar** el `<Sidebar />` y envolver el contenido en `DetailLayout` (o equivalente) con **botón “Volver atrás”** y header normalizado.
 
-| # | Ruta / archivo | Back link / label (i18n) |
-|---|-----------------|---------------------------|
-| B1 | `app/project/[id]` → `ProjectKanbanClient` | Volver al Dashboard (o “Todos los proyectos”) |
-| B2 | `app/budgets/[id]` → `BudgetDetailClient` | `budgets.back_to_budgets` |
-| B3 | `app/clients/[id]` → `ClientDetailClient` | `clients.back_to_clients` |
-| B4 | `app/businesses/[id]` → `BusinessDetailClient` | `businesses.back_to_businesses` |
-| B5 | `app/notes/[id]` → `NoteDetailClient` | `notes.back_to_notes` (ya existe en editor) |
-| B6 | `app/todo/list/[listId]` → `ListBoardClient` | `todo.back_to_todo` |
-| B7 | `app/ideas/boards/[id]` → `BoardDetailClient` | Volver a Ideas / tableros |
+| #   | Ruta / archivo                                 | Back link / label (i18n)                      |
+| --- | ---------------------------------------------- | --------------------------------------------- |
+| B1  | `app/project/[id]` → `ProjectKanbanClient`     | Volver al Dashboard (o “Todos los proyectos”) |
+| B2  | `app/budgets/[id]` → `BudgetDetailClient`      | `budgets.back_to_budgets`                     |
+| B3  | `app/clients/[id]` → `ClientDetailClient`      | `clients.back_to_clients`                     |
+| B4  | `app/businesses/[id]` → `BusinessDetailClient` | `businesses.back_to_businesses`               |
+| B5  | `app/notes/[id]` → `NoteDetailClient`          | `notes.back_to_notes` (ya existe en editor)   |
+| B6  | `app/todo/list/[listId]` → `ListBoardClient`   | `todo.back_to_todo`                           |
+| B7  | `app/ideas/boards/[id]` → `BoardDetailClient`  | Volver a Ideas / tableros                     |
 
 Para cada uno:
 
@@ -69,17 +69,17 @@ Para cada uno:
 
 Añadir FAB donde corresponda (estilo: `fixed bottom-6 right-6 z-40 rounded-full bg-primary ...` como en `ProjectKanbanClient`):
 
-| # | Ubicación | Acción del FAB |
-|---|-----------|-----------------|
-| C1 | `ProjectKanbanClient` | Ya existe: abrir Add Task. |
-| C2 | `BudgetDetailClient` | Añadir categoría o “Añadir ítem” (según UX acordada). |
-| C3 | `ClientDetailClient` | “Añadir negocio” (o “Nueva empresa”). |
-| C4 | `ListBoardClient` (lista de tareas) | “Añadir tarea” o “Nueva tarea”. |
-| C5 | `BudgetsPageClient` (lista de presupuestos) | “Crear presupuesto”. |
-| C6 | `ClientsPageClient` | “Añadir cliente”. |
-| C7 | `BusinessesPageClient` | “Añadir empresa”. |
-| C8 | `NotesPageClient` | “Nueva nota”. |
-| C9 | Otros listados (Ideas, Todo dashboard, etc.) | Según patrón: FAB = acción principal. |
+| #   | Ubicación                                    | Acción del FAB                                        |
+| --- | -------------------------------------------- | ----------------------------------------------------- |
+| C1  | `ProjectKanbanClient`                        | Ya existe: abrir Add Task.                            |
+| C2  | `BudgetDetailClient`                         | Añadir categoría o “Añadir ítem” (según UX acordada). |
+| C3  | `ClientDetailClient`                         | “Añadir negocio” (o “Nueva empresa”).                 |
+| C4  | `ListBoardClient` (lista de tareas)          | “Añadir tarea” o “Nueva tarea”.                       |
+| C5  | `BudgetsPageClient` (lista de presupuestos)  | “Crear presupuesto”.                                  |
+| C6  | `ClientsPageClient`                          | “Añadir cliente”.                                     |
+| C7  | `BusinessesPageClient`                       | “Añadir empresa”.                                     |
+| C8  | `NotesPageClient`                            | “Nueva nota”.                                         |
+| C9  | Otros listados (Ideas, Todo dashboard, etc.) | Según patrón: FAB = acción principal.                 |
 
 Cada FAB debe abrir el modal o pantalla correspondiente (modal de creación, etc.).
 
@@ -140,13 +140,13 @@ Objetivo: **una columna**, menos espacio; sin `grid grid-cols-2` o `grid-cols-3`
 
 ### Fase F: Ajustes ya hechos (solo verificar)
 
-- Sidebar: colapsable en desktop, drawer en móvil, botón colapsar/expandir. *(Hecho.)*
-- Kanban: `useIsLargeScreen`, acordeón en móvil, columnas colapsables en desktop. *(Hecho.)*
-- Column: props `accordion`, `isExpanded`, `onToggle`, tira colapsada. *(Hecho.)*
-- ProjectKanbanClient: panel de recursos, FAB Add Task, AddTaskModal, sidebar móvil. *(Hecho.)*
-- TopBar: botón Recursos, ProjectResourcesModal, `resourcesInSidebar`, menú móvil. *(Hecho.)*
-- IdeasDashboardClient: modal Editar tablero con onSubmit, isSavingBoard, boardEditError. *(Hecho.)*
-- Locales: `resources.*`, `sidebar.collapse`/`expand`, `kanban.tasks_count_one`. *(Hecho.)*
+- Sidebar: colapsable en desktop, drawer en móvil, botón colapsar/expandir. _(Hecho.)_
+- Kanban: `useIsLargeScreen`, acordeón en móvil, columnas colapsables en desktop. _(Hecho.)_
+- Column: props `accordion`, `isExpanded`, `onToggle`, tira colapsada. _(Hecho.)_
+- ProjectKanbanClient: panel de recursos, FAB Add Task, AddTaskModal, sidebar móvil. _(Hecho.)_
+- TopBar: botón Recursos, ProjectResourcesModal, `resourcesInSidebar`, menú móvil. _(Hecho.)_
+- IdeasDashboardClient: modal Editar tablero con onSubmit, isSavingBoard, boardEditError. _(Hecho.)_
+- Locales: `resources.*`, `sidebar.collapse`/`expand`, `kanban.tasks_count_one`. _(Hecho.)_
 
 ---
 

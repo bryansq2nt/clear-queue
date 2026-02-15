@@ -1,105 +1,110 @@
-'use server'
+'use server';
 
-import { createClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/auth'
-import { revalidatePath } from 'next/cache'
-import { Database } from '@/lib/supabase/types'
-import { validateDisplayName, validatePhone, validateTimezone, validateLocale } from '@/lib/validation/profile'
-import { uploadUserAsset as doUploadUserAsset } from '@/lib/storage/upload'
+import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/auth';
+import { revalidatePath } from 'next/cache';
+import { Database } from '@/lib/supabase/types';
+import {
+  validateDisplayName,
+  validatePhone,
+  validateTimezone,
+  validateLocale,
+} from '@/lib/validation/profile';
+import { uploadUserAsset as doUploadUserAsset } from '@/lib/storage/upload';
 
-type Profile = Database['public']['Tables']['profiles']['Row']
-type UserAsset = Database['public']['Tables']['user_assets']['Row']
+type Profile = Database['public']['Tables']['profiles']['Row'];
+type UserAsset = Database['public']['Tables']['user_assets']['Row'];
 
 export async function getProfile(): Promise<Profile | null> {
-  const user = await requireAuth()
-  const supabase = await createClient()
+  const user = await requireAuth();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('user_id', user.id)
-    .maybeSingle()
+    .maybeSingle();
 
-  if (error) return null
-  if (data) return data as Profile
+  if (error) return null;
+  if (data) return data as Profile;
 
   const insertPayload: Database['public']['Tables']['profiles']['Insert'] = {
     user_id: user.id,
     display_name: user.email?.split('@')[0] ?? 'User',
-  }
+  };
   const { data: inserted, error: insertError } = await supabase
     .from('profiles')
     .insert(insertPayload as never)
     .select()
-    .single()
+    .single();
 
   if (insertError?.code === '23505') {
     const { data: existing } = await supabase
       .from('profiles')
       .select('*')
       .eq('user_id', user.id)
-      .single()
-    return existing ? (existing as Profile) : null
+      .single();
+    return existing ? (existing as Profile) : null;
   }
-  return inserted ? (inserted as Profile) : null
+  return inserted ? (inserted as Profile) : null;
 }
 
 export async function getProfileWithAvatar(): Promise<
   (Profile & { avatar_asset: UserAsset | null }) | null
 > {
-  const profile = await getProfile()
-  if (!profile) return null
-  if (!profile.avatar_asset_id) return { ...profile, avatar_asset: null }
+  const profile = await getProfile();
+  if (!profile) return null;
+  if (!profile.avatar_asset_id) return { ...profile, avatar_asset: null };
 
-  const supabase = await createClient()
+  const supabase = await createClient();
   const { data: asset } = await supabase
     .from('user_assets')
     .select('*')
     .eq('id', profile.avatar_asset_id)
-    .single()
+    .single();
 
-  return { ...profile, avatar_asset: asset ? (asset as UserAsset) : null }
+  return { ...profile, avatar_asset: asset ? (asset as UserAsset) : null };
 }
 
 export async function updateProfile(payload: {
-  display_name?: string
-  phone?: string | null
-  timezone?: string
-  locale?: string
-  avatar_asset_id?: string | null
+  display_name?: string;
+  phone?: string | null;
+  timezone?: string;
+  locale?: string;
+  avatar_asset_id?: string | null;
 }): Promise<{ error?: string; data?: Profile }> {
-  const user = await requireAuth()
-  const supabase = await createClient()
+  const user = await requireAuth();
+  const supabase = await createClient();
 
-  const updates: Database['public']['Tables']['profiles']['Update'] = {}
+  const updates: Database['public']['Tables']['profiles']['Update'] = {};
 
   if (payload.display_name !== undefined) {
-    const d = validateDisplayName(payload.display_name)
-    if (!d.ok) return { error: d.error }
-    updates.display_name = d.value
+    const d = validateDisplayName(payload.display_name);
+    if (!d.ok) return { error: d.error };
+    updates.display_name = d.value;
   }
   if (payload.phone !== undefined) {
-    const p = validatePhone(payload.phone)
-    if (!p.ok) return { error: p.error }
-    updates.phone = p.value
+    const p = validatePhone(payload.phone);
+    if (!p.ok) return { error: p.error };
+    updates.phone = p.value;
   }
   if (payload.timezone !== undefined) {
-    const t = validateTimezone(payload.timezone)
-    if (!t.ok) return { error: t.error }
-    updates.timezone = t.value
+    const t = validateTimezone(payload.timezone);
+    if (!t.ok) return { error: t.error };
+    updates.timezone = t.value;
   }
   if (payload.locale !== undefined) {
-    const l = validateLocale(payload.locale)
-    if (!l.ok) return { error: l.error }
-    updates.locale = l.value
+    const l = validateLocale(payload.locale);
+    if (!l.ok) return { error: l.error };
+    updates.locale = l.value;
   }
   if (payload.avatar_asset_id !== undefined) {
-    updates.avatar_asset_id = payload.avatar_asset_id
+    updates.avatar_asset_id = payload.avatar_asset_id;
   }
 
   if (Object.keys(updates).length === 0) {
-    const existing = await getProfile()
-    return { data: existing ?? undefined }
+    const existing = await getProfile();
+    return { data: existing ?? undefined };
   }
 
   const { data, error } = await supabase
@@ -107,99 +112,123 @@ export async function updateProfile(payload: {
     .update(updates as never)
     .eq('user_id', user.id)
     .select()
-    .single()
+    .single();
 
-  if (error) return { error: error.message }
-  revalidatePath('/settings/profile')
-  revalidatePath('/')
-  return { data: data as Profile }
+  if (error) return { error: error.message };
+  revalidatePath('/settings/profile');
+  revalidatePath('/');
+  return { data: data as Profile };
 }
 
 export async function uploadUserAsset(
   formData: FormData
 ): Promise<{ error?: string; data?: UserAsset }> {
-  const file = formData.get('file') as File | null
-  const kind = formData.get('kind') as 'avatar' | 'company_logo' | 'cover_image' | null
-  if (!file || !kind || !['avatar', 'company_logo', 'cover_image'].includes(kind)) {
-    return { error: 'Invalid upload: file and kind (avatar|company_logo|cover_image) required' }
+  const file = formData.get('file') as File | null;
+  const kind = formData.get('kind') as
+    | 'avatar'
+    | 'company_logo'
+    | 'cover_image'
+    | null;
+  if (
+    !file ||
+    !kind ||
+    !['avatar', 'company_logo', 'cover_image'].includes(kind)
+  ) {
+    return {
+      error:
+        'Invalid upload: file and kind (avatar|company_logo|cover_image) required',
+    };
   }
-  return doUploadUserAsset(file, kind)
+  return doUploadUserAsset(file, kind);
 }
 
-export async function getAssetSignedUrl(assetId: string): Promise<string | null> {
-  const user = await requireAuth()
-  const supabase = await createClient()
+export async function getAssetSignedUrl(
+  assetId: string
+): Promise<string | null> {
+  const user = await requireAuth();
+  const supabase = await createClient();
 
   const { data, error: fetchError } = await supabase
     .from('user_assets')
     .select('id, user_id, path, bucket')
     .eq('id', assetId)
-    .single()
+    .single();
 
-  const asset = data as { id: string; user_id: string; path: string; bucket: string } | null
-  if (fetchError || !asset || asset.user_id !== user.id) return null
+  const asset = data as {
+    id: string;
+    user_id: string;
+    path: string;
+    bucket: string;
+  } | null;
+  if (fetchError || !asset || asset.user_id !== user.id) return null;
 
   const { data: urlData } = await supabase.storage
     .from(asset.bucket)
-    .createSignedUrl(asset.path, 3600)
+    .createSignedUrl(asset.path, 3600);
 
-  return urlData?.signedUrl ?? null
+  return urlData?.signedUrl ?? null;
 }
 
 export async function deleteUserAsset(
   assetId: string
 ): Promise<{ error?: string }> {
-  const user = await requireAuth()
-  const supabase = await createClient()
+  const user = await requireAuth();
+  const supabase = await createClient();
 
   const { data, error: fetchError } = await supabase
     .from('user_assets')
     .select('id, user_id, kind, path, bucket')
     .eq('id', assetId)
-    .single()
+    .single();
 
-  const asset = data as { id: string; user_id: string; kind: string; path: string; bucket: string } | null
-  if (fetchError || !asset) return { error: 'Asset not found' }
-  if (asset.user_id !== user.id) return { error: 'Unauthorized' }
+  const asset = data as {
+    id: string;
+    user_id: string;
+    kind: string;
+    path: string;
+    bucket: string;
+  } | null;
+  if (fetchError || !asset) return { error: 'Asset not found' };
+  if (asset.user_id !== user.id) return { error: 'Unauthorized' };
 
   if (asset.kind === 'avatar') {
     await supabase
       .from('profiles')
       .update({ avatar_asset_id: null } as never)
       .eq('user_id', user.id)
-      .eq('avatar_asset_id', assetId)
+      .eq('avatar_asset_id', assetId);
   } else if (asset.kind === 'company_logo') {
     await supabase
       .from('user_preferences')
       .update({ company_logo_asset_id: null } as never)
       .eq('user_id', user.id)
-      .eq('company_logo_asset_id', assetId)
+      .eq('company_logo_asset_id', assetId);
   } else if (asset.kind === 'cover_image') {
     await supabase
       .from('user_preferences')
       .update({ cover_image_asset_id: null } as never)
       .eq('user_id', user.id)
-      .eq('cover_image_asset_id', assetId)
+      .eq('cover_image_asset_id', assetId);
   }
 
   const { error: storageError } = await supabase.storage
     .from(asset.bucket)
-    .remove([asset.path])
+    .remove([asset.path]);
 
   if (storageError) {
-    return { error: storageError.message }
+    return { error: storageError.message };
   }
 
   const { error: deleteError } = await supabase
     .from('user_assets')
     .delete()
     .eq('id', assetId)
-    .eq('user_id', user.id)
+    .eq('user_id', user.id);
 
-  if (deleteError) return { error: deleteError.message }
+  if (deleteError) return { error: deleteError.message };
 
-  revalidatePath('/settings/profile')
-  revalidatePath('/settings/appearance')
-  revalidatePath('/')
-  return {}
+  revalidatePath('/settings/profile');
+  revalidatePath('/settings/appearance');
+  revalidatePath('/');
+  return {};
 }

@@ -1,43 +1,49 @@
-'use client'
+'use client';
 
-import { ArrowLeft, Edit2 } from 'lucide-react'
-import { useI18n } from '@/components/I18nProvider'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { EditBudgetModal } from './EditBudgetModal'
+import { ArrowLeft, Edit2 } from 'lucide-react';
+import { useI18n } from '@/components/I18nProvider';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { EditBudgetModal } from './EditBudgetModal';
 
 interface BudgetHeaderProps {
   budget: {
-    id: string
-    name: string
-    description: string | null
-    project_id: string | null
-    projects: { id: string; name: string } | null
-  }
-  projects: { id: string; name: string }[]
+    id: string;
+    name: string;
+    description: string | null;
+    project_id: string | null;
+    projects: { id: string; name: string } | null;
+  };
+  projects: { id: string; name: string }[];
   stats: {
-    total: number
-    acquired: number
-    pending: number
-    progress: number
-  }
-  onUpdated: () => void
+    total: number;
+    acquired: number;
+    pending: number;
+    progress: number;
+  };
+  onUpdated: () => void;
   /** When true, used inside DetailLayout: no back button in card, title (h1) shown in card */
-  compact?: boolean
+  compact?: boolean;
 }
 
-export function BudgetHeader({ budget, projects, stats, onUpdated, compact }: BudgetHeaderProps) {
-  const { t, formatCurrency: formatCurr } = useI18n()
-  const router = useRouter()
-  const [isEditOpen, setIsEditOpen] = useState(false)
+export function BudgetHeader({
+  budget,
+  projects,
+  stats,
+  onUpdated,
+  compact,
+}: BudgetHeaderProps) {
+  const { t, formatCurrency: formatCurr } = useI18n();
+  const router = useRouter();
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
-    }).format(amount)
-  }
+    }).format(amount);
+  };
 
   const editButton = (
     <button
@@ -47,7 +53,7 @@ export function BudgetHeader({ budget, projects, stats, onUpdated, compact }: Bu
     >
       <Edit2 className="w-5 h-5 text-gray-500" />
     </button>
-  )
+  );
 
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border p-4 sm:p-6 mb-4 sm:mb-6">
@@ -68,9 +74,7 @@ export function BudgetHeader({ budget, projects, stats, onUpdated, compact }: Bu
                   {budget.name}
                 </h1>
                 {budget.description && (
-                  <p className="text-muted-foreground">
-                    {budget.description}
-                  </p>
+                  <p className="text-muted-foreground">{budget.description}</p>
                 )}
                 {budget.projects && (
                   <div className="mt-3">
@@ -93,7 +97,9 @@ export function BudgetHeader({ budget, projects, stats, onUpdated, compact }: Bu
               {budget.name}
             </h1>
             {budget.description && (
-              <p className="text-sm text-muted-foreground">{budget.description}</p>
+              <p className="text-sm text-muted-foreground">
+                {budget.description}
+              </p>
             )}
             {budget.projects && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary mt-2">
@@ -134,7 +140,9 @@ export function BudgetHeader({ budget, projects, stats, onUpdated, compact }: Bu
             <span className="text-base sm:text-2xl font-semibold text-green-600 dark:text-green-400 truncate">
               {formatCurrency(stats.acquired)}
             </span>
-            <span className="text-xs text-muted-foreground shrink-0">{stats.progress}%</span>
+            <span className="text-xs text-muted-foreground shrink-0">
+              {stats.progress}%
+            </span>
           </div>
         </div>
 
@@ -147,7 +155,9 @@ export function BudgetHeader({ budget, projects, stats, onUpdated, compact }: Bu
             <span className="text-base sm:text-2xl font-semibold text-yellow-600 dark:text-yellow-400 truncate">
               {formatCurrency(stats.pending)}
             </span>
-            <span className="text-xs text-muted-foreground shrink-0">{100 - stats.progress}%</span>
+            <span className="text-xs text-muted-foreground shrink-0">
+              {100 - stats.progress}%
+            </span>
           </div>
         </div>
       </div>
@@ -162,5 +172,5 @@ export function BudgetHeader({ budget, projects, stats, onUpdated, compact }: Bu
         </div>
       </div>
     </div>
-  )
+  );
 }

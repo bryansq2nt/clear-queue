@@ -1,39 +1,42 @@
-'use client'
+'use client';
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
-import Image from 'next/image'
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import {
   getProfileWithAvatar,
   updateProfile,
   uploadUserAsset,
   deleteUserAsset,
   getAssetSignedUrl,
-} from './actions'
-import { getPreferences, updatePreferences } from '@/app/settings/appearance/actions'
-import { TIMEZONE_OPTIONS, CURRENCY_OPTIONS } from '@/lib/validation/profile'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+} from './actions';
+import {
+  getPreferences,
+  updatePreferences,
+} from '@/app/settings/appearance/actions';
+import { TIMEZONE_OPTIONS, CURRENCY_OPTIONS } from '@/lib/validation/profile';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Loader2, Upload, X } from 'lucide-react'
-import { useI18n } from '@/components/I18nProvider'
+} from '@/components/ui/select';
+import { Loader2, Upload, X } from 'lucide-react';
+import { useI18n } from '@/components/I18nProvider';
 
-type ProfileWithAvatar = Awaited<ReturnType<typeof getProfileWithAvatar>>
+type ProfileWithAvatar = Awaited<ReturnType<typeof getProfileWithAvatar>>;
 
 export default function ProfilePageClient() {
-  const { t, setPrefs } = useI18n()
-  const [profile, setProfile] = useState<ProfileWithAvatar | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { t, setPrefs } = useI18n();
+  const [profile, setProfile] = useState<ProfileWithAvatar | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     display_name: '',
@@ -41,12 +44,15 @@ export default function ProfilePageClient() {
     timezone: 'America/New_York',
     locale: 'es',
     currency: 'USD',
-  })
+  });
 
   const loadProfile = useCallback(async () => {
-    setIsLoading(true)
-    const [p, prefs] = await Promise.all([getProfileWithAvatar(), getPreferences()])
-    setProfile(p)
+    setIsLoading(true);
+    const [p, prefs] = await Promise.all([
+      getProfileWithAvatar(),
+      getPreferences(),
+    ]);
+    setProfile(p);
     if (p) {
       setForm((prev) => ({
         display_name: p.display_name,
@@ -54,26 +60,26 @@ export default function ProfilePageClient() {
         timezone: p.timezone,
         locale: p.locale,
         currency: prefs?.currency ?? prev.currency,
-      }))
+      }));
       if (p.avatar_asset_id) {
-        const url = await getAssetSignedUrl(p.avatar_asset_id)
-        setAvatarUrl(url)
+        const url = await getAssetSignedUrl(p.avatar_asset_id);
+        setAvatarUrl(url);
       } else {
-        setAvatarUrl(null)
+        setAvatarUrl(null);
       }
     }
-    setIsLoading(false)
-  }, [])
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
-    loadProfile()
-  }, [loadProfile])
+    loadProfile();
+  }, [loadProfile]);
 
   async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setSuccess(false)
-    setIsSaving(true)
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+    setIsSaving(true);
     const [profileResult, prefsResult] = await Promise.all([
       updateProfile({
         display_name: form.display_name,
@@ -82,52 +88,64 @@ export default function ProfilePageClient() {
         locale: form.locale,
       }),
       updatePreferences({ currency: form.currency }),
-    ])
-    setIsSaving(false)
-    const err = profileResult.error ?? prefsResult.error
+    ]);
+    setIsSaving(false);
+    const err = profileResult.error ?? prefsResult.error;
     if (err) {
-      setError(err)
-      return
+      setError(err);
+      return;
     }
-    setSuccess(true)
-    setPrefs({ locale: form.locale as 'en' | 'es', currency: form.currency })
-    if (profileResult.data) setProfile({ ...profileResult.data, avatar_asset: profile?.avatar_asset ?? null })
-    setTimeout(() => setSuccess(false), 3000)
+    setSuccess(true);
+    setPrefs({ locale: form.locale as 'en' | 'es', currency: form.currency });
+    if (profileResult.data)
+      setProfile({
+        ...profileResult.data,
+        avatar_asset: profile?.avatar_asset ?? null,
+      });
+    setTimeout(() => setSuccess(false), 3000);
   }
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setError(null)
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('kind', 'avatar')
-    const result = await uploadUserAsset(formData)
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('kind', 'avatar');
+    const result = await uploadUserAsset(formData);
     if (result.error) {
-      setError(result.error)
-      return
+      setError(result.error);
+      return;
     }
     if (result.data) {
-      await updateProfile({ avatar_asset_id: result.data.id })
-      const url = await getAssetSignedUrl(result.data.id)
-      setAvatarUrl(url)
+      await updateProfile({ avatar_asset_id: result.data.id });
+      const url = await getAssetSignedUrl(result.data.id);
+      setAvatarUrl(url);
       setProfile((prev) =>
-        prev ? { ...prev, avatar_asset_id: result.data!.id, avatar_asset: result.data! } : prev
-      )
+        prev
+          ? {
+              ...prev,
+              avatar_asset_id: result.data!.id,
+              avatar_asset: result.data!,
+            }
+          : prev
+      );
     }
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
   async function handleRemoveAvatar() {
-    if (!profile?.avatar_asset_id) return
-    setError(null)
-    const result = await deleteUserAsset(profile.avatar_asset_id)
+    if (!profile?.avatar_asset_id) return;
+    setError(null);
+    const result = await deleteUserAsset(profile.avatar_asset_id);
     if (result.error) {
-      setError(result.error)
-      return
+      setError(result.error);
+      return;
     }
-    setAvatarUrl(null)
-    setProfile((prev) => (prev ? { ...prev, avatar_asset_id: null, avatar_asset: null } : prev))
+    setAvatarUrl(null);
+    setProfile((prev) =>
+      prev ? { ...prev, avatar_asset_id: null, avatar_asset: null } : prev
+    );
   }
 
   if (isLoading) {
@@ -135,13 +153,15 @@ export default function ProfilePageClient() {
       <div className="p-6 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
       </div>
-    )
+    );
   }
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground">{t('profile.title')}</h1>
+        <h1 className="text-3xl font-bold text-foreground">
+          {t('profile.title')}
+        </h1>
         <p className="text-muted-foreground mt-1">{t('profile.subtitle')}</p>
       </div>
 
@@ -158,11 +178,19 @@ export default function ProfilePageClient() {
         )}
 
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">{t('profile.avatar')}</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">
+            {t('profile.avatar')}
+          </h2>
           <div className="flex items-center gap-4">
             <div className="relative w-20 h-20 rounded-full bg-muted overflow-hidden flex items-center justify-center">
               {avatarUrl ? (
-                <Image src={avatarUrl} alt="Avatar" fill className="object-cover" unoptimized />
+                <Image
+                  src={avatarUrl}
+                  alt="Avatar"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
               ) : (
                 <span className="text-2xl text-muted-foreground font-medium">
                   {form.display_name?.charAt(0)?.toUpperCase() ?? '?'}
@@ -197,11 +225,15 @@ export default function ProfilePageClient() {
               )}
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">{t('profile.avatar_hint')}</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            {t('profile.avatar_hint')}
+          </p>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">{t('profile.profile_info')}</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            {t('profile.profile_info')}
+          </h2>
           <div>
             <Label htmlFor="display_name">{t('profile.display_name')}</Label>
             <Input
@@ -209,7 +241,9 @@ export default function ProfilePageClient() {
               required
               placeholder={t('profile.display_name_placeholder')}
               value={form.display_name}
-              onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, display_name: e.target.value }))
+              }
               className="mt-1"
             />
           </div>
@@ -220,7 +254,9 @@ export default function ProfilePageClient() {
               type="tel"
               placeholder={t('profile.phone_placeholder')}
               value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, phone: e.target.value }))
+              }
               className="mt-1"
             />
           </div>
@@ -247,9 +283,9 @@ export default function ProfilePageClient() {
             <Select
               value={form.locale}
               onValueChange={(v) => {
-                setForm((f) => ({ ...f, locale: v }))
-                setPrefs({ locale: v as 'en' | 'es' })
-                updateProfile({ locale: v }).catch(() => {})
+                setForm((f) => ({ ...f, locale: v }));
+                setPrefs({ locale: v as 'en' | 'es' });
+                updateProfile({ locale: v }).catch(() => {});
               }}
             >
               <SelectTrigger id="locale" className="mt-1">
@@ -266,9 +302,9 @@ export default function ProfilePageClient() {
             <Select
               value={form.currency}
               onValueChange={(v) => {
-                setForm((f) => ({ ...f, currency: v }))
-                setPrefs({ currency: v })
-                updatePreferences({ currency: v }).catch(() => {})
+                setForm((f) => ({ ...f, currency: v }));
+                setPrefs({ currency: v });
+                updatePreferences({ currency: v }).catch(() => {});
               }}
             >
               <SelectTrigger id="currency" className="mt-1">
@@ -295,5 +331,5 @@ export default function ProfilePageClient() {
         </button>
       </form>
     </div>
-  )
+  );
 }

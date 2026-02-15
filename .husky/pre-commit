@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+# Pre-commit: block commit if any of these fail
+
+# 1. ESLint on staged files (fails on violations)
+npx lint-staged
+
+# 2. TypeScript type check
+npm run typecheck
+
+# 3. Prettier format check (fails if any file is not formatted)
+npm run format:check

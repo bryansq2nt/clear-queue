@@ -1,18 +1,24 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DetailHeaderProps {
-  backHref: string
-  backLabel: string
-  title: string
-  actions?: React.ReactNode
-  className?: string
+  backHref: string;
+  backLabel: string;
+  title: string;
+  actions?: React.ReactNode;
+  className?: string;
 }
 
-export function DetailHeader({ backHref, backLabel, title, actions, className }: DetailHeaderProps) {
+export function DetailHeader({
+  backHref,
+  backLabel,
+  title,
+  actions,
+  className,
+}: DetailHeaderProps) {
   return (
     <header
       className={cn(
@@ -43,5 +49,5 @@ export function DetailHeader({ backHref, backLabel, title, actions, className }:
         </h1>
       </div>
     </header>
-  )
+  );
 }

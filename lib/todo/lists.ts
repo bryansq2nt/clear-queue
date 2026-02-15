@@ -1,27 +1,27 @@
-import { createClient } from '@/lib/supabase/server'
-import { getUser } from '@/lib/auth'
-import type { Database } from '@/lib/supabase/types'
+import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/auth';
+import type { Database } from '@/lib/supabase/types';
 
-type TodoList = Database['public']['Tables']['todo_lists']['Row']
-type TodoListInsert = Database['public']['Tables']['todo_lists']['Insert']
-type TodoListUpdate = Database['public']['Tables']['todo_lists']['Update']
+type TodoList = Database['public']['Tables']['todo_lists']['Row'];
+type TodoListInsert = Database['public']['Tables']['todo_lists']['Insert'];
+type TodoListUpdate = Database['public']['Tables']['todo_lists']['Update'];
 
-type TodoItem = Database['public']['Tables']['todo_items']['Row']
-type TodoItemInsert = Database['public']['Tables']['todo_items']['Insert']
-type TodoItemUpdate = Database['public']['Tables']['todo_items']['Update']
+type TodoItem = Database['public']['Tables']['todo_items']['Row'];
+type TodoItemInsert = Database['public']['Tables']['todo_items']['Insert'];
+type TodoItemUpdate = Database['public']['Tables']['todo_items']['Update'];
 
 // Export the Row types for use in components
-export type { TodoList, TodoItem }
+export type { TodoList, TodoItem };
 
 /**
  * Helper to get the current user ID or throw an error
  */
 async function getUserIdOrThrow(): Promise<string> {
-  const user = await getUser()
+  const user = await getUser();
   if (!user || !user.id) {
-    throw new Error('User must be authenticated')
+    throw new Error('User must be authenticated');
   }
-  return user.id
+  return user.id;
 }
 
 // ============================================================================
@@ -32,73 +32,75 @@ async function getUserIdOrThrow(): Promise<string> {
  * Get all todo lists for the current user
  */
 export async function getTodoLists(options?: {
-  includeArchived?: boolean
-  projectId?: string | null
+  includeArchived?: boolean;
+  projectId?: string | null;
 }): Promise<TodoList[]> {
-  const ownerId = await getUserIdOrThrow()
-  const supabase = await createClient()
+  const ownerId = await getUserIdOrThrow();
+  const supabase = await createClient();
 
   let query = supabase
     .from('todo_lists')
     .select('*')
     .eq('owner_id', ownerId)
     .order('position', { ascending: true })
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (options?.includeArchived === false) {
-    query = query.eq('is_archived', false)
+    query = query.eq('is_archived', false);
   }
 
   if (options?.projectId !== undefined) {
     if (options.projectId === null) {
-      query = query.is('project_id', null)
+      query = query.is('project_id', null);
     } else {
-      query = query.eq('project_id', options.projectId)
+      query = query.eq('project_id', options.projectId);
     }
   }
 
-  const { data, error } = await query
+  const { data, error } = await query;
 
   if (error) {
-    throw new Error(`Failed to fetch todo lists: ${error.message}`)
+    throw new Error(`Failed to fetch todo lists: ${error.message}`);
   }
 
-  return data || []
+  return data || [];
 }
 
 /**
  * Get a single todo list by ID
  */
-export async function getTodoListById(listId: string): Promise<TodoList | null> {
-  const ownerId = await getUserIdOrThrow()
-  const supabase = await createClient()
+export async function getTodoListById(
+  listId: string
+): Promise<TodoList | null> {
+  const ownerId = await getUserIdOrThrow();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('todo_lists')
     .select('*')
     .eq('id', listId)
     .eq('owner_id', ownerId)
-    .single()
+    .single();
 
-  if (error || !data) return null
-  return data as TodoList
+  if (error || !data) return null;
+  return data as TodoList;
 }
 
 /**
  * Create a new todo list
  */
 export async function createTodoList(input: {
-  title: string
-  project_id?: string | null
-  description?: string | null
-  color?: string | null
+  title: string;
+  project_id?: string | null;
+  description?: string | null;
+  color?: string | null;
 }): Promise<TodoList> {
   if (!input.title || input.title.trim().length === 0) {
-    throw new Error('List title is required')
+    throw new Error('List title is required');
   }
 
-  const ownerId = await getUserIdOrThrow()
-  const supabase = await createClient()
+  const ownerId = await getUserIdOrThrow();
+  const supabase = await createClient();
 
   // Get max position to append at end
   const { data: existingLists } = await supabase
@@ -106,11 +108,12 @@ export async function createTodoList(input: {
     .select('position')
     .eq('owner_id', ownerId)
     .order('position', { ascending: false })
-    .limit(1)
+    .limit(1);
 
-  const position = existingLists && existingLists.length > 0
-    ? ((existingLists[0] as { position: number }).position || 0) + 1
-    : 0
+  const position =
+    existingLists && existingLists.length > 0
+      ? ((existingLists[0] as { position: number }).position || 0) + 1
+      : 0;
 
   const insertData: TodoListInsert = {
     owner_id: ownerId,
@@ -119,19 +122,19 @@ export async function createTodoList(input: {
     description: input.description?.trim() || null,
     color: input.color || null,
     position,
-  }
+  };
 
   const { data, error } = await supabase
     .from('todo_lists')
     .insert(insertData as any)
     .select()
-    .single()
+    .single();
 
   if (error) {
-    throw new Error(`Failed to create todo list: ${error.message}`)
+    throw new Error(`Failed to create todo list: ${error.message}`);
   }
 
-  return data
+  return data;
 }
 
 /**
@@ -140,50 +143,50 @@ export async function createTodoList(input: {
 export async function updateTodoList(
   id: string,
   updates: {
-    title?: string
-    description?: string | null
-    color?: string | null
-    project_id?: string | null
+    title?: string;
+    description?: string | null;
+    color?: string | null;
+    project_id?: string | null;
   }
 ): Promise<TodoList> {
-  const ownerId = await getUserIdOrThrow()
-  const supabase = await createClient()
+  const ownerId = await getUserIdOrThrow();
+  const supabase = await createClient();
 
-  const updateData: TodoListUpdate = {}
+  const updateData: TodoListUpdate = {};
   if (updates.title !== undefined) {
-    updateData.title = updates.title.trim()
+    updateData.title = updates.title.trim();
   }
   if (updates.description !== undefined) {
-    updateData.description = updates.description?.trim() || null
+    updateData.description = updates.description?.trim() || null;
   }
   if (updates.color !== undefined) {
-    updateData.color = updates.color || null
+    updateData.color = updates.color || null;
   }
   if (updates.project_id !== undefined) {
-    updateData.project_id = updates.project_id || null
+    updateData.project_id = updates.project_id || null;
   }
 
-  const query: any = (supabase
-    .from('todo_lists') as any)
-    .update(updateData as any)
+  const query: any = (supabase.from('todo_lists') as any).update(
+    updateData as any
+  );
 
   const result: any = await query
     .eq('id', id)
     .eq('owner_id', ownerId)
     .select()
-    .single()
+    .single();
 
-  const { data, error } = result
+  const { data, error } = result;
 
   if (error) {
-    throw new Error(`Failed to update todo list: ${error.message}`)
+    throw new Error(`Failed to update todo list: ${error.message}`);
   }
 
   if (!data) {
-    throw new Error('Todo list not found')
+    throw new Error('Todo list not found');
   }
 
-  return data
+  return data;
 }
 
 /**
@@ -193,51 +196,51 @@ export async function archiveTodoList(
   id: string,
   isArchived: boolean
 ): Promise<TodoList> {
-  const ownerId = await getUserIdOrThrow()
-  const supabase = await createClient()
+  const ownerId = await getUserIdOrThrow();
+  const supabase = await createClient();
 
   const updateData: TodoListUpdate = {
-    is_archived: isArchived
-  }
+    is_archived: isArchived,
+  };
 
-  const query: any = (supabase
-    .from('todo_lists') as any)
-    .update(updateData as any)
+  const query: any = (supabase.from('todo_lists') as any).update(
+    updateData as any
+  );
 
   const result: any = await query
     .eq('id', id)
     .eq('owner_id', ownerId)
     .select()
-    .single()
+    .single();
 
-  const { data, error } = result
+  const { data, error } = result;
 
   if (error) {
-    throw new Error(`Failed to archive todo list: ${error.message}`)
+    throw new Error(`Failed to archive todo list: ${error.message}`);
   }
 
   if (!data) {
-    throw new Error('Todo list not found')
+    throw new Error('Todo list not found');
   }
 
-  return data
+  return data;
 }
 
 /**
  * Delete a todo list
  */
 export async function deleteTodoList(id: string): Promise<void> {
-  const ownerId = await getUserIdOrThrow()
-  const supabase = await createClient()
+  const ownerId = await getUserIdOrThrow();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from('todo_lists')
     .delete()
     .eq('id', id)
-    .eq('owner_id', ownerId)
+    .eq('owner_id', ownerId);
 
   if (error) {
-    throw new Error(`Failed to delete todo list: ${error.message}`)
+    throw new Error(`Failed to delete todo list: ${error.message}`);
   }
 }
 
@@ -249,8 +252,8 @@ export async function deleteTodoList(id: string): Promise<void> {
  * Get all items for a todo list
  */
 export async function getTodoItems(listId: string): Promise<TodoItem[]> {
-  const ownerId = await getUserIdOrThrow()
-  const supabase = await createClient()
+  const ownerId = await getUserIdOrThrow();
+  const supabase = await createClient();
 
   // Verify list belongs to user
   const { data: list } = await supabase
@@ -258,10 +261,10 @@ export async function getTodoItems(listId: string): Promise<TodoItem[]> {
     .select('id')
     .eq('id', listId)
     .eq('owner_id', ownerId)
-    .single()
+    .single();
 
   if (!list) {
-    throw new Error('Todo list not found')
+    throw new Error('Todo list not found');
   }
 
   const { data, error } = await supabase
@@ -270,23 +273,25 @@ export async function getTodoItems(listId: string): Promise<TodoItem[]> {
     .eq('list_id', listId)
     .eq('owner_id', ownerId)
     .order('position', { ascending: true })
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (error) {
-    throw new Error(`Failed to fetch todo items: ${error.message}`)
+    throw new Error(`Failed to fetch todo items: ${error.message}`);
   }
 
-  return data || []
+  return data || [];
 }
 
 /**
  * Get all items for multiple lists (e.g. all lists of a project)
  */
-export async function getTodoItemsByListIds(listIds: string[]): Promise<TodoItem[]> {
-  if (listIds.length === 0) return []
+export async function getTodoItemsByListIds(
+  listIds: string[]
+): Promise<TodoItem[]> {
+  if (listIds.length === 0) return [];
 
-  const ownerId = await getUserIdOrThrow()
-  const supabase = await createClient()
+  const ownerId = await getUserIdOrThrow();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('todo_items')
@@ -294,29 +299,29 @@ export async function getTodoItemsByListIds(listIds: string[]): Promise<TodoItem
     .in('list_id', listIds)
     .eq('owner_id', ownerId)
     .order('position', { ascending: true })
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (error) {
-    throw new Error(`Failed to fetch todo items: ${error.message}`)
+    throw new Error(`Failed to fetch todo items: ${error.message}`);
   }
 
-  return data || []
+  return data || [];
 }
 
 /**
  * Create a new todo item
  */
 export async function createTodoItem(input: {
-  list_id: string
-  content: string
-  due_date?: string | null
+  list_id: string;
+  content: string;
+  due_date?: string | null;
 }): Promise<TodoItem> {
   if (!input.content || input.content.trim().length === 0) {
-    throw new Error('Item content is required')
+    throw new Error('Item content is required');
   }
 
-  const ownerId = await getUserIdOrThrow()
-  const supabase = await createClient()
+  const ownerId = await getUserIdOrThrow();
+  const supabase = await createClient();
 
   // Verify list belongs to user
   const { data: list } = await supabase
@@ -324,10 +329,10 @@ export async function createTodoItem(input: {
     .select('id')
     .eq('id', input.list_id)
     .eq('owner_id', ownerId)
-    .single()
+    .single();
 
   if (!list) {
-    throw new Error('Todo list not found')
+    throw new Error('Todo list not found');
   }
 
   // Get max position to append at end
@@ -336,11 +341,12 @@ export async function createTodoItem(input: {
     .select('position')
     .eq('list_id', input.list_id)
     .order('position', { ascending: false })
-    .limit(1)
+    .limit(1);
 
-  const position = existingItems && existingItems.length > 0
-    ? ((existingItems[0] as { position: number }).position || 0) + 1
-    : 0
+  const position =
+    existingItems && existingItems.length > 0
+      ? ((existingItems[0] as { position: number }).position || 0) + 1
+      : 0;
 
   const insertData: TodoItemInsert = {
     owner_id: ownerId,
@@ -348,19 +354,19 @@ export async function createTodoItem(input: {
     content: input.content.trim(),
     due_date: input.due_date || null,
     position,
-  }
+  };
 
   const { data, error } = await supabase
     .from('todo_items')
     .insert(insertData as any)
     .select()
-    .single()
+    .single();
 
   if (error) {
-    throw new Error(`Failed to create todo item: ${error.message}`)
+    throw new Error(`Failed to create todo item: ${error.message}`);
   }
 
-  return data
+  return data;
 }
 
 /**
@@ -369,54 +375,54 @@ export async function createTodoItem(input: {
 export async function updateTodoItem(
   id: string,
   updates: {
-    content?: string
-    is_done?: boolean
-    due_date?: string | null
+    content?: string;
+    is_done?: boolean;
+    due_date?: string | null;
   }
 ): Promise<TodoItem> {
-  const ownerId = await getUserIdOrThrow()
-  const supabase = await createClient()
+  const ownerId = await getUserIdOrThrow();
+  const supabase = await createClient();
 
-  const updateData: TodoItemUpdate = {}
+  const updateData: TodoItemUpdate = {};
   if (updates.content !== undefined) {
-    updateData.content = updates.content.trim()
+    updateData.content = updates.content.trim();
   }
   if (updates.is_done !== undefined) {
-    updateData.is_done = updates.is_done
+    updateData.is_done = updates.is_done;
   }
   if (updates.due_date !== undefined) {
-    updateData.due_date = updates.due_date || null
+    updateData.due_date = updates.due_date || null;
   }
 
-  const query: any = (supabase
-    .from('todo_items') as any)
-    .update(updateData as any)
+  const query: any = (supabase.from('todo_items') as any).update(
+    updateData as any
+  );
 
   const result: any = await query
     .eq('id', id)
     .eq('owner_id', ownerId)
     .select()
-    .single()
+    .single();
 
-  const { data, error } = result
+  const { data, error } = result;
 
   if (error) {
-    throw new Error(`Failed to update todo item: ${error.message}`)
+    throw new Error(`Failed to update todo item: ${error.message}`);
   }
 
   if (!data) {
-    throw new Error('Todo item not found')
+    throw new Error('Todo item not found');
   }
 
-  return data
+  return data;
 }
 
 /**
  * Toggle todo item done status
  */
 export async function toggleTodoItem(id: string): Promise<TodoItem> {
-  const ownerId = await getUserIdOrThrow()
-  const supabase = await createClient()
+  const ownerId = await getUserIdOrThrow();
+  const supabase = await createClient();
 
   // Get current state
   const { data: current } = await supabase
@@ -424,49 +430,49 @@ export async function toggleTodoItem(id: string): Promise<TodoItem> {
     .select('is_done')
     .eq('id', id)
     .eq('owner_id', ownerId)
-    .single()
+    .single();
 
   if (!current) {
-    throw new Error('Todo item not found')
+    throw new Error('Todo item not found');
   }
 
   const updateData: TodoItemUpdate = {
-    is_done: !(current as { is_done: boolean }).is_done
-  }
+    is_done: !(current as { is_done: boolean }).is_done,
+  };
 
-  const query: any = (supabase
-    .from('todo_items') as any)
-    .update(updateData as any)
+  const query: any = (supabase.from('todo_items') as any).update(
+    updateData as any
+  );
 
   const result: any = await query
     .eq('id', id)
     .eq('owner_id', ownerId)
     .select()
-    .single()
+    .single();
 
-  const { data, error } = result
+  const { data, error } = result;
 
   if (error) {
-    throw new Error(`Failed to toggle todo item: ${error.message}`)
+    throw new Error(`Failed to toggle todo item: ${error.message}`);
   }
 
-  return data!
+  return data!;
 }
 
 /**
  * Delete a todo item
  */
 export async function deleteTodoItem(id: string): Promise<void> {
-  const ownerId = await getUserIdOrThrow()
-  const supabase = await createClient()
+  const ownerId = await getUserIdOrThrow();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from('todo_items')
     .delete()
     .eq('id', id)
-    .eq('owner_id', ownerId)
+    .eq('owner_id', ownerId);
 
   if (error) {
-    throw new Error(`Failed to delete todo item: ${error.message}`)
+    throw new Error(`Failed to delete todo item: ${error.message}`);
   }
 }

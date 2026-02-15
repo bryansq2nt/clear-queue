@@ -1,31 +1,31 @@
-'use client'
+'use client';
 
-import { useState, useCallback, useEffect } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Trash2, Check } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-import { Database } from '@/lib/supabase/types'
-import Sidebar from '@/components/Sidebar'
-import TopBar from '@/components/TopBar'
-import { signOut } from '@/app/actions/auth'
+import { useState, useCallback, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Plus, Trash2, Check } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { Database } from '@/lib/supabase/types';
+import Sidebar from '@/components/Sidebar';
+import TopBar from '@/components/TopBar';
+import { signOut } from '@/app/actions/auth';
 import {
   createTodoItemAction,
   toggleTodoItemAction,
   updateTodoItemAction,
   deleteTodoItemAction,
-} from '@/app/todo/actions'
-import type { TodoItem } from '@/lib/todo/lists'
-import { cn } from '@/lib/utils'
-import { useI18n } from '@/components/I18nProvider'
+} from '@/app/todo/actions';
+import type { TodoItem } from '@/lib/todo/lists';
+import { cn } from '@/lib/utils';
+import { useI18n } from '@/components/I18nProvider';
 
-type Project = Database['public']['Tables']['projects']['Row']
+type Project = Database['public']['Tables']['projects']['Row'];
 
 interface ProjectBoardClientProps {
-  projectId: string
-  initialProjectName: string
-  initialDefaultListId: string
-  initialItems: TodoItem[]
+  projectId: string;
+  initialProjectName: string;
+  initialDefaultListId: string;
+  initialItems: TodoItem[];
 }
 
 export default function ProjectBoardClient({
@@ -34,82 +34,82 @@ export default function ProjectBoardClient({
   initialDefaultListId,
   initialItems,
 }: ProjectBoardClientProps) {
-  const { t } = useI18n()
-  const router = useRouter()
-  const [projectName, setProjectName] = useState(initialProjectName)
-  const [defaultListId, setDefaultListId] = useState(initialDefaultListId)
-  const [items, setItems] = useState<TodoItem[]>(initialItems)
-  const [projects, setProjects] = useState<Project[]>([])
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [newTaskContent, setNewTaskContent] = useState('')
-  const [adding, setAdding] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { t } = useI18n();
+  const router = useRouter();
+  const [projectName, setProjectName] = useState(initialProjectName);
+  const [defaultListId, setDefaultListId] = useState(initialDefaultListId);
+  const [items, setItems] = useState<TodoItem[]>(initialItems);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [newTaskContent, setNewTaskContent] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadProjects = useCallback(async () => {
     const { data } = await createClient()
       .from('projects')
       .select('*')
-      .order('name')
-    if (data) setProjects(data as Project[])
-  }, [])
+      .order('name');
+    if (data) setProjects(data as Project[]);
+  }, []);
 
   useEffect(() => {
-    loadProjects()
-  }, [loadProjects])
+    loadProjects();
+  }, [loadProjects]);
 
   const handleAddTask = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const content = newTaskContent.trim()
-    if (!content || !defaultListId) return
+    e.preventDefault();
+    const content = newTaskContent.trim();
+    if (!content || !defaultListId) return;
 
-    setError(null)
-    setAdding(true)
-    const formData = new FormData()
-    formData.append('list_id', defaultListId)
-    formData.append('content', content)
-    const result = await createTodoItemAction(formData)
-    setAdding(false)
-    setNewTaskContent('')
+    setError(null);
+    setAdding(true);
+    const formData = new FormData();
+    formData.append('list_id', defaultListId);
+    formData.append('content', content);
+    const result = await createTodoItemAction(formData);
+    setAdding(false);
+    setNewTaskContent('');
 
     if (result.data) {
-      setItems((prev) => [...prev, result.data!])
-      router.refresh()
+      setItems((prev) => [...prev, result.data!]);
+      router.refresh();
     } else if (result.error) {
-      setError(result.error)
+      setError(result.error);
     }
-  }
+  };
 
   const handleToggle = async (item: TodoItem) => {
-    const result = await toggleTodoItemAction(item.id)
+    const result = await toggleTodoItemAction(item.id);
     if (result.data) {
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, is_done: !i.is_done } : i))
-      )
-      router.refresh()
+      );
+      router.refresh();
     }
-  }
+  };
 
   const handleUpdateContent = async (item: TodoItem, content: string) => {
-    const trimmed = content.trim()
-    if (trimmed === item.content) return
-    if (!trimmed) return
+    const trimmed = content.trim();
+    if (trimmed === item.content) return;
+    if (!trimmed) return;
 
-    const result = await updateTodoItemAction(item.id, { content: trimmed })
+    const result = await updateTodoItemAction(item.id, { content: trimmed });
     if (result.data) {
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, content: trimmed } : i))
-      )
-      router.refresh()
+      );
+      router.refresh();
     }
-  }
+  };
 
   const handleDelete = async (item: TodoItem) => {
-    const result = await deleteTodoItemAction(item.id)
+    const result = await deleteTodoItemAction(item.id);
     if (result.success) {
-      setItems((prev) => prev.filter((i) => i.id !== item.id))
-      router.refresh()
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
+      router.refresh();
     }
-  }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -156,7 +156,9 @@ export default function ProjectBoardClient({
             </div>
 
             {error && (
-              <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+                {error}
+              </p>
             )}
 
             {/* Inline add task at top */}
@@ -194,7 +196,9 @@ export default function ProjectBoardClient({
                       key={item.id}
                       item={item}
                       onToggle={() => handleToggle(item)}
-                      onSaveContent={(content) => handleUpdateContent(item, content)}
+                      onSaveContent={(content) =>
+                        handleUpdateContent(item, content)
+                      }
                       onDelete={() => handleDelete(item)}
                     />
                   ))}
@@ -205,7 +209,7 @@ export default function ProjectBoardClient({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function TaskRow({
@@ -214,34 +218,34 @@ function TaskRow({
   onSaveContent,
   onDelete,
 }: {
-  item: TodoItem
-  onToggle: () => void
-  onSaveContent: (content: string) => void
-  onDelete: () => void
+  item: TodoItem;
+  onToggle: () => void;
+  onSaveContent: (content: string) => void;
+  onDelete: () => void;
 }) {
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(item.content)
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(item.content);
 
   useEffect(() => {
-    setValue(item.content)
-  }, [item.content])
+    setValue(item.content);
+  }, [item.content]);
 
   const handleBlur = () => {
-    const trimmed = value.trim()
-    if (trimmed && trimmed !== item.content) onSaveContent(trimmed)
-    setEditing(false)
-  }
+    const trimmed = value.trim();
+    if (trimmed && trimmed !== item.content) onSaveContent(trimmed);
+    setEditing(false);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      e.preventDefault()
-      handleBlur()
+      e.preventDefault();
+      handleBlur();
     }
     if (e.key === 'Escape') {
-      setValue(item.content)
-      setEditing(false)
+      setValue(item.content);
+      setEditing(false);
     }
-  }
+  };
 
   return (
     <li className="group flex items-center gap-3 py-3">
@@ -253,7 +257,12 @@ function TaskRow({
           className="sr-only peer"
         />
         <span className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-gray-600 bg-transparent flex items-center justify-center transition-colors peer-checked:bg-primary peer-checked:border-primary">
-          {item.is_done && <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />}
+          {item.is_done && (
+            <Check
+              className="w-3 h-3 text-primary-foreground"
+              strokeWidth={3}
+            />
+          )}
         </span>
       </label>
       <div className="flex-1 min-w-0">
@@ -290,5 +299,5 @@ function TaskRow({
         <Trash2 className="w-4 h-4" />
       </button>
     </li>
-  )
+  );
 }

@@ -1,15 +1,15 @@
-import { requireAuth } from '@/lib/auth'
-import { listBoards } from '@/lib/idea-graph/boards'
-import { createBoardFormAction } from './actions'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import Link from 'next/link'
+import { requireAuth } from '@/lib/auth';
+import { listBoards } from '@/lib/idea-graph/boards';
+import { createBoardFormAction } from './actions';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import Link from 'next/link';
 
 export default async function BoardsPage() {
-  await requireAuth()
+  await requireAuth();
 
-  const boards = await listBoards()
+  const boards = await listBoards();
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -87,5 +87,5 @@ export default async function BoardsPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

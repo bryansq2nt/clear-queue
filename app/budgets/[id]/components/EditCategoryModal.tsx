@@ -1,20 +1,20 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { useI18n } from '@/components/I18nProvider'
-import { X, FolderPen } from 'lucide-react'
-import { updateCategory } from '../actions'
+import { useEffect, useState } from 'react';
+import { useI18n } from '@/components/I18nProvider';
+import { X, FolderPen } from 'lucide-react';
+import { updateCategory } from '../actions';
 
 interface EditCategoryModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onUpdated: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdated: () => void;
   category: {
-    id: string
-    name: string
-    description: string | null
-  }
-  budgetId: string
+    id: string;
+    name: string;
+    description: string | null;
+  };
+  budgetId: string;
 }
 
 export function EditCategoryModal({
@@ -24,57 +24,57 @@ export function EditCategoryModal({
   category,
   budgetId,
 }: EditCategoryModalProps) {
-  const { t } = useI18n()
-  const [name, setName] = useState(category.name)
-  const [description, setDescription] = useState(category.description ?? '')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { t } = useI18n();
+  const [name, setName] = useState(category.name);
+  const [description, setDescription] = useState(category.description ?? '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) return
-    setName(category.name)
-    setDescription(category.description ?? '')
-  }, [isOpen, category.id, category.name, category.description])
+    if (!isOpen) return;
+    setName(category.name);
+    setDescription(category.description ?? '');
+  }, [isOpen, category.id, category.name, category.description]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    const nextName = name.trim()
-    const nextDescription = description.trim()
+    const nextName = name.trim();
+    const nextDescription = description.trim();
 
     if (!nextName) {
-      alert('Please enter a category name')
-      return
+      alert('Please enter a category name');
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       await updateCategory(category.id, budgetId, {
         name: nextName,
         description: nextDescription,
-      })
-      onClose()
-      onUpdated()
+      });
+      onClose();
+      onUpdated();
     } catch (error) {
-      console.error('Error updating category:', error)
-      alert('Failed to update category')
+      console.error('Error updating category:', error);
+      alert('Failed to update category');
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   // Close on ESC key
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
+      if (e.key === 'Escape') onClose();
+    };
 
-    window.addEventListener('keydown', handleEsc)
-    return () => window.removeEventListener('keydown', handleEsc)
-  }, [isOpen, onClose])
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -147,6 +147,5 @@ export function EditCategoryModal({
         </form>
       </div>
     </div>
-  )
+  );
 }
-

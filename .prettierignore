@@ -1,0 +1,26 @@
+# Dependencies and build
+node_modules
+.next
+out
+build
+dist
+
+# Lockfiles and generated
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# IDE / OS
+.idea
+.vscode
+*.log
+.DS_Store
+
+# Env (may contain secrets)
+.env
+.env.*
+
+# Vitest / Playwright
+coverage
+playwright-report
+test-results

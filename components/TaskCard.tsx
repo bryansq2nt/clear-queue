@@ -1,25 +1,25 @@
-'use client'
+'use client';
 
-import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import { Database } from '@/lib/supabase/types'
-import { useI18n } from '@/components/I18nProvider'
-import { EditTaskModal } from './EditTaskModal'
-import { useState } from 'react'
-import { Calendar, Check } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Database } from '@/lib/supabase/types';
+import { useI18n } from '@/components/I18nProvider';
+import { EditTaskModal } from './EditTaskModal';
+import { useState } from 'react';
+import { Calendar, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-type Task = Database['public']['Tables']['tasks']['Row']
-type Project = Database['public']['Tables']['projects']['Row']
+type Task = Database['public']['Tables']['tasks']['Row'];
+type Project = Database['public']['Tables']['projects']['Row'];
 
 interface TaskCardProps {
-  task: Task
-  project: Project | undefined
-  onTaskUpdate: () => void
-  isDragging?: boolean
-  selectionMode?: boolean
-  isSelected?: boolean
-  onToggleSelection?: (taskId: string) => void
+  task: Task;
+  project: Project | undefined;
+  onTaskUpdate: () => void;
+  isDragging?: boolean;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: (taskId: string) => void;
 }
 
 export default function TaskCard({
@@ -31,8 +31,8 @@ export default function TaskCard({
   isSelected = false,
   onToggleSelection,
 }: TaskCardProps) {
-  const { t } = useI18n()
-  const [isOpen, setIsOpen] = useState(false)
+  const { t } = useI18n();
+  const [isOpen, setIsOpen] = useState(false);
 
   const {
     attributes,
@@ -43,50 +43,83 @@ export default function TaskCard({
     isDragging: isSortableDragging,
   } = useSortable({
     id: task.id,
-    disabled: selectionMode || false // Disable drag when in selection mode
-  })
+    disabled: selectionMode || false, // Disable drag when in selection mode
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-  }
+  };
 
   // Priority-based styling (theme-aware)
   const priorityStyles = {
-    5: { bg: 'bg-red-500/10 dark:bg-red-500/20', border: 'border-l-4 border-red-500', badge: 'bg-red-500' },
-    4: { bg: 'bg-orange-500/10 dark:bg-orange-500/20', border: 'border-l-4 border-orange-500', badge: 'bg-orange-500' },
-    3: { bg: 'bg-yellow-500/10 dark:bg-yellow-500/20', border: 'border-l-4 border-yellow-500', badge: 'bg-yellow-500' },
-    2: { bg: 'bg-blue-500/10 dark:bg-blue-500/20', border: 'border-l-4 border-blue-500', badge: 'bg-blue-500' },
-    1: { bg: 'bg-green-500/10 dark:bg-green-500/20', border: 'border-l-4 border-green-500', badge: 'bg-green-500' }
-  }
+    5: {
+      bg: 'bg-red-500/10 dark:bg-red-500/20',
+      border: 'border-l-4 border-red-500',
+      badge: 'bg-red-500',
+    },
+    4: {
+      bg: 'bg-orange-500/10 dark:bg-orange-500/20',
+      border: 'border-l-4 border-orange-500',
+      badge: 'bg-orange-500',
+    },
+    3: {
+      bg: 'bg-yellow-500/10 dark:bg-yellow-500/20',
+      border: 'border-l-4 border-yellow-500',
+      badge: 'bg-yellow-500',
+    },
+    2: {
+      bg: 'bg-blue-500/10 dark:bg-blue-500/20',
+      border: 'border-l-4 border-blue-500',
+      badge: 'bg-blue-500',
+    },
+    1: {
+      bg: 'bg-green-500/10 dark:bg-green-500/20',
+      border: 'border-l-4 border-green-500',
+      badge: 'bg-green-500',
+    },
+  };
 
   // Done tasks always use green styling regardless of priority
-  const doneStyle = { bg: 'bg-green-500/10 dark:bg-green-500/20', border: 'border-l-4 border-green-500', badge: 'bg-green-500' }
+  const doneStyle = {
+    bg: 'bg-green-500/10 dark:bg-green-500/20',
+    border: 'border-l-4 border-green-500',
+    badge: 'bg-green-500',
+  };
   // Blocked tasks always use red styling to draw attention
-  const blockedStyle = { bg: 'bg-red-500/10 dark:bg-red-500/20', border: 'border-l-4 border-red-500', badge: 'bg-red-500' }
-  const priorityStyle = task.status === 'done'
-    ? doneStyle
-    : task.status === 'blocked'
-      ? blockedStyle
-      : (priorityStyles[task.priority as keyof typeof priorityStyles] || priorityStyles[3])
-  const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done'
+  const blockedStyle = {
+    bg: 'bg-red-500/10 dark:bg-red-500/20',
+    border: 'border-l-4 border-red-500',
+    badge: 'bg-red-500',
+  };
+  const priorityStyle =
+    task.status === 'done'
+      ? doneStyle
+      : task.status === 'blocked'
+        ? blockedStyle
+        : priorityStyles[task.priority as keyof typeof priorityStyles] ||
+          priorityStyles[3];
+  const isOverdue =
+    task.due_date &&
+    new Date(task.due_date) < new Date() &&
+    task.status !== 'done';
 
   function handleClick(e: React.MouseEvent) {
     if (selectionMode) {
       // In selection mode, toggle selection
-      e.preventDefault()
-      e.stopPropagation()
+      e.preventDefault();
+      e.stopPropagation();
       if (onToggleSelection) {
-        onToggleSelection(task.id)
+        onToggleSelection(task.id);
       }
     } else {
       // Normal click: open edit modal
-      setIsOpen(true)
+      setIsOpen(true);
     }
   }
 
   // Only apply drag listeners when not in selection mode
-  const dragProps = selectionMode ? {} : { ...attributes, ...listeners }
+  const dragProps = selectionMode ? {} : { ...attributes, ...listeners };
 
   return (
     <>
@@ -108,36 +141,48 @@ export default function TaskCard({
         {/* Checkbox for selection mode */}
         {selectionMode && (
           <div className="absolute top-3 left-3 z-10">
-            <div className={cn(
-              'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
-              isSelected
-                ? 'bg-blue-500 border-blue-500'
-                : 'bg-card border-border'
-            )}>
+            <div
+              className={cn(
+                'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+                isSelected
+                  ? 'bg-blue-500 border-blue-500'
+                  : 'bg-card border-border'
+              )}
+            >
               {isSelected && <Check className="w-3 h-3 text-white" />}
             </div>
           </div>
         )}
 
-        <div className={cn('flex items-start justify-between mb-2', selectionMode && 'pl-6')}>
-          <h3 className="font-semibold text-foreground text-sm flex-1 leading-tight">{task.title}</h3>
-          <span className={cn(
-            priorityStyle.badge,
-            'text-white text-xs px-2.5 py-1 rounded-full font-bold ml-2 flex-shrink-0'
-          )}>
+        <div
+          className={cn(
+            'flex items-start justify-between mb-2',
+            selectionMode && 'pl-6'
+          )}
+        >
+          <h3 className="font-semibold text-foreground text-sm flex-1 leading-tight">
+            {task.title}
+          </h3>
+          <span
+            className={cn(
+              priorityStyle.badge,
+              'text-white text-xs px-2.5 py-1 rounded-full font-bold ml-2 flex-shrink-0'
+            )}
+          >
             P{task.priority}
           </span>
         </div>
 
-
-
         {task.due_date && (
-          <div className={cn(
-            'flex items-center gap-1 text-xs font-medium',
-            isOverdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
-          )}>
-            {t('tasks.due_on')}{' '}
-            <Calendar className="w-3 h-3" />
+          <div
+            className={cn(
+              'flex items-center gap-1 text-xs font-medium',
+              isOverdue
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-muted-foreground'
+            )}
+          >
+            {t('tasks.due_on')} <Calendar className="w-3 h-3" />
             {new Date(task.due_date).toLocaleDateString()}
           </div>
         )}
@@ -149,5 +194,5 @@ export default function TaskCard({
         onTaskUpdate={onTaskUpdate}
       />
     </>
-  )
+  );
 }
