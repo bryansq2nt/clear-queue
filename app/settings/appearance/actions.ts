@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
@@ -9,13 +10,16 @@ import { validateCurrency } from '@/lib/validation/profile';
 
 type UserPreferences = Database['public']['Tables']['user_preferences']['Row'];
 
-export async function getPreferences(): Promise<UserPreferences | null> {
+const USER_PREF_COLS =
+  'user_id, theme_mode, primary_color, secondary_color, third_color, currency, company_logo_asset_id, cover_image_asset_id, created_at, updated_at';
+
+export const getPreferences = cache(async (): Promise<UserPreferences | null> => {
   const user = await requireAuth();
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('user_preferences')
-    .select('*')
+    .select(USER_PREF_COLS)
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -29,11 +33,11 @@ export async function getPreferences(): Promise<UserPreferences | null> {
   const { data: inserted } = await supabase
     .from('user_preferences')
     .insert(insertPayload as never)
-    .select()
+    .select(USER_PREF_COLS)
     .single();
 
   return inserted ? (inserted as UserPreferences) : null;
-}
+});
 
 export async function getPreferencesOptional(): Promise<UserPreferences | null> {
   const user = await getUser();
@@ -41,7 +45,7 @@ export async function getPreferencesOptional(): Promise<UserPreferences | null> 
   const supabase = await createClient();
   const { data } = await supabase
     .from('user_preferences')
-    .select('*')
+    .select(USER_PREF_COLS)
     .eq('user_id', user.id)
     .maybeSingle();
   return data ? (data as UserPreferences) : null;
@@ -141,7 +145,7 @@ export async function updatePreferences(payload: {
   const { data, error } = await supabase
     .from('user_preferences')
     .upsert(upsertPayload as never, { onConflict: 'user_id' })
-    .select()
+    .select(USER_PREF_COLS)
     .single();
 
   if (error) return { error: error.message };

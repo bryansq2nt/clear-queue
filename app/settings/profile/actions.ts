@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
@@ -18,7 +19,7 @@ type UserAsset = Database['public']['Tables']['user_assets']['Row'];
 const PROFILE_COLS =
   'user_id, display_name, phone, timezone, locale, avatar_asset_id, created_at, updated_at';
 
-export async function getProfile(): Promise<Profile | null> {
+export const getProfile = cache(async (): Promise<Profile | null> => {
   console.log('🔵 [SERVER ACTION] getProfile called');
   console.trace('Call stack:');
   const user = await requireAuth();
@@ -52,11 +53,11 @@ export async function getProfile(): Promise<Profile | null> {
     return existing ? (existing as Profile) : null;
   }
   return inserted ? (inserted as Profile) : null;
-}
+});
 
-export async function getProfileWithAvatar(): Promise<
+export const getProfileWithAvatar = cache(async (): Promise<
   (Profile & { avatar_asset: UserAsset | null }) | null
-> {
+> => {
   console.log('🔵 [SERVER ACTION] getProfileWithAvatar called');
   console.trace('Call stack:');
   const profile = await getProfile();
@@ -73,7 +74,7 @@ export async function getProfileWithAvatar(): Promise<
     .single();
 
   return { ...profile, avatar_asset: asset ? (asset as UserAsset) : null };
-}
+});
 
 export async function updateProfile(payload: {
   display_name?: string;
@@ -155,9 +156,9 @@ export async function uploadUserAsset(
   return doUploadUserAsset(file, kind);
 }
 
-export async function getAssetSignedUrl(
+export const getAssetSignedUrl = cache(async (
   assetId: string
-): Promise<string | null> {
+): Promise<string | null> => {
   console.log('🔵 [SERVER ACTION] getAssetSignedUrl called', { assetId });
   console.trace('Call stack:');
   const user = await requireAuth();
@@ -182,7 +183,7 @@ export async function getAssetSignedUrl(
     .createSignedUrl(asset.path, 3600);
 
   return urlData?.signedUrl ?? null;
-}
+});
 
 export async function deleteUserAsset(
   assetId: string

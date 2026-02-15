@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
@@ -8,17 +9,19 @@ import type { Database } from '@/lib/supabase/types';
 
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
 
-export async function getProjectsForSidebar(): Promise<ProjectRow[]> {
+export const getProjectsForSidebar = cache(async (): Promise<ProjectRow[]> => {
   const user = await requireAuth();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('projects')
-    .select('id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at')
+    .select(
+      'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
+    )
     .eq('owner_id', user.id)
     .order('created_at', { ascending: true });
   if (error) return [];
   return (data || []) as ProjectRow[];
-}
+});
 
 export async function getProjectById(
   projectId: string
@@ -27,7 +30,9 @@ export async function getProjectById(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('projects')
-    .select('id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at')
+    .select(
+      'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
+    )
     .eq('id', projectId)
     .single();
   if (error || !data) return null;
