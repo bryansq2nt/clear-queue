@@ -19,7 +19,7 @@
 | /todo/list/[id] | 8+ | ~1.1s | 🔜 Pending |
 | /budgets | 10 | ~1.5s | 🔜 Pending |
 | /budgets/[id] | 6+ | ~1s | 🔜 Pending |
-| /clients | 8+ | ~1s | 🔜 Pending |
+| /clients | ~2–3 (est.) | <1s (est.) | ✅ Fixed |
 | /clients/[id] | 9+ | ~1s | 🔜 Pending |
 | /businesses | 6+ | ~1s | 🔜 Pending |
 | /billings | 10+ | ~1s | 🔜 Pending |
@@ -33,8 +33,8 @@
 
 1. **Dashboard** – Most visited
 2. **Projects**
-3. Clients ← **next**
-4. Businesses
+3. **Clients**
+4. Businesses ← **next**
 5. Billings
 6. Budgets
 7. Ideas

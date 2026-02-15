@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Database } from '@/lib/supabase/types';
 import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
@@ -17,12 +17,20 @@ import { EmptyState } from './components/EmptyState';
 type Project = Database['public']['Tables']['projects']['Row'];
 type Client = Database['public']['Tables']['clients']['Row'];
 
-export default function ClientsPageClient() {
+interface ClientsPageClientProps {
+  initialProjects: Project[];
+  initialClients: Client[];
+}
+
+export default function ClientsPageClient({
+  initialProjects,
+  initialClients,
+}: ClientsPageClientProps) {
   const { t } = useI18n();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [clients, setClients] = useState<Client[]>(initialClients);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -38,14 +46,6 @@ export default function ClientsPageClient() {
     setClients(data);
     setIsLoading(false);
   }, []);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-  useEffect(() => {
-    loadClients();
-  }, [loadClients]);
 
   const filteredClients = searchQuery.trim()
     ? clients.filter((c) => {
