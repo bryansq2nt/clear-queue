@@ -129,36 +129,38 @@ const TASK_COLS =
 const PROJECT_COLS =
   'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at';
 
-export const getDashboardData = cache(async (): Promise<{
-  projects: Database['public']['Tables']['projects']['Row'][];
-  tasks: Database['public']['Tables']['tasks']['Row'][];
-}> => {
-  await requireAuth();
-  const supabase = await createClient();
-  const { getUser } = await import('@/lib/auth');
-  const user = await getUser();
-  if (!user) return { projects: [], tasks: [] };
+export const getDashboardData = cache(
+  async (): Promise<{
+    projects: Database['public']['Tables']['projects']['Row'][];
+    tasks: Database['public']['Tables']['tasks']['Row'][];
+  }> => {
+    await requireAuth();
+    const supabase = await createClient();
+    const { getUser } = await import('@/lib/auth');
+    const user = await getUser();
+    if (!user) return { projects: [], tasks: [] };
 
-  const [projectsRes, tasksRes] = await Promise.all([
-    supabase
-      .from('projects')
-      .select(PROJECT_COLS)
-      .eq('owner_id', user.id)
-      .order('created_at', { ascending: true }),
-    supabase
-      .from('tasks')
-      .select(TASK_COLS)
-      .order('order_index', { ascending: true }),
-  ]);
+    const [projectsRes, tasksRes] = await Promise.all([
+      supabase
+        .from('projects')
+        .select(PROJECT_COLS)
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('tasks')
+        .select(TASK_COLS)
+        .order('order_index', { ascending: true }),
+    ]);
 
-  const projects = (projectsRes.data ||
-    []) as Database['public']['Tables']['projects']['Row'][];
-  const tasks = (tasksRes.data ||
-    []) as Database['public']['Tables']['tasks']['Row'][];
-  return { projects, tasks };
-});
+    const projects = (projectsRes.data ||
+      []) as Database['public']['Tables']['projects']['Row'][];
+    const tasks = (tasksRes.data ||
+      []) as Database['public']['Tables']['tasks']['Row'][];
+    return { projects, tasks };
+  }
+);
 
-export async function getTasksByProjectId(projectId: string) {
+export const getTasksByProjectId = cache(async (projectId: string) => {
   await requireAuth();
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -168,7 +170,7 @@ export async function getTasksByProjectId(projectId: string) {
     .order('order_index', { ascending: true });
   if (error) return [];
   return (data || []) as Database['public']['Tables']['tasks']['Row'][];
-}
+});
 
 export async function getCriticalTasks(): Promise<
   (Database['public']['Tables']['tasks']['Row'] & {

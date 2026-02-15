@@ -23,21 +23,21 @@ export const getProjectsForSidebar = cache(async (): Promise<ProjectRow[]> => {
   return (data || []) as ProjectRow[];
 });
 
-export async function getProjectById(
-  projectId: string
-): Promise<ProjectRow | null> {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('projects')
-    .select(
-      'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
-    )
-    .eq('id', projectId)
-    .single();
-  if (error || !data) return null;
-  return data as ProjectRow;
-}
+export const getProjectById = cache(
+  async (projectId: string): Promise<ProjectRow | null> => {
+    await requireAuth();
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('projects')
+      .select(
+        'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
+      )
+      .eq('id', projectId)
+      .single();
+    if (error || !data) return null;
+    return data as ProjectRow;
+  }
+);
 
 export async function createProject(formData: FormData) {
   const user = await requireAuth();
@@ -260,24 +260,26 @@ export const getProjectsList = cache(async (): Promise<ProjectListItem[]> => {
   );
 });
 
-export const getFavoriteProjectIds = cache(async (): Promise<{
-  data?: string[];
-  error?: string;
-}> => {
-  const user = await getUser();
-  if (!user) return { data: [] };
+export const getFavoriteProjectIds = cache(
+  async (): Promise<{
+    data?: string[];
+    error?: string;
+  }> => {
+    const user = await getUser();
+    if (!user) return { data: [] };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('project_favorites')
-    .select('project_id')
-    .eq('user_id', user.id);
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('project_favorites')
+      .select('project_id')
+      .eq('user_id', user.id);
 
-  if (error) return { error: error.message };
-  return {
-    data: (data || []).map((row: { project_id: string }) => row.project_id),
-  };
-});
+    if (error) return { error: error.message };
+    return {
+      data: (data || []).map((row: { project_id: string }) => row.project_id),
+    };
+  }
+);
 
 export async function addProjectFavorite(
   projectId: string

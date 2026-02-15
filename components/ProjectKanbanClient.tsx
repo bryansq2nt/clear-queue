@@ -33,18 +33,26 @@ type Task = Database['public']['Tables']['tasks']['Row'];
 
 interface ProjectKanbanClientProps {
   projectId: string;
+  initialProjects: Project[];
+  initialProject: Project | null;
+  initialTasks: Task[];
 }
 
 export default function ProjectKanbanClient({
   projectId,
+  initialProjects,
+  initialProject,
+  initialTasks,
 }: ProjectKanbanClientProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [currentProject, setCurrentProject] = useState<Project | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [currentProject, setCurrentProject] = useState<Project | null>(
+    initialProject
+  );
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(
     new Set()
@@ -129,23 +137,16 @@ export default function ProjectKanbanClient({
 
   const loadData = useCallback(async () => {
     setLoading(true);
-
     const [projectsList, projectData, tasksList] = await Promise.all([
       getProjectsForSidebar(),
       getProjectById(projectId),
       getTasksByProjectId(projectId),
     ]);
-
     setProjects(projectsList);
     if (projectData) setCurrentProject(projectData);
     setTasks(tasksList);
-
     setLoading(false);
   }, [projectId]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
 
   const filteredTasks = tasks.filter((task) => {
     if (

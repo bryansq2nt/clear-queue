@@ -8,24 +8,24 @@
 
 ## Current state (from logs)
 
-| Page | POSTs | Load Time | Status |
-|------|-------|-----------|--------|
-| /profile | 4 | ~0.9s | ✅ Fixed |
-| /dashboard | ~3–4 (est.) | <1s (est.) | ✅ Fixed |
-| /projects | ~3–4 (est.) | <1s (est.) | ✅ Fixed |
-| /settings/appearance | 7+ | ~1.5s | 🔜 Pending |
-| /ideas | 6 | ~1s | 🔜 Pending |
-| /todo | 8+ | ~1s | 🔜 Pending |
-| /todo/list/[id] | 8+ | ~1.1s | 🔜 Pending |
-| /budgets | 10 | ~1.5s | 🔜 Pending |
-| /budgets/[id] | 6+ | ~1s | 🔜 Pending |
-| /clients | ~2–3 (est.) | <1s (est.) | ✅ Fixed |
-| /clients/[id] | 9+ | ~1s | 🔜 Pending |
-| /businesses | 6+ | ~1s | 🔜 Pending |
-| /billings | 10+ | ~1s | 🔜 Pending |
-| /notes | 8+ | ~1s | 🔜 Pending |
-| /notes/[id] | 2+ | ~0.4s | 🔜 Pending |
-| /project/[id] | 9+ | ~1s | 🔜 Pending |
+| Page                 | POSTs       | Load Time  | Status     |
+| -------------------- | ----------- | ---------- | ---------- |
+| /profile             | 4           | ~0.9s      | ✅ Fixed   |
+| /dashboard           | ~3–4 (est.) | <1s (est.) | ✅ Fixed   |
+| /projects            | ~3–4 (est.) | <1s (est.) | ✅ Fixed   |
+| /settings/appearance | ~3–4 (est.) | <1s (est.) | ✅ Fixed   |
+| /ideas               | ~2–3 (est.) | <1s (est.) | ✅ Fixed   |
+| /todo                | ~2–3 (est.) | <1s (est.) | ✅ Fixed   |
+| /todo/list/[id]      | 8+          | ~1.1s      | 🔜 Pending |
+| /budgets             | ~2–3 (est.) | <1s (est.) | ✅ Fixed   |
+| /budgets/[id]        | 6+          | ~1s        | 🔜 Pending |
+| /clients             | ~2–3 (est.) | <1s (est.) | ✅ Fixed   |
+| /clients/[id]        | 9+          | ~1s        | 🔜 Pending |
+| /businesses          | ~2–3 (est.) | <1s (est.) | ✅ Fixed   |
+| /billings            | ~3–4 (est.) | <1s (est.) | ✅ Fixed   |
+| /notes               | ~2–4 (est.) | <1s (est.) | ✅ Fixed   |
+| /notes/[id]          | 2+          | ~0.4s      | 🔜 Pending |
+| /project/[id]        | ~3–4 (est.) | <1s (est.) | ✅ Fixed   |
 
 ---
 
@@ -34,13 +34,15 @@
 1. **Dashboard** – Most visited
 2. **Projects**
 3. **Clients**
-4. Businesses ← **next**
-5. Billings
-6. Budgets
-7. Ideas
-8. Notes
-9. Todo
-10. Settings subpages
+4. **Businesses**
+5. **Billings**
+6. **Budgets**
+7. **Ideas**
+8. **Notes**
+9. **Todo**
+10. **Settings (appearance)**
+
+Remaining: /todo/list/[id], /budgets/[id], /clients/[id], /notes/[id]
 
 ---
 
