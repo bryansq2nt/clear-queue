@@ -15,13 +15,18 @@ import { uploadUserAsset as doUploadUserAsset } from '@/lib/storage/upload';
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type UserAsset = Database['public']['Tables']['user_assets']['Row'];
 
+const PROFILE_COLS =
+  'user_id, display_name, phone, timezone, locale, avatar_asset_id, created_at, updated_at';
+
 export async function getProfile(): Promise<Profile | null> {
+  console.log('🔵 [SERVER ACTION] getProfile called');
+  console.trace('Call stack:');
   const user = await requireAuth();
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select(PROFILE_COLS)
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -35,13 +40,13 @@ export async function getProfile(): Promise<Profile | null> {
   const { data: inserted, error: insertError } = await supabase
     .from('profiles')
     .insert(insertPayload as never)
-    .select()
+    .select(PROFILE_COLS)
     .single();
 
   if (insertError?.code === '23505') {
     const { data: existing } = await supabase
       .from('profiles')
-      .select('*')
+      .select(PROFILE_COLS)
       .eq('user_id', user.id)
       .single();
     return existing ? (existing as Profile) : null;
@@ -52,6 +57,8 @@ export async function getProfile(): Promise<Profile | null> {
 export async function getProfileWithAvatar(): Promise<
   (Profile & { avatar_asset: UserAsset | null }) | null
 > {
+  console.log('🔵 [SERVER ACTION] getProfileWithAvatar called');
+  console.trace('Call stack:');
   const profile = await getProfile();
   if (!profile) return null;
   if (!profile.avatar_asset_id) return { ...profile, avatar_asset: null };
@@ -59,7 +66,9 @@ export async function getProfileWithAvatar(): Promise<
   const supabase = await createClient();
   const { data: asset } = await supabase
     .from('user_assets')
-    .select('*')
+    .select(
+      'id, user_id, kind, bucket, path, mime_type, size_bytes, width, height, created_at'
+    )
     .eq('id', profile.avatar_asset_id)
     .single();
 
@@ -73,6 +82,8 @@ export async function updateProfile(payload: {
   locale?: string;
   avatar_asset_id?: string | null;
 }): Promise<{ error?: string; data?: Profile }> {
+  console.log('🔵 [SERVER ACTION] updateProfile called');
+  console.trace('Call stack:');
   const user = await requireAuth();
   const supabase = await createClient();
 
@@ -111,7 +122,7 @@ export async function updateProfile(payload: {
     .from('profiles')
     .update(updates as never)
     .eq('user_id', user.id)
-    .select()
+    .select(PROFILE_COLS)
     .single();
 
   if (error) return { error: error.message };
@@ -123,6 +134,8 @@ export async function updateProfile(payload: {
 export async function uploadUserAsset(
   formData: FormData
 ): Promise<{ error?: string; data?: UserAsset }> {
+  console.log('🔵 [SERVER ACTION] uploadUserAsset called');
+  console.trace('Call stack:');
   const file = formData.get('file') as File | null;
   const kind = formData.get('kind') as
     | 'avatar'
@@ -145,6 +158,8 @@ export async function uploadUserAsset(
 export async function getAssetSignedUrl(
   assetId: string
 ): Promise<string | null> {
+  console.log('🔵 [SERVER ACTION] getAssetSignedUrl called', { assetId });
+  console.trace('Call stack:');
   const user = await requireAuth();
   const supabase = await createClient();
 
@@ -172,6 +187,8 @@ export async function getAssetSignedUrl(
 export async function deleteUserAsset(
   assetId: string
 ): Promise<{ error?: string }> {
+  console.log('🔵 [SERVER ACTION] deleteUserAsset called', { assetId });
+  console.trace('Call stack:');
   const user = await requireAuth();
   const supabase = await createClient();
 

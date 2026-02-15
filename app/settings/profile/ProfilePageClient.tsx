@@ -29,6 +29,7 @@ import { useI18n } from '@/components/I18nProvider';
 type ProfileWithAvatar = Awaited<ReturnType<typeof getProfileWithAvatar>>;
 
 export default function ProfilePageClient() {
+  console.log('🟢 [CLIENT] ProfilePageClient rendered');
   const { t, setPrefs } = useI18n();
   const [profile, setProfile] = useState<ProfileWithAvatar | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,6 +48,7 @@ export default function ProfilePageClient() {
   });
 
   const loadProfile = useCallback(async () => {
+    console.log('🟡 [CLIENT] loadProfile called');
     setIsLoading(true);
     const [p, prefs] = await Promise.all([
       getProfileWithAvatar(),
@@ -72,6 +74,7 @@ export default function ProfilePageClient() {
   }, []);
 
   useEffect(() => {
+    console.log('🟡 [CLIENT] useEffect running - loading profile data');
     loadProfile();
   }, [loadProfile]);
 
