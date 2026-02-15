@@ -1,18 +1,16 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import Image from 'next/image';
 import {
-  getProfileWithAvatar,
   updateProfile,
   uploadUserAsset,
   deleteUserAsset,
   getAssetSignedUrl,
 } from './actions';
-import {
-  getPreferences,
-  updatePreferences,
-} from '@/app/settings/appearance/actions';
+import { updatePreferences } from '@/app/settings/appearance/actions';
+import type { getProfileWithAvatar } from './actions';
+import type { getPreferences } from '@/app/settings/appearance/actions';
 import { TIMEZONE_OPTIONS, CURRENCY_OPTIONS } from '@/lib/validation/profile';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,56 +25,45 @@ import { Loader2, Upload, X } from 'lucide-react';
 import { useI18n } from '@/components/I18nProvider';
 
 type ProfileWithAvatar = Awaited<ReturnType<typeof getProfileWithAvatar>>;
+type Preferences = Awaited<ReturnType<typeof getPreferences>>;
 
-export default function ProfilePageClient() {
-  console.log('🟢 [CLIENT] ProfilePageClient rendered');
+type ProfilePageClientProps = {
+  profile: ProfileWithAvatar | null;
+  preferences: Preferences;
+  initialAvatarUrl: string | null;
+};
+
+function defaultForm(
+  profile: ProfileWithAvatar | null,
+  preferences: Preferences
+) {
+  return {
+    display_name: profile?.display_name ?? '',
+    phone: profile?.phone ?? '',
+    timezone: profile?.timezone ?? 'America/New_York',
+    locale: profile?.locale ?? 'es',
+    currency: preferences?.currency ?? 'USD',
+  };
+}
+
+export default function ProfilePageClient({
+  profile: initialProfile,
+  preferences: initialPreferences,
+  initialAvatarUrl,
+}: ProfilePageClientProps) {
   const { t, setPrefs } = useI18n();
-  const [profile, setProfile] = useState<ProfileWithAvatar | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState<ProfileWithAvatar | null>(
+    initialProfile
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [form, setForm] = useState({
-    display_name: '',
-    phone: '',
-    timezone: 'America/New_York',
-    locale: 'es',
-    currency: 'USD',
-  });
-
-  const loadProfile = useCallback(async () => {
-    console.log('🟡 [CLIENT] loadProfile called');
-    setIsLoading(true);
-    const [p, prefs] = await Promise.all([
-      getProfileWithAvatar(),
-      getPreferences(),
-    ]);
-    setProfile(p);
-    if (p) {
-      setForm((prev) => ({
-        display_name: p.display_name,
-        phone: p.phone ?? '',
-        timezone: p.timezone,
-        locale: p.locale,
-        currency: prefs?.currency ?? prev.currency,
-      }));
-      if (p.avatar_asset_id) {
-        const url = await getAssetSignedUrl(p.avatar_asset_id);
-        setAvatarUrl(url);
-      } else {
-        setAvatarUrl(null);
-      }
-    }
-    setIsLoading(false);
-  }, []);
-
-  useEffect(() => {
-    console.log('🟡 [CLIENT] useEffect running - loading profile data');
-    loadProfile();
-  }, [loadProfile]);
+  const [form, setForm] = useState(() =>
+    defaultForm(initialProfile, initialPreferences)
+  );
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -148,14 +135,6 @@ export default function ProfilePageClient() {
     setAvatarUrl(null);
     setProfile((prev) =>
       prev ? { ...prev, avatar_asset_id: null, avatar_asset: null } : prev
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="p-6 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-      </div>
     );
   }
 
