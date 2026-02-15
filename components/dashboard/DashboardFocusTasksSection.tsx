@@ -2,7 +2,10 @@
 
 import { useCallback } from 'react';
 import { useI18n } from '@/components/I18nProvider';
-import { createClient } from '@/lib/supabase/client';
+import {
+  getRecentTasksPage,
+  getHighPriorityTasksPage,
+} from '@/app/actions/tasks';
 import TaskListWidget from './TaskListWidget';
 import { Database } from '@/lib/supabase/types';
 
@@ -15,81 +18,29 @@ interface TaskWithProject extends Task {
 
 export default function DashboardFocusTasksSection() {
   const { t } = useI18n();
-  const supabase = createClient();
 
-  // Query function for "En lo que he estado trabajando"
   const queryRecentTasks = useCallback(
     async (page: number, pageSize: number) => {
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-
-      const { data, count, error } = await supabase
-        .from('tasks')
-        .select(
-          `
-        id,
-        title,
-        status,
-        priority,
-        due_date,
-        updated_at,
-        project_id,
-        notes,
-        order_index,
-        created_at,
-        projects (
-          id,
-          name,
-          color
-        )
-      `,
-          { count: 'exact' }
-        )
-        .neq('status', 'done')
-        .order('updated_at', { ascending: false })
-        .range(from, to);
-
-      return { data, count, error };
+      const res = await getRecentTasksPage(page, pageSize);
+      return {
+        data: res.data,
+        count: res.count,
+        error: res.error,
+      };
     },
-    [supabase]
+    []
   );
 
-  // Query function for "High Priority (P5)"
   const queryHighPriorityTasks = useCallback(
     async (page: number, pageSize: number) => {
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-
-      const { data, count, error } = await supabase
-        .from('tasks')
-        .select(
-          `
-        id,
-        title,
-        status,
-        priority,
-        due_date,
-        updated_at,
-        project_id,
-        notes,
-        order_index,
-        created_at,
-        projects (
-          id,
-          name,
-          color
-        )
-      `,
-          { count: 'exact' }
-        )
-        .eq('priority', 5)
-        .neq('status', 'done')
-        .order('due_date', { ascending: true, nullsFirst: false })
-        .range(from, to);
-
-      return { data, count, error };
+      const res = await getHighPriorityTasksPage(page, pageSize);
+      return {
+        data: res.data,
+        count: res.count,
+        error: res.error,
+      };
     },
-    [supabase]
+    []
   );
 
   return (

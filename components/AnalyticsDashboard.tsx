@@ -24,7 +24,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { usePathname, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { getDashboardData } from '@/app/actions/tasks';
 import { Database } from '@/lib/supabase/types';
 import Sidebar from './Sidebar';
 import DashboardFocusTasksSection from './dashboard/DashboardFocusTasksSection';
@@ -58,22 +58,6 @@ const healthBadges = {
   Warning: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400',
   Critical: 'bg-red-500/20 text-red-700 dark:text-red-400',
 };
-
-// Data fetching function
-async function fetchDashboardData() {
-  const supabase = createClient();
-
-  // Fetch all projects
-  const { data: projects } = await supabase
-    .from('projects')
-    .select('*')
-    .order('created_at', { ascending: true });
-
-  // Fetch all tasks
-  const { data: tasks } = await supabase.from('tasks').select('*');
-
-  return { projects: projects || [], tasks: tasks || [] };
-}
 
 // Calculate project health metrics
 function calculateProjectHealth(projectId: string, tasks: Task[]) {
@@ -159,7 +143,6 @@ export default function AnalyticsDashboard() {
   const { t } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
   const [dashboardData, setDashboardData] = useState<{
     projects: Project[];
     tasks: Task[];
@@ -193,7 +176,7 @@ export default function AnalyticsDashboard() {
 
   async function loadDashboardData() {
     setLoading(true);
-    const { projects, tasks } = (await fetchDashboardData()) as any;
+    const { projects, tasks } = await getDashboardData();
 
     const projectHealthData = projects.map((project: Project) => ({
       ...project,

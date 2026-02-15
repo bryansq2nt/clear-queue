@@ -11,7 +11,7 @@ import {
   deleteTodoListAction,
   archiveTodoListAction,
 } from '@/app/todo/actions';
-import { createClient } from '@/lib/supabase/client';
+import { getProjectsForSidebar } from '@/app/actions/projects';
 import { Database } from '@/lib/supabase/types';
 
 type Project = Database['public']['Tables']['projects']['Row'];
@@ -38,18 +38,10 @@ export default function TodoListsPanel({
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [newListTitle, setNewListTitle] = useState('');
-  const supabase = createClient();
 
-  // Load projects
   useEffect(() => {
-    supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        if (data) setProjects(data);
-      });
-  }, [supabase]);
+    getProjectsForSidebar().then((data) => setProjects(data));
+  }, []);
 
   // Group lists by project
   const unassignedLists = lists.filter((l) => !l.project_id && !l.is_archived);

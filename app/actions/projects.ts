@@ -20,6 +20,20 @@ export async function getProjectsForSidebar(): Promise<ProjectRow[]> {
   return (data || []) as ProjectRow[];
 }
 
+export async function getProjectById(
+  projectId: string
+): Promise<ProjectRow | null> {
+  await requireAuth();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('projects')
+    .select('id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at')
+    .eq('id', projectId)
+    .single();
+  if (error || !data) return null;
+  return data as ProjectRow;
+}
+
 export async function createProject(formData: FormData) {
   const user = await requireAuth();
   const supabase = await createClient();

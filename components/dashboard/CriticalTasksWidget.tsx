@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/lib/supabase/types';
+import { getCriticalTasks } from '@/app/actions/tasks';
 import { EditTaskModal } from '../EditTaskModal';
 import Link from 'next/link';
 
@@ -43,48 +43,14 @@ export default function CriticalTasksWidget() {
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const supabase = createClient();
 
   const loadCriticalTasks = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('tasks')
-      .select(
-        `
-        id,
-        title,
-        status,
-        priority,
-        due_date,
-        project_id,
-        notes,
-        order_index,
-        created_at,
-        updated_at,
-        projects (
-          id,
-          name,
-          color
-        )
-      `
-      )
-      .eq('priority', 5)
-      .neq('status', 'done')
-      .order('due_date', { ascending: true, nullsFirst: false })
-      .limit(5);
+    const data = await getCriticalTasks();
 
-    if (error) {
-      console.error('Error loading critical tasks:', error);
-      setLoading(false);
-      return;
-    }
-
-    // Transform the data to flatten the projects relation
-    // Supabase returns the relation as an object (not array) for one-to-many relationships
     const transformedTasks = (data || []).map((task: any) => {
       let project: Project | null = null;
       if (task.projects) {
-        // Handle both array and object cases
         if (Array.isArray(task.projects)) {
           project = task.projects.length > 0 ? task.projects[0] : null;
         } else {
@@ -99,7 +65,7 @@ export default function CriticalTasksWidget() {
 
     setCriticalTasks(transformedTasks);
     setLoading(false);
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     loadCriticalTasks();

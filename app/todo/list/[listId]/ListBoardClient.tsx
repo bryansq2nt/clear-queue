@@ -4,8 +4,8 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Trash2, MoreVertical, Link2, Check } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/lib/supabase/types';
+import { getProjectsForSidebar } from '@/app/actions/projects';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import {
   createTodoItemAction,
@@ -73,11 +73,8 @@ export default function ListBoardClient({
   const newTaskInputRef = useRef<HTMLInputElement>(null);
 
   const loadProjects = useCallback(async () => {
-    const { data } = await createClient()
-      .from('projects')
-      .select('*')
-      .order('name');
-    if (data) setProjects(data as Project[]);
+    const data = await getProjectsForSidebar();
+    setProjects(data);
   }, []);
 
   useEffect(() => {

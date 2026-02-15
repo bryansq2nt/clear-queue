@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 
 /**
  * Handles Supabase auth redirect when user lands with ?code=... (e.g. password reset link).
- * Exchanges the code for a session and redirects to /reset-password so they can set a new password.
+ * Redirects to API route that exchanges the code for a session and redirects to /reset-password.
  */
 export default function AuthCallbackHandler() {
   const router = useRouter();
@@ -21,26 +20,9 @@ export default function AuthCallbackHandler() {
     if (!code || status !== 'idle') return;
 
     setStatus('exchanging');
-    const supabase = createClient();
-
-    supabase.auth
-      .exchangeCodeForSession(code)
-      .then(({ error: exchangeError }) => {
-        if (exchangeError) {
-          setError(exchangeError.message);
-          setStatus('error');
-          supabase.auth.signOut();
-          return;
-        }
-        setStatus('done');
-        router.replace('/reset-password');
-        router.refresh();
-      })
-      .catch((err) => {
-        setError(err?.message || 'Invalid or expired link');
-        setStatus('error');
-        supabase.auth.signOut();
-      });
+    const url = `/api/auth/callback?code=${encodeURIComponent(code)}`;
+    router.replace(url);
+    setStatus('done');
   }, [searchParams, router, status]);
 
   if (status === 'idle') return null;

@@ -123,6 +123,140 @@ export async function deleteTasksByIds(ids: string[]) {
   return { success: true };
 }
 
+const TASK_COLS =
+  'id, project_id, title, status, priority, due_date, notes, order_index, created_at, updated_at';
+const PROJECT_COLS =
+  'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at';
+
+export async function getDashboardData(): Promise<{
+  projects: Database['public']['Tables']['projects']['Row'][];
+  tasks: Database['public']['Tables']['tasks']['Row'][];
+}> {
+  await requireAuth();
+  const supabase = await createClient();
+  const { getUser } = await import('@/lib/auth');
+  const user = await getUser();
+  if (!user) return { projects: [], tasks: [] };
+
+  const [projectsRes, tasksRes] = await Promise.all([
+    supabase
+      .from('projects')
+      .select(PROJECT_COLS)
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('tasks')
+      .select(TASK_COLS)
+      .order('order_index', { ascending: true }),
+  ]);
+
+  const projects = (projectsRes.data || []) as Database['public']['Tables']['projects']['Row'][];
+  const tasks = (tasksRes.data || []) as Database['public']['Tables']['tasks']['Row'][];
+  return { projects, tasks };
+}
+
+export async function getTasksByProjectId(projectId: string) {
+  await requireAuth();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('tasks')
+    .select(TASK_COLS)
+    .eq('project_id', projectId)
+    .order('order_index', { ascending: true });
+  if (error) return [];
+  return (data || []) as Database['public']['Tables']['tasks']['Row'][];
+}
+
+export async function getCriticalTasks(): Promise<
+  (Database['public']['Tables']['tasks']['Row'] & {
+    projects: { id: string; name: string; color: string | null } | null;
+  })[]
+> {
+  await requireAuth();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('tasks')
+    .select(
+      `
+      id, project_id, title, status, priority, due_date, notes, order_index, created_at, updated_at,
+      projects ( id, name, color )
+    `
+    )
+    .eq('priority', 5)
+    .neq('status', 'done')
+    .order('due_date', { ascending: true, nullsFirst: false })
+    .limit(5);
+  if (error) return [];
+  return (data || []) as any;
+}
+
+export async function getRecentTasksPage(
+  page: number,
+  pageSize: number
+): Promise<{
+  data: (Database['public']['Tables']['tasks']['Row'] & {
+    projects: { id: string; name: string; color: string | null } | null;
+  })[];
+  count: number | null;
+  error: Error | null;
+}> {
+  await requireAuth();
+  const supabase = await createClient();
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count, error } = await supabase
+    .from('tasks')
+    .select(
+      `
+      id, project_id, title, status, priority, due_date, notes, order_index, created_at, updated_at,
+      projects ( id, name, color )
+    `,
+      { count: 'exact' }
+    )
+    .neq('status', 'done')
+    .order('updated_at', { ascending: false })
+    .range(from, to);
+  return {
+    data: (data || []) as any,
+    count: count ?? null,
+    error: error ? new Error(error.message) : null,
+  };
+}
+
+export async function getHighPriorityTasksPage(
+  page: number,
+  pageSize: number
+): Promise<{
+  data: (Database['public']['Tables']['tasks']['Row'] & {
+    projects: { id: string; name: string; color: string | null } | null;
+  })[];
+  count: number | null;
+  error: Error | null;
+}> {
+  await requireAuth();
+  const supabase = await createClient();
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count, error } = await supabase
+    .from('tasks')
+    .select(
+      `
+      id, project_id, title, status, priority, due_date, notes, order_index, created_at, updated_at,
+      projects ( id, name, color )
+    `,
+      { count: 'exact' }
+    )
+    .eq('priority', 5)
+    .neq('status', 'done')
+    .order('due_date', { ascending: true, nullsFirst: false })
+    .range(from, to);
+  return {
+    data: (data || []) as any,
+    count: count ?? null,
+    error: error ? new Error(error.message) : null,
+  };
+}
+
 export async function updateTaskOrder(
   taskId: string,
   newStatus: TaskStatus,

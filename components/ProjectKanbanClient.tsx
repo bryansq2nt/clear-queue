@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/lib/supabase/types';
+import { getProjectsForSidebar, getProjectById } from '@/app/actions/projects';
+import { getTasksByProjectId } from '@/app/actions/tasks';
 import KanbanBoard from './KanbanBoard';
 import TopBar from './TopBar';
 import { ProjectResourcesPanel } from './ProjectResourcesPanel';
@@ -58,8 +59,6 @@ export default function ProjectKanbanClient({
   >('next');
   const router = useRouter();
   const { t } = useI18n();
-
-  const supabase = createClient();
 
   // Selection mode helpers
   const toggleTaskSelection = useCallback((taskId: string) => {
@@ -131,26 +130,18 @@ export default function ProjectKanbanClient({
   const loadData = useCallback(async () => {
     setLoading(true);
 
-    const [projectsRes, projectRes, tasksRes] = await Promise.all([
-      supabase
-        .from('projects')
-        .select('*')
-        .order('created_at', { ascending: true }),
-      supabase.from('projects').select('*').eq('id', projectId).single(),
-      supabase
-        .from('tasks')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('order_index', { ascending: true }),
+    const [projectsList, projectData, tasksList] = await Promise.all([
+      getProjectsForSidebar(),
+      getProjectById(projectId),
+      getTasksByProjectId(projectId),
     ]);
 
-    if (projectsRes?.data) setProjects(projectsRes.data as Project[]);
-    const projectData = (projectRes as { data?: Project } | null)?.data;
+    setProjects(projectsList);
     if (projectData) setCurrentProject(projectData);
-    if (tasksRes?.data) setTasks(tasksRes.data as Task[]);
+    setTasks(tasksList);
 
     setLoading(false);
-  }, [supabase, projectId]);
+  }, [projectId]);
 
   useEffect(() => {
     loadData();

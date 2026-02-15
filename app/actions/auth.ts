@@ -95,3 +95,23 @@ export async function signOut() {
   await supabase.auth.signOut();
   redirect('/');
 }
+
+export async function getSessionStatus(): Promise<{ hasSession: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return { hasSession: !!session };
+}
+
+export async function updatePassword(
+  password: string
+): Promise<{ error?: string }> {
+  if (!password || password.length < 6) {
+    return { error: 'Password must be at least 6 characters' };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+  return {};
+}

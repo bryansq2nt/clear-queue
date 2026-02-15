@@ -4,8 +4,8 @@ import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Trash2, Check } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/lib/supabase/types';
+import { getProjectsForSidebar } from '@/app/actions/projects';
 import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
 import { signOut } from '@/app/actions/auth';
@@ -46,11 +46,8 @@ export default function ProjectBoardClient({
   const [error, setError] = useState<string | null>(null);
 
   const loadProjects = useCallback(async () => {
-    const { data } = await createClient()
-      .from('projects')
-      .select('*')
-      .order('name');
-    if (data) setProjects(data as Project[]);
+    const data = await getProjectsForSidebar();
+    setProjects(data);
   }, []);
 
   useEffect(() => {

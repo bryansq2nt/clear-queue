@@ -3,8 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Link2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/lib/supabase/types';
+import { getProjectsForSidebar } from '@/app/actions/projects';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { createTodoListAction, createTodoItemAction } from '@/app/todo/actions';
 import {
@@ -39,11 +39,8 @@ export default function NewTodoListClient() {
   const pendingQueueRef = useRef<string[]>([]);
 
   const loadProjects = useCallback(async () => {
-    const { data } = await createClient()
-      .from('projects')
-      .select('*')
-      .order('name');
-    if (data) setProjects(data as Project[]);
+    const data = await getProjectsForSidebar();
+    setProjects(data);
   }, []);
 
   useEffect(() => {

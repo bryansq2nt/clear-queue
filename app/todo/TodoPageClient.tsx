@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/lib/supabase/types';
+import { getProjectsForSidebar } from '@/app/actions/projects';
 import { AppShell } from '@/components/AppShell';
 import TodoDashboardClient from './TodoDashboardClient';
 import { useI18n } from '@/components/I18nProvider';
@@ -13,19 +13,12 @@ export default function TodoPageClient() {
   const { t } = useI18n();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
   const loadProjects = useCallback(async () => {
-    const { data } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: true });
-
-    if (data) {
-      setProjects(data as Project[]);
-    }
+    const data = await getProjectsForSidebar();
+    setProjects(data);
     setLoading(false);
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     loadProjects();

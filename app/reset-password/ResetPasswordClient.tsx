@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { getSessionStatus, updatePassword } from '@/app/actions/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,7 +26,6 @@ export default function ResetPasswordClient() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
     const params = parseHashParams(
       typeof window !== 'undefined' ? window.location.hash : ''
     );
@@ -35,20 +34,24 @@ export default function ResetPasswordClient() {
     const type = params.type;
 
     if (type === 'recovery' && access_token && refresh_token) {
-      supabase.auth
-        .setSession({ access_token, refresh_token })
-        .then(() => {
+      fetch('/api/auth/set-recovery-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token, refresh_token }),
+      })
+        .then((res) => {
+          if (!res.ok) return res.json().then((b) => Promise.reject(b));
           if (typeof window !== 'undefined') {
             window.history.replaceState(null, '', window.location.pathname);
           }
           setReady(true);
         })
         .catch((err) => {
-          setError(err.message || 'Invalid or expired reset link.');
+          setError(err?.error || err?.message || 'Invalid or expired reset link.');
         });
     } else {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
+      getSessionStatus().then(({ hasSession }) => {
+        if (hasSession) {
           setReady(true);
         } else {
           setError(
@@ -78,15 +81,12 @@ export default function ResetPasswordClient() {
     }
 
     setIsLoading(true);
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-
-    if (updateError) {
-      setError(updateError.message);
+    const result = await updatePassword(password);
+    if (result.error) {
+      setError(result.error);
       setIsLoading(false);
       return;
     }
-
     setSuccess(true);
     setIsLoading(false);
     router.push('/dashboard');

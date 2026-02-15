@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/lib/supabase/types';
+import { getDashboardData } from '@/app/actions/tasks';
 import KanbanBoard from './KanbanBoard';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
@@ -22,27 +22,13 @@ export default function DashboardClient() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const supabase = createClient();
-
   const loadData = useCallback(async () => {
     setLoading(true);
-
-    const [projectsRes, tasksRes] = await Promise.all([
-      supabase
-        .from('projects')
-        .select('*')
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('tasks')
-        .select('*')
-        .order('order_index', { ascending: true }),
-    ]);
-
-    if (projectsRes.data) setProjects(projectsRes.data);
-    if (tasksRes.data) setTasks(tasksRes.data);
-
+    const { projects: p, tasks: t } = await getDashboardData();
+    setProjects(p);
+    setTasks(t);
     setLoading(false);
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     loadData();

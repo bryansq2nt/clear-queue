@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { requestPasswordReset } from '@/app/actions/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,23 +28,14 @@ export default function ForgotPasswordForm() {
       return;
     }
 
-    const redirectTo =
-      typeof window !== 'undefined'
-        ? `${window.location.origin}/reset-password`
-        : `${process.env.NEXT_PUBLIC_SITE_URL || ''}/reset-password`;
+    const formData = new FormData();
+    formData.set('email', email);
+    const result = await requestPasswordReset(formData);
 
-    const supabase = createClient();
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      email,
-      {
-        redirectTo,
-      }
-    );
-
-    if (resetError) {
-      const message = resetError.message?.toLowerCase().includes('rate limit')
+    if (result.error) {
+      const message = result.error.toLowerCase().includes('rate limit')
         ? 'Too many reset emails sent. Please try again in about an hour.'
-        : resetError.message;
+        : result.error;
       setError(message);
       setIsLoading(false);
       return;

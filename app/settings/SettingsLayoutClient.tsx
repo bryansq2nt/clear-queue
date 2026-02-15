@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useI18n } from '@/components/I18nProvider';
-import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/lib/supabase/types';
+import { getProjectsForSidebar } from '@/app/actions/projects';
 import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
 import { signOut } from '@/app/actions/auth';
@@ -18,15 +18,11 @@ export default function SettingsLayoutClient({
   const { t } = useI18n();
   const [projects, setProjects] = useState<Project[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const supabase = createClient();
 
   const loadProjects = useCallback(async () => {
-    const { data } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: true });
-    if (data) setProjects(data as Project[]);
-  }, [supabase]);
+    const data = await getProjectsForSidebar();
+    setProjects(data);
+  }, []);
 
   useEffect(() => {
     loadProjects();
