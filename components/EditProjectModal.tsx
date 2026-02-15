@@ -134,7 +134,7 @@ export function EditProjectModal({
 
     const result = await updateProject(formData);
 
-    if (result.error) {
+    if (!result.ok) {
       setError(result.error);
       setIsLoading(false);
     } else {
@@ -151,7 +151,7 @@ export function EditProjectModal({
 
     const result = await deleteProject(project.id);
 
-    if (result.error) {
+    if (!result.ok) {
       setError(result.error);
       setIsLoading(false);
       setShowDeleteConfirm(false);
@@ -179,7 +179,7 @@ export function EditProjectModal({
 
     const result = await updateProject(formData);
 
-    if (result.error) {
+    if (!result.ok) {
       setError(result.error);
       setIsSavingNotes(false);
     } else {

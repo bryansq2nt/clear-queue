@@ -24,12 +24,14 @@ export async function getProjectResources(
     return { budgets: [], notes: [], boards: [], todoLists: [] };
   }
 
-  const [notes, allBudgets, allBoards, todoLists] = await Promise.all([
+  const [notes, allBudgets, allBoards, todoListsResult] = await Promise.all([
     getNotes({ projectId }),
     getBudgets(),
     listBoards(),
     getTodoLists({ projectId, includeArchived: false }),
   ]);
+
+  const todoLists = todoListsResult.ok ? todoListsResult.data : [];
 
   const budgets = (
     allBudgets as { id: string; name: string; project_id: string | null }[]

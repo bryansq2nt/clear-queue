@@ -23,14 +23,17 @@ export async function createTask(formData: FormData) {
   const dueDate = formData.get('due_date') as string | null;
   const notes = formData.get('notes') as string | null;
 
-  const { data, error } = await supabase.rpc('create_task_atomic' as never, {
-    in_project_id: projectId,
-    in_title: title,
-    in_status: status,
-    in_priority: priority,
-    in_due_date: dueDate || null,
-    in_notes: notes || null,
-  } as never);
+  const { data, error } = await supabase.rpc(
+    'create_task_atomic' as never,
+    {
+      in_project_id: projectId,
+      in_title: title,
+      in_status: status,
+      in_priority: priority,
+      in_due_date: dueDate || null,
+      in_notes: notes || null,
+    } as never
+  );
 
   if (error) {
     return { error: error.message };
@@ -158,9 +161,7 @@ export const getTasksByProjectId = cache(async (projectId: string) => {
   return (data || []) as Database['public']['Tables']['tasks']['Row'][];
 });
 
-export async function getCriticalTasks(): Promise<
-  TaskWithProject[]
-> {
+export async function getCriticalTasks(): Promise<TaskWithProject[]> {
   await requireAuth();
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -251,11 +252,14 @@ export async function updateTaskOrder(
   await requireAuth();
   const supabase = await createClient();
 
-  const { error } = await supabase.rpc('move_task_atomic' as never, {
-    in_task_id: taskId,
-    in_new_status: newStatus,
-    in_new_order_index: newOrderIndex,
-  } as never);
+  const { error } = await supabase.rpc(
+    'move_task_atomic' as never,
+    {
+      in_task_id: taskId,
+      in_new_status: newStatus,
+      in_new_order_index: newOrderIndex,
+    } as never
+  );
 
   if (error) {
     return { error: error.message };

@@ -51,7 +51,7 @@ export async function linkProjectToBusinessAction(
   formData.set('business_id', businessId);
   formData.set('client_id', business.client_id);
   const result = await updateProject(formData);
-  return result.error ? { error: result.error } : {};
+  return !result.ok ? { error: result.error } : {};
 }
 
 /** List all idea boards for the current user (for link board to project). */

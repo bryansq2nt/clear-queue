@@ -26,11 +26,11 @@ export default function TodoDashboardClient() {
       getProjects(),
     ]);
     setLoading(false);
-    if (listsResult.error) {
+    if (!listsResult.ok) {
       setError(listsResult.error);
       return;
     }
-    if (listsResult.data) setLists(listsResult.data);
+    setLists(listsResult.data);
     setProjects(projectsData);
   }, []);
 

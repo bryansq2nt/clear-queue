@@ -72,8 +72,8 @@ export default function ProjectsPageClient({
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const loadFavorites = useCallback(async () => {
-    const { data } = await getFavoriteProjectIds();
-    setFavoriteIds(new Set(data ?? []));
+    const result = await getFavoriteProjectIds();
+    setFavoriteIds(new Set(result.ok ? result.data : []));
   }, []);
 
   const loadProjects = useCallback(async () => {

@@ -12,7 +12,7 @@ export default async function TodoProjectPage({
   const { projectId } = await params;
   const result = await getProjectTodoBoardAction(projectId);
 
-  if (result.error || !result.data) {
+  if (!result.ok) {
     notFound();
   }
 

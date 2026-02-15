@@ -164,7 +164,9 @@ export async function updateProject(
   return { ok: true, data };
 }
 
-export async function archiveProject(id: string): Promise<ActionResult<ProjectRow>> {
+export async function archiveProject(
+  id: string
+): Promise<ActionResult<ProjectRow>> {
   await requireAuth();
   const supabase = await createClient();
 
@@ -212,7 +214,10 @@ export async function unarchiveProject(
     .single();
 
   if (error || !data) {
-    return { ok: false, error: error?.message ?? 'Failed to unarchive project' };
+    return {
+      ok: false,
+      error: error?.message ?? 'Failed to unarchive project',
+    };
   }
 
   revalidatePath('/dashboard');
@@ -310,8 +315,13 @@ export async function addProjectFavorite(
   if (!user) return { ok: false, error: 'Not authenticated' };
 
   const supabase = await createClient();
-  const payload: ProjectFavoriteInsert = { user_id: user.id, project_id: projectId };
-  const { error } = await supabase.from('project_favorites').insert(payload as never);
+  const payload: ProjectFavoriteInsert = {
+    user_id: user.id,
+    project_id: projectId,
+  };
+  const { error } = await supabase
+    .from('project_favorites')
+    .insert(payload as never);
 
   if (error) return { ok: false, error: error.message };
   revalidatePath('/dashboard');

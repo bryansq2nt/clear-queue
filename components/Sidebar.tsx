@@ -132,8 +132,8 @@ export default function Sidebar({
   const isCollapsed = canCollapse && collapsed;
 
   const loadFavorites = useCallback(async () => {
-    const { data } = await getFavoriteProjectIds();
-    setFavoriteProjectIds(new Set(data || []));
+    const res = await getFavoriteProjectIds();
+    setFavoriteProjectIds(new Set(res.ok ? res.data : []));
   }, []);
 
   useEffect(() => {
@@ -142,16 +142,16 @@ export default function Sidebar({
 
   async function handleToggleFavorite(projectId: string, isFavorite: boolean) {
     if (isFavorite) {
-      const { error } = await removeProjectFavorite(projectId);
-      if (!error)
+      const res = await removeProjectFavorite(projectId);
+      if (res.ok)
         setFavoriteProjectIds((prev) => {
           const n = new Set(prev);
           n.delete(projectId);
           return n;
         });
     } else {
-      const { error } = await addProjectFavorite(projectId);
-      if (!error) setFavoriteProjectIds((prev) => new Set(prev).add(projectId));
+      const res = await addProjectFavorite(projectId);
+      if (res.ok) setFavoriteProjectIds((prev) => new Set(prev).add(projectId));
     }
     onProjectUpdated();
   }

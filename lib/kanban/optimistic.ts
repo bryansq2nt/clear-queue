@@ -12,7 +12,8 @@ export function applyOptimisticTaskMove(
   if (!moving) return tasks;
 
   return tasks.map((t) => {
-    if (t.id === taskId) return { ...t, status: newStatus, order_index: newOrderIndex };
+    if (t.id === taskId)
+      return { ...t, status: newStatus, order_index: newOrderIndex };
 
     if (moving.status !== newStatus) {
       if (t.status === moving.status && t.order_index > moving.order_index) {
@@ -25,13 +26,21 @@ export function applyOptimisticTaskMove(
     }
 
     if (newOrderIndex > moving.order_index) {
-      if (t.status === newStatus && t.order_index > moving.order_index && t.order_index <= newOrderIndex) {
+      if (
+        t.status === newStatus &&
+        t.order_index > moving.order_index &&
+        t.order_index <= newOrderIndex
+      ) {
         return { ...t, order_index: t.order_index - 1 };
       }
       return t;
     }
 
-    if (t.status === newStatus && t.order_index >= newOrderIndex && t.order_index < moving.order_index) {
+    if (
+      t.status === newStatus &&
+      t.order_index >= newOrderIndex &&
+      t.order_index < moving.order_index
+    ) {
       return { ...t, order_index: t.order_index + 1 };
     }
     return t;

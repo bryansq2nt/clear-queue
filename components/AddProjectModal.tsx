@@ -115,7 +115,7 @@ export function AddProjectModal({
 
     const result = await createProject(formData);
 
-    if (result.error) {
+    if (!result.ok) {
       setError(result.error);
       setIsLoading(false);
     } else {

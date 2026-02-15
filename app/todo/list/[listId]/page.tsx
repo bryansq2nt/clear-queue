@@ -12,7 +12,7 @@ export default async function TodoListPage({
   const { listId } = await params;
   const result = await getTodoListWithItemsAction(listId);
 
-  if (result.error || !result.data) {
+  if (!result.ok) {
     notFound();
   }
 

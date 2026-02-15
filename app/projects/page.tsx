@@ -21,7 +21,7 @@ export default async function ProjectsPage() {
       initialProjects={projectsList}
       initialProjectRows={projectRows}
       initialClients={clientsRes}
-      initialFavoriteIds={favoritesRes.data ?? []}
+      initialFavoriteIds={favoritesRes.ok ? favoritesRes.data : []}
     />
   );
 }

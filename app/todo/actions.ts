@@ -265,7 +265,9 @@ export async function getProjectsWithTodoSummaryAction(): Promise<
   await requireAuth();
   const supabase = await createClient();
 
-  const { data, error } = await supabase.rpc('get_project_todo_summary' as never);
+  const { data, error } = await supabase.rpc(
+    'get_project_todo_summary' as never
+  );
   if (error) {
     return { ok: false, error: error.message };
   }
@@ -324,7 +326,9 @@ export async function getProjectTodoBoardAction(
     revalidatePath(`/todo/project/${projectId}`);
   }
 
-  const sortedLists = [...lists].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const sortedLists = [...lists].sort(
+    (a, b) => (a.position ?? 0) - (b.position ?? 0)
+  );
   const defaultListId = sortedLists[0]?.id ?? lists[0].id;
   const listIds = lists.map((l) => l.id);
 
