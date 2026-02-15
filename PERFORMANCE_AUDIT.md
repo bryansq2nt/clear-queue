@@ -12,7 +12,7 @@
 |------|-------|-----------|--------|
 | /profile | 4 | ~0.9s | ✅ Fixed |
 | /dashboard | ~3–4 (est.) | <1s (est.) | ✅ Fixed |
-| /projects | 9–10 | ~1.5s | 🔜 Pending |
+| /projects | ~3–4 (est.) | <1s (est.) | ✅ Fixed |
 | /settings/appearance | 7+ | ~1.5s | 🔜 Pending |
 | /ideas | 6 | ~1s | 🔜 Pending |
 | /todo | 8+ | ~1s | 🔜 Pending |
@@ -31,9 +31,9 @@
 
 ## Priority order (fix one by one)
 
-1. **Dashboard** – Most visited ← **current**
-2. Projects
-3. Clients
+1. **Dashboard** – Most visited
+2. **Projects**
+3. Clients ← **next**
 4. Businesses
 5. Billings
 6. Budgets

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { type Database } from '@/lib/supabase/types';
 import Sidebar from '@/components/Sidebar';
@@ -43,23 +43,37 @@ import {
 type Project = Database['public']['Tables']['projects']['Row'];
 type Client = Database['public']['Tables']['clients']['Row'];
 
-export default function ProjectsPageClient() {
+interface ProjectsPageClientProps {
+  initialProjects: ProjectListItem[];
+  initialProjectRows: Project[];
+  initialClients: Client[];
+  initialFavoriteIds: string[];
+}
+
+export default function ProjectsPageClient({
+  initialProjects,
+  initialProjectRows,
+  initialClients,
+  initialFavoriteIds,
+}: ProjectsPageClientProps) {
   const { t } = useI18n();
   const router = useRouter();
-  const [projects, setProjects] = useState<ProjectListItem[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [projectRows, setProjectRows] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectListItem[]>(initialProjects);
+  const [clients, setClients] = useState<Client[]>(initialClients);
+  const [projectRows, setProjectRows] = useState<Project[]>(initialProjectRows);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterClientId, setFilterClientId] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(
+    () => new Set(initialFavoriteIds)
+  );
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const loadFavorites = useCallback(async () => {
     const { data } = await getFavoriteProjectIds();
-    setFavoriteIds(new Set(data?.data ?? []));
+    setFavoriteIds(new Set(data ?? []));
   }, []);
 
   const loadProjects = useCallback(async () => {
@@ -78,13 +92,6 @@ export default function ProjectsPageClient() {
     const data = await getClients();
     setClients(data);
   }, []);
-
-  useEffect(() => {
-    loadProjects();
-    loadProjectRows();
-    loadClients();
-    loadFavorites();
-  }, [loadProjects, loadProjectRows, loadClients, loadFavorites]);
 
   const filtered = useMemo(() => {
     let list = projects;

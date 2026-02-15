@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
@@ -7,7 +8,7 @@ import { Database } from '@/lib/supabase/types';
 
 type Client = Database['public']['Tables']['clients']['Row'];
 
-export async function getClients(search?: string): Promise<Client[]> {
+export const getClients = cache(async (search?: string): Promise<Client[]> => {
   await requireAuth();
   const supabase = await createClient();
 
@@ -31,7 +32,7 @@ export async function getClients(search?: string): Promise<Client[]> {
   }
 
   return (data as Client[]) || [];
-}
+});
 
 export async function getClientById(id: string): Promise<Client | null> {
   await requireAuth();

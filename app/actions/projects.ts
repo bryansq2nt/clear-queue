@@ -221,7 +221,7 @@ export type ProjectListItem = {
   client_name: string | null;
 };
 
-export async function getProjectsList(): Promise<ProjectListItem[]> {
+export const getProjectsList = cache(async (): Promise<ProjectListItem[]> => {
   await requireAuth();
   const supabase = await createClient();
 
@@ -258,12 +258,12 @@ export async function getProjectsList(): Promise<ProjectListItem[]> {
       };
     }
   );
-}
+});
 
-export async function getFavoriteProjectIds(): Promise<{
+export const getFavoriteProjectIds = cache(async (): Promise<{
   data?: string[];
   error?: string;
-}> {
+}> => {
   const user = await getUser();
   if (!user) return { data: [] };
 
@@ -277,7 +277,7 @@ export async function getFavoriteProjectIds(): Promise<{
   return {
     data: (data || []).map((row: { project_id: string }) => row.project_id),
   };
-}
+});
 
 export async function addProjectFavorite(
   projectId: string
