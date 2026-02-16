@@ -2,9 +2,15 @@
 
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
+import { createTaskSchema } from '@/lib/server/action-schemas';
+import { parseWithSchema } from '@/lib/server/validation';
+import {
+  assertOwnedRecord,
+  assertTaskOwnedByProject,
+} from '@/lib/server/authz';
 
 type TaskStatus = Database['public']['Tables']['tasks']['Row']['status'];
 type TaskUpdate = Database['public']['Tables']['tasks']['Update'];
@@ -13,42 +19,61 @@ type TaskWithProject = Database['public']['Tables']['tasks']['Row'] & {
 };
 
 export async function createTask(formData: FormData) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+  const parsed = parseWithSchema(createTaskSchema, {
+    project_id: formData.get('project_id'),
+    title: formData.get('title'),
+    status: formData.get('status') || 'next',
+    priority: formData.get('priority') || 3,
+    due_date: formData.get('due_date'),
+    notes: formData.get('notes'),
+  });
+  if (!parsed.data) return { error: parsed.error ?? 'Invalid payload' };
 
-  const projectId = formData.get('project_id') as string;
-  const title = formData.get('title') as string;
-  const status = (formData.get('status') as TaskStatus) || 'next';
-  const priority = parseInt(formData.get('priority') as string) || 3;
-  const dueDate = formData.get('due_date') as string | null;
-  const notes = formData.get('notes') as string | null;
+  const ownership = await assertOwnedRecord(
+    'projects',
+    parsed.data.project_id,
+    user.id
+  );
+  if (!ownership.ok) return { error: ownership.error };
 
   const { data, error } = await supabase.rpc(
     'create_task_atomic' as never,
     {
-      in_project_id: projectId,
-      in_title: title,
-      in_status: status,
-      in_priority: priority,
-      in_due_date: dueDate || null,
-      in_notes: notes || null,
+      in_project_id: parsed.data.project_id,
+      in_title: parsed.data.title,
+      in_status: parsed.data.status,
+      in_priority: parsed.data.priority,
+      in_due_date: parsed.data.due_date,
+      in_notes: parsed.data.notes,
     } as never
   );
 
-  if (error) {
-    return { error: error.message };
-  }
-
+  if (error) return { error: error.message };
   revalidatePath('/dashboard');
   return { data };
 }
 
 export async function updateTask(id: string, formData: FormData) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
+  const ownerCheck = await assertTaskOwnedByProject(id, user.id);
+  if (!ownerCheck.ok) return { error: ownerCheck.error };
+
+  const projectId = (formData.get('project_id') as string | null) || null;
+  if (projectId) {
+    const projectCheck = await assertOwnedRecord(
+      'projects',
+      projectId,
+      user.id
+    );
+    if (!projectCheck.ok) return { error: projectCheck.error };
+  }
+
+  const updates: TaskUpdate = {};
   const title = formData.get('title') as string | null;
-  const projectId = formData.get('project_id') as string | null;
   const status = formData.get('status') as TaskStatus | null;
   const priority = formData.get('priority')
     ? parseInt(formData.get('priority') as string)
@@ -56,7 +81,6 @@ export async function updateTask(id: string, formData: FormData) {
   const dueDate = formData.get('due_date') as string | null;
   const notes = formData.get('notes') as string | null;
 
-  const updates: TaskUpdate = {};
   if (title) updates.title = title;
   if (projectId) updates.project_id = projectId;
   if (status) updates.status = status;
@@ -70,24 +94,21 @@ export async function updateTask(id: string, formData: FormData) {
     .eq('id', id)
     .select()
     .single();
-
-  if (error) {
-    return { error: error.message };
-  }
+  if (error) return { error: error.message };
 
   revalidatePath('/dashboard');
   return { data };
 }
 
 export async function deleteTask(id: string) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
-  const { error } = await supabase.from('tasks').delete().eq('id', id);
+  const ownerCheck = await assertTaskOwnedByProject(id, user.id);
+  if (!ownerCheck.ok) return { error: ownerCheck.error };
 
-  if (error) {
-    return { error: error.message };
-  }
+  const { error } = await supabase.from('tasks').delete().eq('id', id);
+  if (error) return { error: error.message };
 
   revalidatePath('/dashboard');
   revalidatePath('/project');
@@ -95,18 +116,17 @@ export async function deleteTask(id: string) {
 }
 
 export async function deleteTasksByIds(ids: string[]) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+  if (!ids || ids.length === 0) return { error: 'No task IDs provided' };
 
-  if (!ids || ids.length === 0) {
-    return { error: 'No task IDs provided' };
+  for (const id of ids) {
+    const ownerCheck = await assertTaskOwnedByProject(id, user.id);
+    if (!ownerCheck.ok) return { error: ownerCheck.error };
   }
 
   const { error } = await supabase.from('tasks').delete().in('id', ids);
-
-  if (error) {
-    return { error: error.message };
-  }
+  if (error) return { error: error.message };
 
   revalidatePath('/dashboard');
   revalidatePath('/project');
@@ -114,93 +134,86 @@ export async function deleteTasksByIds(ids: string[]) {
 }
 
 const TASK_COLS =
-  'id, project_id, title, status, priority, due_date, notes, order_index, created_at, updated_at';
+  'id, project_id, owner_id, title, status, priority, due_date, notes, order_index, created_at, updated_at';
 const PROJECT_COLS =
   'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at';
 
-export const getDashboardData = cache(
-  async (): Promise<{
-    projects: Database['public']['Tables']['projects']['Row'][];
-    tasks: Database['public']['Tables']['tasks']['Row'][];
-  }> => {
-    await requireAuth();
-    const supabase = await createClient();
-    const { getUser } = await import('@/lib/auth');
-    const user = await getUser();
-    if (!user) return { projects: [], tasks: [] };
+export const getDashboardData = cache(async () => {
+  await requireAuth();
+  const supabase = await createClient();
+  const user = await getUser();
+  if (!user) return { projects: [], tasks: [] };
 
-    const [projectsRes, tasksRes] = await Promise.all([
-      supabase
-        .from('projects')
-        .select(PROJECT_COLS)
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('tasks')
-        .select(TASK_COLS)
-        .order('order_index', { ascending: true }),
-    ]);
+  const [projectsRes, tasksRes] = await Promise.all([
+    supabase
+      .from('projects')
+      .select(PROJECT_COLS)
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('tasks')
+      .select(TASK_COLS)
+      .eq('owner_id', user.id)
+      .order('order_index', { ascending: true }),
+  ]);
 
-    const projects = (projectsRes.data ||
-      []) as Database['public']['Tables']['projects']['Row'][];
-    const tasks = (tasksRes.data ||
-      []) as Database['public']['Tables']['tasks']['Row'][];
-    return { projects, tasks };
-  }
-);
+  return {
+    projects: (projectsRes.data || []) as any[],
+    tasks: (tasksRes.data || []) as any[],
+  };
+});
 
 export const getTasksByProjectId = cache(async (projectId: string) => {
   await requireAuth();
   const supabase = await createClient();
+  const user = await getUser();
+  if (!user) return [];
   const { data, error } = await supabase
     .from('tasks')
     .select(TASK_COLS)
+    .eq('owner_id', user.id)
     .eq('project_id', projectId)
     .order('order_index', { ascending: true });
   if (error) return [];
-  return (data || []) as Database['public']['Tables']['tasks']['Row'][];
+  return data || [];
 });
 
 export async function getCriticalTasks(): Promise<TaskWithProject[]> {
   await requireAuth();
   const supabase = await createClient();
+  const user = await getUser();
+  if (!user) return [];
+
   const { data, error } = await supabase
     .from('tasks')
     .select(
-      `
-      id, project_id, title, status, priority, due_date, notes, order_index, created_at, updated_at,
-      projects ( id, name, color )
-    `
+      'id, project_id, owner_id, title, status, priority, due_date, notes, order_index, created_at, updated_at, projects ( id, name, color )'
     )
+    .eq('owner_id', user.id)
     .eq('priority', 5)
     .neq('status', 'done')
     .order('due_date', { ascending: true, nullsFirst: false })
     .limit(5);
+
   if (error) return [];
   return (data || []) as TaskWithProject[];
 }
 
-export async function getRecentTasksPage(
-  page: number,
-  pageSize: number
-): Promise<{
-  data: TaskWithProject[];
-  count: number | null;
-  error: Error | null;
-}> {
+export async function getRecentTasksPage(page: number, pageSize: number) {
   await requireAuth();
   const supabase = await createClient();
+  const user = await getUser();
+  if (!user) return { data: [], count: 0, error: null };
+
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
   const { data, count, error } = await supabase
     .from('tasks')
     .select(
-      `
-      id, project_id, title, status, priority, due_date, notes, order_index, created_at, updated_at,
-      projects ( id, name, color )
-    `,
+      'id, project_id, owner_id, title, status, priority, due_date, notes, order_index, created_at, updated_at, projects ( id, name, color )',
       { count: 'exact' }
     )
+    .eq('owner_id', user.id)
     .neq('status', 'done')
     .order('updated_at', { ascending: false })
     .range(from, to);
@@ -211,27 +224,21 @@ export async function getRecentTasksPage(
   };
 }
 
-export async function getHighPriorityTasksPage(
-  page: number,
-  pageSize: number
-): Promise<{
-  data: TaskWithProject[];
-  count: number | null;
-  error: Error | null;
-}> {
+export async function getHighPriorityTasksPage(page: number, pageSize: number) {
   await requireAuth();
   const supabase = await createClient();
+  const user = await getUser();
+  if (!user) return { data: [], count: 0, error: null };
+
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
   const { data, count, error } = await supabase
     .from('tasks')
     .select(
-      `
-      id, project_id, title, status, priority, due_date, notes, order_index, created_at, updated_at,
-      projects ( id, name, color )
-    `,
+      'id, project_id, owner_id, title, status, priority, due_date, notes, order_index, created_at, updated_at, projects ( id, name, color )',
       { count: 'exact' }
     )
+    .eq('owner_id', user.id)
     .eq('priority', 5)
     .neq('status', 'done')
     .order('due_date', { ascending: true, nullsFirst: false })
@@ -249,8 +256,11 @@ export async function updateTaskOrder(
   newOrderIndex: number,
   _oldStatus?: TaskStatus
 ) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  const ownerCheck = await assertTaskOwnedByProject(taskId, user.id);
+  if (!ownerCheck.ok) return { error: ownerCheck.error };
 
   const { error } = await supabase.rpc(
     'move_task_atomic' as never,
@@ -261,10 +271,7 @@ export async function updateTaskOrder(
     } as never
   );
 
-  if (error) {
-    return { error: error.message };
-  }
-
+  if (error) return { error: error.message };
   revalidatePath('/dashboard');
   revalidatePath('/project');
   return { success: true };

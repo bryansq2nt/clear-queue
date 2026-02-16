@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
+import { clientSchema, businessSchema } from '@/lib/server/action-schemas';
+import { parseWithSchema } from '@/lib/server/validation';
 
 type Client = Database['public']['Tables']['clients']['Row'];
 
@@ -107,8 +109,11 @@ export async function createClientAction(
   const user = await requireAuth();
   const supabase = await createClient();
 
-  const full_name = (formData.get('full_name') as string)?.trim();
-  if (!full_name) return { error: 'Full name is required' };
+  const parsed = parseWithSchema(clientSchema, {
+    full_name: formData.get('full_name'),
+  });
+  if (!parsed.data) return { error: parsed.error ?? 'Invalid payload' };
+  const full_name = parsed.data.full_name;
 
   const insertPayload: Database['public']['Tables']['clients']['Insert'] = {
     owner_id: user.id,
@@ -140,11 +145,14 @@ export async function updateClientAction(
   id: string,
   formData: FormData
 ): Promise<{ error?: string; data?: Client }> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
-  const full_name = (formData.get('full_name') as string)?.trim();
-  if (!full_name) return { error: 'Full name is required' };
+  const parsed = parseWithSchema(clientSchema, {
+    full_name: formData.get('full_name'),
+  });
+  if (!parsed.data) return { error: parsed.error ?? 'Invalid payload' };
+  const full_name = parsed.data.full_name;
 
   const updatePayload: Database['public']['Tables']['clients']['Update'] = {
     full_name,
@@ -163,6 +171,7 @@ export async function updateClientAction(
     .from('clients')
     .update(updatePayload as never)
     .eq('id', id)
+    .eq('owner_id', user.id)
     .select()
     .single();
 
@@ -175,10 +184,14 @@ export async function updateClientAction(
 export async function deleteClientAction(
   id: string
 ): Promise<{ error?: string }> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
-  const { error } = await supabase.from('clients').delete().eq('id', id);
+  const { error } = await supabase
+    .from('clients')
+    .delete()
+    .eq('id', id)
+    .eq('owner_id', user.id);
 
   if (error) return { error: error.message };
   revalidatePath('/clients');
@@ -292,8 +305,11 @@ export async function createBusinessAction(
   const user = await requireAuth();
   const supabase = await createClient();
 
-  const name = (formData.get('name') as string)?.trim();
-  if (!name) return { error: 'Business name is required' };
+  const parsed = parseWithSchema(businessSchema, {
+    name: formData.get('name'),
+  });
+  if (!parsed.data) return { error: parsed.error ?? 'Invalid payload' };
+  const name = parsed.data.name;
 
   const email = (formData.get('email') as string)?.trim() || null;
   const social_links = parseSocialLinks(formData);
@@ -331,11 +347,14 @@ export async function updateBusinessAction(
   id: string,
   formData: FormData
 ): Promise<{ error?: string; data?: Business }> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
-  const name = (formData.get('name') as string)?.trim();
-  if (!name) return { error: 'Business name is required' };
+  const parsed = parseWithSchema(businessSchema, {
+    name: formData.get('name'),
+  });
+  if (!parsed.data) return { error: parsed.error ?? 'Invalid payload' };
+  const name = parsed.data.name;
 
   const email = (formData.get('email') as string)?.trim() || null;
   const social_links = parseSocialLinks(formData);
@@ -359,6 +378,7 @@ export async function updateBusinessAction(
     .from('businesses')
     .update(businessUpdatePayload as never)
     .eq('id', id)
+    .eq('owner_id', user.id)
     .select()
     .single();
 
@@ -377,7 +397,7 @@ export async function updateBusinessFieldsAction(
   id: string,
   fields: BusinessUpdateFields
 ): Promise<{ error?: string; data?: Business }> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
   const payload: Record<string, unknown> = { ...fields };
   if (payload.name !== undefined && (payload.name as string)?.trim() === '') {
@@ -409,6 +429,7 @@ export async function updateBusinessFieldsAction(
     .from('businesses')
     .update(payload as never)
     .eq('id', id)
+    .eq('owner_id', user.id)
     .select()
     .single();
   if (error) return { error: error.message };
@@ -416,10 +437,17 @@ export async function updateBusinessFieldsAction(
   // cascade client_id to all projects linked to this business.
   if (payload.client_id !== undefined) {
     const newClientId = (payload.client_id as string)?.trim() || null;
-    await supabase
-      .from('projects')
-      .update({ client_id: newClientId } as never)
-      .eq('business_id', id);
+    const { error: cascadeError } = await supabase.rpc(
+      'update_business_client_atomic' as never,
+      {
+        in_business_id: id,
+        in_owner_id: user.id,
+        in_new_client_id: newClientId,
+      } as never
+    );
+    if (cascadeError) {
+      return { error: 'Failed to apply business-client cascade update' };
+    }
   }
   revalidatePath('/clients');
   revalidatePath('/clients/[id]');
@@ -431,9 +459,13 @@ export async function updateBusinessFieldsAction(
 export async function deleteBusinessAction(
   id: string
 ): Promise<{ error?: string }> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
-  const { error } = await supabase.from('businesses').delete().eq('id', id);
+  const { error } = await supabase
+    .from('businesses')
+    .delete()
+    .eq('id', id)
+    .eq('owner_id', user.id);
   if (error) return { error: error.message };
   revalidatePath('/clients');
   revalidatePath('/clients/[id]');

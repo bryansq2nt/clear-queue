@@ -6,6 +6,8 @@ import { requireAuth, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { PROJECT_CATEGORIES, type ProjectCategory } from '@/lib/constants';
 import type { Database } from '@/lib/supabase/types';
+import { parseWithSchema } from '@/lib/server/validation';
+import { createProjectSchema } from '@/lib/server/action-schemas';
 
 export type ActionResult<T> =
   | { ok: true; data: T }
@@ -53,9 +55,19 @@ export async function createProject(
   const user = await requireAuth();
   const supabase = await createClient();
 
-  const name = formData.get('name') as string;
-  const color = formData.get('color') as string | null;
-  const category = (formData.get('category') as string) || 'business';
+  const parsed = parseWithSchema(createProjectSchema, {
+    name: formData.get('name'),
+    color: formData.get('color'),
+    category: formData.get('category') || 'business',
+    client_id: formData.get('client_id'),
+    business_id: formData.get('business_id'),
+  });
+  if (!parsed.data)
+    return { ok: false, error: parsed.error ?? 'Invalid payload' };
+
+  const name = parsed.data.name;
+  const color = parsed.data.color;
+  const category = parsed.data.category;
 
   const validCategories = PROJECT_CATEGORIES.map((c) => c.key);
   if (!validCategories.includes(category as ProjectCategory)) {
@@ -98,7 +110,7 @@ export async function createProject(
 export async function updateProject(
   formData: FormData
 ): Promise<ActionResult<ProjectRow>> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const id = formData.get('id') as string;
@@ -150,6 +162,7 @@ export async function updateProject(
     .from('projects')
     .update(updates as never)
     .eq('id', id)
+    .eq('owner_id', user.id)
     .select(
       'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
     )
@@ -167,7 +180,7 @@ export async function updateProject(
 export async function archiveProject(
   id: string
 ): Promise<ActionResult<ProjectRow>> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const updates: ProjectUpdate = { category: 'archived' };
@@ -175,6 +188,7 @@ export async function archiveProject(
     .from('projects')
     .update(updates as never)
     .eq('id', id)
+    .eq('owner_id', user.id)
     .select(
       'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
     )
@@ -193,7 +207,7 @@ export async function unarchiveProject(
   id: string,
   previousCategory?: string
 ): Promise<ActionResult<ProjectRow>> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const category = previousCategory || 'business';
@@ -208,6 +222,7 @@ export async function unarchiveProject(
     .from('projects')
     .update(updates as never)
     .eq('id', id)
+    .eq('owner_id', user.id)
     .select(
       'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
     )
@@ -228,10 +243,14 @@ export async function unarchiveProject(
 export async function deleteProject(
   id: string
 ): Promise<ActionResult<{ success: true }>> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
-  const { error } = await supabase.from('projects').delete().eq('id', id);
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', id)
+    .eq('owner_id', user.id);
 
   if (error) {
     return { ok: false, error: error.message };
