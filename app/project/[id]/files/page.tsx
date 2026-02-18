@@ -1,6 +1,12 @@
 import { notFound } from 'next/navigation';
 import { requireAuth } from '@/lib/auth';
 import { getProjectById } from '@/app/actions/projects';
+import {
+  listProjectDocumentsAction,
+  listProjectLinksAction,
+  listProjectMediaAction,
+} from './actions';
+import { ProjectMediaVaultClient } from './ProjectMediaVaultClient';
 
 export default async function ProjectFilesPage({
   params,
@@ -13,13 +19,18 @@ export default async function ProjectFilesPage({
   const project = await getProjectById(id);
   if (!project) notFound();
 
+  const [mediaResult, documentsResult, linksResult] = await Promise.all([
+    listProjectMediaAction({ projectId: id }),
+    listProjectDocumentsAction({ projectId: id }),
+    listProjectLinksAction({ projectId: id }),
+  ]);
+
   return (
-    <div className="max-w-4xl mx-auto rounded-lg border border-border bg-card p-5">
-      <h2 className="text-lg font-semibold mb-2">Files</h2>
-      <p className="text-sm text-muted-foreground">
-        Este proyecto aún no tiene un módulo de archivos dedicado en esta
-        versión.
-      </p>
-    </div>
+    <ProjectMediaVaultClient
+      projectId={id}
+      initialMedia={mediaResult.ok ? mediaResult.data : []}
+      initialDocuments={documentsResult.ok ? documentsResult.data : []}
+      initialLinks={linksResult.ok ? linksResult.data : []}
+    />
   );
 }
