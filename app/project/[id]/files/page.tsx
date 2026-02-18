@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { requireAuth } from '@/lib/auth';
 import { getProjectById } from '@/app/actions/projects';
+import { listProjectMediaAction } from './actions';
+import { ProjectMediaVaultClient } from './ProjectMediaVaultClient';
 
 export default async function ProjectFilesPage({
   params,
@@ -13,13 +15,8 @@ export default async function ProjectFilesPage({
   const project = await getProjectById(id);
   if (!project) notFound();
 
-  return (
-    <div className="max-w-4xl mx-auto rounded-lg border border-border bg-card p-5">
-      <h2 className="text-lg font-semibold mb-2">Files</h2>
-      <p className="text-sm text-muted-foreground">
-        Este proyecto aún no tiene un módulo de archivos dedicado en esta
-        versión.
-      </p>
-    </div>
-  );
+  const mediaResult = await listProjectMediaAction({ projectId: id });
+  const initialMedia = mediaResult.ok ? mediaResult.data : [];
+
+  return <ProjectMediaVaultClient projectId={id} initialMedia={initialMedia} />;
 }
