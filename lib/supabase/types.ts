@@ -791,12 +791,266 @@ export type Database = {
           updated_at?: string;
         };
       };
+      project_files: {
+        Row: {
+          id: string;
+          project_id: string;
+          owner_id: string;
+          linked_task_id: string | null;
+          kind: Database['public']['Enums']['project_file_kind_enum'];
+          media_category:
+            | Database['public']['Enums']['project_media_category_enum']
+            | null;
+          document_category:
+            | Database['public']['Enums']['project_document_category_enum']
+            | null;
+          title: string;
+          description: string | null;
+          bucket: string;
+          path: string;
+          mime_type: string;
+          file_ext: string | null;
+          size_bytes: number;
+          checksum_sha256: string | null;
+          width: number | null;
+          height: number | null;
+          duration_seconds: number | null;
+          page_count: number | null;
+          source_label: string | null;
+          source_url: string | null;
+          tags: string[];
+          sort_order: number;
+          is_final: boolean;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          owner_id: string;
+          linked_task_id?: string | null;
+          kind: Database['public']['Enums']['project_file_kind_enum'];
+          media_category?:
+            | Database['public']['Enums']['project_media_category_enum']
+            | null;
+          document_category?:
+            | Database['public']['Enums']['project_document_category_enum']
+            | null;
+          title: string;
+          description?: string | null;
+          bucket: string;
+          path: string;
+          mime_type: string;
+          file_ext?: string | null;
+          size_bytes: number;
+          checksum_sha256?: string | null;
+          width?: number | null;
+          height?: number | null;
+          duration_seconds?: number | null;
+          page_count?: number | null;
+          source_label?: string | null;
+          source_url?: string | null;
+          tags?: string[];
+          sort_order?: number;
+          is_final?: boolean;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          owner_id?: string;
+          linked_task_id?: string | null;
+          kind?: Database['public']['Enums']['project_file_kind_enum'];
+          media_category?:
+            | Database['public']['Enums']['project_media_category_enum']
+            | null;
+          document_category?:
+            | Database['public']['Enums']['project_document_category_enum']
+            | null;
+          title?: string;
+          description?: string | null;
+          bucket?: string;
+          path?: string;
+          mime_type?: string;
+          file_ext?: string | null;
+          size_bytes?: number;
+          checksum_sha256?: string | null;
+          width?: number | null;
+          height?: number | null;
+          duration_seconds?: number | null;
+          page_count?: number | null;
+          source_label?: string | null;
+          source_url?: string | null;
+          tags?: string[];
+          sort_order?: number;
+          is_final?: boolean;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      project_links: {
+        Row: {
+          id: string;
+          project_id: string;
+          owner_id: string;
+          linked_task_id: string | null;
+          title: string;
+          description: string | null;
+          url: string;
+          provider: string | null;
+          link_type: Database['public']['Enums']['project_link_type_enum'];
+          section: Database['public']['Enums']['project_link_section_enum'];
+          tags: string[];
+          pinned: boolean;
+          sort_order: number;
+          open_in_new_tab: boolean;
+          last_checked_at: string | null;
+          status_code: number | null;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          owner_id: string;
+          linked_task_id?: string | null;
+          title: string;
+          description?: string | null;
+          url: string;
+          provider?: string | null;
+          link_type: Database['public']['Enums']['project_link_type_enum'];
+          section: Database['public']['Enums']['project_link_section_enum'];
+          tags?: string[];
+          pinned?: boolean;
+          sort_order?: number;
+          open_in_new_tab?: boolean;
+          last_checked_at?: string | null;
+          status_code?: number | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          owner_id?: string;
+          linked_task_id?: string | null;
+          title?: string;
+          description?: string | null;
+          url?: string;
+          provider?: string | null;
+          link_type?: Database['public']['Enums']['project_link_type_enum'];
+          section?: Database['public']['Enums']['project_link_section_enum'];
+          tags?: string[];
+          pinned?: boolean;
+          sort_order?: number;
+          open_in_new_tab?: boolean;
+          last_checked_at?: string | null;
+          status_code?: number | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      project_events: {
+        Row: {
+          id: string;
+          project_id: string;
+          owner_id: string;
+          actor_user_id: string | null;
+          event_type: Database['public']['Enums']['project_event_type_enum'];
+          entity_type: Database['public']['Enums']['project_event_entity_enum'];
+          entity_id: string | null;
+          summary: string;
+          metadata: Json;
+          dedupe_key: string | null;
+          occurred_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          owner_id: string;
+          actor_user_id?: string | null;
+          event_type: Database['public']['Enums']['project_event_type_enum'];
+          entity_type: Database['public']['Enums']['project_event_entity_enum'];
+          entity_id?: string | null;
+          summary: string;
+          metadata?: Json;
+          dedupe_key?: string | null;
+          occurred_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          owner_id?: string;
+          actor_user_id?: string | null;
+          event_type?: Database['public']['Enums']['project_event_type_enum'];
+          entity_type?: Database['public']['Enums']['project_event_entity_enum'];
+          entity_id?: string | null;
+          summary?: string;
+          metadata?: Json;
+          dedupe_key?: string | null;
+          occurred_at?: string;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Enums: {
-      [_ in never]: never;
+      project_document_category_enum:
+        | 'brief'
+        | 'contract'
+        | 'invoice'
+        | 'proposal'
+        | 'report'
+        | 'spreadsheet'
+        | 'notes'
+        | 'other';
+      project_event_entity_enum: 'project' | 'task' | 'note' | 'file' | 'link';
+      project_event_type_enum:
+        | 'task_created'
+        | 'task_status_changed'
+        | 'task_completed'
+        | 'note_created'
+        | 'note_updated'
+        | 'file_uploaded'
+        | 'file_archived'
+        | 'link_added'
+        | 'link_updated'
+        | 'link_archived'
+        | 'project_updated';
+      project_file_kind_enum: 'media' | 'document';
+      project_link_section_enum:
+        | 'delivery'
+        | 'infrastructure'
+        | 'product'
+        | 'marketing'
+        | 'operations'
+        | 'client'
+        | 'other';
+      project_link_type_enum:
+        | 'environment'
+        | 'tool'
+        | 'resource'
+        | 'social'
+        | 'reference'
+        | 'other';
+      project_media_category_enum:
+        | 'branding'
+        | 'content'
+        | 'reference'
+        | 'screenshot'
+        | 'mockup'
+        | 'other';
     };
     CompositeTypes: {
       [_ in never]: never;
