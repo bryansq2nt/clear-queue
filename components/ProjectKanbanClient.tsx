@@ -36,6 +36,7 @@ interface ProjectKanbanClientProps {
   initialProjects: Project[];
   initialProject: Project | null;
   initialTasks: Task[];
+  hideTopBar?: boolean;
 }
 
 export default function ProjectKanbanClient({
@@ -43,6 +44,7 @@ export default function ProjectKanbanClient({
   initialProjects,
   initialProject,
   initialTasks,
+  hideTopBar = false,
 }: ProjectKanbanClientProps) {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [currentProject, setCurrentProject] = useState<Project | null>(
@@ -174,32 +176,34 @@ export default function ProjectKanbanClient({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col bg-background min-h-[calc(100vh-11rem)]">
       <div className="flex-1 flex flex-col min-h-0">
-        <TopBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onSignOut={signOut}
-          onProjectAdded={loadData}
-          onProjectUpdated={loadData}
-          projectName={currentProject.name}
-          currentProject={currentProject}
-          selectionMode={selectionMode}
-          onToggleSelectionMode={() => {
-            if (selectionMode) {
-              exitSelectionMode();
-            } else {
-              enterSelectionMode();
-            }
-          }}
-          resourcesInSidebar
-          backHref="/projects"
-          backLabel=""
-          resourcesModalOpen={resourcesModalOpen}
-          onResourcesModalOpenChange={setResourcesModalOpen}
-          editModalOpen={editModalOpen}
-          onEditModalOpenChange={setEditModalOpen}
-        />
+        {!hideTopBar && (
+          <TopBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onSignOut={signOut}
+            onProjectAdded={loadData}
+            onProjectUpdated={loadData}
+            projectName={currentProject.name}
+            currentProject={currentProject}
+            selectionMode={selectionMode}
+            onToggleSelectionMode={() => {
+              if (selectionMode) {
+                exitSelectionMode();
+              } else {
+                enterSelectionMode();
+              }
+            }}
+            resourcesInSidebar
+            backHref="/projects"
+            backLabel=""
+            resourcesModalOpen={resourcesModalOpen}
+            onResourcesModalOpenChange={setResourcesModalOpen}
+            editModalOpen={editModalOpen}
+            onEditModalOpenChange={setEditModalOpen}
+          />
+        )}
         <div className="flex-1 flex overflow-hidden">
           <div
             className={cn(
