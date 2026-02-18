@@ -35,6 +35,22 @@ export const FILES_VAULT_MAX_TAGS = 8;
 export const FILES_VAULT_MAX_TAG_LENGTH = 24;
 export const FILES_VAULT_MAX_TITLE_LENGTH = 120;
 
+export const LINK_VAULT_TYPES: Database['public']['Enums']['project_link_type_enum'][] =
+  ['environment', 'tool', 'resource', 'social', 'reference', 'other'];
+
+export const LINK_VAULT_SECTIONS: Database['public']['Enums']['project_link_section_enum'][] =
+  [
+    'delivery',
+    'infrastructure',
+    'product',
+    'marketing',
+    'operations',
+    'client',
+    'other',
+  ];
+
+export const LINK_VAULT_OPEN_ALL_CONFIRM_THRESHOLD = 5;
+
 export const MEDIA_VAULT_BUCKET = 'project-media';
 export const DOCUMENT_HUB_BUCKET = 'project-docs';
 

@@ -13,6 +13,8 @@ import {
   FILES_VAULT_MAX_TAG_LENGTH,
   FILES_VAULT_MAX_TAGS,
   FILES_VAULT_MAX_TITLE_LENGTH,
+  LINK_VAULT_SECTIONS,
+  LINK_VAULT_TYPES,
   MEDIA_VAULT_ALLOWED_MIME_TYPES,
   MEDIA_VAULT_BUCKET,
   MEDIA_VAULT_CATEGORIES,
@@ -26,14 +28,24 @@ type ProjectFileInsert =
 type MediaCategory = Database['public']['Enums']['project_media_category_enum'];
 type DocumentCategory =
   Database['public']['Enums']['project_document_category_enum'];
+type LinkType = Database['public']['Enums']['project_link_type_enum'];
+type LinkSection = Database['public']['Enums']['project_link_section_enum'];
+type ProjectLinkRow = Database['public']['Tables']['project_links']['Row'];
+type ProjectLinkInsert =
+  Database['public']['Tables']['project_links']['Insert'];
 
 const MEDIA_ALLOWED_MIME: Set<string> = new Set(MEDIA_VAULT_ALLOWED_MIME_TYPES);
 const DOC_ALLOWED_MIME: Set<string> = new Set(DOCUMENT_HUB_ALLOWED_MIME_TYPES);
 const MEDIA_CATEGORY_VALUES: MediaCategory[] = MEDIA_VAULT_CATEGORIES;
 const DOCUMENT_CATEGORY_VALUES: DocumentCategory[] = DOCUMENT_HUB_CATEGORIES;
+const LINK_TYPE_VALUES: LinkType[] = LINK_VAULT_TYPES;
+const LINK_SECTION_VALUES: LinkSection[] = LINK_VAULT_SECTIONS;
 
 const FILES_COLS =
   'id, project_id, owner_id, linked_task_id, kind, media_category, document_category, title, description, bucket, path, mime_type, file_ext, size_bytes, checksum_sha256, width, height, duration_seconds, page_count, source_label, source_url, tags, sort_order, is_final, archived_at, created_at, updated_at';
+
+const LINKS_COLS =
+  'id, project_id, owner_id, linked_task_id, title, description, url, provider, link_type, section, tags, pinned, sort_order, open_in_new_tab, last_checked_at, status_code, archived_at, created_at, updated_at';
 
 export type MediaListItem = {
   id: string;
@@ -62,6 +74,23 @@ export type DocumentListItem = {
   archived_at: string | null;
   signed_url: string | null;
   is_final: boolean;
+};
+
+export type LinkListItem = {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  url: string;
+  hostname: string;
+  provider: string | null;
+  link_type: LinkType;
+  section: LinkSection;
+  tags: string[];
+  pinned: boolean;
+  sort_order: number;
+  archived_at: string | null;
+  created_at: string;
 };
 
 function normalizeTitle(input: string, fallback: string): string {
@@ -93,6 +122,28 @@ function normalizeTags(input: string[] | string | null | undefined): string[] {
   );
 
   return normalized.slice(0, FILES_VAULT_MAX_TAGS);
+}
+
+function normalizeUrl(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')
+      return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function getHostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
 }
 
 function getFileExt(file: File): string | null {
@@ -202,6 +253,25 @@ function toDocumentListItem(
     archived_at: row.archived_at,
     signed_url: signedUrlMap.get(row.path) ?? null,
     is_final: row.is_final,
+  };
+}
+
+function toLinkListItem(row: ProjectLinkRow): LinkListItem {
+  return {
+    id: row.id,
+    project_id: row.project_id,
+    title: row.title,
+    description: row.description,
+    url: row.url,
+    hostname: getHostname(row.url),
+    provider: row.provider,
+    link_type: row.link_type,
+    section: row.section,
+    tags: row.tags || [],
+    pinned: row.pinned,
+    sort_order: row.sort_order,
+    archived_at: row.archived_at,
+    created_at: row.created_at,
   };
 }
 
@@ -792,6 +862,294 @@ async function deleteFileByKind(
 
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath(`/project/${existing.project_id}/files`);
+  revalidatePath(`/project/${existing.project_id}`);
+  return { ok: true };
+}
+
+export async function listProjectLinksAction(input: {
+  projectId: string;
+  search?: string;
+  section?: LinkSection | 'all';
+  tag?: string;
+  pinnedOnly?: boolean;
+  includeArchived?: boolean;
+}): Promise<{ ok: true; data: LinkListItem[] } | { ok: false; error: string }> {
+  const user = await requireAuth();
+  const projectId = input.projectId?.trim();
+  if (!projectId) return { ok: false, error: 'Project ID is required' };
+
+  const ownership = await ensureOwnedProject(projectId, user.id);
+  if (!ownership.ok) return ownership;
+
+  const supabase = await createClient();
+  let query = supabase
+    .from('project_links')
+    .select(LINKS_COLS)
+    .eq('project_id', projectId)
+    .eq('owner_id', user.id)
+    .order('pinned', { ascending: false })
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false });
+
+  if (!input.includeArchived) query = query.is('archived_at', null);
+  if (input.pinnedOnly) query = query.eq('pinned', true);
+
+  const section = input.section?.trim();
+  if (section && section !== 'all')
+    query = query.eq('section', section as LinkSection);
+
+  const tag = input.tag?.trim().toLowerCase();
+  if (tag) query = query.contains('tags', [tag]);
+
+  const search = input.search?.trim();
+  if (search) query = query.or(`title.ilike.%${search}%,url.ilike.%${search}%`);
+
+  const { data, error } = await query;
+  if (error) return { ok: false, error: error.message };
+
+  const rows = (data || []) as ProjectLinkRow[];
+  return { ok: true, data: rows.map(toLinkListItem) };
+}
+
+export async function createProjectLinkAction(input: {
+  projectId: string;
+  title: string;
+  url: string;
+  description?: string;
+  provider?: string;
+  link_type: LinkType;
+  section: LinkSection;
+  tags?: string[] | string;
+  pinned?: boolean;
+}): Promise<{ ok: true; data: LinkListItem } | { ok: false; error: string }> {
+  const user = await requireAuth();
+  const projectId = input.projectId?.trim();
+  if (!projectId) return { ok: false, error: 'Project ID is required' };
+
+  const ownership = await ensureOwnedProject(projectId, user.id);
+  if (!ownership.ok) return ownership;
+
+  if (!LINK_TYPE_VALUES.includes(input.link_type)) {
+    return { ok: false, error: 'Invalid link type' };
+  }
+  if (!LINK_SECTION_VALUES.includes(input.section)) {
+    return { ok: false, error: 'Invalid link section' };
+  }
+
+  const url = normalizeUrl(input.url || '');
+  if (!url)
+    return { ok: false, error: 'URL must start with http:// or https://' };
+
+  const title = normalizeTitle(input.title || '', 'Untitled link');
+  const tags = normalizeTags(input.tags);
+
+  const supabase = await createClient();
+  const payload: ProjectLinkInsert = {
+    project_id: projectId,
+    owner_id: user.id,
+    title,
+    url,
+    description: input.description?.trim() || null,
+    provider: input.provider?.trim() || null,
+    link_type: input.link_type,
+    section: input.section,
+    tags,
+    pinned: Boolean(input.pinned),
+  };
+
+  const { data, error } = await supabase
+    .from('project_links')
+    .insert(payload as never)
+    .select(LINKS_COLS)
+    .single();
+
+  if (error || !data)
+    return { ok: false, error: error?.message ?? 'Failed to create link' };
+
+  revalidatePath(`/project/${projectId}/files`);
+  revalidatePath(`/project/${projectId}`);
+
+  return { ok: true, data: toLinkListItem(data as ProjectLinkRow) };
+}
+
+export async function updateProjectLinkAction(input: {
+  linkId: string;
+  title?: string;
+  url?: string;
+  description?: string;
+  provider?: string;
+  link_type?: LinkType;
+  section?: LinkSection;
+  tags?: string[] | string;
+  pinned?: boolean;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireAuth();
+  const linkId = input.linkId?.trim();
+  if (!linkId) return { ok: false, error: 'Link ID is required' };
+
+  const supabase = await createClient();
+  const { data: existingData, error: existingError } = await supabase
+    .from('project_links')
+    .select('id, project_id, owner_id')
+    .eq('id', linkId)
+    .eq('owner_id', user.id)
+    .maybeSingle();
+
+  const existing = existingData as {
+    id: string;
+    project_id: string;
+    owner_id: string;
+  } | null;
+  if (existingError || !existing) return { ok: false, error: 'Link not found' };
+
+  const ownership = await ensureOwnedProject(existing.project_id, user.id);
+  if (!ownership.ok) return ownership;
+
+  const updates: Database['public']['Tables']['project_links']['Update'] = {};
+  if (input.title !== undefined)
+    updates.title = normalizeTitle(input.title, 'Untitled link');
+  if (input.url !== undefined) {
+    const normalized = normalizeUrl(input.url);
+    if (!normalized) return { ok: false, error: 'Invalid URL' };
+    updates.url = normalized;
+  }
+  if (input.description !== undefined)
+    updates.description = input.description?.trim() || null;
+  if (input.provider !== undefined)
+    updates.provider = input.provider?.trim() || null;
+  if (input.link_type !== undefined) {
+    if (!LINK_TYPE_VALUES.includes(input.link_type))
+      return { ok: false, error: 'Invalid link type' };
+    updates.link_type = input.link_type;
+  }
+  if (input.section !== undefined) {
+    if (!LINK_SECTION_VALUES.includes(input.section))
+      return { ok: false, error: 'Invalid link section' };
+    updates.section = input.section;
+  }
+  if (input.tags !== undefined) updates.tags = normalizeTags(input.tags);
+  if (input.pinned !== undefined) updates.pinned = Boolean(input.pinned);
+
+  const { error } = await supabase
+    .from('project_links')
+    .update(updates as never)
+    .eq('id', linkId)
+    .eq('owner_id', user.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/project/${existing.project_id}/files`);
+  revalidatePath(`/project/${existing.project_id}`);
+  return { ok: true };
+}
+
+export async function archiveProjectLinkAction(input: {
+  linkId: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireAuth();
+  const linkId = input.linkId?.trim();
+  if (!linkId) return { ok: false, error: 'Link ID is required' };
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('project_links')
+    .select('id, project_id, owner_id')
+    .eq('id', linkId)
+    .eq('owner_id', user.id)
+    .maybeSingle();
+
+  const existing = data as {
+    id: string;
+    project_id: string;
+    owner_id: string;
+  } | null;
+  if (error || !existing) return { ok: false, error: 'Link not found' };
+
+  const ownership = await ensureOwnedProject(existing.project_id, user.id);
+  if (!ownership.ok) return ownership;
+
+  const { error: updateError } = await supabase
+    .from('project_links')
+    .update({ archived_at: new Date().toISOString() } as never)
+    .eq('id', linkId)
+    .eq('owner_id', user.id);
+
+  if (updateError) return { ok: false, error: updateError.message };
+  revalidatePath(`/project/${existing.project_id}/files`);
+  revalidatePath(`/project/${existing.project_id}`);
+  return { ok: true };
+}
+
+export async function restoreProjectLinkAction(input: {
+  linkId: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireAuth();
+  const linkId = input.linkId?.trim();
+  if (!linkId) return { ok: false, error: 'Link ID is required' };
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('project_links')
+    .select('id, project_id, owner_id')
+    .eq('id', linkId)
+    .eq('owner_id', user.id)
+    .maybeSingle();
+
+  const existing = data as {
+    id: string;
+    project_id: string;
+    owner_id: string;
+  } | null;
+  if (error || !existing) return { ok: false, error: 'Link not found' };
+
+  const ownership = await ensureOwnedProject(existing.project_id, user.id);
+  if (!ownership.ok) return ownership;
+
+  const { error: updateError } = await supabase
+    .from('project_links')
+    .update({ archived_at: null } as never)
+    .eq('id', linkId)
+    .eq('owner_id', user.id);
+
+  if (updateError) return { ok: false, error: updateError.message };
+  revalidatePath(`/project/${existing.project_id}/files`);
+  revalidatePath(`/project/${existing.project_id}`);
+  return { ok: true };
+}
+
+export async function deleteProjectLinkAction(input: {
+  linkId: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireAuth();
+  const linkId = input.linkId?.trim();
+  if (!linkId) return { ok: false, error: 'Link ID is required' };
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('project_links')
+    .select('id, project_id, owner_id')
+    .eq('id', linkId)
+    .eq('owner_id', user.id)
+    .maybeSingle();
+
+  const existing = data as {
+    id: string;
+    project_id: string;
+    owner_id: string;
+  } | null;
+  if (error || !existing) return { ok: false, error: 'Link not found' };
+
+  const ownership = await ensureOwnedProject(existing.project_id, user.id);
+  if (!ownership.ok) return ownership;
+
+  const { error: deleteError } = await supabase
+    .from('project_links')
+    .delete()
+    .eq('id', linkId)
+    .eq('owner_id', user.id);
+
+  if (deleteError) return { ok: false, error: deleteError.message };
   revalidatePath(`/project/${existing.project_id}/files`);
   revalidatePath(`/project/${existing.project_id}`);
   return { ok: true };
