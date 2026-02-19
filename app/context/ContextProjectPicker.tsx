@@ -2,7 +2,13 @@
 
 import Link from 'next/link';
 import { useI18n } from '@/components/I18nProvider';
-import { Clock, FolderKanban, LayoutDashboard, Plus } from 'lucide-react';
+import {
+  ChevronLeft,
+  Clock,
+  FolderKanban,
+  LayoutDashboard,
+  Plus,
+} from 'lucide-react';
 import type { ProjectListItem } from '@/app/actions/projects';
 
 const MAX_RECENT_HIGHLIGHT = 5;
@@ -15,6 +21,10 @@ interface ContextProjectPickerProps {
   userDisplayName?: string;
   /** When true, user came from a project (Volver al inicio); show focus question instead of welcome. */
   returningFromProject?: boolean;
+  /** When set (post-exit layer in ContextShell), show back arrow that returns to the project. */
+  onBackToProject?: () => void;
+  /** When set, clicking this project id uses onBackToProject instead of navigating (same project we just left). */
+  backToProjectId?: string;
 }
 
 export default function ContextProjectPicker({
@@ -22,6 +32,8 @@ export default function ContextProjectPicker({
   showBackButton = true,
   userDisplayName,
   returningFromProject = false,
+  onBackToProject,
+  backToProjectId,
 }: ContextProjectPickerProps) {
   const { t } = useI18n();
 
@@ -44,7 +56,16 @@ export default function ContextProjectPicker({
     <div className="min-h-screen flex flex-col bg-background">
       <header className="bg-primary text-primary-foreground shadow flex-shrink-0">
         <div className="px-4 md:px-6 py-3 md:py-4 flex items-center gap-2 min-w-0">
-          {showBackButton ? (
+          {onBackToProject ? (
+            <button
+              type="button"
+              onClick={onBackToProject}
+              className="flex-shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-md text-primary-foreground/90 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
+              aria-label={t('context.back_to_project')}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          ) : showBackButton ? (
             <Link
               href="/"
               className="flex-shrink-0 inline-flex items-center gap-1.5 text-sm text-primary-foreground/90 hover:text-primary-foreground py-1 pr-2"
@@ -89,16 +110,15 @@ export default function ContextProjectPicker({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl mx-auto">
             {initialProjects.map((project) => {
               const recentlyOpened = recentHighlightIds.has(project.id);
-              return (
-                <Link
-                  key={project.id}
-                  href={`/context/${project.id}/board`}
-                  className={`rounded-lg border p-5 hover:shadow-md transition-all block group ${
-                    recentlyOpened
-                      ? 'bg-card border-l-4 border-l-primary border-border'
-                      : 'bg-card border border-border'
-                  }`}
-                >
+              const useBackAction =
+                backToProjectId === project.id && onBackToProject;
+              const cardClass = `rounded-lg border p-5 hover:shadow-md transition-all block group text-left w-full ${
+                recentlyOpened
+                  ? 'bg-card border-l-4 border-l-primary border-border'
+                  : 'bg-card border border-border'
+              }`;
+              const content = (
+                <>
                   <div className="flex items-start gap-2">
                     <h3 className="font-semibold text-foreground truncate flex-1 min-w-0">
                       {project.name}
@@ -118,6 +138,24 @@ export default function ContextProjectPicker({
                   <p className="text-xs text-muted-foreground mt-1 capitalize">
                     {project.category}
                   </p>
+                </>
+              );
+              return useBackAction ? (
+                <button
+                  key={project.id}
+                  type="button"
+                  onClick={onBackToProject}
+                  className={cardClass}
+                >
+                  {content}
+                </button>
+              ) : (
+                <Link
+                  key={project.id}
+                  href={`/context/${project.id}/board`}
+                  className={cardClass}
+                >
+                  {content}
                 </Link>
               );
             })}

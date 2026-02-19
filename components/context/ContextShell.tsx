@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { ContextTabBar } from './ContextTabBar';
 import ContextProjectPicker from '@/app/context/ContextProjectPicker';
 import { getHomePageData } from '@/app/actions/home';
@@ -25,9 +25,11 @@ export function ContextShell({
   children,
 }: ContextShellProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isExiting, setIsExiting] = useState(false);
   const [homeData, setHomeData] =
     useState<Awaited<ReturnType<typeof getHomePageData>>>(null);
+  const exitFromPathRef = useRef<string | null>(null);
 
   // Pre-render home data so Salir can show it sliding in (user can't change projects from here).
   useEffect(() => {
@@ -44,9 +46,20 @@ export function ContextShell({
 
   const handleExitStart = () => {
     if (homeData) {
+      exitFromPathRef.current = pathname ?? null;
       setIsExiting(true);
     } else {
       router.push('/?from=project');
+    }
+  };
+
+  const handleBackToProject = () => {
+    setIsExiting(false);
+    const returnPath = exitFromPathRef.current;
+    if (returnPath) {
+      setTimeout(() => {
+        window.history.replaceState(null, '', returnPath);
+      }, EXIT_TRANSITION_MS);
     }
   };
 
@@ -86,6 +99,8 @@ export function ContextShell({
             showBackButton={false}
             userDisplayName={homeData.userDisplayName}
             returningFromProject={true}
+            onBackToProject={handleBackToProject}
+            backToProjectId={projectId}
           />
         </div>
       )}
