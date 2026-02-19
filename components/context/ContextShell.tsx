@@ -26,10 +26,17 @@ export function ContextShell({
 }: ContextShellProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const [isEntering, setIsEntering] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
   const [homeData, setHomeData] =
     useState<Awaited<ReturnType<typeof getHomePageData>>>(null);
   const exitFromPathRef = useRef<string | null>(null);
+
+  // Entry animation: project view slides in from the right when first opening a project.
+  useEffect(() => {
+    const t = setTimeout(() => setIsEntering(false), 0);
+    return () => clearTimeout(t);
+  }, []);
 
   // Pre-render home data so Salir can show it sliding in (user can't change projects from here).
   useEffect(() => {
@@ -65,10 +72,16 @@ export function ContextShell({
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-background">
-      {/* Project layer: slides left on exit */}
+      {/* Project layer: enters from right on mount, slides left on exit */}
       <div
         className="flex h-full w-full flex-col bg-background transition-transform duration-[280ms] ease-out"
-        style={isExiting ? { transform: 'translateX(-100%)' } : undefined}
+        style={{
+          transform: isEntering
+            ? 'translateX(100%)'
+            : isExiting
+              ? 'translateX(-100%)'
+              : undefined,
+        }}
       >
         <header className="bg-primary text-primary-foreground shadow flex-shrink-0">
           <div className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-center min-w-0">

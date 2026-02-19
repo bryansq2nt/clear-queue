@@ -108,6 +108,28 @@
   will-change: background-color, box-shadow;
 }
 
+/* Skeleton shimmer (Phase 2: instant navigation) */
+@keyframes cq-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.cq-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--muted-foreground) / 0.15) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: cq-skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius);
+}
+
 /* PhoneInput theme: use app background/border/foreground */
 .PhoneInput-theme.PhoneInput {
   @apply flex w-full rounded-md border border-input overflow-hidden bg-background;
