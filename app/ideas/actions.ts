@@ -17,6 +17,7 @@ export async function createIdeaAction(formData: FormData) {
     });
 
     revalidatePath('/ideas');
+    revalidatePath('/context');
     return { data };
   } catch (error) {
     return {
@@ -44,6 +45,7 @@ export async function updateIdeaAction(formData: FormData) {
 
     revalidatePath('/ideas');
     revalidatePath(`/ideas/${id}`);
+    revalidatePath('/context');
     return { data };
   } catch (error) {
     return {
@@ -62,6 +64,7 @@ export async function deleteIdeaAction(id: string) {
   try {
     await deleteIdea(id);
     revalidatePath('/ideas');
+    revalidatePath('/context');
     return { success: true };
   } catch (error) {
     return {

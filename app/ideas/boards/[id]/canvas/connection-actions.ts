@@ -34,6 +34,7 @@ export async function createConnectionAction(
 
     // Revalidate the canvas page to refresh connections
     revalidatePath(`/ideas/boards/[id]/canvas`, 'page');
+    revalidatePath('/context');
     return { data };
   } catch (error) {
     return {
@@ -56,6 +57,7 @@ export async function deleteConnectionAction(connectionId: string) {
     // Revalidate the canvas page and main ideas page
     revalidatePath(`/ideas/boards/[id]/canvas`, 'page');
     revalidatePath('/ideas');
+    revalidatePath('/context');
     return { success: true };
   } catch (error) {
     return {

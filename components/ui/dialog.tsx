@@ -51,6 +51,52 @@ const DialogContent = React.forwardRef<
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
+const overlayBase =
+  'z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0';
+const contentBase =
+  'z-50 grid gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg';
+
+type DialogContentWithoutCloseProps = React.ComponentPropsWithoutRef<
+  typeof DialogPrimitive.Content
+> & {
+  /** When set, portal content into this element (e.g. tab content area). */
+  container?: HTMLElement | null;
+  /** When 'container', overlay and content use absolute inset-0 to fill the container. */
+  positionMode?: 'viewport' | 'container';
+};
+
+/** Same as DialogContent but without the built-in close button (for full-screen modals with custom header). */
+const DialogContentWithoutClose = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  DialogContentWithoutCloseProps
+>(({ className, children, container, positionMode = 'viewport', ...props }, ref) => {
+  const isContainer = positionMode === 'container';
+  return (
+    <DialogPortal container={container ?? undefined}>
+      <DialogOverlay
+        className={cn(
+          overlayBase,
+          isContainer ? 'absolute inset-0' : 'fixed inset-0'
+        )}
+      />
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          contentBase,
+          isContainer
+            ? 'absolute inset-0 flex max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0'
+            : 'fixed left-[50%] top-[50%] w-full max-w-lg translate-x-[-50%] translate-y-[-50%]',
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  );
+});
+DialogContentWithoutClose.displayName = 'DialogContentWithoutClose';
+
 const DialogHeader = ({
   className,
   ...props
@@ -113,6 +159,7 @@ export {
   DialogClose,
   DialogTrigger,
   DialogContent,
+  DialogContentWithoutClose,
   DialogHeader,
   DialogFooter,
   DialogTitle,

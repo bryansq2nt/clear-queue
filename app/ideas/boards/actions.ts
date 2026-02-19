@@ -22,6 +22,7 @@ export async function createBoardAction(formData: FormData) {
     });
 
     revalidatePath('/ideas/boards');
+    revalidatePath('/context');
     return { data };
   } catch (error) {
     return {
@@ -56,6 +57,7 @@ export async function updateBoardAction(formData: FormData) {
     });
     revalidatePath('/ideas/boards');
     revalidatePath('/ideas');
+    revalidatePath('/context');
     return { data };
   } catch (error) {
     return {
@@ -75,6 +77,7 @@ export async function deleteBoardAction(id: string) {
     await deleteBoard(id);
     revalidatePath('/ideas/boards');
     revalidatePath('/ideas');
+    revalidatePath('/context');
     return { success: true };
   } catch (error) {
     return {
@@ -105,6 +108,7 @@ export async function addIdeaToBoardAction(formData: FormData) {
 
     revalidatePath(`/ideas/boards/${boardId}`);
     revalidatePath('/ideas');
+    revalidatePath('/context');
     return { data };
   } catch (error) {
     return {

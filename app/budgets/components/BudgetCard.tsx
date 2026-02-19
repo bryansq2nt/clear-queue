@@ -31,9 +31,15 @@ interface BudgetCardProps {
     projects: { id: string; name: string } | null;
   };
   onDeleted?: () => void;
+  /** When provided (e.g. context view), links and redirects use this instead of /budgets/[id] */
+  getDetailHref?: (budgetId: string) => string;
 }
 
-export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
+export function BudgetCard({
+  budget,
+  onDeleted,
+  getDetailHref,
+}: BudgetCardProps) {
   const { t } = useI18n();
   const [stats, setStats] = useState({
     total: 0,
@@ -87,11 +93,13 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
     }
   };
 
+  const detailHref = getDetailHref?.(budget.id) ?? `/budgets/${budget.id}`;
+
   const handleView = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setShowMenu(false);
-    router.push(`/budgets/${budget.id}`);
+    router.push(detailHref);
   };
 
   const handleEdit = async (e: React.MouseEvent) => {
@@ -115,7 +123,9 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
         onDeleted();
       }
       if (result?.budgetId) {
-        router.push(`/budgets/${result.budgetId}`);
+        router.push(
+          getDetailHref?.(result.budgetId) ?? `/budgets/${result.budgetId}`
+        );
       } else {
         setIsDuplicating(false);
       }
@@ -137,7 +147,7 @@ export function BudgetCard({ budget, onDeleted }: BudgetCardProps) {
 
   return (
     <>
-      <Link href={`/budgets/${budget.id}`} className="h-full min-h-0 flex">
+      <Link href={detailHref} className="h-full min-h-0 flex">
         <div className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition-all hover:border-primary/50 cursor-pointer relative group flex flex-col w-full min-h-0">
           {/* Menu button */}
           <button

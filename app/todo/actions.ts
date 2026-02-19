@@ -55,6 +55,7 @@ export async function createTodoListAction(
 
   if (!result.ok) return result;
   revalidatePath('/todo');
+  revalidatePath('/context');
   return result;
 }
 
@@ -73,6 +74,7 @@ export async function renameTodoListAction(
 
   revalidatePath('/todo');
   revalidatePath(`/todo/list/${id}`);
+  revalidatePath('/context');
   return result;
 }
 
@@ -91,6 +93,7 @@ export async function updateTodoListAction(
 
   revalidatePath('/todo');
   revalidatePath(`/todo/list/${id}`);
+  revalidatePath('/context');
   return result;
 }
 
@@ -108,6 +111,7 @@ export async function archiveTodoListAction(
   if (!result.ok) return result;
 
   revalidatePath('/todo');
+  revalidatePath('/context');
   return result;
 }
 
@@ -124,6 +128,7 @@ export async function deleteTodoListAction(
   if (!result.ok) return result;
 
   revalidatePath('/todo');
+  revalidatePath('/context');
   return result;
 }
 
@@ -197,6 +202,7 @@ export async function createTodoItemAction(
 
   if (!result.ok) return result;
   revalidatePath('/todo');
+  revalidatePath('/context');
   return result;
 }
 
@@ -213,6 +219,7 @@ export async function toggleTodoItemAction(
   if (!result.ok) return result;
 
   revalidatePath('/todo');
+  revalidatePath('/context');
   return result;
 }
 
@@ -233,6 +240,7 @@ export async function updateTodoItemAction(
   if (!result.ok) return result;
 
   revalidatePath('/todo');
+  revalidatePath('/context');
   return result;
 }
 
@@ -249,6 +257,7 @@ export async function deleteTodoItemAction(
   if (!result.ok) return result;
 
   revalidatePath('/todo');
+  revalidatePath('/context');
   return result;
 }
 
@@ -324,6 +333,7 @@ export async function getProjectTodoBoardAction(
     lists = [newListResult.data];
     revalidatePath('/todo');
     revalidatePath(`/todo/project/${projectId}`);
+    revalidatePath('/context');
   }
 
   const sortedLists = [...lists].sort(

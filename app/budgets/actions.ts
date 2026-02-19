@@ -68,6 +68,61 @@ export const getBudgets = cache(async () => {
 });
 
 // ============================================
+// GET BUDGETS BY PROJECT (for context view)
+// ============================================
+export const getBudgetsByProjectId = cache(
+  async (
+    projectId: string
+  ): Promise<(Budget & { projects: { id: string; name: string } | null })[]> => {
+    await requireAuth();
+    const supabase = await createClient();
+
+    const { data: budgets, error } = await supabase
+      .from('budgets')
+      .select(
+        'id, project_id, name, description, owner_id, created_at, updated_at'
+      )
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+
+    if (error || !budgets?.length) return [];
+
+    const budgetsData = budgets as Budget[];
+    const { data: project } = await supabase
+      .from('projects')
+      .select('id, name')
+      .eq('id', projectId)
+      .single();
+
+    const projectInfo = project
+      ? { id: (project as { id: string }).id, name: (project as { name: string }).name }
+      : null;
+
+    return budgetsData.map((budget) => ({
+      ...budget,
+      projects: projectInfo,
+    })) as (Budget & { projects: { id: string; name: string } | null })[];
+  }
+);
+
+// ============================================
+// GET BUDGET PROJECT ID (for context validation)
+// ============================================
+export const getBudgetProjectId = cache(
+  async (budgetId: string): Promise<string | null> => {
+    await requireAuth();
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('budgets')
+      .select('project_id')
+      .eq('id', budgetId)
+      .single();
+    if (error || !data) return null;
+    return (data as { project_id: string | null }).project_id;
+  }
+);
+
+// ============================================
 // GET BUDGET STATS (para cards)
 // ============================================
 export async function getBudgetStats(budgetId: string) {
@@ -185,6 +240,7 @@ export async function createBudget(formData: {
   }
 
   revalidatePath('/budgets');
+  revalidatePath('/context');
   return data;
 }
 
@@ -223,6 +279,7 @@ export async function updateBudget(
 
   revalidatePath('/budgets');
   revalidatePath(`/budgets/${budgetId}`);
+  revalidatePath('/context');
   return data;
 }
 
@@ -241,6 +298,7 @@ export async function deleteBudget(budgetId: string) {
   }
 
   revalidatePath('/budgets');
+  revalidatePath('/context');
   return { success: true };
 }
 
@@ -266,6 +324,7 @@ export async function duplicateBudget(sourceBudgetId: string) {
 
   revalidatePath('/budgets');
   revalidatePath(`/budgets/${newBudgetId}`);
+  revalidatePath('/context');
   return { budgetId: newBudgetId };
 }
 

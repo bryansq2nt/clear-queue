@@ -30,10 +30,16 @@ type BudgetCategory = Database['public']['Tables']['budget_categories']['Row'];
 
 interface BudgetDetailClientProps {
   budgetId: string;
+  /** When provided (e.g. context view), back link goes here instead of /budgets */
+  backHref?: string;
+  /** When true (e.g. context view), do not show the back header; user navigates via tab bar */
+  hideBackHeader?: boolean;
 }
 
 export default function BudgetDetailClient({
   budgetId,
+  backHref = '/budgets',
+  hideBackHeader = false,
 }: BudgetDetailClientProps) {
   const { t } = useI18n();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -335,34 +341,48 @@ export default function BudgetDetailClient({
     [budgetData?.categories, budgetId]
   );
 
+  const contentClassName = 'p-4 sm:p-6';
+
   if (isLoading) {
+    const skeleton = (
+      <div className="animate-pulse space-y-4">
+        <div className="h-48 bg-muted rounded-lg" />
+        <div className="h-32 bg-muted rounded-lg" />
+        <div className="h-32 bg-muted rounded-lg" />
+      </div>
+    );
+    if (hideBackHeader) {
+      return <div className={contentClassName}>{skeleton}</div>;
+    }
     return (
       <DetailLayout
-        backHref="/budgets"
+        backHref={backHref}
         backLabel=""
         title={t('budgets.detail_title')}
-        contentClassName="p-4 sm:p-6"
+        contentClassName={contentClassName}
       >
-        <div className="animate-pulse space-y-4">
-          <div className="h-48 bg-muted rounded-lg" />
-          <div className="h-32 bg-muted rounded-lg" />
-          <div className="h-32 bg-muted rounded-lg" />
-        </div>
+        {skeleton}
       </DetailLayout>
     );
   }
 
   if (!budgetData) {
+    const notFoundContent = (
+      <div className="bg-destructive/10 border border-destructive rounded-lg p-6 text-center">
+        <p className="text-destructive">Budget not found</p>
+      </div>
+    );
+    if (hideBackHeader) {
+      return <div className={contentClassName}>{notFoundContent}</div>;
+    }
     return (
       <DetailLayout
-        backHref="/budgets"
+        backHref={backHref}
         backLabel=""
         title={t('budgets.detail_title')}
-        contentClassName="p-4 sm:p-6"
+        contentClassName={contentClassName}
       >
-        <div className="bg-destructive/10 border border-destructive rounded-lg p-6 text-center">
-          <p className="text-destructive">Budget not found</p>
-        </div>
+        {notFoundContent}
       </DetailLayout>
     );
   }
@@ -387,15 +407,12 @@ export default function BudgetDetailClient({
     progress: Math.round(overallProgress),
   };
 
-  return (
+  const mainContentClassName =
+    'p-4 sm:p-6 max-w-7xl mx-auto w-full';
+
+  const mainContent = (
     <>
-      <DetailLayout
-        backHref="/budgets"
-        backLabel=""
-        title={t('budgets.detail_title')}
-        contentClassName="p-4 sm:p-6 max-w-7xl mx-auto w-full"
-      >
-        <BudgetHeader
+      <BudgetHeader
           budget={budgetData.budget}
           projects={projects}
           stats={stats}
@@ -547,7 +564,23 @@ export default function BudgetDetailClient({
             <Plus className="h-6 w-6" />
           </button>
         </div>
-      </DetailLayout>
+    </>
+  );
+
+  return (
+    <>
+      {hideBackHeader ? (
+        <div className={mainContentClassName}>{mainContent}</div>
+      ) : (
+        <DetailLayout
+          backHref={backHref}
+          backLabel=""
+          title={t('budgets.detail_title')}
+          contentClassName={mainContentClassName}
+        >
+          {mainContent}
+        </DetailLayout>
+      )}
 
       <CreateCategoryModal
         isOpen={isCategoryModalOpen}

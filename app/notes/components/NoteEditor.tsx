@@ -38,6 +38,12 @@ export interface NoteEditorProps {
   initialNote: { title: string; content: string; project_id: string };
   initialLinks: NoteLink[] | LocalLink[];
   preselectedProjectId?: string | null;
+  /** When provided (e.g. context view), redirect here after delete instead of /notes */
+  listHref?: string;
+  /** When provided (e.g. context view), redirect here after create instead of /notes/[id] */
+  getDetailHref?: (noteId: string) => string;
+  /** When true (e.g. context view), hide the toolbar and show Delete as a FAB like Link/Save */
+  deleteAsFab?: boolean;
 }
 
 export function NoteEditor({
@@ -46,6 +52,9 @@ export function NoteEditor({
   initialNote,
   initialLinks,
   preselectedProjectId,
+  listHref,
+  getDetailHref,
+  deleteAsFab = false,
 }: NoteEditorProps) {
   const { t } = useI18n();
   const router = useRouter();
@@ -176,7 +185,7 @@ export function NoteEditor({
       await addNoteLink(newId, { title: link.title?.trim() || null, url });
     }
     setSaving(false);
-    router.push(`/notes/${newId}`);
+    router.push(getDetailHref?.(newId) ?? `/notes/${newId}`);
   };
 
   const handleDelete = async () => {
@@ -184,7 +193,7 @@ export function NoteEditor({
     if (!confirm(t('notes.delete_note_confirm'))) return;
     const { error: err } = await deleteNote(noteId);
     if (err) alert(err);
-    else router.push('/notes');
+    else router.push(listHref ?? '/notes');
   };
 
   const addLink = (e: React.FormEvent) => {
@@ -241,8 +250,8 @@ export function NoteEditor({
 
   return (
     <div className="max-w-6xl mx-auto w-full">
-      {/* Minimal toolbar: only in edit mode (saved + delete) */}
-      {isEdit && (
+      {/* Minimal toolbar: only in edit mode when not deleteAsFab (saved + delete) */}
+      {isEdit && !deleteAsFab && (
         <div className="sticky top-0 z-10 bg-slate-50/95 dark:bg-gray-900/95 backdrop-blur border-b border-slate-200 dark:border-gray-700 -mx-4 px-4 py-3 flex flex-wrap items-center justify-end gap-3">
           {saveStatus === 'saved' && (
             <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
@@ -261,6 +270,19 @@ export function NoteEditor({
             </Button>
           )}
         </div>
+      )}
+
+      {/* FAB Delete (when deleteAsFab, same style as Link/Save) */}
+      {isEdit && noteId && deleteAsFab && (
+        <button
+          type="button"
+          onClick={handleDelete}
+          aria-label={t('common.delete')}
+          title={t('common.delete')}
+          className="fixed bottom-[10.5rem] right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2 focus:ring-offset-background md:bottom-[12rem] md:right-8"
+        >
+          <Trash2 className="h-6 w-6" />
+        </button>
       )}
 
       {/* FAB Project (link project) - above Save */}

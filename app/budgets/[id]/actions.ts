@@ -146,6 +146,7 @@ export async function createCategory(formData: {
   }
 
   revalidatePath(`/budgets/${formData.budget_id}`);
+  revalidatePath('/context');
   return data;
 }
 
@@ -182,6 +183,7 @@ export async function updateCategory(
   }
 
   revalidatePath(`/budgets/${budgetId}`);
+  revalidatePath('/context');
   return data;
 }
 
@@ -203,6 +205,7 @@ export async function deleteCategory(categoryId: string, budgetId: string) {
   }
 
   revalidatePath(`/budgets/${budgetId}`);
+  revalidatePath('/context');
   return { success: true };
 }
 
@@ -227,6 +230,7 @@ export async function reorderCategories(
 
   await Promise.all(updates);
   revalidatePath(`/budgets/${budgetId}`);
+  revalidatePath('/context');
   return { success: true };
 }
 
@@ -296,6 +300,7 @@ export async function createItem(formData: {
   }
 
   revalidatePath(`/budgets/${budgetId}`);
+  revalidatePath('/context');
   return data;
 }
 
@@ -346,6 +351,7 @@ export async function updateItem(
   }
 
   revalidatePath(`/budgets/${budgetId}`);
+  revalidatePath('/context');
   return data;
 }
 
@@ -367,6 +373,7 @@ export async function deleteItem(itemId: string, budgetId: string) {
   }
 
   revalidatePath(`/budgets/${budgetId}`);
+  revalidatePath('/context');
   return { success: true };
 }
 
@@ -412,6 +419,7 @@ export async function deleteItems(itemIds: string[], budgetId: string) {
   }
 
   revalidatePath(`/budgets/${budgetId}`);
+  revalidatePath('/context');
   return { success: true };
 }
 
@@ -448,5 +456,6 @@ export async function reorderItems(
 
   await Promise.all(updates);
   revalidatePath(`/budgets/${budgetId}`);
+  revalidatePath('/context');
   return { success: true };
 }

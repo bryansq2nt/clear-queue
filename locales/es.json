@@ -16,7 +16,8 @@
     "menu": "Menú",
     "next": "Siguiente",
     "previous": "Anterior",
-    "select": "Seleccionar"
+    "select": "Seleccionar",
+    "copy": "Copiar"
   },
   "topbar": {
     "task_board": "Tablero de Tareas",
@@ -70,6 +71,31 @@
     "archived": "Archivado",
     "loading_data": "Cargando datos del panel...",
     "see_all": "Ver todas"
+  },
+  "context": {
+    "title": "Contexto del proyecto",
+    "all_projects": "Todos los proyectos",
+    "back_to_app": "Volver al inicio",
+    "project_owner": "Responsable del proyecto",
+    "board": "Tablero",
+    "notes": "Notas",
+    "ideas": "Ideas",
+    "budgets": "Presupuestos",
+    "todos": "Tareas",
+    "pick_project": "Elige un proyecto",
+    "pick_project_subtitle": "Elige un proyecto para ver su tablero, notas, presupuestos y más en un solo lugar.",
+    "client_linked": "Cliente vinculado",
+    "no_client_linked": "Sin cliente vinculado",
+    "business_linked": "Empresa vinculada",
+    "no_business_linked": "Sin empresa vinculada",
+    "owner_coming_soon": "Los datos de cliente y empresa aparecerán aquí. (Fase 5)",
+    "view_full_profile": "Ver perfil completo",
+    "owner_empty_hint": "Vincula un cliente y/o empresa a este proyecto para ver sus datos aquí.",
+    "owner_edit_hint": "Para cambiar el cliente o empresa vinculados, edita el proyecto desde el tab Tablero.",
+    "notes_coming_soon": "Las notas del proyecto aparecerán aquí. (Fase 3)",
+    "ideas_coming_soon": "Las ideas del proyecto aparecerán aquí. (Fase 6)",
+    "budgets_coming_soon": "Los presupuestos del proyecto aparecerán aquí. (Fase 4)",
+    "todos_coming_soon": "Las tareas del proyecto aparecerán aquí. (Fase 6)"
   },
   "sidebar": {
     "navigation": "Navegación",
@@ -148,6 +174,10 @@
   },
   "ideas": {
     "title": "Ideas",
+    "mind_maps_heading": "Mapas mentales",
+    "new_mind_map": "Nuevo mapa mental",
+    "select_mind_map_or_create": "Selecciona un mapa mental o crea uno para comenzar.",
+    "edit_mind_map": "Editar mapa mental",
     "boards_heading": "Tableros",
     "open_boards_list": "Ver lista de tableros",
     "edit_board": "Editar tablero",
@@ -292,6 +322,7 @@
     "detail_title": "Cliente",
     "client_info_title": "Información del cliente",
     "contact": "Contacto",
+    "email_label": "Email",
     "phone": "Teléfono",
     "phone_placeholder": "+34 612 345 678",
     "email_placeholder": "juan@ejemplo.com",

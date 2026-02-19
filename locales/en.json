@@ -16,7 +16,8 @@
     "menu": "Menu",
     "next": "Next",
     "previous": "Previous",
-    "select": "Select"
+    "select": "Select",
+    "copy": "Copy"
   },
   "topbar": {
     "task_board": "Task board",
@@ -73,6 +74,31 @@
     "health_critical": "Critical",
     "loading_data": "Loading...",
     "see_all": "See all"
+  },
+  "context": {
+    "title": "Project context",
+    "all_projects": "All projects",
+    "back_to_app": "Back to app",
+    "project_owner": "Project owner",
+    "board": "Board",
+    "notes": "Notes",
+    "ideas": "Ideas",
+    "budgets": "Budgets",
+    "todos": "To-dos",
+    "pick_project": "Pick a project",
+    "pick_project_subtitle": "Choose a project to view its board, notes, budgets, and more in one place.",
+    "client_linked": "Client linked",
+    "no_client_linked": "No client linked",
+    "business_linked": "Business linked",
+    "no_business_linked": "No business linked",
+    "owner_coming_soon": "Client and business details will appear here. (Phase 5)",
+    "view_full_profile": "View full profile",
+    "owner_empty_hint": "Link a client and/or business to this project to see their details here.",
+    "owner_edit_hint": "To change the linked client or business, edit the project from the Board tab.",
+    "notes_coming_soon": "Project notes will appear here. (Phase 3)",
+    "ideas_coming_soon": "Project ideas will appear here. (Phase 6)",
+    "budgets_coming_soon": "Project budgets will appear here. (Phase 4)",
+    "todos_coming_soon": "Project to-dos will appear here. (Phase 6)"
   },
   "sidebar": {
     "navigation": "Navigation",
@@ -176,6 +202,10 @@
   },
   "ideas": {
     "title": "Idea Graph",
+    "mind_maps_heading": "Mind maps",
+    "new_mind_map": "New mind map",
+    "select_mind_map_or_create": "Select a mind map or create one to get started.",
+    "edit_mind_map": "Edit mind map",
     "boards_heading": "Boards",
     "open_boards_list": "View boards list",
     "no_boards_yet": "No boards yet. Create one to get started.",
@@ -329,6 +359,7 @@
     "detail_title": "Client",
     "client_info_title": "Client information",
     "contact": "Contact",
+    "email_label": "Email",
     "phone": "Phone",
     "phone_placeholder": "+1 234 567 8900",
     "email_placeholder": "jane@example.com",

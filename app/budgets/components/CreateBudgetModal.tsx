@@ -8,9 +8,15 @@ import { createBudget, getProjects } from '../actions';
 interface CreateBudgetModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** When provided (e.g. context view), preselect this project */
+  defaultProjectId?: string;
 }
 
-export function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModalProps) {
+export function CreateBudgetModal({
+  isOpen,
+  onClose,
+  defaultProjectId,
+}: CreateBudgetModalProps) {
   const { t } = useI18n();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -23,8 +29,9 @@ export function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModalProps) {
     if (isOpen) {
       getProjects().then(setProjects);
       setError(null);
+      setProjectId(defaultProjectId ?? '');
     }
-  }, [isOpen]);
+  }, [isOpen, defaultProjectId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

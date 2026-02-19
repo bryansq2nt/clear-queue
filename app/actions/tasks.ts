@@ -40,6 +40,7 @@ export async function createTask(formData: FormData) {
   }
 
   revalidatePath('/dashboard');
+  revalidatePath('/context');
   return { data };
 }
 
@@ -76,6 +77,7 @@ export async function updateTask(id: string, formData: FormData) {
   }
 
   revalidatePath('/dashboard');
+  revalidatePath('/context');
   return { data };
 }
 
@@ -91,6 +93,7 @@ export async function deleteTask(id: string) {
 
   revalidatePath('/dashboard');
   revalidatePath('/project');
+  revalidatePath('/context');
   return { success: true };
 }
 
@@ -110,6 +113,7 @@ export async function deleteTasksByIds(ids: string[]) {
 
   revalidatePath('/dashboard');
   revalidatePath('/project');
+  revalidatePath('/context');
   return { success: true };
 }
 
@@ -267,5 +271,6 @@ export async function updateTaskOrder(
 
   revalidatePath('/dashboard');
   revalidatePath('/project');
+  revalidatePath('/context');
   return { success: true };
 }

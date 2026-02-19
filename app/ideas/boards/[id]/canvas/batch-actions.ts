@@ -45,6 +45,7 @@ export async function batchUpdatePositionsAction(
     }
 
     revalidatePath('/ideas');
+    revalidatePath('/context');
     return { success: true, succeeded, failed };
   } catch (error) {
     console.error('Batch update error:', error);

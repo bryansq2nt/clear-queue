@@ -86,6 +86,33 @@ export async function listBoards(): Promise<IdeaBoard[]> {
 }
 
 /**
+ * List boards linked to a specific project (project_id = projectId)
+ */
+export async function listBoardsByProjectId(
+  projectId: string
+): Promise<IdeaBoard[]> {
+  if (!projectId || projectId.trim().length === 0) {
+    return [];
+  }
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('idea_boards')
+    .select(
+      'id, owner_id, name, description, project_id, created_at, updated_at'
+    )
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to list boards by project: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+/**
  * Update a board (name, description, project_id)
  */
 export async function updateBoard(

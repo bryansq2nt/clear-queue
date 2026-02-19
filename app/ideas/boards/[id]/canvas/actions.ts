@@ -29,6 +29,7 @@ export async function updatePositionAction(
     // Revalidate the canvas page and main ideas page
     revalidatePath(`/ideas/boards/[id]/canvas`, 'page');
     revalidatePath('/ideas');
+    revalidatePath('/context');
     return { data };
   } catch (error) {
     return {
