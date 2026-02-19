@@ -276,10 +276,12 @@ export const getProjectsList = cache(async (): Promise<ProjectListItem[]> => {
 
   const rows = projectsResult.data || [];
   const accessMap = new Map<string, string>(
-    (accessResult.data || []).map((r: { project_id: string; last_accessed_at: string }) => [
-      r.project_id,
-      r.last_accessed_at,
-    ])
+    (accessResult.data || []).map(
+      (r: { project_id: string; last_accessed_at: string }) => [
+        r.project_id,
+        r.last_accessed_at,
+      ]
+    )
   );
 
   const list: ProjectListItem[] = rows.map(

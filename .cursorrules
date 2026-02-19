@@ -72,6 +72,13 @@ Refer to: docs/patterns/data-loading.md
 
 ---
 
+## Code Style and Formatting
+
+- **ALWAYS** match the project’s Prettier config (`.prettierrc`): semicolons, single quotes, `tabWidth: 2`, `trailingComma: "es5"`.
+- **After generating or editing code**, run `npx prettier --write <edited-files>` (or `npx prettier --write .` for many files) so the pre-commit `format:check` passes and the user can commit without re-running Prettier.
+
+---
+
 ## Before Generating Code
 
 1. **Check** `docs/patterns/` for the relevant pattern (server-actions.md, database-queries.md, transactions.md).

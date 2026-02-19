@@ -105,11 +105,11 @@ export default function ContextProjectPicker({
                     </h3>
                     {recentlyOpened && (
                       <span title={t('context.recently_opened')}>
-                      <Clock
-                        className="w-4 h-4 flex-shrink-0 text-primary mt-0.5"
-                        aria-label={t('context.recently_opened')}
-                      />
-                    </span>
+                        <Clock
+                          className="w-4 h-4 flex-shrink-0 text-primary mt-0.5"
+                          aria-label={t('context.recently_opened')}
+                        />
+                      </span>
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground mt-1 truncate">

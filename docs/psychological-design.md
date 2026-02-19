@@ -48,10 +48,10 @@ Use this doc when adding or changing features so new modules and entry points st
 
 ## 3. Applied example: project picker (home)
 
-| Moment                         | Before (weaker)              | After (aligned)                                      |
-|--------------------------------|------------------------------|------------------------------------------------------|
-| User opens app (first time)    | —                            | “Welcome back, {name}”                              |
-| User clicks “Volver al inicio”  | “Welcome back, {name}”       | “¿Quieres trabajar en algo diferente, {name}?”      |
+| Moment                         | Before (weaker)        | After (aligned)                                |
+| ------------------------------ | ---------------------- | ---------------------------------------------- |
+| User opens app (first time)    | —                      | “Welcome back, {name}”                         |
+| User clicks “Volver al inicio” | “Welcome back, {name}” | “¿Quieres trabajar en algo diferente, {name}?” |
 
 Implementation detail: we distinguish “returning from a project” via a query param (`?from=project`) and show the question only in that case, so the same home screen serves both “first entry” and “returning from work” without extra screens.
 

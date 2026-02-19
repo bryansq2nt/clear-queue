@@ -19,9 +19,7 @@ export default async function Home({
       getProfileOptional(),
     ]);
     const userDisplayName =
-      profile?.display_name?.trim() ||
-      user.email?.split('@')[0] ||
-      'User';
+      profile?.display_name?.trim() || user.email?.split('@')[0] || 'User';
     const returningFromProject = searchParams.from === 'project';
     return (
       <ContextProjectPicker
