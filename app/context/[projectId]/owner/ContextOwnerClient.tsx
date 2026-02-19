@@ -4,7 +4,14 @@ import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useI18n } from '@/components/I18nProvider';
 import { Database } from '@/lib/supabase/types';
-import { UserCircle, Building2, ExternalLink, Pencil, Copy, Check } from 'lucide-react';
+import {
+  UserCircle,
+  Building2,
+  ExternalLink,
+  Pencil,
+  Copy,
+  Check,
+} from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { ClientProfileModal } from './ClientProfileModal';
 import { BusinessProfileModal } from './BusinessProfileModal';
@@ -106,15 +113,22 @@ export default function ContextOwnerClient({
                   onClick={() => setClientModalOpen(true)}
                   className="flex-shrink-0 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
                 >
-                  <span className="hidden sm:inline">{t('context.view_full_profile')}</span>
+                  <span className="hidden sm:inline">
+                    {t('context.view_full_profile')}
+                  </span>
                   <ExternalLink className="w-4 h-4" />
                 </button>
               </div>
               <div className="p-4 space-y-2 text-sm">
                 {client.email && (
                   <div className="flex items-center gap-2 text-muted-foreground group">
-                    <span className="font-medium text-foreground w-16 shrink-0">{t('clients.email_label')}:</span>
-                    <a href={`mailto:${client.email}`} className="text-primary hover:underline truncate min-w-0">
+                    <span className="font-medium text-foreground w-16 shrink-0">
+                      {t('clients.email_label')}:
+                    </span>
+                    <a
+                      href={`mailto:${client.email}`}
+                      className="text-primary hover:underline truncate min-w-0"
+                    >
                       {client.email}
                     </a>
                     <CopyButton
@@ -126,8 +140,12 @@ export default function ContextOwnerClient({
                 )}
                 {client.phone && (
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <span className="font-medium text-foreground w-16 shrink-0">{t('clients.phone')}:</span>
-                    <span className="truncate min-w-0">{formatPhoneDisplay(client.phone)}</span>
+                    <span className="font-medium text-foreground w-16 shrink-0">
+                      {t('clients.phone')}:
+                    </span>
+                    <span className="truncate min-w-0">
+                      {formatPhoneDisplay(client.phone)}
+                    </span>
                     <CopyButton
                       text={client.phone}
                       label={t('common.copy')}
@@ -137,14 +155,28 @@ export default function ContextOwnerClient({
                 )}
                 {client.address_line1 && (
                   <div className="flex items-start gap-2 text-muted-foreground">
-                    <span className="font-medium text-foreground w-16 shrink-0 pt-0.5">{t('clients.address')}:</span>
+                    <span className="font-medium text-foreground w-16 shrink-0 pt-0.5">
+                      {t('clients.address')}:
+                    </span>
                     <span className="min-w-0 flex-1">
-                      {[client.address_line1, client.address_line2, client.city, client.state, client.postal_code]
+                      {[
+                        client.address_line1,
+                        client.address_line2,
+                        client.city,
+                        client.state,
+                        client.postal_code,
+                      ]
                         .filter(Boolean)
                         .join(', ')}
                     </span>
                     <CopyButton
-                      text={[client.address_line1, client.address_line2, client.city, client.state, client.postal_code]
+                      text={[
+                        client.address_line1,
+                        client.address_line2,
+                        client.city,
+                        client.state,
+                        client.postal_code,
+                      ]
                         .filter(Boolean)
                         .join(', ')}
                       label={t('common.copy')}
@@ -154,7 +186,9 @@ export default function ContextOwnerClient({
                 )}
                 {client.notes && (
                   <p className="text-muted-foreground pt-2 border-t border-border">
-                    {client.notes.length > 200 ? `${client.notes.slice(0, 200)}…` : client.notes}
+                    {client.notes.length > 200
+                      ? `${client.notes.slice(0, 200)}…`
+                      : client.notes}
                   </p>
                 )}
               </div>
@@ -175,13 +209,17 @@ export default function ContextOwnerClient({
                   onClick={() => setBusinessModalOpen(true)}
                   className="flex-shrink-0 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
                 >
-                  <span className="hidden sm:inline">{t('context.view_full_profile')}</span>
+                  <span className="hidden sm:inline">
+                    {t('context.view_full_profile')}
+                  </span>
                   <ExternalLink className="w-4 h-4" />
                 </button>
               </div>
               <div className="p-4 space-y-2 text-sm">
                 {business.tagline && (
-                  <p className="text-muted-foreground italic">{business.tagline}</p>
+                  <p className="text-muted-foreground italic">
+                    {business.tagline}
+                  </p>
                 )}
                 {business.description && (
                   <p className="text-muted-foreground">
@@ -192,8 +230,13 @@ export default function ContextOwnerClient({
                 )}
                 {business.email && (
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <span className="font-medium text-foreground w-16 shrink-0">{t('clients.email_label')}:</span>
-                    <a href={`mailto:${business.email}`} className="text-primary hover:underline truncate min-w-0">
+                    <span className="font-medium text-foreground w-16 shrink-0">
+                      {t('clients.email_label')}:
+                    </span>
+                    <a
+                      href={`mailto:${business.email}`}
+                      className="text-primary hover:underline truncate min-w-0"
+                    >
                       {business.email}
                     </a>
                     <CopyButton
@@ -205,9 +248,15 @@ export default function ContextOwnerClient({
                 )}
                 {business.website && (
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <span className="font-medium text-foreground w-16 shrink-0">{t('businesses.website_label')}:</span>
+                    <span className="font-medium text-foreground w-16 shrink-0">
+                      {t('businesses.website_label')}:
+                    </span>
                     <a
-                      href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
+                      href={
+                        business.website.startsWith('http')
+                          ? business.website
+                          : `https://${business.website}`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline truncate min-w-0"
@@ -215,7 +264,11 @@ export default function ContextOwnerClient({
                       {business.website}
                     </a>
                     <CopyButton
-                      text={business.website.startsWith('http') ? business.website : `https://${business.website}`}
+                      text={
+                        business.website.startsWith('http')
+                          ? business.website
+                          : `https://${business.website}`
+                      }
                       label={t('common.copy')}
                       className="shrink-0"
                     />
@@ -223,14 +276,28 @@ export default function ContextOwnerClient({
                 )}
                 {business.address_line1 && (
                   <div className="flex items-start gap-2 text-muted-foreground">
-                    <span className="font-medium text-foreground w-16 shrink-0 pt-0.5">{t('clients.address')}:</span>
+                    <span className="font-medium text-foreground w-16 shrink-0 pt-0.5">
+                      {t('clients.address')}:
+                    </span>
                     <span className="min-w-0 flex-1">
-                      {[business.address_line1, business.address_line2, business.city, business.state, business.postal_code]
+                      {[
+                        business.address_line1,
+                        business.address_line2,
+                        business.city,
+                        business.state,
+                        business.postal_code,
+                      ]
                         .filter(Boolean)
                         .join(', ')}
                     </span>
                     <CopyButton
-                      text={[business.address_line1, business.address_line2, business.city, business.state, business.postal_code]
+                      text={[
+                        business.address_line1,
+                        business.address_line2,
+                        business.city,
+                        business.state,
+                        business.postal_code,
+                      ]
                         .filter(Boolean)
                         .join(', ')}
                       label={t('common.copy')}
@@ -240,7 +307,9 @@ export default function ContextOwnerClient({
                 )}
                 {business.notes && (
                   <p className="text-muted-foreground pt-2 border-t border-border">
-                    {business.notes.length > 200 ? `${business.notes.slice(0, 200)}…` : business.notes}
+                    {business.notes.length > 200
+                      ? `${business.notes.slice(0, 200)}…`
+                      : business.notes}
                   </p>
                 )}
               </div>

@@ -80,7 +80,8 @@ export default function ContextNotesClient({
   };
 
   const listHref = `/context/${projectId}/notes`;
-  const detailHref = (noteId: string) => `/context/${projectId}/notes/${noteId}`;
+  const detailHref = (noteId: string) =>
+    `/context/${projectId}/notes/${noteId}`;
 
   return (
     <div className="p-4 md:p-6 min-h-full">

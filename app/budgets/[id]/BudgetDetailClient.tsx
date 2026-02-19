@@ -407,163 +407,160 @@ export default function BudgetDetailClient({
     progress: Math.round(overallProgress),
   };
 
-  const mainContentClassName =
-    'p-4 sm:p-6 max-w-7xl mx-auto w-full';
+  const mainContentClassName = 'p-4 sm:p-6 max-w-7xl mx-auto w-full';
 
   const mainContent = (
     <>
       <BudgetHeader
-          budget={budgetData.budget}
-          projects={projects}
-          stats={stats}
-          onUpdated={loadBudgetData}
-          compact
-        />
+        budget={budgetData.budget}
+        projects={projects}
+        stats={stats}
+        onUpdated={loadBudgetData}
+        compact
+      />
 
-        {/* Categories */}
-        <div className="space-y-4 mt-4">
-          {budgetData.categories.length === 0 ? (
-            <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
-              <div className="mx-auto w-20 h-20 bg-primary rounded-full flex items-center justify-center mb-6">
-                <Plus className="w-10 h-10 text-primary-foreground" />
-              </div>
-
-              <h3 className="text-xl font-semibold text-foreground mb-2">
-                No categories yet
-              </h3>
-
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                Start organizing your budget by creating categories like
-                Equipment, Establishment, or Cleaning.
-              </p>
-
-              <button
-                onClick={() => setIsCategoryModalOpen(true)}
-                className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Create First Category
-              </button>
+      {/* Categories */}
+      <div className="space-y-4 mt-4">
+        {budgetData.categories.length === 0 ? (
+          <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
+            <div className="mx-auto w-20 h-20 bg-primary rounded-full flex items-center justify-center mb-6">
+              <Plus className="w-10 h-10 text-primary-foreground" />
             </div>
-          ) : (
-            <>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleCategoryDragEnd}
+
+            <h3 className="text-xl font-semibold text-foreground mb-2">
+              No categories yet
+            </h3>
+
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              Start organizing your budget by creating categories like
+              Equipment, Establishment, or Cleaning.
+            </p>
+
+            <button
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Create First Category
+            </button>
+          </div>
+        ) : (
+          <>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleCategoryDragEnd}
+            >
+              <SortableContext
+                items={budgetData.categories.map((c: any) => c.id)}
+                strategy={verticalListSortingStrategy}
               >
-                <SortableContext
-                  items={budgetData.categories.map((c: any) => c.id)}
-                  strategy={verticalListSortingStrategy}
+                {budgetData.categories.map((category: any) => (
+                  <CategorySection
+                    key={category.id}
+                    category={category}
+                    budgetId={budgetId}
+                    onRefresh={loadBudgetData}
+                    onItemCreated={handleItemCreated}
+                    onItemUpdated={handleItemUpdated}
+                    onItemDeleted={handleItemDeleted}
+                    onItemsDeleted={handleItemsDeleted}
+                    onItemsReordered={handleItemsReordered}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+
+            {/* Add Category Button */}
+            <button
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="w-full p-6 border-2 border-dashed border-border rounded-lg hover:border-primary hover:bg-primary/5 transition-all group"
+            >
+              <div className="flex items-center justify-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
+                <Plus className="w-5 h-5" />
+                <span className="font-medium">{t('budgets.add_category')}</span>
+              </div>
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Floating action button with menu */}
+      <div
+        ref={fabRef}
+        className="fixed bottom-6 right-6 z-40 md:bottom-8 md:right-8 flex flex-col items-end gap-2"
+      >
+        {fabMenuOpen && (
+          <div className="mb-2 w-56 rounded-lg border border-border bg-background shadow-xl overflow-hidden">
+            {fabSubView === 'main' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFabMenuOpen(false);
+                    setIsCategoryModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm font-medium text-foreground hover:bg-accent transition-colors"
                 >
-                  {budgetData.categories.map((category: any) => (
-                    <CategorySection
-                      key={category.id}
-                      category={category}
-                      budgetId={budgetId}
-                      onRefresh={loadBudgetData}
-                      onItemCreated={handleItemCreated}
-                      onItemUpdated={handleItemUpdated}
-                      onItemDeleted={handleItemDeleted}
-                      onItemsDeleted={handleItemsDeleted}
-                      onItemsReordered={handleItemsReordered}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-
-              {/* Add Category Button */}
-              <button
-                onClick={() => setIsCategoryModalOpen(true)}
-                className="w-full p-6 border-2 border-dashed border-border rounded-lg hover:border-primary hover:bg-primary/5 transition-all group"
-              >
-                <div className="flex items-center justify-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
-                  <Plus className="w-5 h-5" />
-                  <span className="font-medium">
-                    {t('budgets.add_category')}
-                  </span>
-                </div>
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Floating action button with menu */}
-        <div
-          ref={fabRef}
-          className="fixed bottom-6 right-6 z-40 md:bottom-8 md:right-8 flex flex-col items-end gap-2"
-        >
-          {fabMenuOpen && (
-            <div className="mb-2 w-56 rounded-lg border border-border bg-background shadow-xl overflow-hidden">
-              {fabSubView === 'main' ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
+                  <FolderPlus className="w-5 h-5 text-muted-foreground shrink-0" />
+                  {t('budgets.add_category')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const categories = budgetData?.categories ?? [];
+                    if (categories.length === 0) {
                       setFabMenuOpen(false);
                       setIsCategoryModalOpen(true);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm font-medium text-foreground hover:bg-accent transition-colors"
-                  >
-                    <FolderPlus className="w-5 h-5 text-muted-foreground shrink-0" />
-                    {t('budgets.add_category')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const categories = budgetData?.categories ?? [];
-                      if (categories.length === 0) {
+                      return;
+                    }
+                    setFabSubView('pick-category');
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm font-medium text-foreground hover:bg-accent transition-colors border-t border-border"
+                >
+                  <Package className="w-5 h-5 text-muted-foreground shrink-0" />
+                  {t('budgets.add_item')}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setFabSubView('main')}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-left text-sm text-muted-foreground hover:bg-accent transition-colors border-b border-border"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  {t('budgets.select_category')}
+                </button>
+                <div className="max-h-48 overflow-y-auto">
+                  {(budgetData?.categories ?? []).map((cat: any) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setCategoryIdForNewItem(cat.id);
                         setFabMenuOpen(false);
-                        setIsCategoryModalOpen(true);
-                        return;
-                      }
-                      setFabSubView('pick-category');
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm font-medium text-foreground hover:bg-accent transition-colors border-t border-border"
-                  >
-                    <Package className="w-5 h-5 text-muted-foreground shrink-0" />
-                    {t('budgets.add_item')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setFabSubView('main')}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-left text-sm text-muted-foreground hover:bg-accent transition-colors border-b border-border"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    {t('budgets.select_category')}
-                  </button>
-                  <div className="max-h-48 overflow-y-auto">
-                    {(budgetData?.categories ?? []).map((cat: any) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => {
-                          setCategoryIdForNewItem(cat.id);
-                          setFabMenuOpen(false);
-                          setFabSubView('main');
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-foreground hover:bg-accent transition-colors"
-                      >
-                        <span className="truncate">{cat.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => setFabMenuOpen((open) => !open)}
-            aria-label={t('budgets.add_category')}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:h-14 md:w-14"
-          >
-            <Plus className="h-6 w-6" />
-          </button>
-        </div>
+                        setFabSubView('main');
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <span className="truncate">{cat.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setFabMenuOpen((open) => !open)}
+          aria-label={t('budgets.add_category')}
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:h-14 md:w-14"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      </div>
     </>
   );
 

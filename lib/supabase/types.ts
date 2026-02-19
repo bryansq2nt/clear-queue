@@ -102,6 +102,23 @@ export type Database = {
           created_at?: string;
         };
       };
+      project_access: {
+        Row: {
+          user_id: string;
+          project_id: string;
+          last_accessed_at: string;
+        };
+        Insert: {
+          user_id: string;
+          project_id: string;
+          last_accessed_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          project_id?: string;
+          last_accessed_at?: string;
+        };
+      };
       clients: {
         Row: {
           id: string;

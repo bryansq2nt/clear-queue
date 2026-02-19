@@ -32,7 +32,11 @@ export default function ContextNewNoteClient({
       </Link>
       <NoteEditor
         mode="create"
-        initialNote={{ title: '', content: '', project_id: preselectedProjectId }}
+        initialNote={{
+          title: '',
+          content: '',
+          project_id: preselectedProjectId,
+        }}
         initialLinks={[]}
         preselectedProjectId={preselectedProjectId}
         listHref={listHref}

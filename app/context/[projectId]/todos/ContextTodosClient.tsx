@@ -25,17 +25,11 @@ export default function ContextTodosClient({
 }: ContextTodosClientProps) {
   const { t } = useI18n();
   const [projectName] = useState(initialProjectName);
-  const {
-    items,
-    error,
-    createItem,
-    toggleItem,
-    updateItem,
-    deleteItem,
-  } = useProjectTodoBoard({
-    defaultListId: initialDefaultListId,
-    initialItems,
-  });
+  const { items, error, createItem, toggleItem, updateItem, deleteItem } =
+    useProjectTodoBoard({
+      defaultListId: initialDefaultListId,
+      initialItems,
+    });
 
   const [newTaskContent, setNewTaskContent] = useState('');
   const [adding, setAdding] = useState(false);
@@ -57,9 +51,7 @@ export default function ContextTodosClient({
         {projectName}
       </h2>
 
-      {error && (
-        <p className="mb-3 text-sm text-destructive">{error}</p>
-      )}
+      {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
 
       <form onSubmit={handleAddTask} className="mb-6">
         <div className="flex gap-2 items-center">

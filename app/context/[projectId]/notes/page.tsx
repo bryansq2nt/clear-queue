@@ -19,7 +19,5 @@ export default async function ContextNotesPage({
     return null;
   }
 
-  return (
-    <ContextNotesClient projectId={projectId} initialNotes={notes} />
-  );
+  return <ContextNotesClient projectId={projectId} initialNotes={notes} />;
 }

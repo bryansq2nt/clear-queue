@@ -18,7 +18,5 @@ export default async function ContextIdeasPage({
 
   const boards = await listBoardsByProjectId(projectId);
 
-  return (
-    <ContextIdeasClient projectId={projectId} initialBoards={boards} />
-  );
+  return <ContextIdeasClient projectId={projectId} initialBoards={boards} />;
 }

@@ -15,14 +15,11 @@ export default async function ContextProjectLayout({
   const project = await getProjectById(projectId);
 
   if (!project) {
-    redirect('/context');
+    redirect('/');
   }
 
   return (
-    <ContextLayoutClient
-      projectId={projectId}
-      projectName={project.name}
-    >
+    <ContextLayoutClient projectId={projectId} projectName={project.name}>
       {children}
     </ContextLayoutClient>
   );

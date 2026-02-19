@@ -19,7 +19,7 @@ export async function signIn(formData: FormData) {
   }
 
   if (data.user) {
-    redirect('/dashboard');
+    redirect('/');
   }
 
   return { error: 'Sign in failed' };
@@ -43,7 +43,7 @@ export async function signUp(formData: FormData) {
     email: email.trim(),
     password,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || ''}/dashboard`,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || ''}/`,
     },
   });
 
@@ -58,7 +58,7 @@ export async function signUp(formData: FormData) {
   }
 
   if (data.session) {
-    redirect('/dashboard');
+    redirect('/');
   }
 
   return {

@@ -50,7 +50,9 @@ export function ClientProfileModal({
   const [client, setClient] = useState<Client | null>(null);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [links, setLinks] = useState<ClientLink[]>([]);
-  const [projects, setProjects] = useState<{ id: string; name: string; color: string | null }[]>([]);
+  const [projects, setProjects] = useState<
+    { id: string; name: string; color: string | null }[]
+  >([]);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -80,7 +82,9 @@ export function ClientProfileModal({
     ? [
         client.address_line1,
         client.address_line2,
-        [client.city, client.state, client.postal_code].filter(Boolean).join(', '),
+        [client.city, client.state, client.postal_code]
+          .filter(Boolean)
+          .join(', '),
       ].filter(Boolean)
     : [];
   const fullAddress = addressParts.join(', ');
@@ -124,14 +128,23 @@ export function ClientProfileModal({
                   </h2>
                   <dl className="space-y-3 text-sm">
                     <div>
-                      <dt className="text-muted-foreground">{t('clients.full_name')}</dt>
-                      <dd className="font-medium text-foreground">{client.full_name}</dd>
+                      <dt className="text-muted-foreground">
+                        {t('clients.full_name')}
+                      </dt>
+                      <dd className="font-medium text-foreground">
+                        {client.full_name}
+                      </dd>
                     </div>
                     {client.phone && (
                       <div>
-                        <dt className="text-muted-foreground">{t('clients.phone')}</dt>
+                        <dt className="text-muted-foreground">
+                          {t('clients.phone')}
+                        </dt>
                         <dd>
-                          <a href={`tel:${client.phone.replace(/\s/g, '')}`} className="text-primary hover:underline">
+                          <a
+                            href={`tel:${client.phone.replace(/\s/g, '')}`}
+                            className="text-primary hover:underline"
+                          >
                             {formatPhoneDisplay(client.phone)}
                           </a>
                         </dd>
@@ -139,9 +152,14 @@ export function ClientProfileModal({
                     )}
                     {client.email && (
                       <div>
-                        <dt className="text-muted-foreground">{t('clients.email_label')}</dt>
+                        <dt className="text-muted-foreground">
+                          {t('clients.email_label')}
+                        </dt>
                         <dd>
-                          <a href={`mailto:${client.email}`} className="text-primary hover:underline">
+                          <a
+                            href={`mailto:${client.email}`}
+                            className="text-primary hover:underline"
+                          >
                             {client.email}
                           </a>
                         </dd>
@@ -158,7 +176,9 @@ export function ClientProfileModal({
                   <dl className="space-y-3 text-sm">
                     {client.gender && (
                       <div>
-                        <dt className="text-muted-foreground">{t('clients.gender')}</dt>
+                        <dt className="text-muted-foreground">
+                          {t('clients.gender')}
+                        </dt>
                         <dd className="text-foreground">
                           {client.gender === 'male'
                             ? t('clients.gender_male')
@@ -170,10 +190,17 @@ export function ClientProfileModal({
                     )}
                     {addressParts.length > 0 && (
                       <div>
-                        <dt className="text-muted-foreground">{t('clients.address')}</dt>
+                        <dt className="text-muted-foreground">
+                          {t('clients.address')}
+                        </dt>
                         <dd className="text-foreground">
                           {mapsUrl ? (
-                            <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                            <a
+                              href={mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
                               {addressParts.join(' · ')}
                             </a>
                           ) : (
@@ -183,7 +210,9 @@ export function ClientProfileModal({
                       </div>
                     )}
                     {!client.gender && addressParts.length === 0 && (
-                      <p className="text-muted-foreground">{t('clients.no_details')}</p>
+                      <p className="text-muted-foreground">
+                        {t('clients.no_details')}
+                      </p>
                     )}
                   </dl>
                 </section>
@@ -195,14 +224,18 @@ export function ClientProfileModal({
                   {t('clients.businesses')}
                 </h2>
                 {businesses.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t('clients.no_businesses_yet')}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('clients.no_businesses_yet')}
+                  </p>
                 ) : (
                   <ul className="space-y-2">
                     {businesses.map((b) => (
                       <li key={b.id} className="text-foreground">
                         {b.name}
                         {b.tagline && (
-                          <span className="ml-2 text-sm text-muted-foreground">— {b.tagline}</span>
+                          <span className="ml-2 text-sm text-muted-foreground">
+                            — {b.tagline}
+                          </span>
                         )}
                       </li>
                     ))}
@@ -216,7 +249,9 @@ export function ClientProfileModal({
                   {t('clients.projects')}
                 </h2>
                 {projects.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t('clients.no_projects_linked')}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('clients.no_projects_linked')}
+                  </p>
                 ) : (
                   <ul className="space-y-2">
                     {projects.map((p) => (
@@ -240,13 +275,19 @@ export function ClientProfileModal({
                   {t('clients.links')}
                 </h2>
                 {links.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t('clients.no_links_yet')}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('clients.no_links_yet')}
+                  </p>
                 ) : (
                   <ul className="space-y-2">
                     {links.map((link) => (
                       <li key={link.id}>
                         <a
-                          href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
+                          href={
+                            link.url.startsWith('http')
+                              ? link.url
+                              : `https://${link.url}`
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline"
@@ -266,18 +307,28 @@ export function ClientProfileModal({
                 </h2>
                 {client.preferences && (
                   <div className="mb-4">
-                    <h3 className="mb-1 text-sm font-medium text-muted-foreground">{t('clients.preferences')}</h3>
-                    <p className="whitespace-pre-wrap text-foreground">{client.preferences}</p>
+                    <h3 className="mb-1 text-sm font-medium text-muted-foreground">
+                      {t('clients.preferences')}
+                    </h3>
+                    <p className="whitespace-pre-wrap text-foreground">
+                      {client.preferences}
+                    </p>
                   </div>
                 )}
                 {client.notes && (
                   <div>
-                    <h3 className="mb-1 text-sm font-medium text-muted-foreground">{t('clients.notes')}</h3>
-                    <p className="whitespace-pre-wrap text-foreground">{client.notes}</p>
+                    <h3 className="mb-1 text-sm font-medium text-muted-foreground">
+                      {t('clients.notes')}
+                    </h3>
+                    <p className="whitespace-pre-wrap text-foreground">
+                      {client.notes}
+                    </p>
                   </div>
                 )}
                 {!client.preferences && !client.notes && (
-                  <p className="text-sm text-muted-foreground">{t('clients.no_notes_or_preferences')}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('clients.no_notes_or_preferences')}
+                  </p>
                 )}
               </section>
             </div>

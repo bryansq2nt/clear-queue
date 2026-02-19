@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { requireAuth } from '@/lib/auth';
 import { getProjectById } from '@/app/actions/projects';
 import { getBoardById } from '@/lib/idea-graph/boards';
@@ -5,6 +6,10 @@ import { getBoardDataAction } from '@/app/ideas/load-board-data';
 import { listProjectsForPicker } from '@/lib/projects';
 import { notFound } from 'next/navigation';
 import ContextBoardViewClient from './ContextBoardViewClient';
+
+type BoardItem = ComponentProps<
+  typeof ContextBoardViewClient
+>['initialItems'][number];
 
 export default async function ContextIdeasBoardPage({
   params,
@@ -34,8 +39,8 @@ export default async function ContextIdeasBoardPage({
   }
 
   const items = (boardData.items || []).filter(
-    (item: { idea?: unknown }) => item.idea != null
-  );
+    (item) => item != null && item.idea != null
+  ) as BoardItem[];
 
   return (
     <ContextBoardViewClient

@@ -69,32 +69,37 @@ type DialogContentWithoutCloseProps = React.ComponentPropsWithoutRef<
 const DialogContentWithoutClose = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentWithoutCloseProps
->(({ className, children, container, positionMode = 'viewport', ...props }, ref) => {
-  const isContainer = positionMode === 'container';
-  return (
-    <DialogPortal container={container ?? undefined}>
-      <DialogOverlay
-        className={cn(
-          overlayBase,
-          isContainer ? 'absolute inset-0' : 'fixed inset-0'
-        )}
-      />
-      <DialogPrimitive.Content
-        ref={ref}
-        className={cn(
-          contentBase,
-          isContainer
-            ? 'absolute inset-0 flex max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0'
-            : 'fixed left-[50%] top-[50%] w-full max-w-lg translate-x-[-50%] translate-y-[-50%]',
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </DialogPrimitive.Content>
-    </DialogPortal>
-  );
-});
+>(
+  (
+    { className, children, container, positionMode = 'viewport', ...props },
+    ref
+  ) => {
+    const isContainer = positionMode === 'container';
+    return (
+      <DialogPortal container={container ?? undefined}>
+        <DialogOverlay
+          className={cn(
+            overlayBase,
+            isContainer ? 'absolute inset-0' : 'fixed inset-0'
+          )}
+        />
+        <DialogPrimitive.Content
+          ref={ref}
+          className={cn(
+            contentBase,
+            isContainer
+              ? 'absolute inset-0 flex max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0'
+              : 'fixed left-[50%] top-[50%] w-full max-w-lg translate-x-[-50%] translate-y-[-50%]',
+            className
+          )}
+          {...props}
+        >
+          {children}
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    );
+  }
+);
 DialogContentWithoutClose.displayName = 'DialogContentWithoutClose';
 
 const DialogHeader = ({

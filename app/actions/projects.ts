@@ -16,6 +16,8 @@ type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
 type ProjectUpdate = Database['public']['Tables']['projects']['Update'];
 type ProjectFavoriteInsert =
   Database['public']['Tables']['project_favorites']['Insert'];
+type ProjectAccessInsert =
+  Database['public']['Tables']['project_access']['Insert'];
 
 export const getProjectsForSidebar = cache(async (): Promise<ProjectRow[]> => {
   const user = await requireAuth();
@@ -248,23 +250,39 @@ export type ProjectListItem = {
   category: string;
   client_id: string | null;
   client_name: string | null;
+  /** When set, project was opened before (for "recently opened" UI). */
+  last_accessed_at: string | null;
 };
 
 export const getProjectsList = cache(async (): Promise<ProjectListItem[]> => {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
-  const { data: rows, error } = await supabase
-    .from('projects')
-    .select('id, name, category, client_id, clients(full_name)')
-    .order('name', { ascending: true });
+  const [projectsResult, accessResult] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('id, name, category, client_id, clients(full_name)')
+      .eq('owner_id', user.id),
+    supabase
+      .from('project_access')
+      .select('project_id, last_accessed_at')
+      .eq('user_id', user.id),
+  ]);
 
-  if (error) {
-    console.error('Error fetching projects list:', error);
+  if (projectsResult.error) {
+    console.error('Error fetching projects list:', projectsResult.error);
     return [];
   }
 
-  return (rows || []).map(
+  const rows = projectsResult.data || [];
+  const accessMap = new Map<string, string>(
+    (accessResult.data || []).map((r: { project_id: string; last_accessed_at: string }) => [
+      r.project_id,
+      r.last_accessed_at,
+    ])
+  );
+
+  const list: ProjectListItem[] = rows.map(
     (row: {
       id: string;
       name: string;
@@ -284,10 +302,48 @@ export const getProjectsList = cache(async (): Promise<ProjectListItem[]> => {
         category: row.category,
         client_id: row.client_id,
         client_name: client?.full_name ?? null,
+        last_accessed_at: accessMap.get(row.id) ?? null,
       };
     }
   );
+
+  list.sort((a, b) => {
+    const aAt = accessMap.get(a.id);
+    const bAt = accessMap.get(b.id);
+    if (aAt && bAt) return bAt.localeCompare(aAt);
+    if (aAt) return -1;
+    if (bAt) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  return list;
 });
+
+/** Record that the current user opened this project (for "recently opened" sorting). Call when entering a project context. */
+export async function recordProjectAccess(
+  projectId: string
+): Promise<ActionResult<null>> {
+  const user = await requireAuth();
+  const project = await getProjectById(projectId);
+  if (!project) return { ok: true, data: null };
+
+  const supabase = await createClient();
+  const payload: ProjectAccessInsert = {
+    user_id: user.id,
+    project_id: projectId,
+    last_accessed_at: new Date().toISOString(),
+  };
+  const { error } = await supabase
+    .from('project_access')
+    .upsert(payload as never, {
+      onConflict: 'user_id,project_id',
+    });
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath('/');
+  revalidatePath('/context');
+  return { ok: true, data: null };
+}
 
 export const getFavoriteProjectIds = cache(
   async (): Promise<ActionResult<string[]>> => {

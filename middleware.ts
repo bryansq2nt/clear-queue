@@ -54,8 +54,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  if ((pathname === '/' || pathname === '/signup') && user) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  if (pathname === '/signup' && user) {
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   return response;

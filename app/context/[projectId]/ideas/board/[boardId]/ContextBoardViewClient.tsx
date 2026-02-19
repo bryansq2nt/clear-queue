@@ -70,7 +70,8 @@ export default function ContextBoardViewClient({
   const router = useRouter();
   const [board, setBoard] = useState(initialBoard);
   const [boardItems, setBoardItems] = useState<BoardItem[]>(initialItems);
-  const [connections, setConnections] = useState<Connection[]>(initialConnections);
+  const [connections, setConnections] =
+    useState<Connection[]>(initialConnections);
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null);
   const [isCreatingIdea, setIsCreatingIdea] = useState(false);
   const [isEditingBoard, setIsEditingBoard] = useState(false);

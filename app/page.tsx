@@ -1,18 +1,36 @@
 import { Suspense } from 'react';
-import { redirect } from 'next/navigation';
 import { getUser } from '@/lib/auth';
+import { getProjectsList } from '@/app/actions/projects';
+import { getProfileOptional } from '@/app/settings/profile/actions';
 import LoginForm from '@/components/LoginForm';
 import AuthCallbackHandler from '@/components/AuthCallbackHandler';
+import ContextProjectPicker from '@/app/context/ContextProjectPicker';
 
 export default async function Home({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; from?: string };
 }) {
   const user = await getUser();
 
   if (user) {
-    redirect('/dashboard');
+    const [projects, profile] = await Promise.all([
+      getProjectsList(),
+      getProfileOptional(),
+    ]);
+    const userDisplayName =
+      profile?.display_name?.trim() ||
+      user.email?.split('@')[0] ||
+      'User';
+    const returningFromProject = searchParams.from === 'project';
+    return (
+      <ContextProjectPicker
+        initialProjects={projects}
+        showBackButton={false}
+        userDisplayName={userDisplayName}
+        returningFromProject={returningFromProject}
+      />
+    );
   }
 
   return (

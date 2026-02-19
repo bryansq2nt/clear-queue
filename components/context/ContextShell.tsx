@@ -32,7 +32,7 @@ export function ContextShell({
           </h1>
           <div className="flex justify-end min-w-0">
             <Link
-              href="/context"
+              href="/?from=project"
               className="flex-shrink-0 inline-flex items-center gap-1.5 text-sm text-primary-foreground/90 hover:text-primary-foreground py-1 pl-2"
               aria-label={t('context.back_to_app')}
             >
@@ -45,7 +45,12 @@ export function ContextShell({
         </div>
       </header>
       <ContextTabBar projectId={projectId} />
-      <main id="context-tab-content" className="relative flex-1 overflow-auto min-h-0">{children}</main>
+      <main
+        id="context-tab-content"
+        className="relative flex-1 overflow-auto min-h-0"
+      >
+        {children}
+      </main>
     </div>
   );
 }

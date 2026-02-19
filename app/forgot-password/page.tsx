@@ -6,7 +6,7 @@ export default async function ForgotPasswordPage() {
   const user = await getUser();
 
   if (user) {
-    redirect('/dashboard');
+    redirect('/');
   }
 
   return (

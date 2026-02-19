@@ -91,7 +91,7 @@ export default function ResetPasswordClient() {
     }
     setSuccess(true);
     setIsLoading(false);
-    router.push('/dashboard');
+    router.push('/');
     router.refresh();
   }
 

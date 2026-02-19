@@ -73,7 +73,9 @@ export const getBudgets = cache(async () => {
 export const getBudgetsByProjectId = cache(
   async (
     projectId: string
-  ): Promise<(Budget & { projects: { id: string; name: string } | null })[]> => {
+  ): Promise<
+    (Budget & { projects: { id: string; name: string } | null })[]
+  > => {
     await requireAuth();
     const supabase = await createClient();
 
@@ -95,7 +97,10 @@ export const getBudgetsByProjectId = cache(
       .single();
 
     const projectInfo = project
-      ? { id: (project as { id: string }).id, name: (project as { name: string }).name }
+      ? {
+          id: (project as { id: string }).id,
+          name: (project as { name: string }).name,
+        }
       : null;
 
     return budgetsData.map((budget) => ({

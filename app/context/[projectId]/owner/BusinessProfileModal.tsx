@@ -84,7 +84,9 @@ export function BusinessProfileModal({
     ? [
         business.address_line1,
         business.address_line2,
-        [business.city, business.state, business.postal_code].filter(Boolean).join(', '),
+        [business.city, business.state, business.postal_code]
+          .filter(Boolean)
+          .join(', '),
       ].filter(Boolean)
     : [];
   const fullAddress = addressParts.join(', ');
@@ -127,19 +129,31 @@ export function BusinessProfileModal({
                 </h2>
                 <dl className="space-y-3 text-sm">
                   <div>
-                    <dt className="text-muted-foreground">{t('businesses.name_label')}</dt>
-                    <dd className="font-medium text-foreground">{business.name}</dd>
+                    <dt className="text-muted-foreground">
+                      {t('businesses.name_label')}
+                    </dt>
+                    <dd className="font-medium text-foreground">
+                      {business.name}
+                    </dd>
                   </div>
                   {business.tagline && (
                     <div>
-                      <dt className="text-muted-foreground">{t('businesses.tagline_label')}</dt>
-                      <dd className="text-foreground italic">{business.tagline}</dd>
+                      <dt className="text-muted-foreground">
+                        {t('businesses.tagline_label')}
+                      </dt>
+                      <dd className="text-foreground italic">
+                        {business.tagline}
+                      </dd>
                     </div>
                   )}
                   {business.description && (
                     <div>
-                      <dt className="text-muted-foreground">{t('businesses.description_label')}</dt>
-                      <dd className="whitespace-pre-wrap text-foreground">{business.description}</dd>
+                      <dt className="text-muted-foreground">
+                        {t('businesses.description_label')}
+                      </dt>
+                      <dd className="whitespace-pre-wrap text-foreground">
+                        {business.description}
+                      </dd>
                     </div>
                   )}
                 </dl>
@@ -153,9 +167,14 @@ export function BusinessProfileModal({
                 <dl className="space-y-3 text-sm">
                   {business.email && (
                     <div>
-                      <dt className="text-muted-foreground">{t('clients.email_label')}</dt>
+                      <dt className="text-muted-foreground">
+                        {t('clients.email_label')}
+                      </dt>
                       <dd>
-                        <a href={`mailto:${business.email}`} className="text-primary hover:underline">
+                        <a
+                          href={`mailto:${business.email}`}
+                          className="text-primary hover:underline"
+                        >
                           {business.email}
                         </a>
                       </dd>
@@ -163,10 +182,16 @@ export function BusinessProfileModal({
                   )}
                   {business.website && (
                     <div>
-                      <dt className="text-muted-foreground">{t('businesses.website_label')}</dt>
+                      <dt className="text-muted-foreground">
+                        {t('businesses.website_label')}
+                      </dt>
                       <dd>
                         <a
-                          href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
+                          href={
+                            business.website.startsWith('http')
+                              ? business.website
+                              : `https://${business.website}`
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline"
@@ -178,10 +203,17 @@ export function BusinessProfileModal({
                   )}
                   {addressParts.length > 0 && (
                     <div>
-                      <dt className="text-muted-foreground">{t('businesses.address')}</dt>
+                      <dt className="text-muted-foreground">
+                        {t('businesses.address')}
+                      </dt>
                       <dd className="text-foreground">
                         {mapsUrl ? (
-                          <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          <a
+                            href={mapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
                             {addressParts.join(' · ')}
                           </a>
                         ) : (
@@ -190,9 +222,13 @@ export function BusinessProfileModal({
                       </dd>
                     </div>
                   )}
-                  {!business.email && !business.website && addressParts.length === 0 && (
-                    <p className="text-muted-foreground">{t('businesses.no_address')}</p>
-                  )}
+                  {!business.email &&
+                    !business.website &&
+                    addressParts.length === 0 && (
+                      <p className="text-muted-foreground">
+                        {t('businesses.no_address')}
+                      </p>
+                    )}
                 </dl>
               </section>
 
@@ -216,7 +252,11 @@ export function BusinessProfileModal({
                     {SOCIAL_KEYS.filter((k) => social[k]).map((k) => (
                       <li key={k}>
                         <a
-                          href={social[k]!.startsWith('http') ? social[k]! : `https://${social[k]}`}
+                          href={
+                            social[k]!.startsWith('http')
+                              ? social[k]!
+                              : `https://${social[k]}`
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline"
@@ -235,9 +275,13 @@ export function BusinessProfileModal({
                   {t('businesses.notes_section')}
                 </h2>
                 {business.notes ? (
-                  <p className="whitespace-pre-wrap text-foreground">{business.notes}</p>
+                  <p className="whitespace-pre-wrap text-foreground">
+                    {business.notes}
+                  </p>
                 ) : (
-                  <p className="text-sm text-muted-foreground">{t('right_panel.no_notes')}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('right_panel.no_notes')}
+                  </p>
                 )}
               </section>
             </div>
