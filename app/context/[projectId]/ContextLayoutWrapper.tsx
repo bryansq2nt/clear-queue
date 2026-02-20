@@ -7,6 +7,8 @@ import type { Database } from '@/lib/supabase/types';
 import { useContextDataCache } from '../ContextDataCache';
 import ContextLayoutClient from './ContextLayoutClient';
 
+const STORAGE_KEY_PREFIX = 'context_project_name_';
+
 type Project = Database['public']['Tables']['projects']['Row'];
 
 interface ContextLayoutWrapperProps {
@@ -16,7 +18,7 @@ interface ContextLayoutWrapperProps {
 
 /**
  * Loads project from cache or fetches once. Renders shell + children.
- * Phase 3: no refetch when navigating back to a project we already opened.
+ * Project name shows immediately when coming from the picker (stored in sessionStorage on click).
  */
 export default function ContextLayoutWrapper({
   projectId,
@@ -26,18 +28,33 @@ export default function ContextLayoutWrapper({
   const router = useRouter();
   const cached = cache.get<Project>({ type: 'project', projectId });
   const [project, setProject] = useState<Project | null>(cached ?? null);
-  const [loading, setLoading] = useState(!cached);
   const [checked, setChecked] = useState(!!cached);
+  const [displayName, setDisplayName] = useState<string>(() => {
+    if (cached?.name) return cached.name;
+    if (typeof window === 'undefined') return '…';
+    try {
+      return sessionStorage.getItem(STORAGE_KEY_PREFIX + projectId) ?? '…';
+    } catch {
+      return '…';
+    }
+  });
 
   useEffect(() => {
     if (cached) {
       setProject(cached);
-      setLoading(false);
+      setDisplayName(cached.name);
       setChecked(true);
       return;
     }
+    if (typeof window !== 'undefined') {
+      try {
+        const name = sessionStorage.getItem(STORAGE_KEY_PREFIX + projectId);
+        if (name) setDisplayName(name);
+      } catch {
+        /* ignore */
+      }
+    }
     let cancelled = false;
-    setLoading(true);
     getProjectById(projectId).then((p) => {
       if (cancelled) return;
       setChecked(true);
@@ -47,27 +64,24 @@ export default function ContextLayoutWrapper({
       }
       cache.set({ type: 'project', projectId }, p);
       setProject(p);
-      setLoading(false);
+      setDisplayName(p.name);
+      try {
+        sessionStorage.removeItem(STORAGE_KEY_PREFIX + projectId);
+      } catch {
+        /* ignore */
+      }
     });
     return () => {
       cancelled = true;
     };
   }, [projectId, cached, cache, router]);
 
-  if (!checked || loading) {
-    return (
-      <div className="flex h-full min-h-[200px] items-center justify-center text-muted-foreground">
-        <span className="animate-pulse">Loading project…</span>
-      </div>
-    );
-  }
-
-  if (!project) {
+  if (checked && !project) {
     return null;
   }
 
   return (
-    <ContextLayoutClient projectId={projectId} projectName={project.name}>
+    <ContextLayoutClient projectId={projectId} projectName={displayName}>
       {children}
     </ContextLayoutClient>
   );

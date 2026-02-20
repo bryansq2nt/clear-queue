@@ -22,7 +22,11 @@ export function SkeletonTodos() {
             <Skeleton className="h-5 w-5 rounded-full flex-shrink-0" />
             <Skeleton
               className={`h-4 rounded flex-1 ${
-                i % 3 === 0 ? 'max-w-[90%]' : i % 3 === 1 ? 'max-w-[75%]' : 'max-w-[60%]'
+                i % 3 === 0
+                  ? 'max-w-[90%]'
+                  : i % 3 === 1
+                    ? 'max-w-[75%]'
+                    : 'max-w-[60%]'
               }`}
             />
           </div>

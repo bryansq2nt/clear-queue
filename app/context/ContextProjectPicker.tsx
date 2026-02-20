@@ -154,6 +154,16 @@ export default function ContextProjectPicker({
                   key={project.id}
                   href={`/context/${project.id}/board`}
                   className={cardClass}
+                  onClick={() => {
+                    try {
+                      sessionStorage.setItem(
+                        `context_project_name_${project.id}`,
+                        project.name
+                      );
+                    } catch {
+                      /* ignore */
+                    }
+                  }}
                 >
                   {content}
                 </Link>
