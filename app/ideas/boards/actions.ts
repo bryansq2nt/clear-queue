@@ -7,6 +7,7 @@ import {
   deleteBoard,
   addIdeaToBoard,
   updateBoard,
+  listBoardsByProjectId,
 } from '@/lib/idea-graph/boards';
 
 export async function createBoardAction(formData: FormData) {
@@ -84,6 +85,13 @@ export async function deleteBoardAction(id: string) {
       error: error instanceof Error ? error.message : 'Failed to delete board',
     };
   }
+}
+
+/** Server action for context ideas tab: list boards by project (cacheable from client). */
+export async function getBoardsByProjectIdAction(projectId: string) {
+  await requireAuth();
+  if (!projectId?.trim()) return [];
+  return listBoardsByProjectId(projectId.trim());
 }
 
 export async function addIdeaToBoardAction(formData: FormData) {

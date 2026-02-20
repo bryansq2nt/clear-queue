@@ -1,11 +1,5 @@
 import { requireAuth } from '@/lib/auth';
-import { getProjectById } from '@/app/actions/projects';
-import { getBudgetsByProjectId } from '@/app/budgets/actions';
-import ContextBudgetsClient from './ContextBudgetsClient';
-
-type BudgetWithProject = Awaited<
-  ReturnType<typeof getBudgetsByProjectId>
->[number];
+import ContextBudgetsFromCache from './ContextBudgetsFromCache';
 
 export default async function ContextBudgetsPage({
   params,
@@ -14,19 +8,6 @@ export default async function ContextBudgetsPage({
 }) {
   await requireAuth();
   const projectId = params.projectId;
-  const [project, budgets] = await Promise.all([
-    getProjectById(projectId),
-    getBudgetsByProjectId(projectId),
-  ]);
 
-  if (!project) {
-    return null;
-  }
-
-  return (
-    <ContextBudgetsClient
-      projectId={projectId}
-      initialBudgets={budgets as BudgetWithProject[]}
-    />
-  );
+  return <ContextBudgetsFromCache projectId={projectId} />;
 }

@@ -1,7 +1,5 @@
 import { requireAuth } from '@/lib/auth';
-import { redirect } from 'next/navigation';
-import { getProjectById } from '@/app/actions/projects';
-import ContextLayoutClient from './ContextLayoutClient';
+import ContextLayoutWrapper from './ContextLayoutWrapper';
 
 export default async function ContextProjectLayout({
   children,
@@ -12,15 +10,8 @@ export default async function ContextProjectLayout({
 }) {
   await requireAuth();
   const projectId = params.projectId;
-  const project = await getProjectById(projectId);
-
-  if (!project) {
-    redirect('/');
-  }
 
   return (
-    <ContextLayoutClient projectId={projectId} projectName={project.name}>
-      {children}
-    </ContextLayoutClient>
+    <ContextLayoutWrapper projectId={projectId}>{children}</ContextLayoutWrapper>
   );
 }

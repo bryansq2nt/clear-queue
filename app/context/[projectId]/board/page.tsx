@@ -1,7 +1,5 @@
-import { Suspense } from 'react';
 import { requireAuth } from '@/lib/auth';
-import { SkeletonBoard } from '@/components/skeletons/SkeletonBoard';
-import BoardContent from './BoardContent';
+import ContextBoardFromCache from './ContextBoardFromCache';
 
 export default async function ContextBoardPage({
   params,
@@ -11,9 +9,5 @@ export default async function ContextBoardPage({
   await requireAuth();
   const projectId = params.projectId;
 
-  return (
-    <Suspense fallback={<SkeletonBoard />}>
-      <BoardContent projectId={projectId} />
-    </Suspense>
-  );
+  return <ContextBoardFromCache projectId={projectId} />;
 }

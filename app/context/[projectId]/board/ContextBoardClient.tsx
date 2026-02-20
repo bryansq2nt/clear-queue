@@ -13,6 +13,8 @@ interface ContextBoardClientProps {
   projectId: string;
   initialProject: Project;
   initialTasks: Task[];
+  /** When provided (context cache), used instead of router.refresh() */
+  onRefresh?: () => void | Promise<void>;
 }
 
 /**
@@ -23,12 +25,16 @@ export default function ContextBoardClient({
   projectId,
   initialProject,
   initialTasks,
+  onRefresh,
 }: ContextBoardClientProps) {
   const router = useRouter();
   const [selectedTab, setSelectedTab] = useState<Task['status']>('next');
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
 
-  const loadData = () => router.refresh();
+  const loadData = () => {
+    if (onRefresh) void onRefresh();
+    else router.refresh();
+  };
 
   return (
     <>

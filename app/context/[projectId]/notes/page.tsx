@@ -1,7 +1,5 @@
 import { requireAuth } from '@/lib/auth';
-import { getProjectById } from '@/app/actions/projects';
-import { getNotes } from '@/app/notes/actions';
-import ContextNotesClient from './ContextNotesClient';
+import ContextNotesFromCache from './ContextNotesFromCache';
 
 export default async function ContextNotesPage({
   params,
@@ -10,14 +8,6 @@ export default async function ContextNotesPage({
 }) {
   await requireAuth();
   const projectId = params.projectId;
-  const [project, notes] = await Promise.all([
-    getProjectById(projectId),
-    getNotes({ projectId }),
-  ]);
 
-  if (!project) {
-    return null;
-  }
-
-  return <ContextNotesClient projectId={projectId} initialNotes={notes} />;
+  return <ContextNotesFromCache projectId={projectId} />;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Database } from '@/lib/supabase/types';
 import { useI18n } from '@/components/I18nProvider';
@@ -45,6 +45,8 @@ function formatUpdatedAt(
 interface ContextNotesClientProps {
   projectId: string;
   initialNotes: Note[];
+  /** When provided (context cache), used instead of local fetch for refresh */
+  onRefresh?: () => void | Promise<void>;
 }
 
 /**
@@ -54,13 +56,24 @@ interface ContextNotesClientProps {
 export default function ContextNotesClient({
   projectId,
   initialNotes,
+  onRefresh,
 }: ContextNotesClientProps) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const [notes, setNotes] = useState<Note[]>(initialNotes);
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    setNotes(initialNotes);
+  }, [initialNotes]);
+
   const loadNotes = async () => {
+    if (onRefresh) {
+      setIsLoading(true);
+      await onRefresh();
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     const data = await getNotes({ projectId });
     setNotes(data);

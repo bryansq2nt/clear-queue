@@ -29,6 +29,8 @@ interface Board {
 interface ContextIdeasClientProps {
   projectId: string;
   initialBoards: Board[];
+  /** When provided (context cache), called after mutations to refresh list */
+  onRefresh?: () => void | Promise<void>;
 }
 
 /**
@@ -37,6 +39,7 @@ interface ContextIdeasClientProps {
 export default function ContextIdeasClient({
   projectId,
   initialBoards,
+  onRefresh,
 }: ContextIdeasClientProps) {
   const { t } = useI18n();
   const router = useRouter();
@@ -61,7 +64,7 @@ export default function ContextIdeasClient({
       await updateBoardAction(updateFormData);
       setNewBoardName('');
       setNewBoardOpen(false);
-      router.refresh();
+      if (onRefresh) await onRefresh();
       router.push(`/context/${projectId}/ideas/board/${result.data.id}`);
     }
     setCreating(false);

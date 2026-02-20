@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useI18n } from '@/components/I18nProvider';
 import { Plus } from 'lucide-react';
 import { getBudgetsByProjectId } from '@/app/budgets/actions';
@@ -15,6 +15,8 @@ type BudgetWithProject = Awaited<
 interface ContextBudgetsClientProps {
   projectId: string;
   initialBudgets: BudgetWithProject[];
+  /** When provided (context cache), used instead of local fetch for refresh */
+  onRefresh?: () => void | Promise<void>;
 }
 
 /**
@@ -24,18 +26,29 @@ interface ContextBudgetsClientProps {
 export default function ContextBudgetsClient({
   projectId,
   initialBudgets,
+  onRefresh,
 }: ContextBudgetsClientProps) {
   const { t } = useI18n();
   const [budgets, setBudgets] = useState<BudgetWithProject[]>(initialBudgets);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  useEffect(() => {
+    setBudgets(initialBudgets);
+  }, [initialBudgets]);
+
   const loadBudgets = useCallback(async () => {
+    if (onRefresh) {
+      setIsLoading(true);
+      await onRefresh();
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     const data = await getBudgetsByProjectId(projectId);
     setBudgets(data);
     setIsLoading(false);
-  }, [projectId]);
+  }, [projectId, onRefresh]);
 
   const handleModalClose = () => {
     setIsModalOpen(false);

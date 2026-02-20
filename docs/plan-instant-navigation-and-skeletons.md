@@ -91,8 +91,8 @@ Requisitos:
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Fase 1** ✅         | Salir → home pre-renderizado, sin refetch. Back / click mismo proyecto → vuelta con animación, sin refetch. URL actualizada sin navegación cuando aplica.                     |
 | **Fase 2** ✅         | Entrada a proyecto: shell visible de inmediato con animación de entrada; contenido con skeleton shimmer hasta que el fetch termine; luego reemplazo suave por contenido real. |
-| **Fase 3** (opcional) | Extender la misma lógica a otras rutas (ej. entrar a una nota, a un presupuesto) con skeletons y sin refetch cuando la data no pudo cambiar.                                  |
-| **Fase 4** (opcional) | Prefetch al hover (ej. hover en tarjeta de proyecto → prefetch de ese proyecto) para que el click sea aún más instantáneo.                                                    |
+| **Fase 3** ✅         | Cache de datos ya cargados: proyecto, board, notas, ideas, owner, budgets, todos. Al volver a un proyecto o tab ya visitado no se hace fetch; se muestra desde cache.          |
+| **Fase 4** (opcional) | Sin refresh con fetch tras insert/update: feedback (animaciones, popups), insertar en UI, fetch en background; retry si falla. No refetch completo del módulo.                  |
 
 ---
 
@@ -103,6 +103,12 @@ Requisitos:
 - [x] Fetches en RSC (BoardContent); Suspense muestra SkeletonBoard hasta tener datos.
 - [x] Animación de entrada: ContextShell project layer slide from right al montar.
 - [ ] Revisar que la primera carga del home (lista de proyectos) siga siendo aceptable (~2 s) y que el resto de flujos sientan instantáneos o “en progreso” (shimmer).
+
+---
+
+### Fase 3 — Cache (implementado)
+
+Datos ya cargados no se vuelven a pedir: proyecto, board, notas, ideas, owner, budgets, todos en cache cliente (ContextDataCache). Al volver a un proyecto o tab ya visitado se muestra desde cache. Componentes `*FromCache` por tab; mutaciones usan `onRefresh` para invalidar y refetchear. Action `getBoardsByProjectIdAction` para ideas.
 
 ---
 
