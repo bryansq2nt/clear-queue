@@ -17,13 +17,15 @@ import {
 import { Database } from '@/lib/supabase/types';
 
 type Client = Database['public']['Tables']['clients']['Row'];
+type Business = Database['public']['Tables']['businesses']['Row'];
 
 interface CreateBusinessModalProps {
   /** When set (e.g. from client detail page), client is fixed and dropdown is hidden. When undefined (e.g. from businesses list), show client dropdown. */
   clientId?: string;
   isOpen: boolean;
   onClose: () => void;
-  onCreated?: () => void;
+  /** Called after successful create; receives the new business (e.g. to link to project). */
+  onCreated?: (business?: Business) => void;
 }
 
 export function CreateBusinessModal({
@@ -65,7 +67,7 @@ export function CreateBusinessModal({
     form.reset();
     setSelectedClientId('');
     onClose();
-    onCreated?.();
+    onCreated?.(result.data);
   };
 
   useEffect(() => {

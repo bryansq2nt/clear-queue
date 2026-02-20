@@ -163,6 +163,41 @@ export async function updateProject(
 
   revalidatePath('/dashboard');
   revalidatePath('/project');
+  revalidatePath(`/context/${id}`);
+  return { ok: true, data };
+}
+
+/**
+ * Link a business to a project (sets project.business_id). Used after creating
+ * a business from the project-owner context so the UI updates without manual DB edit.
+ */
+export async function linkBusinessToProject(
+  projectId: string,
+  businessId: string
+): Promise<ActionResult<ProjectRow>> {
+  await requireAuth();
+  if (!projectId?.trim() || !businessId?.trim()) {
+    return { ok: false, error: 'Project ID and Business ID are required' };
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('projects')
+    .update({ business_id: businessId.trim() } as never)
+    .eq('id', projectId.trim())
+    .select(
+      'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
+    )
+    .single();
+
+  if (error || !data) {
+    return {
+      ok: false,
+      error: error?.message ?? 'Failed to link business to project',
+    };
+  }
+  revalidatePath('/dashboard');
+  revalidatePath('/project');
+  revalidatePath(`/context/${projectId}`);
   return { ok: true, data };
 }
 

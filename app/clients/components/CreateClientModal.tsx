@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { X, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import { useI18n } from '@/components/I18nProvider';
 import { createClientAction } from '../actions';
+import type { Database } from '@/lib/supabase/types';
+
+type Client = Database['public']['Tables']['clients']['Row'];
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +23,8 @@ import 'react-phone-number-input/style.css';
 interface CreateClientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreated?: () => void;
+  /** Called after successful create; receives the new client (e.g. to link to project). */
+  onCreated?: (client?: Client) => void;
 }
 
 export function CreateClientModal({
@@ -57,7 +61,7 @@ export function CreateClientModal({
     form.reset();
     setPhone('');
     onClose();
-    onCreated?.();
+    onCreated?.(result.data);
   };
 
   useEffect(() => {

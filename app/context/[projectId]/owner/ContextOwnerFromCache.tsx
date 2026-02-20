@@ -89,6 +89,7 @@ export default function ContextOwnerFromCache({
       project={data.project}
       client={data.client}
       business={data.business}
+      onOwnerUpdated={loadData}
     />
   );
 }
