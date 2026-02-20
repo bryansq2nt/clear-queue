@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { getBudgetsByProjectId } from '@/app/budgets/actions';
+import { SkeletonBudgets } from '@/components/skeletons/SkeletonBudgets';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextBudgetsClient from './ContextBudgetsClient';
 
@@ -18,7 +19,9 @@ export default function ContextBudgetsFromCache({
 }: ContextBudgetsFromCacheProps) {
   const cache = useContextDataCache();
   const cached = cache.get<BudgetWithProject[]>({ type: 'budgets', projectId });
-  const [budgets, setBudgets] = useState<BudgetWithProject[] | null>(cached ?? null);
+  const [budgets, setBudgets] = useState<BudgetWithProject[] | null>(
+    cached ?? null
+  );
   const [loading, setLoading] = useState(!cached);
 
   const loadData = useCallback(async () => {
@@ -49,11 +52,7 @@ export default function ContextBudgetsFromCache({
   }, [projectId, cached, cache]);
 
   if (loading || budgets === null) {
-    return (
-      <div className="p-4 md:p-6 min-h-full flex items-center justify-center text-muted-foreground text-sm">
-        Loading budgets…
-      </div>
-    );
+    return <SkeletonBudgets />;
   }
 
   return (

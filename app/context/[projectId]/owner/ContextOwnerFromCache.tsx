@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getProjectById } from '@/app/actions/projects';
 import { getClientById, getBusinessById } from '@/app/clients/actions';
 import type { Database } from '@/lib/supabase/types';
+import { SkeletonOwner } from '@/components/skeletons/SkeletonOwner';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextOwnerClient from './ContextOwnerClient';
 
@@ -34,8 +35,12 @@ export default function ContextOwnerFromCache({
     const project = await getProjectById(projectId);
     if (!project) return;
     const [client, business] = await Promise.all([
-      project.client_id ? getClientById(project.client_id) : Promise.resolve(null),
-      project.business_id ? getBusinessById(project.business_id) : Promise.resolve(null),
+      project.client_id
+        ? getClientById(project.client_id)
+        : Promise.resolve(null),
+      project.business_id
+        ? getBusinessById(project.business_id)
+        : Promise.resolve(null),
     ]);
     const next: OwnerData = { project, client, business };
     cache.set({ type: 'owner', projectId }, next);
@@ -57,8 +62,12 @@ export default function ContextOwnerFromCache({
         return;
       }
       const [client, business] = await Promise.all([
-        project.client_id ? getClientById(project.client_id) : Promise.resolve(null),
-        project.business_id ? getBusinessById(project.business_id) : Promise.resolve(null),
+        project.client_id
+          ? getClientById(project.client_id)
+          : Promise.resolve(null),
+        project.business_id
+          ? getBusinessById(project.business_id)
+          : Promise.resolve(null),
       ]);
       if (cancelled) return;
       const next: OwnerData = { project, client, business };
@@ -72,11 +81,7 @@ export default function ContextOwnerFromCache({
   }, [projectId, cached, cache]);
 
   if (loading || !data) {
-    return (
-      <div className="p-4 md:p-6 max-w-2xl flex items-center justify-center text-muted-foreground text-sm min-h-[200px]">
-        Loading…
-      </div>
-    );
+    return <SkeletonOwner />;
   }
 
   return (

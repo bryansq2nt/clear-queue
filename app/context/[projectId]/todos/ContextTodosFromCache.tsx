@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getProjectTodoBoardAction } from '@/app/todo/actions';
 import type { TodoItem } from '@/lib/todo/lists';
+import { SkeletonTodos } from '@/components/skeletons/SkeletonTodos';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextTodosClient from './ContextTodosClient';
 
@@ -55,11 +56,7 @@ export default function ContextTodosFromCache({
   }, [projectId, cached, cache]);
 
   if (loading || !data) {
-    return (
-      <div className="p-4 md:p-6 max-w-3xl flex items-center justify-center text-muted-foreground text-sm min-h-[200px]">
-        Loading to-dos…
-      </div>
-    );
+    return <SkeletonTodos />;
   }
 
   return (

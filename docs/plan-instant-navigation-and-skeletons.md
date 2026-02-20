@@ -91,8 +91,8 @@ Requisitos:
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Fase 1** ✅         | Salir → home pre-renderizado, sin refetch. Back / click mismo proyecto → vuelta con animación, sin refetch. URL actualizada sin navegación cuando aplica.                     |
 | **Fase 2** ✅         | Entrada a proyecto: shell visible de inmediato con animación de entrada; contenido con skeleton shimmer hasta que el fetch termine; luego reemplazo suave por contenido real. |
-| **Fase 3** ✅         | Cache de datos ya cargados: proyecto, board, notas, ideas, owner, budgets, todos. Al volver a un proyecto o tab ya visitado no se hace fetch; se muestra desde cache.          |
-| **Fase 4** (opcional) | Sin refresh con fetch tras insert/update: feedback (animaciones, popups), insertar en UI, fetch en background; retry si falla. No refetch completo del módulo.                  |
+| **Fase 3** ✅         | Cache de datos ya cargados: proyecto, board, notas, ideas, owner, budgets, todos. Al volver a un proyecto o tab ya visitado no se hace fetch; se muestra desde cache.         |
+| **Fase 4** (opcional) | Sin refresh con fetch tras insert/update: feedback (animaciones, popups), insertar en UI, fetch en background; retry si falla. No refetch completo del módulo.                |
 
 ---
 

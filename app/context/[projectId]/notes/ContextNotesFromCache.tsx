@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getNotes } from '@/app/notes/actions';
 import type { Database } from '@/lib/supabase/types';
+import { SkeletonNotes } from '@/components/skeletons/SkeletonNotes';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextNotesClient from './ContextNotesClient';
 
@@ -47,11 +48,7 @@ export default function ContextNotesFromCache({
   }, [projectId, cached, cache]);
 
   if (loading || notes === null) {
-    return (
-      <div className="p-4 md:p-6 min-h-full flex items-center justify-center text-muted-foreground text-sm">
-        Loading notes…
-      </div>
-    );
+    return <SkeletonNotes />;
   }
 
   return (

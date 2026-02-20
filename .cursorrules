@@ -72,6 +72,19 @@ Refer to: docs/patterns/data-loading.md
 
 ---
 
+## Context Session Cache
+
+When building or changing routes where the user can **return** to an already-visited context (e.g. project + tabs: board, notes, ideas, budgets, todos):
+
+- **Do not refetch** data the user already loaded in this session when they navigate back. Use a **client-side session cache** keyed by context + data type (e.g. `project:${id}`, `board:${id}`).
+- **Provider placement (critical):** The cache provider must live in a layout that **stays mounted** when the user switches between contexts (e.g. between projects). Put it in the **parent** layout (e.g. `app/context/layout.tsx`), **not** inside the dynamic segment layout (e.g. not only in `app/context/[projectId]/layout.tsx`), or the cache is lost on navigation.
+- **Pattern:** Use a `*FromCache` wrapper per view that: on cache hit → render with cached data; on cache miss → loading state, fetch (server action), then set cache and render. Pass `onRefresh` so mutations can invalidate and refetch that key.
+- **After mutations:** Invalidate the affected cache key (and refetch if the user stays on that view) so the UI stays in sync; avoid full page refresh when possible.
+
+Refer to: docs/patterns/context-session-cache.md and docs/context-session-cache-discovery.md
+
+---
+
 ## Code Style and Formatting
 
 - **ALWAYS** match the project’s Prettier config (`.prettierrc`): semicolons, single quotes, `tabWidth: 2`, `trailingComma: "es5"`.
@@ -81,8 +94,9 @@ Refer to: docs/patterns/data-loading.md
 
 ## Before Generating Code
 
-1. **Check** `docs/patterns/` for the relevant pattern (server-actions.md, database-queries.md, transactions.md).
+1. **Check** `docs/patterns/` for the relevant pattern (server-actions.md, database-queries.md, transactions.md, context-session-cache.md).
 2. **Use** `templates/` for boilerplate (server-action.template.ts, rpc-function.template.sql, optimistic-update.template.ts).
 3. **Follow** CURSOR_RULES.md strictly when it exists in the repo.
+4. **If adding or changing routes/views in a context that uses session cache** (e.g. `/context/[projectId]/...`): follow docs/patterns/context-session-cache.md and keep the cache provider in the parent layout so cache persists when switching contexts.
 
 **Reference `docs/patterns/` before every code generation.**

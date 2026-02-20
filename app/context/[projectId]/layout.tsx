@@ -12,6 +12,8 @@ export default async function ContextProjectLayout({
   const projectId = params.projectId;
 
   return (
-    <ContextLayoutWrapper projectId={projectId}>{children}</ContextLayoutWrapper>
+    <ContextLayoutWrapper projectId={projectId}>
+      {children}
+    </ContextLayoutWrapper>
   );
 }

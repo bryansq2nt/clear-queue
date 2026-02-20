@@ -237,4 +237,5 @@ When converting an existing page:
 
 - See: `docs/patterns/server-actions.md` for mutation patterns
 - See: `docs/patterns/database-queries.md` for query optimization
+- See: `docs/patterns/context-session-cache.md` for not refetching when the user returns to an already-visited context (project, tabs)
 - See: `docs/anti-patterns/client-side-data-fetching.md` for what NOT to do

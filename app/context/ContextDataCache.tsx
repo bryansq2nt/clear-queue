@@ -35,7 +35,11 @@ const ContextDataCacheContext = createContext<ContextDataCacheValue | null>(
   null
 );
 
-export function ContextDataCacheProvider({ children }: { children: ReactNode }) {
+export function ContextDataCacheProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const [state, setState] = useState<CacheState>({});
 
   const get = useCallback(

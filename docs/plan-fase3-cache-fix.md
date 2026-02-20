@@ -86,9 +86,9 @@ Si algo de esto no se cumple, habría que revisar que no haya otro layout o cond
 
 ## Resumen de cambios de archivos
 
-| Acción | Archivo |
-|--------|--------|
-| Crear | `app/context/layout.tsx` con `<ContextDataCacheProvider>{children}</ContextDataCacheProvider>` |
+| Acción | Archivo                                                                                                                            |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Crear  | `app/context/layout.tsx` con `<ContextDataCacheProvider>{children}</ContextDataCacheProvider>`                                     |
 | Editar | `app/context/[projectId]/layout.tsx`: eliminar el wrapper `ContextDataCacheProvider`, dejar solo `ContextLayoutWrapper` y children |
 
 Nada más. Sin tocar los componentes `*FromCache` ni la lógica de cache (get/set/invalidate); solo dónde vive el provider.

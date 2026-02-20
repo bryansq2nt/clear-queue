@@ -5,6 +5,31 @@ import { getProfileOptional } from '@/app/settings/profile/actions';
 import LoginForm from '@/components/LoginForm';
 import AuthCallbackHandler from '@/components/AuthCallbackHandler';
 import ContextProjectPicker from '@/app/context/ContextProjectPicker';
+import { SkeletonProjectPicker } from '@/components/skeletons/SkeletonProjectPicker';
+
+async function HomeProjectsContent({
+  user,
+  searchParams,
+}: {
+  user: { id: string; email?: string | null };
+  searchParams: { error?: string; from?: string };
+}) {
+  const [projects, profile] = await Promise.all([
+    getProjectsList(),
+    getProfileOptional(),
+  ]);
+  const userDisplayName =
+    profile?.display_name?.trim() || user.email?.split('@')[0] || 'User';
+  const returningFromProject = searchParams.from === 'project';
+  return (
+    <ContextProjectPicker
+      initialProjects={projects}
+      showBackButton={false}
+      userDisplayName={userDisplayName}
+      returningFromProject={returningFromProject}
+    />
+  );
+}
 
 export default async function Home({
   searchParams,
@@ -14,20 +39,10 @@ export default async function Home({
   const user = await getUser();
 
   if (user) {
-    const [projects, profile] = await Promise.all([
-      getProjectsList(),
-      getProfileOptional(),
-    ]);
-    const userDisplayName =
-      profile?.display_name?.trim() || user.email?.split('@')[0] || 'User';
-    const returningFromProject = searchParams.from === 'project';
     return (
-      <ContextProjectPicker
-        initialProjects={projects}
-        showBackButton={false}
-        userDisplayName={userDisplayName}
-        returningFromProject={returningFromProject}
-      />
+      <Suspense fallback={<SkeletonProjectPicker />}>
+        <HomeProjectsContent user={user} searchParams={searchParams} />
+      </Suspense>
     );
   }
 
