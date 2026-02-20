@@ -2,15 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useI18n } from '@/components/I18nProvider';
-import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/lib/supabase/types';
 import { EditTaskModal } from '../EditTaskModal';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
-
-/** Minimal project shape returned by task queryFn (id, name, color only). */
 type ProjectSummary = { id: string; name: string; color: string | null } | null;
 
 interface TaskWithProject extends Task {
@@ -36,34 +33,9 @@ const statusColors = {
 function formatDate(dateString: string | null): string {
   if (!dateString) return '';
   const date = new Date(dateString);
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  return `${month}/${day}/${year}`;
-}
-
-function formatRelativeDate(dateString: string | null): string {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const now = new Date();
-
-  // Reset time to compare only dates
-  const dateOnly = new Date(
-    date.getFullYear(),
-    date.getMonth(),
+  return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(
     date.getDate()
-  );
-  const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  const diffMs = nowOnly.getTime() - dateOnly.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return 'Hoy';
-  if (diffDays === 1) return 'Ayer';
-  if (diffDays < 7) return `Hace ${diffDays}d`;
-  if (diffDays < 30) return `Hace ${Math.floor(diffDays / 7)} sem`;
-
-  return formatDate(dateString);
+  ).padStart(2, '0')}/${date.getFullYear()}`;
 }
 
 interface TaskListWidgetProps {
@@ -106,29 +78,17 @@ export default function TaskListWidget({
     setLoading(true);
     setError(null);
     const result = await queryFn(page, pageSize);
-
     if (result.error) {
       setError(result.error.message || t('tasks.load_error'));
       setLoading(false);
       return;
     }
-
-    // Transform the data to flatten the projects relation
-    const transformedTasks = (result.data || []).map((task: any) => {
-      let project: ProjectSummary = null;
-      if (task.projects) {
-        if (Array.isArray(task.projects)) {
-          project = task.projects.length > 0 ? task.projects[0] : null;
-        } else {
-          project = task.projects;
-        }
-      }
-      return {
-        ...task,
-        projects: project,
-      };
-    }) as TaskWithProject[];
-
+    const transformedTasks = (result.data || []).map((task: any) => ({
+      ...task,
+      projects: Array.isArray(task.projects)
+        ? (task.projects[0] ?? null)
+        : (task.projects ?? null),
+    })) as TaskWithProject[];
     setTasks(transformedTasks);
     setTotalCount(result.count || 0);
     setLoading(false);
@@ -138,18 +98,7 @@ export default function TaskListWidget({
     loadTasks();
   }, [loadTasks]);
 
-  function handleTaskClick(task: Task) {
-    setSelectedTask(task);
-    setIsModalOpen(true);
-  }
-
-  function handleTaskUpdate() {
-    loadTasks();
-  }
-
   const totalPages = Math.ceil(totalCount / pageSize);
-  const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
-  const endItem = Math.min(page * pageSize, totalCount);
 
   return (
     <>
@@ -175,80 +124,79 @@ export default function TaskListWidget({
             {emptyMessage}
           </div>
         ) : (
-          <>
-            <div className="space-y-3">
-              {tasks.map((task) => (
-                <div
-                  key={task.id}
-                  onClick={() => handleTaskClick(task)}
-                  className={`border-l-4 ${borderColor} ${bgColor} rounded-r-lg p-4 hover:opacity-90 transition-colors cursor-pointer`}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-medium text-foreground flex-1">
-                      {task.title}
-                    </h3>
-                    {showUpdatedAt && task.updated_at ? (
-                      <span className="text-slate-600 text-sm ml-2 whitespace-nowrap">
-                        {formatRelativeDate(task.updated_at)}
-                      </span>
-                    ) : task.due_date ? (
-                      <span className="text-muted-foreground text-sm ml-2 whitespace-nowrap">
-                        {formatDate(task.due_date)}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {task.projects && (
-                      <>
-                        <div
-                          className="w-3 h-3 rounded-full flex-shrink-0"
-                          style={{
-                            backgroundColor: task.projects.color || '#94a3b8',
-                          }}
-                        />
-                        <span>{task.projects.name}</span>
-                      </>
-                    )}
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ml-auto ${statusColors[task.status]}`}
-                    >
-                      {t(STATUS_KEYS[task.status])}
+          <div className="space-y-3">
+            {tasks.map((task) => (
+              <button
+                key={task.id}
+                type="button"
+                onClick={() => {
+                  setSelectedTask(task);
+                  setIsModalOpen(true);
+                }}
+                aria-label={`Open task ${task.title}`}
+                className={`w-full text-left border-l-4 ${borderColor} ${bgColor} rounded-r-lg p-4 hover:opacity-90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-medium text-foreground flex-1">
+                    {task.title}
+                  </h3>
+                  {showUpdatedAt && task.updated_at ? (
+                    <span className="text-muted-foreground text-sm ml-2 whitespace-nowrap">
+                      {formatDate(task.updated_at)}
                     </span>
-                  </div>
+                  ) : task.due_date ? (
+                    <span className="text-muted-foreground text-sm ml-2 whitespace-nowrap">
+                      {formatDate(task.due_date)}
+                    </span>
+                  ) : null}
                 </div>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  Mostrando {startItem}–{endItem} de {totalCount}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="px-3 py-1.5 text-sm font-medium text-foreground bg-card border border-border rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  {task.projects && (
+                    <>
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{
+                          backgroundColor:
+                            task.projects.color ||
+                            'hsl(var(--muted-foreground))',
+                        }}
+                      />
+                      <span>{task.projects.name}</span>
+                    </>
+                  )}
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ml-auto ${statusColors[task.status]}`}
                   >
-                    <ChevronLeft className="w-4 h-4" />
-                    Anterior
-                  </button>
-                  <span className="text-sm text-muted-foreground px-2">
-                    {t('tasks.page')} {page} {t('tasks.of')} {totalPages}
+                    {t(STATUS_KEYS[task.status])}
                   </span>
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className="px-3 py-1.5 text-sm font-medium text-foreground bg-card border border-border rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                  >
-                    {t('tasks.next')}
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
                 </div>
-              </div>
-            )}
-          </>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              {t('tasks.page')} {page} {t('tasks.of')} {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-sm font-medium text-foreground bg-card border border-border rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                <ChevronLeft className="w-4 h-4" /> Anterior
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 text-sm font-medium text-foreground bg-card border border-border rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                {t('tasks.next')} <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -260,7 +208,7 @@ export default function TaskListWidget({
             setIsModalOpen(false);
             setSelectedTask(null);
           }}
-          onTaskUpdate={handleTaskUpdate}
+          onTaskUpdate={loadTasks}
         />
       )}
     </>

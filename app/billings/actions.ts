@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
+import { billingSchema } from '@/lib/server/action-schemas';
+import { parseWithSchema } from '@/lib/server/validation';
 
 type Billing = Database['public']['Tables']['billings']['Row'];
 
@@ -15,7 +17,7 @@ export const getBillings = cache(
       clients: { id: string; full_name: string } | null;
     })[]
   > => {
-    await requireAuth();
+    const user = await requireAuth();
     const supabase = await createClient();
 
     const { data, error } = await supabase
@@ -23,6 +25,7 @@ export const getBillings = cache(
       .select(
         'id, owner_id, client_id, project_id, title, client_name, amount, currency, status, due_date, paid_at, notes, created_at, updated_at'
       )
+      .eq('owner_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error || !data?.length) return [];
@@ -94,18 +97,23 @@ export async function createBilling(formData: {
   const user = await requireAuth();
   const supabase = await createClient();
 
+  const parsed = parseWithSchema(billingSchema, formData);
+  if (!parsed.data) {
+    throw new Error(parsed.error ?? 'Invalid payload');
+  }
+
   const { data, error } = await supabase
     .from('billings')
     .insert({
       owner_id: user.id,
-      title: formData.title,
-      client_id: formData.client_id || null,
-      client_name: formData.client_id ? null : formData.client_name || null,
-      amount: formData.amount,
-      currency: formData.currency || 'USD',
-      project_id: formData.project_id || null,
-      due_date: formData.due_date || null,
-      notes: formData.notes || null,
+      title: parsed.data.title,
+      client_id: parsed.data.client_id,
+      client_name: parsed.data.client_id ? null : parsed.data.client_name,
+      amount: parsed.data.amount,
+      currency: parsed.data.currency,
+      project_id: parsed.data.project_id,
+      due_date: parsed.data.due_date,
+      notes: parsed.data.notes,
     } as never)
     .select()
     .single();
@@ -120,7 +128,7 @@ export async function updateBillingStatus(
   id: string,
   status: Billing['status']
 ) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const payload: Database['public']['Tables']['billings']['Update'] = {
@@ -131,7 +139,8 @@ export async function updateBillingStatus(
   const { error } = await supabase
     .from('billings')
     .update(payload as never)
-    .eq('id', id);
+    .eq('id', id)
+    .eq('owner_id', user.id);
 
   if (error) throw new Error(error.message);
 
@@ -151,24 +160,28 @@ export async function updateBilling(
     notes?: string | null;
   }
 ) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
+  const parsed = parseWithSchema(billingSchema, formData);
+  if (!parsed.data) throw new Error(parsed.error ?? 'Invalid payload');
+
   const payload: Database['public']['Tables']['billings']['Update'] = {
-    title: formData.title,
-    client_id: formData.client_id ?? null,
-    client_name: formData.client_id ? null : (formData.client_name ?? null),
-    amount: formData.amount,
-    project_id: formData.project_id ?? null,
-    due_date: formData.due_date || null,
-    notes: formData.notes || null,
+    title: parsed.data.title,
+    client_id: parsed.data.client_id,
+    client_name: parsed.data.client_id ? null : parsed.data.client_name,
+    amount: parsed.data.amount,
+    project_id: parsed.data.project_id,
+    due_date: parsed.data.due_date,
+    notes: parsed.data.notes,
     updated_at: new Date().toISOString(),
   };
 
   const { error } = await supabase
     .from('billings')
     .update(payload as never)
-    .eq('id', id);
+    .eq('id', id)
+    .eq('owner_id', user.id);
 
   if (error) throw new Error(error.message);
 
