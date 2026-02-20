@@ -17,6 +17,7 @@ import {
   toggleTodoItem,
   deleteTodoItem,
 } from '@/lib/todo/lists';
+import { getProjectById } from '@/app/actions/projects';
 import { getProjects } from '@/app/budgets/actions';
 import type { TodoItem, TodoList } from '@/lib/todo/lists';
 
@@ -313,8 +314,7 @@ export async function getProjectTodoBoardAction(
     return { ok: false, error: 'Project ID is required' };
   }
 
-  const projects = await getProjects();
-  const project = projects.find((p) => p.id === projectId);
+  const project = await getProjectById(projectId);
   if (!project) {
     return { ok: false, error: 'Project not found' };
   }

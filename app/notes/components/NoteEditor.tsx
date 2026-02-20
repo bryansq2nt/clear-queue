@@ -44,6 +44,10 @@ export interface NoteEditorProps {
   getDetailHref?: (noteId: string) => string;
   /** When true (e.g. context view), hide the toolbar and show Delete as a FAB like Link/Save */
   deleteAsFab?: boolean;
+  /** Called after a successful save (e.g. to invalidate cache) */
+  onSaveSuccess?: () => void;
+  /** Called after a successful delete, before redirect (e.g. to invalidate cache) */
+  onDeleteSuccess?: () => void;
 }
 
 export function NoteEditor({
@@ -55,6 +59,8 @@ export function NoteEditor({
   listHref,
   getDetailHref,
   deleteAsFab = false,
+  onSaveSuccess,
+  onDeleteSuccess,
 }: NoteEditorProps) {
   const { t } = useI18n();
   const router = useRouter();
@@ -133,9 +139,10 @@ export function NoteEditor({
       content,
       project_id: projectId,
     };
+    onSaveSuccess?.();
     router.refresh();
     setTimeout(() => setSaveStatus('idle'), 2000);
-  }, [isEdit, noteId, title, content, projectId, router]);
+  }, [isEdit, noteId, title, content, projectId, router, onSaveSuccess]);
 
   useEffect(() => {
     if (!isEdit || !noteId) return;
@@ -193,7 +200,10 @@ export function NoteEditor({
     if (!confirm(t('notes.delete_note_confirm'))) return;
     const { error: err } = await deleteNote(noteId);
     if (err) alert(err);
-    else router.push(listHref ?? '/notes');
+    else {
+      onDeleteSuccess?.();
+      router.push(listHref ?? '/notes');
+    }
   };
 
   const addLink = (e: React.FormEvent) => {

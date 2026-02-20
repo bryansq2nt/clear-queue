@@ -16,9 +16,11 @@ export type CacheKey =
   | { type: 'ideas'; projectId: string }
   | { type: 'owner'; projectId: string }
   | { type: 'budgets'; projectId: string }
-  | { type: 'todos'; projectId: string };
+  | { type: 'todos'; projectId: string }
+  | { type: 'noteDetail'; noteId: string };
 
 function cacheKeyToString(k: CacheKey): string {
+  if (k.type === 'noteDetail') return `${k.type}:${k.noteId}`;
   return `${k.type}:${k.projectId}`;
 }
 
@@ -68,7 +70,8 @@ export function ContextDataCacheProvider({
   const invalidateProject = useCallback((projectId: string) => {
     setState((prev) => {
       const toRemove = Object.keys(prev).filter(
-        (key) => key.split(':')[1] === projectId
+        (key) =>
+          !key.startsWith('noteDetail:') && key.split(':')[1] === projectId
       );
       if (toRemove.length === 0) return prev;
       const next = { ...prev };

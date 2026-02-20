@@ -10,6 +10,8 @@ interface ContextNoteDetailClientProps {
   noteId: string;
   initialNote: { title: string; content: string; project_id: string };
   initialLinks: NoteLink[];
+  onSaveSuccess?: () => void;
+  onDeleteSuccess?: () => void;
 }
 
 /**
@@ -21,6 +23,8 @@ export default function ContextNoteDetailClient({
   noteId,
   initialNote,
   initialLinks,
+  onSaveSuccess,
+  onDeleteSuccess,
 }: ContextNoteDetailClientProps) {
   const listHref = `/context/${projectId}/notes`;
   const getDetailHref = (id: string) => `/context/${projectId}/notes/${id}`;
@@ -35,6 +39,8 @@ export default function ContextNoteDetailClient({
         listHref={listHref}
         getDetailHref={getDetailHref}
         deleteAsFab
+        onSaveSuccess={onSaveSuccess}
+        onDeleteSuccess={onDeleteSuccess}
       />
     </div>
   );
