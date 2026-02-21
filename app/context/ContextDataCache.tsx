@@ -13,6 +13,7 @@ export type CacheKey =
   | { type: 'project'; projectId: string }
   | { type: 'board'; projectId: string }
   | { type: 'notes'; projectId: string }
+  | { type: 'links'; projectId: string }
   | { type: 'ideas'; projectId: string }
   | { type: 'owner'; projectId: string }
   | { type: 'budgets'; projectId: string }

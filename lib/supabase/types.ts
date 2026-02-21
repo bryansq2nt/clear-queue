@@ -309,6 +309,71 @@ export type Database = {
           created_at?: string;
         };
       };
+      project_links: {
+        Row: {
+          id: string;
+          project_id: string;
+          owner_id: string;
+          linked_task_id: string | null;
+          title: string;
+          description: string | null;
+          url: string;
+          provider: string | null;
+          link_type: Database['public']['Enums']['project_link_type_enum'];
+          section: Database['public']['Enums']['project_link_section_enum'];
+          tags: string[];
+          pinned: boolean;
+          sort_order: number;
+          open_in_new_tab: boolean;
+          last_checked_at: string | null;
+          status_code: number | null;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          owner_id: string;
+          linked_task_id?: string | null;
+          title: string;
+          description?: string | null;
+          url: string;
+          provider?: string | null;
+          link_type: Database['public']['Enums']['project_link_type_enum'];
+          section: Database['public']['Enums']['project_link_section_enum'];
+          tags?: string[];
+          pinned?: boolean;
+          sort_order?: number;
+          open_in_new_tab?: boolean;
+          last_checked_at?: string | null;
+          status_code?: number | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          owner_id?: string;
+          linked_task_id?: string | null;
+          title?: string;
+          description?: string | null;
+          url?: string;
+          provider?: string | null;
+          link_type?: Database['public']['Enums']['project_link_type_enum'];
+          section?: Database['public']['Enums']['project_link_section_enum'];
+          tags?: string[];
+          pinned?: boolean;
+          sort_order?: number;
+          open_in_new_tab?: boolean;
+          last_checked_at?: string | null;
+          status_code?: number | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       business_media: {
         Row: {
           id: string;
@@ -813,7 +878,21 @@ export type Database = {
       [_ in never]: never;
     };
     Enums: {
-      [_ in never]: never;
+      project_link_type_enum:
+        | 'environment'
+        | 'tool'
+        | 'resource'
+        | 'social'
+        | 'reference'
+        | 'other';
+      project_link_section_enum:
+        | 'delivery'
+        | 'infrastructure'
+        | 'product'
+        | 'marketing'
+        | 'operations'
+        | 'client'
+        | 'other';
     };
     CompositeTypes: {
       [_ in never]: never;
