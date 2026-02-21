@@ -21,7 +21,7 @@ Se aplicaron correcciones en dos lotes (**Batch 1** y **Batch 2**) para eliminar
 
 ### 2.1 Regla: no-client-supabase-in-components
 
-- **Documento:** `eslint-rules-README.md` (Rule 1), `docs/patterns/server-actions.md`
+- **Documento:** [docs/reference/eslint-rules-README.md](../reference/eslint-rules-README.md) (Rule 1), [docs/patterns/server-actions.md](../patterns/server-actions.md)
 - **Qué exige:** No usar `createClient()` de `@/lib/supabase/client` en componentes cliente (`'use client'` en `components/**` o `app/**/*Client.tsx`).
 - **Cómo lo seguimos:**
   - Eliminamos todas las llamadas a `createClient()` en esos archivos.
@@ -32,7 +32,7 @@ Se aplicaron correcciones en dos lotes (**Batch 1** y **Batch 2**) para eliminar
 
 ### 2.2 Regla: no-select-star
 
-- **Documento:** `eslint-rules-README.md` (Rule 2), `docs/patterns/database-queries.md`
+- **Documento:** [docs/reference/eslint-rules-README.md](../reference/eslint-rules-README.md) (Rule 2), [docs/patterns/database-queries.md](../patterns/database-queries.md)
 - **Qué exige:** No usar `.select('*')`; especificar columnas explícitas.
 - **Cómo lo seguimos:**
   - Reemplazamos todo `.select('*')` por listas explícitas de columnas (según `lib/supabase/types.ts`).
@@ -41,7 +41,7 @@ Se aplicaron correcciones en dos lotes (**Batch 1** y **Batch 2**) para eliminar
 
 ### 2.3 Regla: no-manual-refetch-after-action
 
-- **Documento:** `eslint-rules-README.md` (Rule 3), `docs/patterns/server-actions.md`
+- **Documento:** [docs/reference/eslint-rules-README.md](../reference/eslint-rules-README.md) (Rule 3), [docs/patterns/server-actions.md](../patterns/server-actions.md)
 - **Qué exige:** No hacer `await load*()` después de un `await *Action()` en la misma función; usar `router.refresh()` o devolver datos desde la acción.
 - **Cómo lo seguimos:**
   - Renombramos acciones que se usan para “cargar” datos para que no coincidan con el patrón `load*`: `loadIdeaDataAction` → `getIdeaDataAction`, `loadBoardDataAction` → `getBoardDataAction`.

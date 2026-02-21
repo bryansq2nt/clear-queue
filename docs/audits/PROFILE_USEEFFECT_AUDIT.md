@@ -59,5 +59,5 @@ So `loadProfile` is **stable** across renders (same function reference). The eff
 ## Recommendations
 
 1. **Check parent and layout** — Ensure nothing in the profile route or layout is causing `ProfilePageClient` to unmount/remount (e.g. no `key` that changes, no conditional wrapper that flips).
-2. **Debounce or avoid inline updates** — Consider not calling `updateProfile` / `updatePreferences` on every locale/currency change; e.g. only update on explicit “Save” or debounce the calls.
+2. **Debounce or avoid inline updates** — Consider not calling `updateProfile` / `updatePreferences` on every locale/currency change; e.g. only update on explicit "Save" or debounce the calls.
 3. **Keep the effect as-is** — No change needed to the dependency array; the current setup is correct.

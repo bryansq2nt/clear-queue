@@ -20,8 +20,9 @@ A personal project and task management system built with Next.js 14, TypeScript,
 
 ## Documentación
 
-- **[docs/README.md](docs/README.md)** ? Índice de documentación (reportes, audits, patrones, reglas ESLint).
-- **Calidad:** reglas custom en `docs/eslint-rules-README.md`; estado de implementación en `docs/reports/IMPLEMENTATION_STATUS_REPORT.md`.
+- **[docs/README.md](docs/README.md)** ? Índice de documentación (audits, reports, plans, patterns, troubleshooting, research, testing, reference).
+- **Calidad:** reglas custom en [docs/reference/eslint-rules-README.md](docs/reference/eslint-rules-README.md); estado en [docs/reports/IMPLEMENTATION_STATUS_REPORT.md](docs/reports/IMPLEMENTATION_STATUS_REPORT.md).
+- **Troubleshooting:** [docs/troubleshooting/TROUBLESHOOTING.md](docs/troubleshooting/TROUBLESHOOTING.md).
 
 ## Tech Stack
 

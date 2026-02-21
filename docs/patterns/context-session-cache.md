@@ -67,6 +67,6 @@ This complements the server-side data-loading pattern: first load can still be s
 ## References
 
 - **Discovery and rationale:** `docs/context-session-cache-discovery.md`
-- **Fix for provider placement:** `docs/plan-fase3-cache-fix.md`
-- **Instant navigation plan:** `docs/plan-instant-navigation-and-skeletons.md`
+- **Fix for provider placement:** `docs/plans/plan-fase3-cache-fix.md`
+- **Instant navigation plan:** `docs/plans/plan-instant-navigation-and-skeletons.md`
 - **Data loading (server):** `docs/patterns/data-loading.md` — session cache is an addition for “return to already-visited context”, not a replacement for server-side first load where appropriate.

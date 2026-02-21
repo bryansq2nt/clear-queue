@@ -94,4 +94,4 @@ Las rutas listadas confirman **menos POSTs por carga** y **carga inicial en el G
 
 ---
 
-**Documentos relacionados:** `PERFORMANCE_AUDIT.md`, `docs/patterns/data-loading.md`, `REPORTE-OPTIMIZACION-PROFILE.md`.
+**Documentos relacionados:** [docs/audits/PERFORMANCE_AUDIT.md](../audits/PERFORMANCE_AUDIT.md), [docs/patterns/data-loading.md](../patterns/data-loading.md), [docs/reports/REPORTE-OPTIMIZACION-PROFILE.md](REPORTE-OPTIMIZACION-PROFILE.md).
