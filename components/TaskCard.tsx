@@ -8,6 +8,7 @@ import { EditTaskModal, type EditTaskErrorParams } from './EditTaskModal';
 import { useState } from 'react';
 import { Calendar, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { parseTaskTags } from '@/lib/board';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 type Project = Database['public']['Tables']['projects']['Row'];
@@ -103,6 +104,10 @@ export default function TaskCard({
         ? blockedStyle
         : priorityStyles[task.priority as keyof typeof priorityStyles] ||
           priorityStyles[3];
+  const isYellowCard =
+    task.status !== 'done' &&
+    task.status !== 'blocked' &&
+    (task.priority === 3 || priorityStyle.badge === 'bg-yellow-500');
   const isOverdue =
     task.due_date &&
     new Date(task.due_date) < new Date() &&
@@ -176,6 +181,24 @@ export default function TaskCard({
             P{task.priority}
           </span>
         </div>
+
+        {parseTaskTags(task.tags).length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {parseTaskTags(task.tags).map((tag) => (
+              <span
+                key={tag}
+                className={cn(
+                  'text-xs px-2 py-0.5 rounded-md font-medium',
+                  isYellowCard
+                    ? 'bg-green-500/25 dark:bg-green-400/30 text-green-800 dark:text-green-100 border border-green-500/50 dark:border-green-400/50'
+                    : 'bg-amber-400/25 dark:bg-amber-400/30 text-amber-800 dark:text-amber-100 border border-amber-500/40 dark:border-amber-400/50'
+                )}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         {task.due_date && (
           <div

@@ -272,6 +272,8 @@
     "due_date_label": "Fecha de vencimiento",
     "notes_label": "Notas",
     "notes_placeholder": "Notas adicionales...",
+    "tags_label": "Etiquetas",
+    "tags_placeholder": "bug, dev, new feature",
     "create_task": "Crear tarea",
     "creating": "Creando...",
     "error_project_required": "Se requiere el proyecto",

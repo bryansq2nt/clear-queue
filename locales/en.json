@@ -309,6 +309,8 @@
     "due_date_label": "Due Date",
     "notes_label": "Notes",
     "notes_placeholder": "Additional notes...",
+    "tags_label": "Tags",
+    "tags_placeholder": "bug, dev, new feature",
     "create_task": "Create task",
     "creating": "Creating...",
     "error_project_required": "Project ID is required",

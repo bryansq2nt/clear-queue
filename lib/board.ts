@@ -22,3 +22,25 @@ export type BoardInitialData = {
     Database['public']['Tables']['tasks']['Row'][]
   >;
 };
+
+const MAX_TAGS = 3;
+
+/** Parse task.tags string into array of up to 3 trimmed non-empty tags. */
+export function parseTaskTags(tags: string | null): string[] {
+  if (!tags || typeof tags !== 'string') return [];
+  return tags
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, MAX_TAGS);
+}
+
+/** Normalize user input to stored tags string: trim, split by comma, take max 3, rejoin. */
+export function normalizeTagsForSave(input: string): string {
+  const arr = input
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, MAX_TAGS);
+  return arr.join(', ');
+}

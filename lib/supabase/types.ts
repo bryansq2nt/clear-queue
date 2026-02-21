@@ -56,6 +56,7 @@ export type Database = {
           priority: number;
           due_date: string | null;
           notes: string | null;
+          tags: string | null;
           order_index: number;
           created_at: string;
           updated_at: string;
@@ -68,6 +69,7 @@ export type Database = {
           priority?: number;
           due_date?: string | null;
           notes?: string | null;
+          tags?: string | null;
           order_index?: number;
           created_at?: string;
           updated_at?: string;
@@ -80,6 +82,7 @@ export type Database = {
           priority?: number;
           due_date?: string | null;
           notes?: string | null;
+          tags?: string | null;
           order_index?: number;
           created_at?: string;
           updated_at?: string;

@@ -28,6 +28,7 @@ export async function createTask(formData: FormData) {
   const priority = parseInt(formData.get('priority') as string) || 3;
   const dueDate = formData.get('due_date') as string | null;
   const notes = formData.get('notes') as string | null;
+  const tags = formData.get('tags') as string | null;
 
   const { data, error } = await supabase.rpc(
     'create_task_atomic' as never,
@@ -38,6 +39,7 @@ export async function createTask(formData: FormData) {
       in_priority: priority,
       in_due_date: dueDate || null,
       in_notes: notes || null,
+      in_tags: tags || null,
     } as never
   );
 
@@ -69,6 +71,7 @@ export async function updateTask(id: string, formData: FormData) {
     : null;
   const dueDate = formData.get('due_date') as string | null;
   const notes = formData.get('notes') as string | null;
+  const tags = formData.get('tags') as string | null | undefined;
 
   const updates: TaskUpdate = {};
   if (title) updates.title = title;
@@ -77,6 +80,7 @@ export async function updateTask(id: string, formData: FormData) {
   if (priority !== null) updates.priority = priority;
   if (dueDate !== undefined) updates.due_date = dueDate || null;
   if (notes !== undefined) updates.notes = notes || null;
+  if (tags !== undefined) updates.tags = tags || null;
 
   const { data, error } = await supabase
     .from('tasks')
@@ -150,7 +154,7 @@ export async function deleteTasksByIds(ids: string[]) {
 }
 
 const TASK_COLS =
-  'id, project_id, title, status, priority, due_date, notes, order_index, created_at, updated_at';
+  'id, project_id, title, status, priority, due_date, notes, tags, order_index, created_at, updated_at';
 const PROJECT_COLS =
   'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at';
 
@@ -281,7 +285,7 @@ export async function getCriticalTasks(): Promise<TaskWithProject[]> {
     .from('tasks')
     .select(
       `
-      id, project_id, title, status, priority, due_date, notes, order_index, created_at, updated_at,
+      id, project_id, title, status, priority, due_date, notes, tags, order_index, created_at, updated_at,
       projects ( id, name, color )
     `
     )
@@ -309,7 +313,7 @@ export async function getRecentTasksPage(
     .from('tasks')
     .select(
       `
-      id, project_id, title, status, priority, due_date, notes, order_index, created_at, updated_at,
+      id, project_id, title, status, priority, due_date, notes, tags, order_index, created_at, updated_at,
       projects ( id, name, color )
     `,
       { count: 'exact' }
@@ -340,7 +344,7 @@ export async function getHighPriorityTasksPage(
     .from('tasks')
     .select(
       `
-      id, project_id, title, status, priority, due_date, notes, order_index, created_at, updated_at,
+      id, project_id, title, status, priority, due_date, notes, tags, order_index, created_at, updated_at,
       projects ( id, name, color )
     `,
       { count: 'exact' }

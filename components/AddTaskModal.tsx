@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useI18n } from '@/components/I18nProvider';
 import { createTask } from '@/app/actions/tasks';
 import { Database } from '@/lib/supabase/types';
+import { normalizeTagsForSave } from '@/lib/board';
 import {
   Dialog,
   DialogContent,
@@ -57,6 +58,7 @@ export function AddTaskModal({
   const [priority, setPriority] = useState('3');
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [tags, setTags] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,6 +80,8 @@ export function AddTaskModal({
     formData.append('priority', priority);
     if (dueDate) formData.append('due_date', dueDate);
     if (notes) formData.append('notes', notes);
+    const tagsNormalized = normalizeTagsForSave(tags);
+    if (tagsNormalized) formData.append('tags', tagsNormalized);
 
     const result = await createTask(formData);
 
@@ -97,6 +101,7 @@ export function AddTaskModal({
       setPriority('3');
       setDueDate('');
       setNotes('');
+      setTags('');
       const task = result.data as Task | undefined;
       onTaskAdded(task);
       onClose();
@@ -179,6 +184,15 @@ export function AddTaskModal({
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder={t('tasks.notes_placeholder')}
                 rows={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tags">{t('tasks.tags_label')}</Label>
+              <Input
+                id="tags"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder={t('tasks.tags_placeholder')}
               />
             </div>
             {error && (
