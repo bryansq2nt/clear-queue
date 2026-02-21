@@ -70,6 +70,12 @@ interface KanbanBoardProps {
   }) => void;
   /** When true, updateTaskOrder is called with revalidate: false to avoid refetch/refresh (context board uses optimistic UI) */
   skipRevalidateOnMove?: boolean;
+  /** Total task count per status (for paginated board); when set, column header shows this count and "Ver más" is shown when count > tasks.length */
+  counts?: Record<Task['status'], number>;
+  /** Load more tasks for a column (paginated board) */
+  onLoadMore?: (status: Task['status']) => void | Promise<void>;
+  /** Status of the column currently loading more (for shimmer on "Ver más" button) */
+  loadingMoreStatus?: Task['status'] | null;
 }
 
 function TaskListForStatus({
@@ -148,6 +154,9 @@ export default function KanbanBoard({
   onTaskUpdated,
   onEditError,
   skipRevalidateOnMove,
+  counts,
+  onLoadMore,
+  loadingMoreStatus,
 }: KanbanBoardProps) {
   const { t } = useI18n();
   const [selectedTabState, setSelectedTabState] =
@@ -277,9 +286,9 @@ export default function KanbanBoard({
         <div className="flex flex-col flex-1 min-h-0 lg:hidden">
           <div className="flex flex-wrap gap-2 mb-4">
             {STATUSES.map((status) => {
-              const count = optimisticTasks.filter(
-                (t) => t.status === status
-              ).length;
+              const count =
+                counts?.[status] ??
+                optimisticTasks.filter((t) => t.status === status).length;
               const isSelected = selectedTab === status;
               return (
                 <button
@@ -376,6 +385,9 @@ export default function KanbanBoard({
                 onToggle={() => {}}
                 onTaskUpdated={onTaskUpdated}
                 onEditError={onEditError}
+                totalCount={counts?.[status]}
+                onLoadMore={onLoadMore ? () => onLoadMore(status) : undefined}
+                isLoadingMore={loadingMoreStatus === status}
               />
             );
           })}

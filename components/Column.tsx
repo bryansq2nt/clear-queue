@@ -29,6 +29,12 @@ interface ColumnProps {
   onToggle?: () => void;
   onTaskUpdated?: (updatedTask: Task) => void;
   onEditError?: (params: EditTaskErrorParams) => void;
+  /** Total task count for this column (when paginated); used for "X tareas" and "Ver más" */
+  totalCount?: number;
+  /** Load more tasks for this column (paginated board) */
+  onLoadMore?: () => void | Promise<void>;
+  /** This column is currently loading more tasks */
+  isLoadingMore?: boolean;
 }
 
 export default function Column({
@@ -43,6 +49,9 @@ export default function Column({
   onToggle,
   onTaskUpdated,
   onEditError,
+  totalCount,
+  onLoadMore,
+  isLoadingMore,
 }: ColumnProps) {
   const { t } = useI18n();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -67,10 +76,12 @@ export default function Column({
   };
 
   const columnStyle = columnStyles[id] || columnStyles.backlog;
+  const displayCount = totalCount ?? tasks.length;
   const tasksLabel =
-    tasks.length === 1
+    displayCount === 1
       ? t('kanban.tasks_count_one')
-      : t('kanban.tasks_count', { count: tasks.length });
+      : t('kanban.tasks_count', { count: displayCount });
+  const hasMore = totalCount != null && totalCount > tasks.length;
   const showBody = accordion ? isExpanded : !collapsed;
   const isCollapsedNarrow = !accordion && collapsed && onToggle;
 
@@ -102,7 +113,7 @@ export default function Column({
                 setCollapsed(false);
               }
             }}
-            title={`${title} (${tasks.length})`}
+            title={`${title} (${displayCount})`}
           >
             <ChevronRight
               className="w-4 h-4 text-muted-foreground flex-shrink-0"
@@ -120,7 +131,7 @@ export default function Column({
               {title}
             </span>
             <span className="text-sm font-semibold text-foreground tabular-nums flex-shrink-0">
-              {tasks.length}
+              {displayCount}
             </span>
           </div>
         )}
@@ -226,6 +237,22 @@ export default function Column({
                     })}
                   </div>
                 </SortableContext>
+                {/* Ver más (load more) when paginated */}
+                {onLoadMore && hasMore && (
+                  <div className="mt-3">
+                    {isLoadingMore ? (
+                      <div className="w-full py-2.5 rounded-lg bg-muted/60 cq-skeleton-shimmer" />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onLoadMore()}
+                        className="w-full py-2.5 rounded-lg border border-border bg-muted/50 hover:bg-muted text-sm font-medium text-foreground transition-colors flex items-center justify-center gap-2"
+                      >
+                        {t('kanban.view_more')}
+                      </button>
+                    )}
+                  </div>
+                )}
                 {/* Add Task Button */}
                 <button
                   className="w-full py-3 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-primary hover:bg-accent transition-all flex items-center justify-center gap-2 text-sm font-medium mt-3"

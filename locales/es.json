@@ -309,7 +309,8 @@
     "done": "Terminado",
     "tasks_count": "{count} tareas",
     "tasks_count_one": "1 tarea",
-    "add_task": "Agregar Tarea"
+    "add_task": "Agregar Tarea",
+    "view_more": "Ver más"
   },
   "right_panel": {
     "today": "Hoy",

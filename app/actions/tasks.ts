@@ -6,8 +6,13 @@ import { requireAuth } from '@/lib/auth';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
+import {
+  BOARD_STATUSES,
+  INITIAL_TASKS_PER_COLUMN,
+  type TaskStatus,
+  type BoardInitialData,
+} from '@/lib/board';
 
-type TaskStatus = Database['public']['Tables']['tasks']['Row']['status'];
 type TaskUpdate = Database['public']['Tables']['tasks']['Update'];
 type TaskWithProject = Database['public']['Tables']['tasks']['Row'] & {
   projects: { id: string; name: string; color: string | null } | null;
@@ -191,6 +196,83 @@ export const getTasksByProjectId = cache(async (projectId: string) => {
   if (error) return [];
   return (data || []) as Database['public']['Tables']['tasks']['Row'][];
 });
+
+/** Count of tasks per status for a project (scoped by project_id; RLS enforces ownership). */
+export const getBoardCountsByStatus = cache(
+  async (projectId: string): Promise<Record<TaskStatus, number>> => {
+    await requireAuth();
+    const supabase = await createClient();
+    const counts = await Promise.all(
+      BOARD_STATUSES.map(async (status) => {
+        const { count, error } = await supabase
+          .from('tasks')
+          .select('id', { count: 'exact', head: true })
+          .eq('project_id', projectId)
+          .eq('status', status);
+        if (error) return { status, count: 0 };
+        return { status, count: count ?? 0 };
+      })
+    );
+    const result = {} as Record<TaskStatus, number>;
+    for (const { status, count } of counts) {
+      result[status] = count;
+    }
+    return result;
+  }
+);
+
+/** Paginated tasks for one column (status). Order by order_index. */
+export async function getTasksByProjectIdPaginated(
+  projectId: string,
+  status: TaskStatus,
+  offset: number,
+  limit: number
+): Promise<Database['public']['Tables']['tasks']['Row'][]> {
+  await requireAuth();
+  const supabase = await createClient();
+  const from = offset;
+  const to = offset + limit - 1;
+  const { data, error } = await supabase
+    .from('tasks')
+    .select(TASK_COLS)
+    .eq('project_id', projectId)
+    .eq('status', status)
+    .order('order_index', { ascending: true })
+    .range(from, to);
+  if (error) return [];
+  return (data || []) as Database['public']['Tables']['tasks']['Row'][];
+}
+
+/** Initial board data: project, counts per status, first INITIAL_TASKS_PER_COLUMN tasks per column. */
+export const getBoardInitialData = cache(
+  async (projectId: string): Promise<BoardInitialData | null> => {
+    const { getProjectById } = await import('@/app/actions/projects');
+    const project = await getProjectById(projectId);
+    if (!project) return null;
+
+    const [counts, ...tasksPerStatus] = await Promise.all([
+      getBoardCountsByStatus(projectId),
+      ...BOARD_STATUSES.map((status) =>
+        getTasksByProjectIdPaginated(
+          projectId,
+          status,
+          0,
+          INITIAL_TASKS_PER_COLUMN
+        )
+      ),
+    ]);
+
+    const tasksByStatus = {} as Record<
+      TaskStatus,
+      Database['public']['Tables']['tasks']['Row'][]
+    >;
+    BOARD_STATUSES.forEach((status, i) => {
+      tasksByStatus[status] = tasksPerStatus[i] ?? [];
+    });
+
+    return { project, counts, tasksByStatus };
+  }
+);
 
 export async function getCriticalTasks(): Promise<TaskWithProject[]> {
   await requireAuth();

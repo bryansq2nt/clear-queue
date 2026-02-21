@@ -346,7 +346,8 @@
     "done": "Done",
     "tasks_count": "{count} tasks",
     "tasks_count_one": "1 task",
-    "add_task": "Add task"
+    "add_task": "Add task",
+    "view_more": "View more"
   },
   "right_panel": {
     "today": "Today",

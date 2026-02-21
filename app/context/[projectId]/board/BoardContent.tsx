@@ -1,9 +1,8 @@
-import { getProjectById } from '@/app/actions/projects';
-import { getTasksByProjectId } from '@/app/actions/tasks';
+import { getBoardInitialData } from '@/app/actions/tasks';
 import ContextBoardClient from './ContextBoardClient';
 
 /**
- * Async server component: fetches project + tasks and renders the board.
+ * Async server component: fetches board initial data (project + counts + first 5 tasks per column) and renders the board.
  * Wrapped in Suspense by the page so the shell shows immediately with SkeletonBoard fallback.
  */
 export default async function BoardContent({
@@ -11,20 +10,18 @@ export default async function BoardContent({
 }: {
   projectId: string;
 }) {
-  const [project, tasks] = await Promise.all([
-    getProjectById(projectId),
-    getTasksByProjectId(projectId),
-  ]);
+  const data = await getBoardInitialData(projectId);
 
-  if (!project) {
+  if (!data) {
     return null;
   }
 
   return (
     <ContextBoardClient
       projectId={projectId}
-      initialProject={project}
-      initialTasks={tasks ?? []}
+      initialProject={data.project}
+      initialCounts={data.counts}
+      initialTasksByStatus={data.tasksByStatus}
     />
   );
 }
