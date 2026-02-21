@@ -414,7 +414,7 @@ export default function Sidebar({
                       className={cn(
                         'group flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
                         selectedProject === project.id ||
-                          pathname === `/project/${project.id}`
+                          pathname === `/context/${project.id}/board`
                           ? 'bg-accent text-foreground font-medium'
                           : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                       )}
@@ -422,7 +422,7 @@ export default function Sidebar({
                       <button
                         onClick={() => {
                           onSelectProject(project.id);
-                          router.push(`/project/${project.id}`);
+                          router.push(`/context/${project.id}/board`);
                         }}
                         className="flex items-center gap-2 flex-1 text-left min-w-0"
                       >

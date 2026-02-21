@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Database } from '@/lib/supabase/types';
 import { useI18n } from '@/components/I18nProvider';
-import { EditTaskModal } from './EditTaskModal';
+import { EditTaskModal, type EditTaskErrorParams } from './EditTaskModal';
 import { useState } from 'react';
 import { Calendar, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,8 @@ interface TaskCardProps {
   selectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelection?: (taskId: string) => void;
+  onTaskUpdated?: (updatedTask: Task) => void;
+  onEditError?: (params: EditTaskErrorParams) => void;
 }
 
 export default function TaskCard({
@@ -30,6 +32,8 @@ export default function TaskCard({
   selectionMode = false,
   isSelected = false,
   onToggleSelection,
+  onTaskUpdated,
+  onEditError,
 }: TaskCardProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
@@ -192,6 +196,8 @@ export default function TaskCard({
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         onTaskUpdate={onTaskUpdate}
+        onTaskUpdated={onTaskUpdated}
+        onEditError={onEditError}
       />
     </>
   );

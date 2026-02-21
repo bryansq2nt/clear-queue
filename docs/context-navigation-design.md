@@ -49,7 +49,7 @@ Suggested prefix: **`/context`** (alternatives: `/workspace`, `/project-view`).
 ```
 /context                          → Project picker (list of projects; “home” for context mode)
 /context/[projectId]              → Redirect to default tab, e.g. /context/[projectId]/board
-/context/[projectId]/board         → Kanban (reuse ProjectKanbanClient or KanbanBoard)
+/context/[projectId]/board         → Kanban (ContextBoardClient + KanbanBoard; vista principal del proyecto)
 /context/[projectId]/owner        → Project owner: client + business for this project (one tab, reuse client/business detail or summary)
 /context/[projectId]/notes        → Notes for this project only (reuse notes list + detail)
 /context/[projectId]/notes/[noteId]  → Note detail (reuse)
@@ -59,7 +59,7 @@ Suggested prefix: **`/context`** (alternatives: `/workspace`, `/project-view`).
 /context/[projectId]/todos        → Todo lists for this project (reuse todo views)
 ```
 
-- **Entry from “old” app:** e.g. from sidebar Projects list or from `/project/[id]`, add an optional “Open in context view” (or “Focus project”) that goes to `/context/[projectId]`.
+- **Entry:** Sidebar and all project links now go to `/context/[projectId]/board`. The route `/project/[id]` redirects to `/context/[id]/board`.
 - **Exit context:** Tab or header action “All projects” → `/context`; optional “Back to app” → `/dashboard` or `/projects` (sidebar flow).
 
 ---
@@ -98,7 +98,7 @@ No duplication of mutation logic: keep using the same server actions (create not
 
 ## 6. Reuse strategy for views
 
-- **Board:** Use `KanbanBoard` or `ProjectKanbanClient` without the sidebar (and without `ProjectResourcesPanel` if the tab bar replaces it). Prefer a “context” prop or a dedicated wrapper that omits sidebar/panel.
+- **Board:** `ContextBoardClient` uses `KanbanBoard` (no sidebar, no ProjectResourcesPanel). Optimistic updates and error dialog live in this view.
 - **Notes:** Reuse notes list UI and note detail UI; context notes page gets `initialNotes` from `getNotes({ projectId })` and renders the same list/detail components. Links stay under `/context/[projectId]/notes` and `/context/[projectId]/notes/[noteId]`.
 - **Budgets:** Same: reuse list + `BudgetDetailClient`; data from project-scoped budget fetch; URLs under `/context/[projectId]/budgets`.
 - **Project owner:** One tab showing both client and business. Reuse `ClientDetailClient` / `BusinessDetailClient` (or read-only summaries) with ids from `project.client_id` / `project.business_id`. If neither linked, show empty state “Link a client/business in project settings”.

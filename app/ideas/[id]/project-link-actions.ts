@@ -31,7 +31,7 @@ export async function linkIdeaToProjectAction(
 
     // Revalidate both idea and project pages
     revalidatePath(`/ideas/${ideaId}`);
-    revalidatePath(`/project/${projectId}`);
+    revalidatePath(`/context/${projectId}`);
     return { data };
   } catch (error) {
     return {
@@ -54,7 +54,7 @@ export async function unlinkIdeaFromProjectAction(linkId: string) {
     await unlinkIdeaFromProject(linkId);
     // Revalidate both idea and project pages
     revalidatePath(`/ideas`);
-    revalidatePath(`/project`);
+    revalidatePath('/context');
     return { success: true };
   } catch (error) {
     return {

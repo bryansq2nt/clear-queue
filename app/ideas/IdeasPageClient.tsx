@@ -40,7 +40,7 @@ export default function IdeasPageClient({
       selectedCategory={null}
       showArchived={false}
       onSelectProject={(id) => {
-        if (id) router.push(`/project/${id}`);
+        if (id) router.push(`/context/${id}/board`);
         else router.push('/dashboard');
       }}
       onCategoryChange={() => {}}

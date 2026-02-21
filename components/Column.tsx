@@ -8,6 +8,7 @@ import {
 } from '@dnd-kit/sortable';
 import TaskCard from './TaskCard';
 import { AddTaskModal } from './AddTaskModal';
+import type { EditTaskErrorParams } from './EditTaskModal';
 import { Plus, ChevronDown, ChevronRight } from 'lucide-react';
 import { useI18n } from '@/components/I18nProvider';
 import { Database } from '@/lib/supabase/types';
@@ -26,6 +27,8 @@ interface ColumnProps {
   accordion?: boolean;
   isExpanded?: boolean;
   onToggle?: () => void;
+  onTaskUpdated?: (updatedTask: Task) => void;
+  onEditError?: (params: EditTaskErrorParams) => void;
 }
 
 export default function Column({
@@ -38,6 +41,8 @@ export default function Column({
   accordion = false,
   isExpanded = true,
   onToggle,
+  onTaskUpdated,
+  onEditError,
 }: ColumnProps) {
   const { t } = useI18n();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -213,6 +218,8 @@ export default function Column({
                             (p) => p.id === task.project_id
                           )}
                           onTaskUpdate={onTaskUpdate}
+                          onTaskUpdated={onTaskUpdated}
+                          onEditError={onEditError}
                           {...selectionProps}
                         />
                       );

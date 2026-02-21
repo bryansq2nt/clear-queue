@@ -329,10 +329,12 @@ export default function ProjectsPageClient({
                       key={project.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => router.push(`/project/${project.id}`)}
+                      onClick={() =>
+                        router.push(`/context/${project.id}/board`)
+                      }
                       onKeyDown={(e) =>
                         e.key === 'Enter' &&
-                        router.push(`/project/${project.id}`)
+                        router.push(`/context/${project.id}/board`)
                       }
                       className="bg-card rounded-lg border border-border p-5 hover:shadow-md transition-all cursor-pointer group relative"
                     >

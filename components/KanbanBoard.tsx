@@ -6,7 +6,8 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   useDroppable,
@@ -36,6 +37,12 @@ const STATUSES: Task['status'][] = [
   'done',
 ];
 
+export interface MoveErrorParams {
+  message: string;
+  performRetry: () => Promise<{ error?: string } | undefined>;
+  performRevert: () => void;
+}
+
 interface KanbanBoardProps {
   tasks: Task[];
   projects: Project[];
@@ -49,6 +56,20 @@ interface KanbanBoardProps {
   onTabChange?: (status: Task['status']) => void;
   /** Called when user clicks "Add task" in the list; parent can open modal with current tab as default status */
   onAddTask?: (status: Task['status']) => void;
+  /** When provided, parent owns tasks: board calls this with new list on move (optimistic) and no refresh on success */
+  onTasksChange?: (tasks: Task[]) => void;
+  /** When provided, move errors show this callback instead of toast; parent can show MutationErrorDialog */
+  onMoveError?: (params: MoveErrorParams) => void;
+  /** When provided, edit success updates list without refresh */
+  onTaskUpdated?: (updatedTask: Task) => void;
+  /** When provided, edit errors are reported here for parent to show MutationErrorDialog */
+  onEditError?: (params: {
+    message: string;
+    previousTask: Task;
+    retry: () => Promise<{ data?: Task; error?: string }>;
+  }) => void;
+  /** When true, updateTaskOrder is called with revalidate: false to avoid refetch/refresh (context board uses optimistic UI) */
+  skipRevalidateOnMove?: boolean;
 }
 
 function TaskListForStatus({
@@ -60,6 +81,8 @@ function TaskListForStatus({
   selectionMode,
   selectedTaskIds,
   onToggleSelection,
+  onTaskUpdated,
+  onEditError,
 }: {
   status: Task['status'];
   tasks: Task[];
@@ -69,6 +92,12 @@ function TaskListForStatus({
   selectionMode: boolean;
   selectedTaskIds: Set<string>;
   onToggleSelection?: (taskId: string) => void;
+  onTaskUpdated?: (updatedTask: Task) => void;
+  onEditError?: (params: {
+    message: string;
+    previousTask: Task;
+    retry: () => Promise<{ data?: Task; error?: string }>;
+  }) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const taskIds = tasks.map((t) => t.id);
@@ -91,6 +120,8 @@ function TaskListForStatus({
                 task={task}
                 project={projects.find((p) => p.id === task.project_id)}
                 onTaskUpdate={onTaskUpdate}
+                onTaskUpdated={onTaskUpdated}
+                onEditError={onEditError}
                 {...selectionProps}
               />
             );
@@ -112,6 +143,11 @@ export default function KanbanBoard({
   selectedTab: selectedTabProp,
   onTabChange,
   onAddTask,
+  onTasksChange,
+  onMoveError,
+  onTaskUpdated,
+  onEditError,
+  skipRevalidateOnMove,
 }: KanbanBoardProps) {
   const { t } = useI18n();
   const [selectedTabState, setSelectedTabState] =
@@ -128,9 +164,15 @@ export default function KanbanBoard({
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
-        distance: selectionMode ? 9999 : 8,
+        distance: selectionMode ? 9999 : 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
       },
     })
   );
@@ -183,17 +225,34 @@ export default function KanbanBoard({
       newOrderIndex
     );
     setOptimisticTasks(updated);
+    onTasksChange?.(updated);
 
+    const revalidate = skipRevalidateOnMove !== true;
     const result = await updateTaskOrder(
       taskId,
       newStatus,
       newOrderIndex,
-      task.status
+      task.status,
+      { revalidate }
     );
     if (result.error) {
-      setOptimisticTasks(tasks);
-      toastError('Failed to update task: ' + result.error);
-    } else {
+      if (onMoveError) {
+        onMoveError({
+          message: result.error,
+          performRetry: () =>
+            updateTaskOrder(taskId, newStatus, newOrderIndex, task.status, {
+              revalidate,
+            }),
+          performRevert: () => {
+            setOptimisticTasks(tasks);
+            onTasksChange?.(tasks);
+          },
+        });
+      } else {
+        setOptimisticTasks(tasks);
+        toastError('Failed to update task: ' + result.error);
+      }
+    } else if (!onTasksChange) {
       onTaskUpdate();
     }
   }
@@ -271,6 +330,8 @@ export default function KanbanBoard({
                     selectionMode={selectionMode}
                     selectedTaskIds={selectedTaskIds}
                     onToggleSelection={onToggleSelection}
+                    onTaskUpdated={onTaskUpdated}
+                    onEditError={onEditError}
                   />
                   {onAddTask && (
                     <button
@@ -313,6 +374,8 @@ export default function KanbanBoard({
                 currentProjectId={projectId}
                 accordion={false}
                 onToggle={() => {}}
+                onTaskUpdated={onTaskUpdated}
+                onEditError={onEditError}
               />
             );
           })}
@@ -324,6 +387,8 @@ export default function KanbanBoard({
             task={activeTask}
             project={projects.find((p) => p.id === activeTask.project_id)}
             onTaskUpdate={onTaskUpdate}
+            onTaskUpdated={onTaskUpdated}
+            onEditError={onEditError}
             isDragging
             selectionMode={false}
           />

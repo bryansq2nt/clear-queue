@@ -26,11 +26,21 @@ import {
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
+export interface EditTaskErrorParams {
+  message: string;
+  previousTask: Task;
+  retry: () => Promise<{ data?: Task; error?: string }>;
+}
+
 interface EditTaskModalProps {
   task: Task;
   isOpen: boolean;
   onClose: () => void;
   onTaskUpdate: () => void;
+  /** When provided, success updates list without refresh; parent applies result.data */
+  onTaskUpdated?: (updatedTask: Task) => void;
+  /** When provided, save errors are reported here for parent to show MutationErrorDialog */
+  onEditError?: (params: EditTaskErrorParams) => void;
 }
 
 export function EditTaskModal({
@@ -38,6 +48,8 @@ export function EditTaskModal({
   isOpen,
   onClose,
   onTaskUpdate,
+  onTaskUpdated,
+  onEditError,
 }: EditTaskModalProps) {
   const { t } = useI18n();
   const [title, setTitle] = useState(task.title);
@@ -49,27 +61,55 @@ export function EditTaskModal({
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function buildFormData() {
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('project_id', task.project_id);
+    formData.append('status', status);
+    formData.append('priority', priority);
+    formData.append('due_date', dueDate || '');
+    formData.append('notes', notes || '');
+    return formData;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('project_id', task.project_id); // Use task's existing project_id
-    formData.append('status', status);
-    formData.append('priority', priority);
-    formData.append('due_date', dueDate || '');
-    formData.append('notes', notes || '');
+    const formData = buildFormData();
+
+    if (onTaskUpdated) {
+      const optimisticTask: Task = {
+        ...task,
+        title,
+        status,
+        priority: parseInt(priority, 10) || task.priority,
+        due_date: dueDate || null,
+        notes: notes || '',
+      };
+      onTaskUpdated(optimisticTask);
+      onClose();
+    }
 
     const result = await updateTask(task.id, formData);
 
     if (result.error) {
-      setError(result.error);
+      if (onEditError) {
+        onEditError({
+          message: result.error,
+          previousTask: task,
+          retry: () => updateTask(task.id, buildFormData()),
+        });
+      } else {
+        setError(result.error);
+      }
       setIsLoading(false);
     } else {
-      onTaskUpdate();
-      onClose();
+      if (!onTaskUpdated) {
+        onTaskUpdate();
+        onClose();
+      }
     }
   }
 

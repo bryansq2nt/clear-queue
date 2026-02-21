@@ -24,12 +24,20 @@ import {
   SelectValue,
 } from './ui/select';
 
+type Task = Database['public']['Tables']['tasks']['Row'];
+
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onTaskAdded: () => void;
+  /** Called on success with the created task (so parent can add to list without refetch). If not provided, legacy no-arg call. */
+  onTaskAdded: (createdTask?: Task) => void;
   defaultProjectId: string;
   defaultStatus?: Database['public']['Tables']['tasks']['Row']['status'];
+  /** When provided, create errors are reported here for parent to show MutationErrorDialog; retry() returns createTask result */
+  onAddError?: (params: {
+    message: string;
+    retry: () => Promise<{ data?: Task; error?: string }>;
+  }) => void;
 }
 
 export function AddTaskModal({
@@ -38,6 +46,7 @@ export function AddTaskModal({
   onTaskAdded,
   defaultProjectId,
   defaultStatus = 'next',
+  onAddError,
 }: AddTaskModalProps) {
   const { t } = useI18n();
   const [title, setTitle] = useState('');
@@ -73,7 +82,14 @@ export function AddTaskModal({
     const result = await createTask(formData);
 
     if (result.error) {
-      setError(result.error);
+      if (onAddError) {
+        onAddError({
+          message: result.error,
+          retry: () => createTask(formData),
+        });
+      } else {
+        setError(result.error);
+      }
       setIsLoading(false);
     } else {
       setTitle('');
@@ -81,7 +97,8 @@ export function AddTaskModal({
       setPriority('3');
       setDueDate('');
       setNotes('');
-      onTaskAdded();
+      const task = result.data as Task | undefined;
+      onTaskAdded(task);
       onClose();
     }
   }

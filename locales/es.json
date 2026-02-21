@@ -19,6 +19,13 @@
     "select": "Seleccionar",
     "copy": "Copiar"
   },
+  "mutation_error": {
+    "try_again": "Reintentar",
+    "title": "Error",
+    "error_save": "No se pudo guardar el cambio. Puedes reintentar o cancelar para deshacer.",
+    "error_add_task": "No se pudo agregar la tarea. Puedes reintentar o cancelar.",
+    "error_move_task": "No se pudo mover la tarea. Puedes reintentar o cancelar para deshacer."
+  },
   "topbar": {
     "task_board": "Tablero de Tareas",
     "search_tasks": "Buscar tareas...",

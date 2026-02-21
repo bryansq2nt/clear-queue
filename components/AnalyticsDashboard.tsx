@@ -233,7 +233,7 @@ export default function AnalyticsDashboard({
         showArchived={showArchived}
         onSelectProject={(id) => {
           if (id) {
-            router.push(`/project/${id}`);
+            router.push(`/context/${id}/board`);
           } else {
             router.push('/dashboard');
           }

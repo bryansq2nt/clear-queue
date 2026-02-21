@@ -427,7 +427,7 @@ export default function ClientDetailClient({
                 {projects.map((p) => (
                   <li key={p.id}>
                     <Link
-                      href={`/project/${p.id}`}
+                      href={`/context/${p.id}/board`}
                       className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
                     >
                       {p.color && (

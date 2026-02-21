@@ -19,6 +19,13 @@
     "select": "Select",
     "copy": "Copy"
   },
+  "mutation_error": {
+    "try_again": "Try again",
+    "title": "Error",
+    "error_save": "Could not save the change. You can try again or cancel to undo.",
+    "error_add_task": "Could not add the task. You can try again or cancel.",
+    "error_move_task": "Could not move the task. You can try again or cancel to undo."
+  },
   "topbar": {
     "task_board": "Task board",
     "search_tasks": "Search tasks...",

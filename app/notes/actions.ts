@@ -82,7 +82,6 @@ export async function createNote(params: {
   if (error) return { error: error.message };
   revalidatePath('/notes');
   revalidatePath('/notes/[id]');
-  revalidatePath('/project/[id]');
   revalidatePath('/context');
   return { data: data as Note };
 }
@@ -115,7 +114,6 @@ export async function updateNote(
   if (error) return { error: error.message };
   revalidatePath('/notes');
   revalidatePath('/notes/[id]');
-  revalidatePath('/project/[id]');
   revalidatePath('/context');
   return { data: data as Note };
 }
@@ -128,7 +126,6 @@ export async function deleteNote(noteId: string): Promise<{ error?: string }> {
   if (error) return { error: error.message };
   revalidatePath('/notes');
   revalidatePath('/notes/[id]');
-  revalidatePath('/project/[id]');
   revalidatePath('/context');
   return {};
 }

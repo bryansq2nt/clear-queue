@@ -575,7 +575,7 @@ export default function BusinessDetailClient({
                 {relatedProjects.map((p) => (
                   <li key={p.id}>
                     <Link
-                      href={`/project/${p.id}`}
+                      href={`/context/${p.id}/board`}
                       className="text-primary hover:underline font-medium"
                     >
                       {p.name}

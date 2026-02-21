@@ -93,7 +93,7 @@ export async function createProject(
   }
 
   revalidatePath('/dashboard');
-  revalidatePath('/project');
+  revalidatePath('/context');
   return { ok: true, data };
 }
 
@@ -162,7 +162,6 @@ export async function updateProject(
   }
 
   revalidatePath('/dashboard');
-  revalidatePath('/project');
   revalidatePath(`/context/${id}`);
   return { ok: true, data };
 }
@@ -196,7 +195,6 @@ export async function linkBusinessToProject(
     };
   }
   revalidatePath('/dashboard');
-  revalidatePath('/project');
   revalidatePath(`/context/${projectId}`);
   return { ok: true, data };
 }
@@ -222,7 +220,6 @@ export async function archiveProject(
   }
 
   revalidatePath('/dashboard');
-  revalidatePath('/project');
   return { ok: true, data };
 }
 
@@ -258,7 +255,6 @@ export async function unarchiveProject(
   }
 
   revalidatePath('/dashboard');
-  revalidatePath('/project');
   return { ok: true, data };
 }
 
@@ -275,7 +271,6 @@ export async function deleteProject(
   }
 
   revalidatePath('/dashboard');
-  revalidatePath('/project');
   return { ok: true, data: { success: true } };
 }
 
@@ -418,7 +413,6 @@ export async function addProjectFavorite(
 
   if (error) return { ok: false, error: error.message };
   revalidatePath('/dashboard');
-  revalidatePath('/project');
   return { ok: true, data: null };
 }
 
@@ -437,6 +431,5 @@ export async function removeProjectFavorite(
 
   if (error) return { ok: false, error: error.message };
   revalidatePath('/dashboard');
-  revalidatePath('/project');
   return { ok: true, data: null };
 }

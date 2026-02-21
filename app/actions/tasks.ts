@@ -92,7 +92,6 @@ export async function deleteTask(id: string) {
   }
 
   revalidatePath('/dashboard');
-  revalidatePath('/project');
   revalidatePath('/context');
   return { success: true };
 }
@@ -112,7 +111,6 @@ export async function deleteTasksByIds(ids: string[]) {
   }
 
   revalidatePath('/dashboard');
-  revalidatePath('/project');
   revalidatePath('/context');
   return { success: true };
 }
@@ -251,7 +249,8 @@ export async function updateTaskOrder(
   taskId: string,
   newStatus: TaskStatus,
   newOrderIndex: number,
-  _oldStatus?: TaskStatus
+  _oldStatus?: TaskStatus,
+  options?: { revalidate?: boolean }
 ) {
   await requireAuth();
   const supabase = await createClient();
@@ -269,8 +268,9 @@ export async function updateTaskOrder(
     return { error: error.message };
   }
 
-  revalidatePath('/dashboard');
-  revalidatePath('/project');
-  revalidatePath('/context');
+  if (options?.revalidate !== false) {
+    revalidatePath('/dashboard');
+    revalidatePath('/context');
+  }
   return { success: true };
 }
