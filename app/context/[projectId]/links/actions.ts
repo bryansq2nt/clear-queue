@@ -9,21 +9,31 @@ import {
   validateProjectLinkUrl,
   validateProjectLinkTitle,
   isValidProjectLinkType,
-  isValidProjectLinkSection,
   normalizeTags,
 } from '@/lib/validation/project-links';
 
 const PROJECT_LINKS_SELECT =
-  'id, project_id, owner_id, linked_task_id, title, description, url, provider, link_type, section, tags, pinned, sort_order, open_in_new_tab, archived_at, created_at, updated_at';
+  'id, project_id, owner_id, linked_task_id, category_id, title, description, url, provider, link_type, section, tags, pinned, sort_order, open_in_new_tab, archived_at, created_at, updated_at';
 
 type ProjectLinkRow = Database['public']['Tables']['project_links']['Row'];
 type ProjectLinkInsert =
   Database['public']['Tables']['project_links']['Insert'];
 type ProjectLinkUpdate =
   Database['public']['Tables']['project_links']['Update'];
+type LinkCategoryRow = Database['public']['Tables']['link_categories']['Row'];
+
+const DEFAULT_CATEGORY_NAMES = [
+  'Delivery',
+  'Infrastructure',
+  'Product',
+  'Marketing',
+  'Operations',
+  'Client',
+  'Other',
+] as const;
 
 export type ListProjectLinksParams = {
-  section?: Database['public']['Enums']['project_link_section_enum'];
+  category_id?: string;
   includeArchived?: boolean;
 };
 
@@ -47,8 +57,8 @@ export const listProjectLinksAction = cache(
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
 
-    if (params?.section) {
-      query = query.eq('section', params.section);
+    if (params?.category_id) {
+      query = query.eq('category_id', params.category_id);
     }
     if (params?.includeArchived !== true) {
       query = query.is('archived_at', null);
@@ -63,13 +73,131 @@ export const listProjectLinksAction = cache(
   }
 );
 
+// ---------------------------------------------------------------------------
+// Link categories (user-owned; seed defaults when empty)
+// ---------------------------------------------------------------------------
+
+export const listLinkCategoriesAction = cache(
+  async (): Promise<LinkCategoryRow[]> => {
+    const user = await requireAuth();
+    const supabase = await createClient();
+
+    const { data: existing, error: fetchError } = await supabase
+      .from('link_categories')
+      .select('id, owner_id, name, sort_order, created_at, updated_at')
+      .eq('owner_id', user.id)
+      .order('sort_order', { ascending: true });
+
+    if (fetchError) {
+      console.error('Error fetching link categories:', fetchError);
+      return [];
+    }
+
+    if (existing && existing.length > 0) {
+      return existing as LinkCategoryRow[];
+    }
+
+    for (let i = 0; i < DEFAULT_CATEGORY_NAMES.length; i++) {
+      await supabase.from('link_categories').insert({
+        owner_id: user.id,
+        name: DEFAULT_CATEGORY_NAMES[i],
+        sort_order: i,
+      } as never);
+    }
+
+    const { data: seeded } = await supabase
+      .from('link_categories')
+      .select('id, owner_id, name, sort_order, created_at, updated_at')
+      .eq('owner_id', user.id)
+      .order('sort_order', { ascending: true });
+
+    return (seeded as LinkCategoryRow[]) ?? [];
+  }
+);
+
+export async function createLinkCategoryAction(
+  name: string
+): Promise<{ error?: string; data?: LinkCategoryRow }> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const trimmed = name?.trim();
+  if (!trimmed) return { error: 'Category name is required' };
+
+  const { data: max } = await supabase
+    .from('link_categories')
+    .select('sort_order')
+    .eq('owner_id', user.id)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const sort_order =
+    ((max as { sort_order: number } | null)?.sort_order ?? -1) + 1;
+
+  const { data, error } = await supabase
+    .from('link_categories')
+    .insert({ owner_id: user.id, name: trimmed, sort_order } as never)
+    .select('id, owner_id, name, sort_order, created_at, updated_at')
+    .single();
+
+  if (error) return { error: error.message };
+  return { data: data as LinkCategoryRow };
+}
+
+export async function updateLinkCategoryAction(
+  categoryId: string,
+  name: string
+): Promise<{ error?: string; data?: LinkCategoryRow }> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const trimmed = name?.trim();
+  if (!trimmed) return { error: 'Category name is required' };
+
+  const { data, error } = await supabase
+    .from('link_categories')
+    .update({ name: trimmed } as never)
+    .eq('id', categoryId)
+    .eq('owner_id', user.id)
+    .select('id, owner_id, name, sort_order, created_at, updated_at')
+    .single();
+
+  if (error) return { error: error.message };
+  return { data: data as LinkCategoryRow };
+}
+
+export async function deleteLinkCategoryAction(
+  categoryId: string
+): Promise<{ error?: string }> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { error: linksError } = await supabase
+    .from('project_links')
+    .delete()
+    .eq('category_id', categoryId)
+    .eq('owner_id', user.id);
+
+  if (linksError) return { error: linksError.message };
+
+  const { error: catError } = await supabase
+    .from('link_categories')
+    .delete()
+    .eq('id', categoryId)
+    .eq('owner_id', user.id);
+
+  if (catError) return { error: catError.message };
+  return {};
+}
+
 export type CreateProjectLinkInput = {
   title: string;
   url: string;
   description?: string | null;
   provider?: string | null;
   link_type: Database['public']['Enums']['project_link_type_enum'];
-  section: Database['public']['Enums']['project_link_section_enum'];
+  category_id: string;
   tags?: string[];
   pinned?: boolean;
   open_in_new_tab?: boolean;
@@ -95,19 +223,28 @@ export async function createProjectLinkAction(
   if (!isValidProjectLinkType(input.link_type)) {
     return { error: 'Invalid link type' };
   }
-  if (!isValidProjectLinkSection(input.section)) {
-    return { error: 'Invalid section' };
-  }
+
+  const categoryId = input.category_id?.trim();
+  if (!categoryId) return { error: 'Category is required' };
+
+  const { data: cat } = await supabase
+    .from('link_categories')
+    .select('id')
+    .eq('id', categoryId)
+    .eq('owner_id', user.id)
+    .single();
+  if (!cat) return { error: 'Category not found or access denied' };
 
   const payload: ProjectLinkInsert = {
     project_id: pid,
     owner_id: user.id,
+    category_id: categoryId,
     title,
     url,
     description: input.description?.trim() || null,
     provider: input.provider?.trim() || null,
     link_type: input.link_type,
-    section: input.section,
+    section: null,
     tags: normalizeTags(input.tags),
     pinned: input.pinned ?? false,
     open_in_new_tab: input.open_in_new_tab ?? true,
@@ -135,7 +272,7 @@ export type UpdateProjectLinkInput = {
   description?: string | null;
   provider?: string | null;
   link_type?: Database['public']['Enums']['project_link_type_enum'];
-  section?: Database['public']['Enums']['project_link_section_enum'];
+  category_id?: string | null;
   tags?: string[];
   pinned?: boolean;
   open_in_new_tab?: boolean;
@@ -176,10 +313,21 @@ export async function updateProjectLinkAction(
       return { error: 'Invalid link type' };
     updates.link_type = input.link_type;
   }
-  if (input.section !== undefined) {
-    if (!isValidProjectLinkSection(input.section))
-      return { error: 'Invalid section' };
-    updates.section = input.section;
+  if (input.category_id !== undefined) {
+    if (input.category_id === null || input.category_id === '') {
+      updates.category_id = null;
+      updates.section = null;
+    } else {
+      const user = await requireAuth();
+      const { data: cat } = await supabase
+        .from('link_categories')
+        .select('id')
+        .eq('id', input.category_id)
+        .eq('owner_id', user.id)
+        .single();
+      if (!cat) return { error: 'Category not found or access denied' };
+      updates.category_id = input.category_id;
+    }
   }
   if (input.tags !== undefined) updates.tags = normalizeTags(input.tags);
   if (input.pinned !== undefined) updates.pinned = input.pinned;

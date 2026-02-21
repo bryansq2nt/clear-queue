@@ -14,6 +14,7 @@ export type CacheKey =
   | { type: 'board'; projectId: string }
   | { type: 'notes'; projectId: string }
   | { type: 'links'; projectId: string }
+  | { type: 'linkCategories'; projectId: string }
   | { type: 'ideas'; projectId: string }
   | { type: 'owner'; projectId: string }
   | { type: 'budgets'; projectId: string }

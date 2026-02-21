@@ -309,18 +309,47 @@ export type Database = {
           created_at?: string;
         };
       };
+      link_categories: {
+        Row: {
+          id: string;
+          owner_id: string;
+          name: string;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          name: string;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          owner_id?: string;
+          name?: string;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       project_links: {
         Row: {
           id: string;
           project_id: string;
           owner_id: string;
           linked_task_id: string | null;
+          category_id: string | null;
           title: string;
           description: string | null;
           url: string;
           provider: string | null;
           link_type: Database['public']['Enums']['project_link_type_enum'];
-          section: Database['public']['Enums']['project_link_section_enum'];
+          section:
+            | Database['public']['Enums']['project_link_section_enum']
+            | null;
           tags: string[];
           pinned: boolean;
           sort_order: number;
@@ -336,12 +365,15 @@ export type Database = {
           project_id: string;
           owner_id: string;
           linked_task_id?: string | null;
+          category_id?: string | null;
           title: string;
           description?: string | null;
           url: string;
           provider?: string | null;
           link_type: Database['public']['Enums']['project_link_type_enum'];
-          section: Database['public']['Enums']['project_link_section_enum'];
+          section?:
+            | Database['public']['Enums']['project_link_section_enum']
+            | null;
           tags?: string[];
           pinned?: boolean;
           sort_order?: number;
@@ -357,12 +389,15 @@ export type Database = {
           project_id?: string;
           owner_id?: string;
           linked_task_id?: string | null;
+          category_id?: string | null;
           title?: string;
           description?: string | null;
           url?: string;
           provider?: string | null;
           link_type?: Database['public']['Enums']['project_link_type_enum'];
-          section?: Database['public']['Enums']['project_link_section_enum'];
+          section?:
+            | Database['public']['Enums']['project_link_section_enum']
+            | null;
           tags?: string[];
           pinned?: boolean;
           sort_order?: number;

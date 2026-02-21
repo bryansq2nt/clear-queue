@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useCallback } from 'react';
 import { useI18n } from '@/components/I18nProvider';
 import { Database } from '@/lib/supabase/types';
-import { LINK_TYPES, SECTIONS } from '@/lib/validation/project-links';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +13,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -22,12 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { createProjectLinkAction, updateProjectLinkAction } from './actions';
+import {
+  createProjectLinkAction,
+  updateProjectLinkAction,
+  listLinkCategoriesAction,
+  createLinkCategoryAction,
+  updateLinkCategoryAction,
+  deleteLinkCategoryAction,
+} from './actions';
 import { normalizeTags } from '@/lib/validation/project-links';
+import { Settings2, Pencil, Trash2, Plus } from 'lucide-react';
 
 type ProjectLinkRow = Database['public']['Tables']['project_links']['Row'];
-type Section = Database['public']['Enums']['project_link_section_enum'];
-type LinkType = Database['public']['Enums']['project_link_type_enum'];
+type LinkCategoryRow = Database['public']['Tables']['link_categories']['Row'];
 
 interface LinkEditDialogProps {
   open: boolean;
@@ -35,11 +40,13 @@ interface LinkEditDialogProps {
   projectId: string;
   mode: 'create' | 'edit';
   link?: ProjectLinkRow | null;
-  onSuccess: () => void;
+  onSuccess: (payload?: {
+    created?: ProjectLinkRow;
+    updated?: ProjectLinkRow;
+    categoryDeleted?: string;
+  }) => void;
+  onCategoriesUpdated?: (categories: LinkCategoryRow[]) => void;
 }
-
-const SECTION_ORDER: Section[] = [...SECTIONS];
-const LINK_TYPE_ORDER: LinkType[] = [...LINK_TYPES];
 
 export default function LinkEditDialog({
   open,
@@ -48,58 +55,130 @@ export default function LinkEditDialog({
   mode,
   link,
   onSuccess,
+  onCategoriesUpdated,
 }: LinkEditDialogProps) {
   const { t } = useI18n();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  const [categories, setCategories] = useState<LinkCategoryRow[]>([]);
+  const [showManageCategories, setShowManageCategories] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
+    null
+  );
+  const [editingCategoryName, setEditingCategoryName] = useState('');
+  const [categoryToDelete, setCategoryToDelete] =
+    useState<LinkCategoryRow | null>(null);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+
   const [title, setTitle] = useState(link?.title ?? '');
   const [url, setUrl] = useState(link?.url ?? '');
-  const [description, setDescription] = useState(link?.description ?? '');
-  const [provider, setProvider] = useState(link?.provider ?? '');
-  const [section, setSection] = useState<Section>(link?.section ?? 'other');
-  const [linkType, setLinkType] = useState<LinkType>(
-    link?.link_type ?? 'resource'
-  );
+  const [categoryId, setCategoryId] = useState<string>(link?.category_id ?? '');
   const [tagsStr, setTagsStr] = useState(
     link?.tags?.length ? link.tags.join(', ') : ''
   );
-  const [pinned, setPinned] = useState(link?.pinned ?? false);
-  const [openInNewTab, setOpenInNewTab] = useState(
-    link?.open_in_new_tab ?? true
-  );
+
+  const loadCategories = useCallback(async () => {
+    const data = await listLinkCategoriesAction();
+    setCategories(data);
+    if (data.length > 0) setCategoryId((prev) => (prev ? prev : data[0].id));
+  }, []);
 
   useEffect(() => {
     if (open) {
+      loadCategories();
       setTitle(link?.title ?? '');
       setUrl(link?.url ?? '');
-      setDescription(link?.description ?? '');
-      setProvider(link?.provider ?? '');
-      setSection(link?.section ?? 'other');
-      setLinkType(link?.link_type ?? 'resource');
+      setCategoryId(link?.category_id ?? '');
       setTagsStr(link?.tags?.length ? link.tags.join(', ') : '');
-      setPinned(link?.pinned ?? false);
-      setOpenInNewTab(link?.open_in_new_tab ?? true);
       setError(null);
+      setShowManageCategories(false);
+      setEditingCategoryId(null);
+      setNewCategoryName('');
     }
-  }, [open, link]);
+  }, [open, link, loadCategories]);
+
+  useEffect(() => {
+    if (open && categories.length > 0 && !categoryId) {
+      setCategoryId(categories[0].id);
+    }
+  }, [open, categories, categoryId]);
 
   const resetForm = () => {
     setTitle(link?.title ?? '');
     setUrl(link?.url ?? '');
-    setDescription(link?.description ?? '');
-    setProvider(link?.provider ?? '');
-    setSection(link?.section ?? 'other');
-    setLinkType(link?.link_type ?? 'resource');
+    setCategoryId(link?.category_id ?? '');
     setTagsStr(link?.tags?.length ? link.tags.join(', ') : '');
-    setPinned(link?.pinned ?? false);
-    setOpenInNewTab(link?.open_in_new_tab ?? true);
     setError(null);
   };
 
   const handleOpenChange = (next: boolean) => {
     if (!next) resetForm();
     onOpenChange(next);
+  };
+
+  const handleAddCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    const result = await createLinkCategoryAction(name);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setNewCategoryName('');
+    if (result.data) {
+      setCategories((prev) => [...prev, result.data!]);
+      setCategoryId(result.data.id);
+    }
+    setShowManageCategories(false);
+    const data = await listLinkCategoriesAction();
+    setCategories(data);
+    onCategoriesUpdated?.(data);
+  };
+
+  const handleStartEditCategory = (cat: LinkCategoryRow) => {
+    setEditingCategoryId(cat.id);
+    setEditingCategoryName(cat.name);
+  };
+
+  const handleSaveEditCategory = async () => {
+    if (!editingCategoryId) return;
+    const name = editingCategoryName.trim();
+    if (!name) return;
+    const result = await updateLinkCategoryAction(editingCategoryId, name);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setEditingCategoryId(null);
+    const next = await listLinkCategoriesAction();
+    setCategories(next);
+    onCategoriesUpdated?.(next);
+  };
+
+  const handleDeleteCategoryClick = (cat: LinkCategoryRow) => {
+    setCategoryToDelete(cat);
+  };
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    setIsDeletingCategory(true);
+    const result = await deleteLinkCategoryAction(categoryToDelete.id);
+    setIsDeletingCategory(false);
+    setCategoryToDelete(null);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    if (categoryId === categoryToDelete.id)
+      setCategoryId(
+        categories.find((c) => c.id !== categoryToDelete.id)?.id ?? ''
+      );
+    const next = await listLinkCategoriesAction();
+    setCategories(next);
+    onCategoriesUpdated?.(next);
+    onSuccess({ categoryDeleted: categoryToDelete.id });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -114,198 +193,277 @@ export default function LinkEditDialog({
 
     startTransition(async () => {
       if (mode === 'create') {
+        if (!categoryId) {
+          setError(t('links.error_category_required'));
+          return;
+        }
         const result = await createProjectLinkAction(projectId, {
           title: title.trim(),
           url: url.trim(),
-          description: description.trim() || null,
-          provider: provider.trim() || null,
-          section,
-          link_type: linkType,
+          description: null,
+          provider: null,
+          category_id: categoryId,
+          link_type: 'resource',
           tags,
-          pinned,
-          open_in_new_tab: openInNewTab,
+          pinned: false,
+          open_in_new_tab: true,
         });
         if (result.error) {
           setError(result.error);
           return;
         }
         handleOpenChange(false);
-        onSuccess();
+        onSuccess(result.data ? { created: result.data } : undefined);
       } else if (link) {
         const result = await updateProjectLinkAction(link.id, {
           title: title.trim(),
           url: url.trim(),
-          description: description.trim() || null,
-          provider: provider.trim() || null,
-          section,
-          link_type: linkType,
+          category_id: categoryId || null,
           tags,
-          pinned,
-          open_in_new_tab: openInNewTab,
         });
         if (result.error) {
           setError(result.error);
           return;
         }
         handleOpenChange(false);
-        onSuccess();
+        onSuccess(result.data ? { updated: result.data } : undefined);
       }
     });
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {mode === 'create' ? t('links.add_link') : t('links.edit_link')}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="link-title">{t('links.title_placeholder')} *</Label>
-            <Input
-              id="link-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={t('links.title_placeholder')}
-              required
-              disabled={isPending}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="link-url">URL *</Label>
-            <Input
-              id="link-url"
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder={t('links.url_placeholder')}
-              required
-              disabled={isPending}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="link-description">
-              {t('links.description_placeholder')}
-            </Label>
-            <Textarea
-              id="link-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t('links.description_placeholder')}
-              rows={2}
-              disabled={isPending}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="link-provider">
-              {t('links.provider_placeholder')}
-            </Label>
-            <Input
-              id="link-provider"
-              value={provider}
-              onChange={(e) => setProvider(e.target.value)}
-              placeholder={t('links.provider_placeholder')}
-              disabled={isPending}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {mode === 'create' ? t('links.add_link') : t('links.edit_link')}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
             <div className="space-y-2">
-              <Label>{t('links.section_label')}</Label>
+              <Label htmlFor="link-title">
+                {t('links.title_placeholder')} *
+              </Label>
+              <Input
+                id="link-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={t('links.title_placeholder')}
+                required
+                disabled={isPending}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="link-url">URL *</Label>
+              <Input
+                id="link-url"
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder={t('links.url_placeholder')}
+                required
+                disabled={isPending}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>{t('links.category_label')}</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground h-8 px-2"
+                  onClick={() => setShowManageCategories((v) => !v)}
+                >
+                  <Settings2 className="w-4 h-4 mr-1" />
+                  {showManageCategories
+                    ? t('links.hide_manage')
+                    : t('links.manage_categories')}
+                </Button>
+              </div>
               <Select
-                value={section}
-                onValueChange={(v) => setSection(v as Section)}
+                value={categoryId}
+                onValueChange={setCategoryId}
                 disabled={isPending}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder={t('links.select_category')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {SECTION_ORDER.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {t(`links.section_${s}`)}
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+
+              {showManageCategories && (
+                <div className="rounded-lg border border-border p-3 space-y-3 bg-muted/30">
+                  <div className="flex gap-2">
+                    <Input
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCategory();
+                        }
+                      }}
+                      placeholder={t('links.new_category_placeholder')}
+                      disabled={isPending}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={handleAddCategory}
+                      disabled={isPending || !newCategoryName.trim()}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <ul className="space-y-2 max-h-32 overflow-y-auto">
+                    {categories.map((cat) => (
+                      <li
+                        key={cat.id}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        {editingCategoryId === cat.id ? (
+                          <>
+                            <Input
+                              value={editingCategoryName}
+                              onChange={(e) =>
+                                setEditingCategoryName(e.target.value)
+                              }
+                              className="h-8 flex-1"
+                              autoFocus
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleSaveEditCategory()}
+                            >
+                              {t('common.save')}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => setEditingCategoryId(null)}
+                            >
+                              {t('common.cancel')}
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1 truncate">{cat.name}</span>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-muted-foreground"
+                              onClick={() => handleStartEditCategory(cat)}
+                              aria-label={t('common.edit')}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-destructive"
+                              onClick={() => handleDeleteCategoryClick(cat)}
+                              aria-label={t('common.delete')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
+
             <div className="space-y-2">
-              <Label>{t('links.type_label')}</Label>
-              <Select
-                value={linkType}
-                onValueChange={(v) => setLinkType(v as LinkType)}
+              <Label htmlFor="link-tags">Tags (comma-separated)</Label>
+              <Input
+                id="link-tags"
+                value={tagsStr}
+                onChange={(e) => setTagsStr(e.target.value)}
+                placeholder="figma, design, reference"
+                disabled={isPending}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
                 disabled={isPending}
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {LINK_TYPE_ORDER.map((ty) => (
-                    <SelectItem key={ty} value={ty}>
-                      {t(`links.type_${ty}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="link-tags">Tags (comma-separated)</Label>
-            <Input
-              id="link-tags"
-              value={tagsStr}
-              onChange={(e) => setTagsStr(e.target.value)}
-              placeholder="figma, design, reference"
-              disabled={isPending}
-            />
-          </div>
-          <div className="flex flex-wrap gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={pinned}
-                onChange={(e) => setPinned(e.target.checked)}
-                disabled={isPending}
-                className="rounded border-input"
-              />
-              <span className="text-sm">{t('links.pinned')}</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={openInNewTab}
-                onChange={(e) => setOpenInNewTab(e.target.checked)}
-                disabled={isPending}
-                className="rounded border-input"
-              />
-              <span className="text-sm">{t('links.open_in_new_tab')}</span>
-            </label>
-          </div>
+                {t('common.cancel')}
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending
+                  ? mode === 'create'
+                    ? t('links.creating')
+                    : t('links.updating')
+                  : t('links.save')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!categoryToDelete}
+        onOpenChange={(open) =>
+          !open && !isDeletingCategory && setCategoryToDelete(null)
+        }
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('links.delete_category_dialog_title')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            {t('links.delete_category_dialog_message')}
+          </p>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isPending}
+              onClick={() => setCategoryToDelete(null)}
+              disabled={isDeletingCategory}
             >
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending
-                ? mode === 'create'
-                  ? t('links.creating')
-                  : t('links.updating')
-                : t('links.save')}
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmDeleteCategory}
+              disabled={isDeletingCategory}
+            >
+              {isDeletingCategory
+                ? t('common.loading')
+                : t('links.delete_category_confirm_button')}
             </Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
