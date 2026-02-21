@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 
@@ -130,7 +131,15 @@ export async function createClientAction(
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'clients',
+      action: 'createClientAction',
+      userIntent: 'Crear cliente',
+      expected: 'El cliente se crea y aparece en la lista',
+    });
+    return { error: error.message };
+  }
   revalidatePath('/clients');
   revalidatePath('/clients/[id]');
   return { data: data as Client };
@@ -166,7 +175,16 @@ export async function updateClientAction(
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'clients',
+      action: 'updateClientAction',
+      userIntent: 'Actualizar datos del cliente',
+      expected: 'Los cambios se guardan',
+      extra: { clientId: id },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/clients');
   revalidatePath(`/clients/${id}`);
   return { data: data as Client };
@@ -180,7 +198,16 @@ export async function deleteClientAction(
 
   const { error } = await supabase.from('clients').delete().eq('id', id);
 
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'clients',
+      action: 'deleteClientAction',
+      userIntent: 'Eliminar cliente',
+      expected: 'El cliente se elimina',
+      extra: { clientId: id },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/clients');
   revalidatePath('/clients/[id]');
   return {};
@@ -321,7 +348,16 @@ export async function createBusinessAction(
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'clients',
+      action: 'createBusinessAction',
+      userIntent: 'Crear negocio',
+      expected: 'El negocio se crea bajo el cliente',
+      extra: { clientId },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/clients');
   revalidatePath(`/clients/${clientId}`);
   return { data: data as Business };
@@ -362,7 +398,16 @@ export async function updateBusinessAction(
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'clients',
+      action: 'updateBusinessAction',
+      userIntent: 'Actualizar negocio',
+      expected: 'Los cambios se guardan',
+      extra: { businessId: id },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/clients');
   revalidatePath('/clients/[id]');
   return { data: data as Business };
@@ -411,7 +456,16 @@ export async function updateBusinessFieldsAction(
     .eq('id', id)
     .select()
     .single();
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'clients',
+      action: 'updateBusinessFieldsAction',
+      userIntent: 'Actualizar campos del negocio',
+      expected: 'Los cambios se guardan',
+      extra: { businessId: id },
+    });
+    return { error: error.message };
+  }
   // Ownership: the business owns its projects. When the business's client changes,
   // cascade client_id to all projects linked to this business.
   if (payload.client_id !== undefined) {
@@ -434,7 +488,16 @@ export async function deleteBusinessAction(
   await requireAuth();
   const supabase = await createClient();
   const { error } = await supabase.from('businesses').delete().eq('id', id);
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'clients',
+      action: 'deleteBusinessAction',
+      userIntent: 'Eliminar negocio',
+      expected: 'El negocio se elimina',
+      extra: { businessId: id },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/clients');
   revalidatePath('/clients/[id]');
   return {};
@@ -482,7 +545,16 @@ export async function createClientLinkAction(
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'clients',
+      action: 'createClientLinkAction',
+      userIntent: 'Añadir enlace al cliente',
+      expected: 'El enlace se guarda',
+      extra: { clientId },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/clients');
   revalidatePath(`/clients/${clientId}`);
   return { data: data as ClientLink };
@@ -510,7 +582,16 @@ export async function updateClientLinkAction(
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'clients',
+      action: 'updateClientLinkAction',
+      userIntent: 'Actualizar enlace del cliente',
+      expected: 'Los cambios se guardan',
+      extra: { linkId: id },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/clients');
   revalidatePath('/clients/[id]');
   return { data: data as ClientLink };
@@ -522,7 +603,16 @@ export async function deleteClientLinkAction(
   await requireAuth();
   const supabase = await createClient();
   const { error } = await supabase.from('client_links').delete().eq('id', id);
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'clients',
+      action: 'deleteClientLinkAction',
+      userIntent: 'Eliminar enlace del cliente',
+      expected: 'El enlace se elimina',
+      extra: { linkId: id },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/clients');
   revalidatePath('/clients/[id]');
   return {};

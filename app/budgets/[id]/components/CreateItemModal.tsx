@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import { X, Package } from 'lucide-react';
 import { createItem } from '../actions';
 import { Database } from '@/lib/supabase/types';
@@ -88,7 +89,13 @@ export function CreateItemModal({
       onCreated?.(created as BudgetItem);
       onClose();
     } catch (error) {
-      console.error('Error creating item:', error);
+      captureWithContext(error, {
+        module: 'budgets',
+        action: 'createItem',
+        userIntent: 'Crear ítem en la categoría',
+        expected: 'El ítem se crea y aparece en la lista',
+        extra: { budgetId, categoryId },
+      });
       alert('Failed to create item');
     } finally {
       setIsSubmitting(false);

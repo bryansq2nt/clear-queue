@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { captureWithContext } from '@/lib/sentry';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -15,6 +16,12 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
+    captureWithContext(error, {
+      module: 'api',
+      action: 'auth-callback',
+      userIntent: 'Canjear código de auth (ej. link de restablecer contraseña)',
+      expected: 'Sesión creada y redirección a /reset-password',
+    });
     return NextResponse.redirect(
       new URL(`/?error=${encodeURIComponent(error.message)}`, request.url)
     );

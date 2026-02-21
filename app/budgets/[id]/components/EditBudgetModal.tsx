@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import { X, Edit2 } from 'lucide-react';
 import { updateBudget } from '../../actions';
 
@@ -62,7 +63,13 @@ export function EditBudgetModal({
       onClose();
       onUpdated();
     } catch (err) {
-      console.error('Error updating budget:', err);
+      captureWithContext(err, {
+        module: 'budgets',
+        action: 'updateBudget',
+        userIntent: 'Actualizar presupuesto',
+        expected: 'Los cambios se guardan',
+        extra: { budgetId: budget.id },
+      });
       setError(t('budgets.update_error'));
     } finally {
       setIsSubmitting(false);

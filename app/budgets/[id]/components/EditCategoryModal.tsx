@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import { X, FolderPen } from 'lucide-react';
 import { updateCategory } from '../actions';
 
@@ -55,7 +56,13 @@ export function EditCategoryModal({
       onClose();
       onUpdated();
     } catch (error) {
-      console.error('Error updating category:', error);
+      captureWithContext(error, {
+        module: 'budgets',
+        action: 'updateCategory',
+        userIntent: 'Actualizar categoría',
+        expected: 'Los cambios se guardan',
+        extra: { budgetId, categoryId: category.id },
+      });
       alert('Failed to update category');
     } finally {
       setIsSubmitting(false);

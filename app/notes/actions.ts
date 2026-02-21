@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 
@@ -79,7 +80,16 @@ export async function createNote(params: {
     .select('id, owner_id, project_id, title, content, created_at, updated_at')
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'notes',
+      action: 'createNote',
+      userIntent: 'Crear nueva nota',
+      expected: 'La nota se crea y aparece en la lista',
+      extra: { project_id },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/notes');
   revalidatePath('/notes/[id]');
   revalidatePath('/context');
@@ -111,7 +121,16 @@ export async function updateNote(
     .select('id, owner_id, project_id, title, content, created_at, updated_at')
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'notes',
+      action: 'updateNote',
+      userIntent: 'Actualizar título o contenido de la nota',
+      expected: 'Los cambios se guardan',
+      extra: { noteId },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/notes');
   revalidatePath('/notes/[id]');
   revalidatePath('/context');
@@ -123,7 +142,16 @@ export async function deleteNote(noteId: string): Promise<{ error?: string }> {
   const supabase = await createClient();
 
   const { error } = await supabase.from('notes').delete().eq('id', noteId);
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'notes',
+      action: 'deleteNote',
+      userIntent: 'Eliminar nota',
+      expected: 'La nota se elimina',
+      extra: { noteId },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/notes');
   revalidatePath('/notes/[id]');
   revalidatePath('/context');
@@ -170,7 +198,16 @@ export async function addNoteLink(
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'notes',
+      action: 'addNoteLink',
+      userIntent: 'Añadir enlace a la nota',
+      expected: 'El enlace se guarda en la nota',
+      extra: { noteId },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/notes');
   revalidatePath(`/notes/${noteId}`);
   revalidatePath('/context');
@@ -184,7 +221,16 @@ export async function deleteNoteLink(
   const supabase = await createClient();
 
   const { error } = await supabase.from('note_links').delete().eq('id', linkId);
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'notes',
+      action: 'deleteNoteLink',
+      userIntent: 'Eliminar enlace de la nota',
+      expected: 'El enlace se elimina',
+      extra: { linkId },
+    });
+    return { error: error.message };
+  }
   revalidatePath('/notes');
   revalidatePath('/notes/[id]');
   revalidatePath('/context');

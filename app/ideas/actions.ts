@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { createIdea, updateIdea, deleteIdea } from '@/lib/idea-graph/ideas';
 
@@ -20,6 +21,12 @@ export async function createIdeaAction(formData: FormData) {
     revalidatePath('/context');
     return { data };
   } catch (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'createIdeaAction',
+      userIntent: 'Crear nueva idea',
+      expected: 'La idea se crea en el grafo',
+    });
     return {
       error: error instanceof Error ? error.message : 'Failed to create idea',
     };
@@ -48,6 +55,13 @@ export async function updateIdeaAction(formData: FormData) {
     revalidatePath('/context');
     return { data };
   } catch (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'updateIdeaAction',
+      userIntent: 'Actualizar idea',
+      expected: 'Los cambios se guardan',
+      extra: { ideaId: id },
+    });
     return {
       error: error instanceof Error ? error.message : 'Failed to update idea',
     };
@@ -67,6 +81,13 @@ export async function deleteIdeaAction(id: string) {
     revalidatePath('/context');
     return { success: true };
   } catch (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'deleteIdeaAction',
+      userIntent: 'Eliminar idea',
+      expected: 'La idea se elimina del grafo',
+      extra: { ideaId: id },
+    });
     return {
       error: error instanceof Error ? error.message : 'Failed to delete idea',
     };

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import { X, FolderPlus } from 'lucide-react';
 import { createCategory } from '../actions';
 import { Database } from '@/lib/supabase/types';
@@ -56,7 +57,13 @@ export function CreateCategoryModal({
       onCreated?.(created as BudgetCategory);
       onClose();
     } catch (error) {
-      console.error('Error creating category:', error);
+      captureWithContext(error, {
+        module: 'budgets',
+        action: 'createCategory',
+        userIntent: 'Crear categoría en el presupuesto',
+        expected: 'La categoría se crea',
+        extra: { budgetId },
+      });
       alert('Failed to create category');
     } finally {
       setIsSubmitting(false);

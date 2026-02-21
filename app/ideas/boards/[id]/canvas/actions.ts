@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { updateBoardItemPosition } from '@/lib/idea-graph/boards';
 
@@ -32,6 +33,13 @@ export async function updatePositionAction(
     revalidatePath('/context');
     return { data };
   } catch (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'updatePositionAction',
+      userIntent: 'Mover nodo en el canvas',
+      expected: 'La posición del nodo se actualiza',
+      extra: { boardItemId },
+    });
     return {
       error:
         error instanceof Error ? error.message : 'Failed to update position',

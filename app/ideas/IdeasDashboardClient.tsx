@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -117,7 +118,13 @@ export default function IdeasDashboardClient({
         );
       }
     } catch (error) {
-      console.error('Failed to load board data:', error);
+      captureWithContext(error, {
+        module: 'ideas',
+        action: 'loadBoardData',
+        userIntent: 'Cargar datos del board de ideas',
+        expected: 'Se muestran nodos y conexiones del canvas',
+        extra: { boardId },
+      });
     } finally {
       setLoading(false);
     }

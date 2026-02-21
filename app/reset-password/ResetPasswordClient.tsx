@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { captureWithContext } from '@/lib/sentry';
 import { getSessionStatus, updatePassword } from '@/app/actions/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,9 +48,15 @@ export default function ResetPasswordClient() {
           setReady(true);
         })
         .catch((err) => {
-          setError(
-            err?.error || err?.message || 'Invalid or expired reset link.'
-          );
+          const message =
+            err?.error || err?.message || 'Invalid or expired reset link.';
+          captureWithContext(err instanceof Error ? err : new Error(message), {
+            module: 'auth',
+            action: 'set-recovery-session',
+            userIntent: 'Restablecer sesión desde el link de recuperación',
+            expected: 'Sesión establecida y formulario de nueva contraseña',
+          });
+          setError(message);
         });
     } else {
       getSessionStatus().then(({ hasSession }) => {

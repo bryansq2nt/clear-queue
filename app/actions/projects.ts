@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth, getUser } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { PROJECT_CATEGORIES, type ProjectCategory } from '@/lib/constants';
 import type { Database } from '@/lib/supabase/types';
@@ -89,6 +90,15 @@ export async function createProject(
     .single();
 
   if (error || !data) {
+    if (error) {
+      captureWithContext(error, {
+        module: 'projects',
+        action: 'createProject',
+        userIntent: 'Crear nuevo proyecto',
+        expected: 'El proyecto se crea y aparece en la lista',
+        extra: { category },
+      });
+    }
     return { ok: false, error: error?.message ?? 'Failed to create project' };
   }
 
@@ -158,6 +168,15 @@ export async function updateProject(
     .single();
 
   if (error || !data) {
+    if (error) {
+      captureWithContext(error, {
+        module: 'projects',
+        action: 'updateProject',
+        userIntent: 'Actualizar nombre, color o categoría del proyecto',
+        expected: 'Los cambios se guardan',
+        extra: { projectId: id },
+      });
+    }
     return { ok: false, error: error?.message ?? 'Failed to update project' };
   }
 
@@ -189,6 +208,15 @@ export async function linkBusinessToProject(
     .single();
 
   if (error || !data) {
+    if (error) {
+      captureWithContext(error, {
+        module: 'projects',
+        action: 'linkBusinessToProject',
+        userIntent: 'Vincular negocio al proyecto',
+        expected: 'El proyecto queda asociado al negocio',
+        extra: { projectId, businessId },
+      });
+    }
     return {
       ok: false,
       error: error?.message ?? 'Failed to link business to project',
@@ -216,6 +244,15 @@ export async function archiveProject(
     .single();
 
   if (error || !data) {
+    if (error) {
+      captureWithContext(error, {
+        module: 'projects',
+        action: 'archiveProject',
+        userIntent: 'Archivar proyecto',
+        expected: 'El proyecto pasa a estado archivado',
+        extra: { projectId: id },
+      });
+    }
     return { ok: false, error: error?.message ?? 'Failed to archive project' };
   }
 
@@ -248,6 +285,15 @@ export async function unarchiveProject(
     .single();
 
   if (error || !data) {
+    if (error) {
+      captureWithContext(error, {
+        module: 'projects',
+        action: 'unarchiveProject',
+        userIntent: 'Desarchivar proyecto',
+        expected: 'El proyecto vuelve a la lista activa',
+        extra: { projectId: id },
+      });
+    }
     return {
       ok: false,
       error: error?.message ?? 'Failed to unarchive project',
@@ -267,6 +313,13 @@ export async function deleteProject(
   const { error } = await supabase.from('projects').delete().eq('id', id);
 
   if (error) {
+    captureWithContext(error, {
+      module: 'projects',
+      action: 'deleteProject',
+      userIntent: 'Eliminar proyecto',
+      expected: 'El proyecto se elimina de la lista',
+      extra: { projectId: id },
+    });
     return { ok: false, error: error.message };
   }
 

@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
@@ -48,7 +49,13 @@ export async function batchUpdatePositionsAction(
     revalidatePath('/context');
     return { success: true, succeeded, failed };
   } catch (error) {
-    console.error('Batch update error:', error);
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'batchUpdatePositionsAction',
+      userIntent: 'Guardar posiciones de nodos en el canvas',
+      expected: 'Las posiciones se persisten',
+      extra: { updateCount: updates.length },
+    });
     return {
       error: error instanceof Error ? error.message : 'Unknown error',
       success: false,

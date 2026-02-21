@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import { X, Package } from 'lucide-react';
 import { updateItem } from '../actions';
 import { Database } from '@/lib/supabase/types';
@@ -87,7 +88,13 @@ export function EditItemModal({
       onUpdated?.(updated as BudgetItem);
       onClose();
     } catch (error) {
-      console.error('Error updating item:', error);
+      captureWithContext(error, {
+        module: 'budgets',
+        action: 'updateItem',
+        userIntent: 'Actualizar ítem del presupuesto',
+        expected: 'Los cambios se guardan',
+        extra: { budgetId, itemId: item.id },
+      });
       alert('Failed to update item');
     } finally {
       setIsSubmitting(false);

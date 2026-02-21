@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 
@@ -36,6 +37,13 @@ export async function createTask(formData: FormData) {
   );
 
   if (error) {
+    captureWithContext(error, {
+      module: 'tasks',
+      action: 'createTask',
+      userIntent: 'Crear nueva tarea en el proyecto',
+      expected: 'La tarea se crea y aparece en la columna indicada',
+      extra: { projectId },
+    });
     return { error: error.message };
   }
 
@@ -73,6 +81,13 @@ export async function updateTask(id: string, formData: FormData) {
     .single();
 
   if (error) {
+    captureWithContext(error, {
+      module: 'tasks',
+      action: 'updateTask',
+      userIntent: 'Actualizar título, estado, prioridad o notas de la tarea',
+      expected: 'Los cambios se guardan y la UI se actualiza',
+      extra: { taskId: id },
+    });
     return { error: error.message };
   }
 
@@ -88,6 +103,13 @@ export async function deleteTask(id: string) {
   const { error } = await supabase.from('tasks').delete().eq('id', id);
 
   if (error) {
+    captureWithContext(error, {
+      module: 'tasks',
+      action: 'deleteTask',
+      userIntent: 'Eliminar la tarea',
+      expected: 'La tarea se elimina del tablero',
+      extra: { taskId: id },
+    });
     return { error: error.message };
   }
 
@@ -107,6 +129,13 @@ export async function deleteTasksByIds(ids: string[]) {
   const { error } = await supabase.from('tasks').delete().in('id', ids);
 
   if (error) {
+    captureWithContext(error, {
+      module: 'tasks',
+      action: 'deleteTasksByIds',
+      userIntent: 'Eliminar varias tareas',
+      expected: 'Las tareas seleccionadas se eliminan',
+      extra: { count: ids.length },
+    });
     return { error: error.message };
   }
 
@@ -265,6 +294,13 @@ export async function updateTaskOrder(
   );
 
   if (error) {
+    captureWithContext(error, {
+      module: 'board',
+      action: 'updateTaskOrder',
+      userIntent: 'Mover tarea a otra columna o reordenar',
+      expected: 'La tarea cambia de columna y el orden se persiste',
+      extra: { taskId, newStatus },
+    });
     return { error: error.message };
   }
 

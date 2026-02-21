@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import { Database } from '@/lib/supabase/types';
 import { DetailLayout } from '@/components/DetailLayout';
 import { Plus, FolderPlus, Package, ChevronLeft } from 'lucide-react';
@@ -86,7 +87,13 @@ export default function BudgetDetailClient({
       const data = await getBudgetWithData(budgetId);
       setBudgetData(data);
     } catch (error) {
-      console.error('Error loading budget:', error);
+      captureWithContext(error, {
+        module: 'budgets',
+        action: 'loadBudget',
+        userIntent: 'Cargar detalle del presupuesto',
+        expected: 'Se muestra el presupuesto con categorías e ítems',
+        extra: { budgetId },
+      });
       alert('Failed to load budget');
     } finally {
       setIsLoading(false);
@@ -290,8 +297,13 @@ export default function BudgetDetailClient({
         try {
           await reorderItems(budgetId, categoryId, itemIds);
         } catch (e) {
-          console.error('Failed to reorder items:', e);
-          // revert if the save fails
+          captureWithContext(e, {
+            module: 'budgets',
+            action: 'reorderItems',
+            userIntent: 'Reordenar ítems en la categoría',
+            expected: 'El orden se guarda',
+            extra: { budgetId, categoryId },
+          });
           setBudgetData((prev: any) =>
             prev ? { ...prev, categories: prevCategories } : prev
           );
@@ -329,8 +341,13 @@ export default function BudgetDetailClient({
         try {
           await reorderCategories(budgetId, nextIds);
         } catch (e) {
-          console.error('Failed to reorder categories:', e);
-          // revert if the save fails
+          captureWithContext(e, {
+            module: 'budgets',
+            action: 'reorderCategories',
+            userIntent: 'Reordenar categorías del presupuesto',
+            expected: 'El orden se guarda',
+            extra: { budgetId },
+          });
           setBudgetData((prev: any) =>
             prev ? { ...prev, categories: prevCategories } : prev
           );

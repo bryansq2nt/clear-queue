@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import {
   createConnection,
@@ -37,6 +38,13 @@ export async function createConnectionAction(
     revalidatePath('/context');
     return { data };
   } catch (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'createConnectionAction',
+      userIntent: 'Crear conexión entre ideas',
+      expected: 'La conexión se crea en el canvas',
+      extra: { fromIdeaId, toIdeaId },
+    });
     return {
       error:
         error instanceof Error ? error.message : 'Failed to create connection',
@@ -60,6 +68,13 @@ export async function deleteConnectionAction(connectionId: string) {
     revalidatePath('/context');
     return { success: true };
   } catch (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'deleteConnectionAction',
+      userIntent: 'Eliminar conexión entre ideas',
+      expected: 'La conexión se elimina del canvas',
+      extra: { connectionId },
+    });
     return {
       error:
         error instanceof Error ? error.message : 'Failed to delete connection',

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { captureWithContext } from '@/lib/sentry';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -20,6 +21,12 @@ export async function POST(request: Request) {
   });
 
   if (error) {
+    captureWithContext(error, {
+      module: 'api',
+      action: 'set-recovery-session',
+      userIntent: 'Restablecer sesión tras recuperación de contraseña',
+      expected: 'Sesión establecida y redirección correcta',
+    });
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 

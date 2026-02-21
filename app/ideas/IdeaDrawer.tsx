@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -78,7 +79,13 @@ export default function IdeaDrawer({
       setProjectLinks(result.projectLinks ?? []);
       setAvailableProjects(result.availableProjects ?? []);
     } catch (error) {
-      console.error('Failed to load idea data:', error);
+      captureWithContext(error, {
+        module: 'ideas',
+        action: 'loadIdeaData',
+        userIntent: 'Cargar detalle de la idea',
+        expected: 'Se muestra la idea con vínculos a proyectos',
+        extra: { ideaId },
+      });
     } finally {
       setLoading(false);
     }

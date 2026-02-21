@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import { useRouter } from 'next/navigation';
 import { batchUpdatePositionsAction } from './boards/[id]/canvas/batch-actions';
 import {
@@ -239,7 +240,13 @@ export default function IdeaGraphCanvas({
             pendingUpdates.current.clear();
           }
         } catch (error) {
-          console.error('Batch save error:', error);
+          captureWithContext(error, {
+            module: 'ideas',
+            action: 'batchSavePositions',
+            userIntent: 'Guardar posiciones de nodos en el canvas',
+            expected: 'Las posiciones se persisten',
+            extra: { updateCount: updates.length },
+          });
         }
       }, 1000); // 1 segundo después del último movimiento
     },

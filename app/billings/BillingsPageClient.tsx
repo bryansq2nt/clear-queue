@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import { Database } from '@/lib/supabase/types';
 import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
@@ -197,6 +198,12 @@ export default function BillingsPageClient({
       closeForm();
       loadBillings();
     } catch (err) {
+      captureWithContext(err, {
+        module: 'billings',
+        action: 'createOrUpdateCharge',
+        userIntent: 'Guardar cobro o factura',
+        expected: 'El cobro se guarda y aparece en la lista',
+      });
       alert(err instanceof Error ? err.message : 'Error saving charge');
     }
   }

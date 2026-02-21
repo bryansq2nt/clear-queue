@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import {
   Package,
   TrendingUp,
@@ -87,7 +88,13 @@ export function BudgetCard({
         onDeleted();
       }
     } catch (error) {
-      console.error('Error deleting budget:', error);
+      captureWithContext(error, {
+        module: 'budgets',
+        action: 'deleteBudget',
+        userIntent: 'Eliminar presupuesto',
+        expected: 'El presupuesto se elimina de la lista',
+        extra: { budgetId: budget.id },
+      });
       alert(t('budgets.delete_error'));
       setIsDeleting(false);
     }
@@ -130,7 +137,13 @@ export function BudgetCard({
         setIsDuplicating(false);
       }
     } catch (error) {
-      console.error('Error duplicating budget:', error);
+      captureWithContext(error, {
+        module: 'budgets',
+        action: 'duplicateBudget',
+        userIntent: 'Duplicar presupuesto',
+        expected: 'Se crea una copia y se navega al nuevo',
+        extra: { budgetId: budget.id },
+      });
       alert('Failed to duplicate budget');
       setIsDuplicating(false);
     }

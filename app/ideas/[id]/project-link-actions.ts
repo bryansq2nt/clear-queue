@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import {
   linkIdeaToProject,
@@ -34,6 +35,13 @@ export async function linkIdeaToProjectAction(
     revalidatePath(`/context/${projectId}`);
     return { data };
   } catch (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'linkIdeaToProjectAction',
+      userIntent: 'Vincular idea al proyecto',
+      expected: 'La idea queda vinculada al proyecto',
+      extra: { ideaId, projectId },
+    });
     return {
       error:
         error instanceof Error
@@ -57,6 +65,13 @@ export async function unlinkIdeaFromProjectAction(linkId: string) {
     revalidatePath('/context');
     return { success: true };
   } catch (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'unlinkIdeaFromProjectAction',
+      userIntent: 'Desvincular idea del proyecto',
+      expected: 'El vínculo se elimina',
+      extra: { linkId },
+    });
     return {
       error:
         error instanceof Error

@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import {
   createBoard,
@@ -26,6 +27,12 @@ export async function createBoardAction(formData: FormData) {
     revalidatePath('/context');
     return { data };
   } catch (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'createBoardAction',
+      userIntent: 'Crear nuevo board de ideas',
+      expected: 'El board se crea y aparece en la lista',
+    });
     return {
       error: error instanceof Error ? error.message : 'Failed to create board',
     };
@@ -61,6 +68,13 @@ export async function updateBoardAction(formData: FormData) {
     revalidatePath('/context');
     return { data };
   } catch (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'updateBoardAction',
+      userIntent: 'Actualizar board',
+      expected: 'Los cambios se guardan',
+      extra: { boardId: id },
+    });
     return {
       error: error instanceof Error ? error.message : 'Failed to update board',
     };
@@ -81,6 +95,13 @@ export async function deleteBoardAction(id: string) {
     revalidatePath('/context');
     return { success: true };
   } catch (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'deleteBoardAction',
+      userIntent: 'Eliminar board',
+      expected: 'El board se elimina',
+      extra: { boardId: id },
+    });
     return {
       error: error instanceof Error ? error.message : 'Failed to delete board',
     };
@@ -119,6 +140,13 @@ export async function addIdeaToBoardAction(formData: FormData) {
     revalidatePath('/context');
     return { data };
   } catch (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'addIdeaToBoardAction',
+      userIntent: 'Añadir idea al board',
+      expected: 'La idea aparece en el canvas del board',
+      extra: { boardId, ideaId },
+    });
     return {
       error:
         error instanceof Error ? error.message : 'Failed to add idea to board',

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import {
   ChevronDown,
   ChevronRight,
@@ -97,7 +98,13 @@ export function CategorySection({
       await deleteCategory(category.id, budgetId);
       onRefresh();
     } catch (error) {
-      console.error('Error deleting category:', error);
+      captureWithContext(error, {
+        module: 'budgets',
+        action: 'deleteCategory',
+        userIntent: 'Eliminar categoría del presupuesto',
+        expected: 'La categoría y sus ítems se eliminan',
+        extra: { budgetId, categoryId: category.id },
+      });
       alert('Failed to delete category');
       setIsDeleting(false);
     }

@@ -34,14 +34,15 @@ La documentación está organizada por categorías bajo `docs/`.
 
 ## Planes
 
-| Documento                                                                                 | Descripción                                                |
-| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| [Plan de implementación (fases)](plans/IMPLEMENTATION_PLAN.md)                            | Estrategia por fases a partir de AUDIT_SUMMARY.            |
-| [Ruta recreación UI](plans/RUTA_RECREACION_UI.md)                                         | Ruta de recreación de UI (Fases B–F).                      |
-| [Plan Kanban optimista sin refresh](plans/plan-kanban-optimistic-no-refresh.md)           | Optimistic UI y manejo de errores en el board de contexto. |
-| [Plan navegación instantánea y skeletons](plans/plan-instant-navigation-and-skeletons.md) | Navegación y skeletons.                                    |
-| [Plan fase 3 cache fix](plans/plan-fase3-cache-fix.md)                                    | Fix del cache de sesión por contexto.                      |
-| [Plan owner / client / business](plans/plan-owner-add-client-business.md)                 | Añadir responsable y cliente/negocio al proyecto.          |
+| Documento                                                                                 | Descripción                                                          |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| [Plan de implementación (fases)](plans/IMPLEMENTATION_PLAN.md)                            | Estrategia por fases a partir de AUDIT_SUMMARY.                      |
+| [Ruta recreación UI](plans/RUTA_RECREACION_UI.md)                                         | Ruta de recreación de UI (Fases B–F).                                |
+| [Plan Kanban optimista sin refresh](plans/plan-kanban-optimistic-no-refresh.md)           | Optimistic UI y manejo de errores en el board de contexto.           |
+| [Plan navegación instantánea y skeletons](plans/plan-instant-navigation-and-skeletons.md) | Navegación y skeletons.                                              |
+| [Plan fase 3 cache fix](plans/plan-fase3-cache-fix.md)                                    | Fix del cache de sesión por contexto.                                |
+| [Plan owner / client / business](plans/plan-owner-add-client-business.md)                 | Añadir responsable y cliente/negocio al proyecto.                    |
+| [Plan contexto de errores en Sentry](plans/plan-sentry-error-context.md)                  | Diseño y plan: módulo, intención, esperado y sucedido en cada error. |
 
 ---
 
@@ -51,6 +52,7 @@ La documentación está organizada por categorías bajo `docs/`.
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | [Reglas ESLint custom](reference/eslint-rules-README.md)        | Definición de las reglas del plugin `clear-queue` y cómo corregir violaciones. |
 | [Guía de usuario y tips](reference/plan-user-guide-and-tips.md) | Guía y recomendaciones de uso.                                                 |
+| [Guía de Sentry](reference/sentry-guide.md)                     | Qué es Sentry, para qué sirve y cómo usarlo (errores, rendimiento, Replay).    |
 
 ---
 

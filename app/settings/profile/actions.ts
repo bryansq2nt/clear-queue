@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth, getUser } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 import {
@@ -138,7 +139,15 @@ export async function updateProfile(payload: {
     .select(PROFILE_COLS)
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'settings',
+      action: 'updateProfile',
+      userIntent: 'Actualizar perfil (nombre, teléfono, idioma, etc.)',
+      expected: 'Los cambios se guardan',
+    });
+    return { error: error.message };
+  }
   revalidatePath('/settings/profile');
   revalidatePath('/');
   return { data: data as Profile };
@@ -246,6 +255,13 @@ export async function deleteUserAsset(
     .remove([asset.path]);
 
   if (storageError) {
+    captureWithContext(storageError, {
+      module: 'settings',
+      action: 'deleteUserAsset',
+      userIntent: 'Eliminar avatar o imagen',
+      expected: 'El archivo se elimina del almacenamiento',
+      extra: { assetId },
+    });
     return { error: storageError.message };
   }
 
@@ -255,7 +271,16 @@ export async function deleteUserAsset(
     .eq('id', assetId)
     .eq('user_id', user.id);
 
-  if (deleteError) return { error: deleteError.message };
+  if (deleteError) {
+    captureWithContext(deleteError, {
+      module: 'settings',
+      action: 'deleteUserAsset',
+      userIntent: 'Eliminar avatar o imagen',
+      expected: 'El registro del asset se elimina',
+      extra: { assetId },
+    });
+    return { error: deleteError.message };
+  }
 
   revalidatePath('/settings/profile');
   revalidatePath('/settings/appearance');

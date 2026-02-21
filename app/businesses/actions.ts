@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { createClient } from '@/lib/supabase/server';
 import { listProjectLinksForProjectIds } from '@/lib/idea-graph/project-links';
 import { getIdeasByIds, listIdeas } from '@/lib/idea-graph/ideas';
@@ -70,6 +71,13 @@ export async function linkBoardToProjectAction(
     await updateBoard(boardId, { project_id: projectId });
     return {};
   } catch (e) {
+    captureWithContext(e, {
+      module: 'businesses',
+      action: 'linkBoardToProjectAction',
+      userIntent: 'Vincular board de ideas al proyecto',
+      expected: 'El board queda asociado al proyecto',
+      extra: { boardId, projectId },
+    });
     return { error: e instanceof Error ? e.message : 'Failed to link board' };
   }
 }
@@ -84,6 +92,13 @@ export async function linkBudgetToProjectAction(
     await updateBudget(budgetId, { project_id: projectId });
     return {};
   } catch (e) {
+    captureWithContext(e, {
+      module: 'businesses',
+      action: 'linkBudgetToProjectAction',
+      userIntent: 'Vincular presupuesto al proyecto',
+      expected: 'El presupuesto queda asociado al proyecto',
+      extra: { budgetId, projectId },
+    });
     return { error: e instanceof Error ? e.message : 'Failed to link budget' };
   }
 }

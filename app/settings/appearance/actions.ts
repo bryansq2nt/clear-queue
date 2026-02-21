@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth, getUser } from '@/lib/auth';
+import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 import { validateThemeMode, validateHexColor } from '@/lib/validation/colors';
@@ -152,7 +153,15 @@ export async function updatePreferences(payload: {
     .select(USER_PREF_COLS)
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'settings',
+      action: 'updatePreferences',
+      userIntent: 'Actualizar apariencia (tema, colores, moneda, etc.)',
+      expected: 'Las preferencias se guardan',
+    });
+    return { error: error.message };
+  }
   revalidatePath('/settings/appearance');
   revalidatePath('/settings/profile');
   revalidatePath('/');

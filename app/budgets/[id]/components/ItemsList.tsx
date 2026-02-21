@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/components/I18nProvider';
+import { captureWithContext } from '@/lib/sentry';
 import { Plus, Trash2, X, CheckSquare } from 'lucide-react';
 import { ItemRow } from './ItemRow';
 import { CreateItemModal } from './CreateItemModal';
@@ -154,7 +155,13 @@ export function ItemsList({
         }
       }, 520);
     } catch (error) {
-      console.error('Error deleting item:', error);
+      captureWithContext(error, {
+        module: 'budgets',
+        action: 'deleteItem',
+        userIntent: 'Eliminar ítem del presupuesto',
+        expected: 'El ítem se elimina de la categoría',
+        extra: { budgetId, categoryId, itemId },
+      });
       alert('Failed to delete item');
       setDeletingIds((prev) => {
         const next = new Set(prev);
@@ -208,7 +215,13 @@ export function ItemsList({
         onExitSelectionMode?.();
       }, 520);
     } catch (error) {
-      console.error('Error deleting items:', error);
+      captureWithContext(error, {
+        module: 'budgets',
+        action: 'deleteItems',
+        userIntent: 'Eliminar ítems seleccionados',
+        expected: 'Los ítems se eliminan',
+        extra: { budgetId, categoryId, count: ids.length },
+      });
       alert('Failed to delete selected items');
       setDeletingIds((prev) => {
         const next = new Set(prev);

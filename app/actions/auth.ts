@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { captureWithContext } from '@/lib/sentry';
 import { redirect } from 'next/navigation';
 
 export async function signIn(formData: FormData) {
@@ -15,6 +16,12 @@ export async function signIn(formData: FormData) {
   });
 
   if (error) {
+    captureWithContext(error, {
+      module: 'auth',
+      action: 'signIn',
+      userIntent: 'Iniciar sesión',
+      expected: 'Redirección al inicio',
+    });
     return { error: error.message };
   }
 
@@ -48,6 +55,12 @@ export async function signUp(formData: FormData) {
   });
 
   if (error) {
+    captureWithContext(error, {
+      module: 'auth',
+      action: 'signUp',
+      userIntent: 'Registrar nueva cuenta',
+      expected: 'Cuenta creada o email de confirmación enviado',
+    });
     return { error: error.message };
   }
 
@@ -81,6 +94,12 @@ export async function requestPasswordReset(formData: FormData) {
   });
 
   if (error) {
+    captureWithContext(error, {
+      module: 'auth',
+      action: 'requestPasswordReset',
+      userIntent: 'Solicitar restablecimiento de contraseña',
+      expected: 'Email con enlace enviado',
+    });
     return { error: error.message };
   }
 
@@ -112,6 +131,14 @@ export async function updatePassword(
   }
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { error: error.message };
+  if (error) {
+    captureWithContext(error, {
+      module: 'auth',
+      action: 'updatePassword',
+      userIntent: 'Cambiar contraseña',
+      expected: 'Contraseña actualizada',
+    });
+    return { error: error.message };
+  }
   return {};
 }
