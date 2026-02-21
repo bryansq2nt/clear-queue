@@ -85,6 +85,28 @@ Refer to: docs/patterns/context-session-cache.md and docs/context-session-cache-
 
 ---
 
+## Loading States (CRITICAL)
+
+- **ALWAYS** use a **shimmer effect** for loading states (skeleton placeholders with shimmer animation).
+- **NEVER** use spinners or the text "Loading..." (or similar) for loading. Shimmer keeps the UI feeling fluid and consistent.
+- On cache miss or initial load, show shimmer placeholders that match the layout of the real content; when data arrives, replace with content. No full-page loading overlays.
+
+---
+
+## Cache and Fetches
+
+- **ALWAYS** use cache where the user can return to the same context (e.g. project tabs): session cache so we do **not** refetch data already loaded in the session.
+- **NEVER** trigger unnecessary fetches: prefer cache hit → render from cache; on mutations, update UI from returned data or invalidate cache + single refetch in the wrapper — no manual `load*()` after an action.
+
+---
+
+## Insert/Update: No Refresh in UI
+
+- **NEVER** use `router.refresh()` or full-page reload after insert or update.
+- After a mutation: update the UI using the **data returned** from the server action, or call **onRefresh** (invalidate cache + refetch in the wrapper) so the list/detail updates without any page refresh. The UI must feel instant; no loading spinner overlay for the whole view.
+
+---
+
 ## Code Style and Formatting
 
 - **ALWAYS** match the project’s Prettier config (`.prettierrc`): semicolons, single quotes, `tabWidth: 2`, `trailingComma: "es5"`.
@@ -98,5 +120,6 @@ Refer to: docs/patterns/context-session-cache.md and docs/context-session-cache-
 2. **Use** `templates/` for boilerplate (server-action.template.ts, rpc-function.template.sql, optimistic-update.template.ts).
 3. **Follow** CURSOR_RULES.md strictly when it exists in the repo.
 4. **If adding or changing routes/views in a context that uses session cache** (e.g. `/context/[projectId]/...`): follow docs/patterns/context-session-cache.md and keep the cache provider in the parent layout so cache persists when switching contexts.
+5. **Loading states:** Always use **shimmer** (skeleton with shimmer animation). Never use spinners or "Loading..." text. Use cache to avoid unnecessary fetches; never refresh the whole UI after insert/update — use returned data or onRefresh.
 
 **Reference `docs/patterns/` before every code generation.**
