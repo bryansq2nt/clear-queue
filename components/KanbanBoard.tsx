@@ -315,7 +315,7 @@ export default function KanbanBoard({
               );
             })}
           </div>
-          <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
             {(() => {
               const columnTasks = optimisticTasks
                 .filter((t) => t.status === selectedTab)
@@ -328,6 +328,10 @@ export default function KanbanBoard({
                     onToggleSelection,
                   },
                 }));
+              const totalCount = counts?.[selectedTab] ?? columnTasks.length;
+              const hasMore =
+                onLoadMore != null && totalCount > columnTasks.length;
+              const isLoadingMore = loadingMoreStatus === selectedTab;
               return (
                 <>
                   <TaskListForStatus
@@ -342,11 +346,26 @@ export default function KanbanBoard({
                     onTaskUpdated={onTaskUpdated}
                     onEditError={onEditError}
                   />
+                  {onLoadMore && hasMore && (
+                    <div className="mt-3 flex-shrink-0">
+                      {isLoadingMore ? (
+                        <div className="w-full py-2.5 rounded-lg bg-muted/60 cq-skeleton-shimmer" />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onLoadMore(selectedTab)}
+                          className="w-full py-2.5 rounded-lg border border-border bg-muted/50 hover:bg-muted text-sm font-medium text-foreground transition-colors flex items-center justify-center gap-2"
+                        >
+                          {t('kanban.view_more')}
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {onAddTask && (
                     <button
                       type="button"
                       onClick={() => onAddTask(selectedTab)}
-                      className="mt-3 w-full py-3 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-primary hover:bg-accent transition-all flex items-center justify-center gap-2 text-sm font-medium"
+                      className="mt-3 w-full py-3 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-primary hover:bg-accent transition-all flex items-center justify-center gap-2 text-sm font-medium flex-shrink-0"
                     >
                       <Plus className="w-4 h-4" />
                       {t('kanban.add_task')}
