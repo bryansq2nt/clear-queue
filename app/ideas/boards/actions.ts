@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import {
@@ -113,6 +114,47 @@ export async function getBoardsByProjectIdAction(projectId: string) {
   await requireAuth();
   if (!projectId?.trim()) return [];
   return listBoardsByProjectId(projectId.trim());
+}
+
+/**
+ * Atomically create a board already linked to a project.
+ * Replaces the two-step createBoardAction → updateBoardAction pattern used in
+ * ContextIdeasClient, which left orphaned boards (project_id = null) on failure.
+ */
+export async function createBoardWithProjectAction(
+  name: string,
+  projectId: string
+): Promise<{ data?: { id: string; name: string }; error?: string }> {
+  const user = await requireAuth();
+
+  const trimmedName = name?.trim();
+  if (!trimmedName) return { error: 'Board name is required' };
+
+  const trimmedProjectId = projectId?.trim();
+  if (!trimmedProjectId) return { error: 'Project ID is required' };
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('idea_boards')
+    .insert({
+      owner_id: user.id,
+      name: trimmedName,
+      project_id: trimmedProjectId,
+      updated_at: new Date().toISOString(),
+    } as never)
+    .select('id, name, project_id')
+    .single();
+
+  if (error) return { error: error.message };
+
+  revalidatePath('/ideas/boards');
+  revalidatePath('/ideas');
+  revalidatePath('/context');
+  revalidatePath(`/context/${trimmedProjectId}`);
+  revalidatePath(`/context/${trimmedProjectId}/ideas`);
+
+  return { data: data as { id: string; name: string } };
 }
 
 export async function addIdeaToBoardAction(formData: FormData) {

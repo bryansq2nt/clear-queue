@@ -36,7 +36,7 @@ export const getProjectsForSidebar = cache(async (): Promise<ProjectRow[]> => {
 
 export const getProjectById = cache(
   async (projectId: string): Promise<ProjectRow | null> => {
-    await requireAuth();
+    const user = await requireAuth();
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('projects')
@@ -44,6 +44,7 @@ export const getProjectById = cache(
         'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
       )
       .eq('id', projectId)
+      .eq('owner_id', user.id)
       .single();
     if (error || !data) return null;
     return data;
@@ -110,7 +111,7 @@ export async function createProject(
 export async function updateProject(
   formData: FormData
 ): Promise<ActionResult<ProjectRow>> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const id = formData.get('id') as string;
@@ -162,6 +163,7 @@ export async function updateProject(
     .from('projects')
     .update(updates as never)
     .eq('id', id)
+    .eq('owner_id', user.id)
     .select(
       'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
     )
@@ -193,7 +195,7 @@ export async function linkBusinessToProject(
   projectId: string,
   businessId: string
 ): Promise<ActionResult<ProjectRow>> {
-  await requireAuth();
+  const user = await requireAuth();
   if (!projectId?.trim() || !businessId?.trim()) {
     return { ok: false, error: 'Project ID and Business ID are required' };
   }
@@ -202,6 +204,7 @@ export async function linkBusinessToProject(
     .from('projects')
     .update({ business_id: businessId.trim() } as never)
     .eq('id', projectId.trim())
+    .eq('owner_id', user.id)
     .select(
       'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
     )
@@ -230,7 +233,7 @@ export async function linkBusinessToProject(
 export async function archiveProject(
   id: string
 ): Promise<ActionResult<ProjectRow>> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const updates: ProjectUpdate = { category: 'archived' };
@@ -238,6 +241,7 @@ export async function archiveProject(
     .from('projects')
     .update(updates as never)
     .eq('id', id)
+    .eq('owner_id', user.id)
     .select(
       'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
     )
@@ -264,7 +268,7 @@ export async function unarchiveProject(
   id: string,
   previousCategory?: string
 ): Promise<ActionResult<ProjectRow>> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const category = previousCategory || 'business';
@@ -279,6 +283,7 @@ export async function unarchiveProject(
     .from('projects')
     .update(updates as never)
     .eq('id', id)
+    .eq('owner_id', user.id)
     .select(
       'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
     )
@@ -307,10 +312,14 @@ export async function unarchiveProject(
 export async function deleteProject(
   id: string
 ): Promise<ActionResult<{ success: true }>> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
-  const { error } = await supabase.from('projects').delete().eq('id', id);
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', id)
+    .eq('owner_id', user.id);
 
   if (error) {
     captureWithContext(error, {

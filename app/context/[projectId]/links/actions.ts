@@ -77,43 +77,43 @@ export const listProjectLinksAction = cache(
 // Link categories (user-owned; seed defaults when empty)
 // ---------------------------------------------------------------------------
 
-export const listLinkCategoriesAction = cache(
-  async (): Promise<LinkCategoryRow[]> => {
-    const user = await requireAuth();
-    const supabase = await createClient();
+// Not cache()-wrapped: contains INSERT mutations (seed on first use).
+// cache() must only wrap pure reads.
+export async function listLinkCategoriesAction(): Promise<LinkCategoryRow[]> {
+  const user = await requireAuth();
+  const supabase = await createClient();
 
-    const { data: existing, error: fetchError } = await supabase
-      .from('link_categories')
-      .select('id, owner_id, name, sort_order, created_at, updated_at')
-      .eq('owner_id', user.id)
-      .order('sort_order', { ascending: true });
+  const { data: existing, error: fetchError } = await supabase
+    .from('link_categories')
+    .select('id, owner_id, name, sort_order, created_at, updated_at')
+    .eq('owner_id', user.id)
+    .order('sort_order', { ascending: true });
 
-    if (fetchError) {
-      console.error('Error fetching link categories:', fetchError);
-      return [];
-    }
-
-    if (existing && existing.length > 0) {
-      return existing as LinkCategoryRow[];
-    }
-
-    for (let i = 0; i < DEFAULT_CATEGORY_NAMES.length; i++) {
-      await supabase.from('link_categories').insert({
-        owner_id: user.id,
-        name: DEFAULT_CATEGORY_NAMES[i],
-        sort_order: i,
-      } as never);
-    }
-
-    const { data: seeded } = await supabase
-      .from('link_categories')
-      .select('id, owner_id, name, sort_order, created_at, updated_at')
-      .eq('owner_id', user.id)
-      .order('sort_order', { ascending: true });
-
-    return (seeded as LinkCategoryRow[]) ?? [];
+  if (fetchError) {
+    console.error('Error fetching link categories:', fetchError);
+    return [];
   }
-);
+
+  if (existing && existing.length > 0) {
+    return existing as LinkCategoryRow[];
+  }
+
+  for (let i = 0; i < DEFAULT_CATEGORY_NAMES.length; i++) {
+    await supabase.from('link_categories').insert({
+      owner_id: user.id,
+      name: DEFAULT_CATEGORY_NAMES[i],
+      sort_order: i,
+    } as never);
+  }
+
+  const { data: seeded } = await supabase
+    .from('link_categories')
+    .select('id, owner_id, name, sort_order, created_at, updated_at')
+    .eq('owner_id', user.id)
+    .order('sort_order', { ascending: true });
+
+  return (seeded as LinkCategoryRow[]) ?? [];
+}
 
 export async function createLinkCategoryAction(
   name: string

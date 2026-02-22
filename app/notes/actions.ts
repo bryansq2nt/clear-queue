@@ -37,13 +37,14 @@ export const getNotes = cache(
 );
 
 export async function getNoteById(noteId: string): Promise<Note | null> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('notes')
     .select('id, owner_id, project_id, title, content, created_at, updated_at')
     .eq('id', noteId)
+    .eq('owner_id', user.id)
     .single();
 
   if (error || !data) return null;
@@ -100,7 +101,7 @@ export async function updateNote(
   noteId: string,
   params: { title?: string; content?: string; project_id?: string }
 ): Promise<{ error?: string; data?: Note }> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const updates: Database['public']['Tables']['notes']['Update'] = {};
@@ -118,6 +119,7 @@ export async function updateNote(
     .from('notes')
     .update(updates as never)
     .eq('id', noteId)
+    .eq('owner_id', user.id)
     .select('id, owner_id, project_id, title, content, created_at, updated_at')
     .single();
 
@@ -138,10 +140,14 @@ export async function updateNote(
 }
 
 export async function deleteNote(noteId: string): Promise<{ error?: string }> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
-  const { error } = await supabase.from('notes').delete().eq('id', noteId);
+  const { error } = await supabase
+    .from('notes')
+    .delete()
+    .eq('id', noteId)
+    .eq('owner_id', user.id);
   if (error) {
     captureWithContext(error, {
       module: 'notes',
@@ -163,8 +169,17 @@ export async function deleteNote(noteId: string): Promise<{ error?: string }> {
 // ---------------------------------------------------------------------------
 
 export async function getNoteLinks(noteId: string): Promise<NoteLink[]> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  // note_links has no owner_id; verify note ownership before fetching links.
+  const { data: note } = await supabase
+    .from('notes')
+    .select('id')
+    .eq('id', noteId)
+    .eq('owner_id', user.id)
+    .maybeSingle();
+  if (!note) return [];
 
   const { data, error } = await supabase
     .from('note_links')
@@ -180,11 +195,20 @@ export async function addNoteLink(
   noteId: string,
   params: { title?: string | null; url: string }
 ): Promise<{ error?: string; data?: NoteLink }> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const url = params.url?.trim();
   if (!url) return { error: 'URL is required' };
+
+  // note_links has no owner_id; verify note ownership before inserting.
+  const { data: note } = await supabase
+    .from('notes')
+    .select('id')
+    .eq('id', noteId)
+    .eq('owner_id', user.id)
+    .maybeSingle();
+  if (!note) return { error: 'Note not found or access denied' };
 
   const insertPayload: Database['public']['Tables']['note_links']['Insert'] = {
     note_id: noteId,
@@ -217,8 +241,25 @@ export async function addNoteLink(
 export async function deleteNoteLink(
   linkId: string
 ): Promise<{ error?: string }> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  // note_links has no owner_id; fetch the link to get note_id, then verify ownership.
+  const { data: rawLink } = await supabase
+    .from('note_links')
+    .select('id, note_id, title, url, created_at')
+    .eq('id', linkId)
+    .maybeSingle();
+  const link = rawLink as NoteLink | null;
+  if (!link) return {};
+
+  const { data: note } = await supabase
+    .from('notes')
+    .select('id')
+    .eq('id', link.note_id)
+    .eq('owner_id', user.id)
+    .maybeSingle();
+  if (!note) return { error: 'Link not found or access denied' };
 
   const { error } = await supabase.from('note_links').delete().eq('id', linkId);
   if (error) {

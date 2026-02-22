@@ -65,6 +65,7 @@ export default function ContextTodosFromCache({
       initialProjectName={data.projectName}
       initialDefaultListId={data.defaultListId}
       initialItems={data.items}
+      onRefresh={loadData}
     />
   );
 }

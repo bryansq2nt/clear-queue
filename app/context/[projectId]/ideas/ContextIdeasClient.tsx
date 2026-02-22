@@ -14,10 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  createBoardAction,
-  updateBoardAction,
-} from '@/app/ideas/boards/actions';
+import { createBoardWithProjectAction } from '@/app/ideas/boards/actions';
 
 interface Board {
   id: string;
@@ -53,15 +50,8 @@ export default function ContextIdeasClient({
     if (!name) return;
 
     setCreating(true);
-    const formData = new FormData();
-    formData.set('name', name);
-    const result = await createBoardAction(formData);
+    const result = await createBoardWithProjectAction(name, projectId);
     if (result.data) {
-      const updateFormData = new FormData();
-      updateFormData.set('id', result.data.id);
-      updateFormData.set('name', result.data.name);
-      updateFormData.set('projectId', projectId);
-      await updateBoardAction(updateFormData);
       setNewBoardName('');
       setNewBoardOpen(false);
       if (onRefresh) await onRefresh();
