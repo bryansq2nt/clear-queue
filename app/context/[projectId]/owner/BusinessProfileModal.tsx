@@ -8,8 +8,8 @@ import {
 } from '@/components/ui/dialog';
 import { useI18n } from '@/components/I18nProvider';
 import { Database } from '@/lib/supabase/types';
-import { getBusinessById, getClientById } from '@/app/clients/actions';
-import type { SocialLinks } from '@/app/clients/actions';
+import { getBusinessById, getClientById } from '@/app/actions/clients';
+import type { SocialLinks } from '@/app/actions/clients';
 import {
   Building2,
   User,

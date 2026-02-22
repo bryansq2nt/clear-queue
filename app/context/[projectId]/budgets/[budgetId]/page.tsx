@@ -1,8 +1,8 @@
 import { requireAuth } from '@/lib/auth';
 import { getProjectById } from '@/app/actions/projects';
-import { getBudgetProjectId } from '@/app/budgets/actions';
+import { getBudgetProjectId } from '@/app/actions/budgets';
 import { notFound } from 'next/navigation';
-import BudgetDetailClient from '@/app/budgets/[id]/BudgetDetailClient';
+import BudgetDetailClient from './BudgetDetailClient';
 
 export default async function ContextBudgetDetailPage({
   params,

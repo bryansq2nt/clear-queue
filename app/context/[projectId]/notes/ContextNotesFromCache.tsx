@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getNotes } from '@/app/notes/actions';
+import { getNotes } from '@/app/actions/notes';
 import type { Database } from '@/lib/supabase/types';
 import { SkeletonNotes } from '@/components/skeletons/SkeletonNotes';
 import { useContextDataCache } from '../../ContextDataCache';

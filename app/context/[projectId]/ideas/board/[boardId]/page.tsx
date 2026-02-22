@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 import { requireAuth } from '@/lib/auth';
 import { getProjectById } from '@/app/actions/projects';
 import { getBoardById } from '@/lib/idea-graph/boards';
-import { getBoardDataAction } from '@/app/ideas/load-board-data';
+import { getBoardDataAction } from '../../load-board-data';
 import { listProjectsForPicker } from '@/lib/projects';
 import { notFound } from 'next/navigation';
 import ContextBoardViewClient from './ContextBoardViewClient';

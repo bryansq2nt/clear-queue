@@ -1,8 +1,5 @@
-import ProfilePageClient from '@/app/settings/profile/ProfilePageClient';
-import {
-  getProfileWithAvatar,
-  getAssetSignedUrl,
-} from '@/app/settings/profile/actions';
+import ProfilePageClient from './ProfilePageClient';
+import { getProfileWithAvatar, getAssetSignedUrl } from './actions';
 import { getPreferences } from '@/app/settings/appearance/actions';
 
 export default async function ProfilePage() {

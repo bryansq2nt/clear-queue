@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getBudgetsByProjectId } from '@/app/budgets/actions';
+import { getBudgetsByProjectId } from '@/app/actions/budgets';
 import { SkeletonBudgets } from '@/components/skeletons/SkeletonBudgets';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextBudgetsClient from './ContextBudgetsClient';

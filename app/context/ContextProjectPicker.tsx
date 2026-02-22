@@ -1,15 +1,28 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useI18n } from '@/components/I18nProvider';
 import {
   ChevronLeft,
   Clock,
   FolderKanban,
   LayoutDashboard,
+  Menu,
   Plus,
+  Settings,
+  UserCircle,
 } from 'lucide-react';
 import type { ProjectListItem } from '@/app/actions/projects';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { AddProjectModal } from '@/components/AddProjectModal';
 
 const MAX_RECENT_HIGHLIGHT = 5;
 
@@ -36,6 +49,8 @@ export default function ContextProjectPicker({
   backToProjectId,
 }: ContextProjectPickerProps) {
   const { t } = useI18n();
+  const router = useRouter();
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
 
   const headerTitle = returningFromProject
     ? userDisplayName
@@ -82,7 +97,34 @@ export default function ContextProjectPicker({
           <h1 className="text-base md:text-xl font-bold truncate min-w-0 flex-1 text-center">
             {headerTitle}
           </h1>
-          <div className="w-[100px] flex-shrink-0" aria-hidden />
+          <div className="w-[100px] flex-shrink-0 flex items-center justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                  aria-label={t('sidebar.navigation')}
+                >
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="flex items-center gap-2">
+                    <UserCircle className="w-4 h-4" />
+                    {t('sidebar.profile')}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings" className="flex items-center gap-2">
+                    <Settings className="w-4 h-4" />
+                    {t('sidebar.settings')}
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
       <main className="flex-1 overflow-auto p-4 sm:p-6">
@@ -98,13 +140,21 @@ export default function ContextProjectPicker({
             <p className="text-muted-foreground text-center text-sm mt-2">
               {t('context.no_projects_yet_hint')}
             </p>
-            <Link
-              href="/projects"
-              className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium hover:opacity-90"
+            <Button
+              onClick={() => setAddProjectOpen(true)}
+              className="mt-6 inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               {t('sidebar.add_project')}
-            </Link>
+            </Button>
+            <AddProjectModal
+              isOpen={addProjectOpen}
+              onClose={() => setAddProjectOpen(false)}
+              onProjectAdded={() => {
+                setAddProjectOpen(false);
+                router.refresh();
+              }}
+            />
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl mx-auto">

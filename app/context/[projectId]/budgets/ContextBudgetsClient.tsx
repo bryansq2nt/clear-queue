@@ -3,10 +3,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useI18n } from '@/components/I18nProvider';
 import { Plus } from 'lucide-react';
-import { getBudgetsByProjectId } from '@/app/budgets/actions';
-import { BudgetCard } from '@/app/budgets/components/BudgetCard';
-import { CreateBudgetModal } from '@/app/budgets/components/CreateBudgetModal';
-import { EmptyState } from '@/app/budgets/components/EmptyState';
+import { getBudgetsByProjectId } from '@/app/actions/budgets';
+import { BudgetCard } from './components/BudgetCard';
+import { CreateBudgetModal } from './components/CreateBudgetModal';
+import { EmptyState } from './components/EmptyState';
 
 type BudgetWithProject = Awaited<
   ReturnType<typeof getBudgetsByProjectId>

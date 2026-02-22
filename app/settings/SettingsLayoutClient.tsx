@@ -1,14 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import { useI18n } from '@/components/I18nProvider';
-import { Database } from '@/lib/supabase/types';
-import { getProjectsForSidebar } from '@/app/actions/projects';
-import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
 import { signOut } from '@/app/actions/auth';
-
-type Project = Database['public']['Tables']['projects']['Row'];
 
 export default function SettingsLayoutClient({
   children,
@@ -16,48 +10,16 @@ export default function SettingsLayoutClient({
   children: React.ReactNode;
 }) {
   const { t } = useI18n();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const loadProjects = useCallback(async () => {
-    const data = await getProjectsForSidebar();
-    setProjects(data);
-  }, []);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
 
   return (
     <div className="flex flex-col h-screen bg-background">
       <TopBar
-        searchQuery=""
-        onSearchChange={() => {}}
+        backHref="/"
+        projectName={t('settings.title')}
         onSignOut={() => signOut()}
-        onProjectAdded={loadProjects}
-        onProjectUpdated={loadProjects}
-        projectName={t('settings.appearance')}
-        currentProject={null}
-        onOpenSidebar={() => setSidebarOpen(true)}
         minimal
-        showSidebarButtonAlways
       />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          projects={projects}
-          selectedProject={null}
-          selectedCategory={null}
-          showArchived={false}
-          onSelectProject={() => {}}
-          onCategoryChange={() => {}}
-          onShowArchivedChange={() => {}}
-          onProjectUpdated={loadProjects}
-          mobileOpen={sidebarOpen}
-          onMobileClose={() => setSidebarOpen(false)}
-          overlayOnly
-        />
-        <main className="flex-1 overflow-y-auto flex flex-col">{children}</main>
-      </div>
+      <main className="flex-1 overflow-y-auto flex flex-col">{children}</main>
     </div>
   );
 }

@@ -14,10 +14,10 @@ import {
   X,
 } from 'lucide-react';
 import { updateProject, linkBusinessToProject } from '@/app/actions/projects';
-import { getClients, getBusinessesByClientId } from '@/app/clients/actions';
-import { CreateClientModal } from '@/app/clients/components/CreateClientModal';
-import { CreateBusinessModal } from '@/app/clients/components/CreateBusinessModal';
-import { EditClientModal } from '@/app/clients/components/EditClientModal';
+import { getClients, getBusinessesByClientId } from '@/app/actions/clients';
+import { CreateClientModal } from './components/CreateClientModal';
+import { CreateBusinessModal } from './components/CreateBusinessModal';
+import { EditClientModal } from './components/EditClientModal';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { ClientProfileModal } from './ClientProfileModal';
 import { BusinessProfileModal } from './BusinessProfileModal';

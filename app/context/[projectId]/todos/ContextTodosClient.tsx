@@ -5,7 +5,7 @@ import { Plus, Check, Trash2 } from 'lucide-react';
 import type { TodoItem } from '@/lib/todo/lists';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/components/I18nProvider';
-import { useProjectTodoBoard } from '@/app/todo/hooks/useProjectTodoBoard';
+import { useProjectTodoBoard } from './hooks/useProjectTodoBoard';
 
 interface ContextTodosClientProps {
   projectId: string;

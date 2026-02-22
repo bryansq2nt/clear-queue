@@ -13,7 +13,7 @@ import {
   formatCurrency as formatCurrencyFn,
   type Locale,
 } from '@/lib/i18n';
-import type { getProfileOptional } from '@/app/settings/profile/actions';
+import type { getProfileOptional } from '@/app/profile/actions';
 import type { getPreferencesOptional } from '@/app/settings/appearance/actions';
 
 type Profile = Awaited<ReturnType<typeof getProfileOptional>>;

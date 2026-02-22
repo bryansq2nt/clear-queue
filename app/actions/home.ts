@@ -1,7 +1,7 @@
 'use server';
 
 import { getUser } from '@/lib/auth';
-import { getProfileOptional } from '@/app/settings/profile/actions';
+import { getProfileOptional } from '@/app/profile/actions';
 import { getProjectsList, type ProjectListItem } from '@/app/actions/projects';
 
 /**

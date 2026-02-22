@@ -1,6 +1,6 @@
 'use client';
 
-import { NoteEditor } from '@/app/notes/components/NoteEditor';
+import { NoteEditor } from '../components/NoteEditor';
 import { Database } from '@/lib/supabase/types';
 
 type NoteLink = Database['public']['Tables']['note_links']['Row'];

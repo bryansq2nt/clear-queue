@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { getProjectById } from '@/app/actions/projects';
-import { getClientById, getBusinessById } from '@/app/clients/actions';
+import { getClientById, getBusinessById } from '@/app/actions/clients';
 import type { Database } from '@/lib/supabase/types';
 import { SkeletonOwner } from '@/components/skeletons/SkeletonOwner';
 import { useContextDataCache } from '../../ContextDataCache';

@@ -12,6 +12,7 @@ import {
   Link as LinkIcon,
   Lightbulb,
   DollarSign,
+  Receipt,
   CheckSquare,
 } from 'lucide-react';
 
@@ -28,6 +29,7 @@ const TABS = [
   { slug: 'links', labelKey: 'context.links', icon: LinkIcon },
   { slug: 'ideas', labelKey: 'context.ideas', icon: Lightbulb },
   { slug: 'budgets', labelKey: 'context.budgets', icon: DollarSign },
+  { slug: 'billings', labelKey: 'context.billings', icon: Receipt },
   { slug: 'todos', labelKey: 'context.todos', icon: CheckSquare },
 ] as const;
 

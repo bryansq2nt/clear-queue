@@ -13,7 +13,7 @@ import {
   getBusinessesByClientId,
   getClientLinks,
   getProjectsByClientId,
-} from '@/app/clients/actions';
+} from '@/app/actions/clients';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import {
   User,

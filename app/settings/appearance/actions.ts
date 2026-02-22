@@ -163,7 +163,7 @@ export async function updatePreferences(payload: {
     return { error: error.message };
   }
   revalidatePath('/settings/appearance');
-  revalidatePath('/settings/profile');
+  revalidatePath('/profile');
   revalidatePath('/');
   return { data: data as UserPreferences };
 }

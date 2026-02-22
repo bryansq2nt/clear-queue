@@ -1,5 +1,5 @@
 import { getPreferences } from './actions';
-import { getAssetSignedUrl } from '@/app/settings/profile/actions';
+import { getAssetSignedUrl } from '@/app/profile/actions';
 import AppearancePageClient from './AppearancePageClient';
 
 export default async function AppearanceSettingsPage() {

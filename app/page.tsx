@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { getUser } from '@/lib/auth';
 import { getProjectsList } from '@/app/actions/projects';
-import { getProfileOptional } from '@/app/settings/profile/actions';
+import { getProfileOptional } from '@/app/profile/actions';
 import LoginForm from '@/components/LoginForm';
 import AuthCallbackHandler from '@/components/AuthCallbackHandler';
 import ContextProjectPicker from '@/app/context/ContextProjectPicker';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getProjectTodoBoardAction } from '@/app/todo/actions';
+import { getProjectTodoBoardAction } from '@/app/actions/todo';
 import type { TodoItem } from '@/lib/todo/lists';
 import { SkeletonTodos } from '@/components/skeletons/SkeletonTodos';
 import { useContextDataCache } from '../../ContextDataCache';

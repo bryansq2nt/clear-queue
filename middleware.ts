@@ -39,12 +39,17 @@ export async function middleware(request: NextRequest) {
   const protectedPrefixes = [
     '/dashboard',
     '/project',
+    '/projects',
     '/ideas',
     '/todo',
     '/budgets',
     '/clients',
     '/businesses',
     '/notes',
+    '/billings',
+    '/context',
+    '/profile',
+    '/settings',
   ];
   const isProtected = protectedPrefixes.some((prefix) =>
     pathname.startsWith(prefix)
@@ -56,6 +61,10 @@ export async function middleware(request: NextRequest) {
 
   if (pathname === '/signup' && user) {
     return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  if (pathname === '/settings/profile') {
+    return NextResponse.redirect(new URL('/profile', request.url));
   }
 
   return response;

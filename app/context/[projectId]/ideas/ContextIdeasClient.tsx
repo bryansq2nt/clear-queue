@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { createBoardWithProjectAction } from '@/app/ideas/boards/actions';
+import { createBoardWithProjectAction } from '@/app/actions/idea-boards';
 
 interface Board {
   id: string;

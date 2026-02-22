@@ -9,14 +9,12 @@ import {
   LogOut,
   CheckSquare,
   FileText,
-  FolderOpen,
   Menu,
   ArrowLeft,
 } from 'lucide-react';
 import { useState } from 'react';
 import { AddProjectModal } from './AddProjectModal';
 import { EditProjectModal } from './EditProjectModal';
-import { ProjectResourcesModal } from './ProjectResourcesModal';
 import { useI18n } from '@/components/I18nProvider';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +31,6 @@ interface TopBarProps {
   selectionMode?: boolean;
   onToggleSelectionMode?: () => void;
   onOpenSidebar?: () => void;
-  resourcesInSidebar?: boolean;
   /** Detail view: back link + title only, no sidebar menu, no task search */
   backHref?: string;
   backLabel?: string;
@@ -43,9 +40,6 @@ interface TopBarProps {
   minimal?: boolean;
   /** When true, show sidebar menu button on all screen sizes (e.g. when sidebar is overlay-only) */
   showSidebarButtonAlways?: boolean;
-  /** Controlled open state for Resources modal (e.g. so parent can open from bottom bar on mobile) */
-  resourcesModalOpen?: boolean;
-  onResourcesModalOpenChange?: (open: boolean) => void;
   /** Controlled open state for Edit modal */
   editModalOpen?: boolean;
   onEditModalOpenChange?: (open: boolean) => void;
@@ -62,14 +56,11 @@ export default function TopBar({
   selectionMode = false,
   onToggleSelectionMode,
   onOpenSidebar,
-  resourcesInSidebar = false,
   backHref,
   backLabel,
   actions,
   minimal = false,
   showSidebarButtonAlways = false,
-  resourcesModalOpen: resourcesModalOpenProp,
-  onResourcesModalOpenChange,
   editModalOpen: editModalOpenProp,
   onEditModalOpenChange,
 }: TopBarProps) {
@@ -78,20 +69,12 @@ export default function TopBar({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpenInternal, setIsEditModalOpenInternal] = useState(false);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
-  const [isResourcesModalOpenInternal, setIsResourcesModalOpenInternal] =
-    useState(false);
 
   const isEditModalOpen = editModalOpenProp ?? isEditModalOpenInternal;
   const setEditModalOpen = (open: boolean) =>
     onEditModalOpenChange
       ? onEditModalOpenChange(open)
       : setIsEditModalOpenInternal(open);
-  const isResourcesModalOpen =
-    resourcesModalOpenProp ?? isResourcesModalOpenInternal;
-  const setResourcesModalOpen = (open: boolean) =>
-    onResourcesModalOpenChange
-      ? onResourcesModalOpenChange(open)
-      : setIsResourcesModalOpenInternal(open);
 
   return (
     <>
@@ -144,42 +127,27 @@ export default function TopBar({
                   isDetailView && 'hidden lg:flex'
                 )}
               >
-                {onToggleSelectionMode &&
-                  !(isDetailView && resourcesInSidebar) && (
-                    <Button
-                      onClick={onToggleSelectionMode}
-                      variant={selectionMode ? 'default' : 'outline'}
-                      size="sm"
-                      className={
-                        selectionMode
-                          ? 'bg-primary-foreground text-primary hover:bg-primary-foreground/90'
-                          : 'bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90'
-                      }
-                    >
-                      <CheckSquare className="w-4 h-4 md:mr-2" />
-                      <span className="hidden md:inline">
-                        {selectionMode
-                          ? t('topbar.cancel_selection')
-                          : t('topbar.select')}
-                      </span>
-                    </Button>
-                  )}
+                {onToggleSelectionMode && !isDetailView && (
+                  <Button
+                    onClick={onToggleSelectionMode}
+                    variant={selectionMode ? 'default' : 'outline'}
+                    size="sm"
+                    className={
+                      selectionMode
+                        ? 'bg-primary-foreground text-primary hover:bg-primary-foreground/90'
+                        : 'bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90'
+                    }
+                  >
+                    <CheckSquare className="w-4 h-4 md:mr-2" />
+                    <span className="hidden md:inline">
+                      {selectionMode
+                        ? t('topbar.cancel_selection')
+                        : t('topbar.select')}
+                    </span>
+                  </Button>
+                )}
                 {currentProject ? (
                   <>
-                    {(!isDetailView || !resourcesInSidebar) && (
-                      <Button
-                        onClick={() => setResourcesModalOpen(true)}
-                        variant="outline"
-                        size="sm"
-                        className={cn(
-                          'bg-primary/80 text-primary-foreground border-primary-foreground/30 hover:bg-primary/90',
-                          resourcesInSidebar && 'lg:hidden'
-                        )}
-                      >
-                        <FolderOpen className="w-4 h-4 md:mr-2" />
-                        {t('resources.title')}
-                      </Button>
-                    )}
                     {!isDetailView && (
                       <Button
                         onClick={() => setIsNotesModalOpen(true)}
@@ -259,12 +227,6 @@ export default function TopBar({
             }}
             project={currentProject}
             defaultTab="notes"
-          />
-          <ProjectResourcesModal
-            isOpen={isResourcesModalOpen}
-            onClose={() => setResourcesModalOpen(false)}
-            projectId={currentProject.id}
-            projectName={currentProject.name}
           />
         </>
       ) : (

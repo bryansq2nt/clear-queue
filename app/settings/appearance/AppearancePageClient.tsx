@@ -8,7 +8,7 @@ import {
   uploadUserAsset,
   deleteUserAsset,
   getAssetSignedUrl,
-} from '@/app/settings/profile/actions';
+} from '@/app/profile/actions';
 import { applyTheme, saveToStorage } from '@/lib/theme';
 import { THEME_MODES, type ThemeMode } from '@/lib/validation/colors';
 import { Loader2, Upload, X } from 'lucide-react';

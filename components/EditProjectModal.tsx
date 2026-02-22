@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useI18n } from '@/components/I18nProvider';
 import { updateProject, deleteProject } from '@/app/actions/projects';
-import { getClients, getBusinessesByClientId } from '@/app/clients/actions';
+import { getClients, getBusinessesByClientId } from '@/app/actions/clients';
 import {
   Dialog,
   DialogContent,

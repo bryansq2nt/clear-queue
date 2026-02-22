@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getBoardsByProjectIdAction } from '@/app/ideas/boards/actions';
+import { getBoardsByProjectIdAction } from '@/app/actions/idea-boards';
 import { SkeletonIdeas } from '@/components/skeletons/SkeletonIdeas';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextIdeasClient from './ContextIdeasClient';

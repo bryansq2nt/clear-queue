@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getNoteById, getNoteLinks } from '@/app/notes/actions';
+import { getNoteById, getNoteLinks } from '@/app/actions/notes';
 import type { Database } from '@/lib/supabase/types';
 import { SkeletonNoteDetail } from '@/components/skeletons/SkeletonNoteDetail';
 import { useContextDataCache } from '@/app/context/ContextDataCache';

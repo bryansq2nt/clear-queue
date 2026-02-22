@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useI18n } from '@/components/I18nProvider';
-import { NoteEditor } from '@/app/notes/components/NoteEditor';
+import { NoteEditor } from '../components/NoteEditor';
 import { ArrowLeft } from 'lucide-react';
 
 interface ContextNewNoteClientProps {

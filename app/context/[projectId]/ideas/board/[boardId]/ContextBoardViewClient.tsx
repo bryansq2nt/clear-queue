@@ -14,13 +14,13 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Plus, Pencil } from 'lucide-react';
-import IdeaGraphCanvas from '@/app/ideas/IdeaGraphCanvas';
-import IdeaDrawer from '@/app/ideas/IdeaDrawer';
-import { createIdeaAction } from '@/app/ideas/actions';
+import IdeaGraphCanvas from '../../IdeaGraphCanvas';
+import IdeaDrawer from '../../IdeaDrawer';
+import { createIdeaAction } from '@/app/actions/ideas';
 import {
   updateBoardAction,
   addIdeaToBoardAction,
-} from '@/app/ideas/boards/actions';
+} from '@/app/actions/idea-boards';
 interface Idea {
   id: string;
   title: string;

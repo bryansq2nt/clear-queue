@@ -5,7 +5,7 @@ import { Analytics } from '@vercel/analytics/next';
 import ThemeProvider from '@/components/ThemeProvider';
 import { I18nProvider } from '@/components/I18nProvider';
 import * as Sentry from '@sentry/nextjs';
-import { getProfileOptional } from '@/app/settings/profile/actions';
+import { getProfileOptional } from '@/app/profile/actions';
 import { getPreferencesOptional } from '@/app/settings/appearance/actions';
 
 const inter = Inter({ subsets: ['latin'] });
