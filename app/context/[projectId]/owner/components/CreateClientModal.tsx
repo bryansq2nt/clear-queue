@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Users, ChevronDown, ChevronUp } from 'lucide-react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { createClientAction } from '@/app/actions/clients';
 import type { Database } from '@/lib/supabase/types';
 

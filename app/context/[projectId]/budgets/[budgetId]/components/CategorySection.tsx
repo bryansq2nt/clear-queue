@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { captureWithContext } from '@/lib/sentry';
 import {
   ChevronDown,

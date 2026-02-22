@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { captureWithContext } from '@/lib/sentry';
 import { Plus, Trash2, X, CheckSquare } from 'lucide-react';
 import { ItemRow } from './ItemRow';

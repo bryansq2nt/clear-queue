@@ -1,7 +1,7 @@
 'use client';
 
 import { DollarSign } from 'lucide-react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 
 export function EmptyState() {
   const { t } = useI18n();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import {
   Dialog,
   DialogContent,
@@ -9,8 +9,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog';
-import { Button } from './ui/button';
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 export interface MutationErrorDialogProps {
   open: boolean;

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Building2, ChevronDown, ChevronUp } from 'lucide-react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { createBusinessAction, getClients } from '@/app/actions/clients';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

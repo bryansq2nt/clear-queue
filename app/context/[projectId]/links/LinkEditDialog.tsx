@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useEffect, useCallback } from 'react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { Database } from '@/lib/supabase/types';
 import {
   Dialog,

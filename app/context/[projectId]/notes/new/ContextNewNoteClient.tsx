@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { NoteEditor } from '../components/NoteEditor';
 import { ArrowLeft } from 'lucide-react';
 

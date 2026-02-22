@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Database } from '@/lib/supabase/types';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { getNotes, deleteNote } from '@/app/actions/notes';
 import {
   Plus,

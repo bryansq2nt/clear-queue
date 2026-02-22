@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { captureWithContext } from '@/lib/sentry';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

@@ -1,8 +1,8 @@
 'use client';
 
 import { Database } from '@/lib/supabase/types';
-import { Input } from './ui/input';
-import { Button } from './ui/button';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
   Search,
@@ -13,9 +13,9 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { useState } from 'react';
-import { AddProjectModal } from './AddProjectModal';
-import { EditProjectModal } from './EditProjectModal';
-import { useI18n } from '@/components/I18nProvider';
+import { AddProjectModal } from '@/components/projects/AddProjectModal';
+import { EditProjectModal } from '@/components/projects/EditProjectModal';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { cn } from '@/lib/utils';
 
 type Project = Database['public']['Tables']['projects']['Row'];

@@ -10,7 +10,7 @@ import TaskCard from './TaskCard';
 import { AddTaskModal } from './AddTaskModal';
 import type { EditTaskErrorParams } from './EditTaskModal';
 import { Plus, ChevronDown, ChevronRight } from 'lucide-react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { Database } from '@/lib/supabase/types';
 import { cn } from '@/lib/utils';
 

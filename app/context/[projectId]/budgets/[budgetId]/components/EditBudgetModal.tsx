@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { captureWithContext } from '@/lib/sentry';
 import { X, Edit2 } from 'lucide-react';
 import { updateBudget } from '@/app/actions/budgets';

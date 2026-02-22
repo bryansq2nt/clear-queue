@@ -3,10 +3,10 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Database } from '@/lib/supabase/types';
-import KanbanBoard from '@/components/KanbanBoard';
-import { AddTaskModal } from '@/components/AddTaskModal';
-import { MutationErrorDialog } from '@/components/MutationErrorDialog';
-import { useI18n } from '@/components/I18nProvider';
+import KanbanBoard from '@/components/board/KanbanBoard';
+import { AddTaskModal } from '@/components/board/AddTaskModal';
+import { MutationErrorDialog } from '@/components/board/MutationErrorDialog';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { getTasksByProjectIdPaginated } from '@/app/actions/tasks';
 import { BOARD_STATUSES, LOAD_MORE_TASKS_PER_COLUMN } from '@/lib/board';
 import { Plus } from 'lucide-react';

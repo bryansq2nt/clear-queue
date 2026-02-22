@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, LogOut, Upload, X } from 'lucide-react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { signOut } from '@/app/actions/auth';
 import { Button } from '@/components/ui/button';
 

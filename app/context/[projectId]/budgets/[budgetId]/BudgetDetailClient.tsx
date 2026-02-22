@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { captureWithContext } from '@/lib/sentry';
 import { Database } from '@/lib/supabase/types';
-import { DetailLayout } from '@/components/DetailLayout';
+import { DetailLayout } from '@/components/shared/DetailLayout';
 import { Plus, FolderPlus, Package, ChevronLeft } from 'lucide-react';
 import { getProjectsForSidebar } from '@/app/actions/projects';
 import {

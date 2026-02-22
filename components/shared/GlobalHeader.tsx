@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Menu, ArrowLeft } from 'lucide-react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { cn } from '@/lib/utils';
 
 export interface GlobalHeaderProps {

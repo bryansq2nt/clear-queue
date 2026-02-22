@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowLeft, Edit2 } from 'lucide-react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { EditBudgetModal } from './EditBudgetModal';

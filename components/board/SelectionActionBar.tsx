@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import { Trash2, X } from 'lucide-react';
 import {
   Dialog,
@@ -10,7 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog';
+} from '@/components/ui/dialog';
 
 interface SelectionActionBarProps {
   selectedCount: number;

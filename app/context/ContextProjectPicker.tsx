@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import {
   ChevronLeft,
   Clock,
@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { AddProjectModal } from '@/components/AddProjectModal';
+import { AddProjectModal } from '@/components/projects/AddProjectModal';
 
 const MAX_RECENT_HIGHLIGHT = 5;
 

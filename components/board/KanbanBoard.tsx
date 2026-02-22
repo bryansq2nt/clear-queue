@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import TaskCard from './TaskCard';
 import Column from './Column';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { Database } from '@/lib/supabase/types';
 import { updateTaskOrder } from '@/app/actions/tasks';
 import { cn } from '@/lib/utils';

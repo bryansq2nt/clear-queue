@@ -3,7 +3,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Database } from '@/lib/supabase/types';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { EditTaskModal, type EditTaskErrorParams } from './EditTaskModal';
 import { useState } from 'react';
 import { Calendar, Check } from 'lucide-react';

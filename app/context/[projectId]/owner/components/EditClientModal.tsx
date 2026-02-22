@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { X, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import { updateClientAction } from '@/app/actions/clients';
 import { Input } from '@/components/ui/input';

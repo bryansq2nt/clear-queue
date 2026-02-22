@@ -1,7 +1,7 @@
 'use client';
 
-import { useI18n } from '@/components/I18nProvider';
-import TopBar from '@/components/TopBar';
+import { useI18n } from '@/components/shared/I18nProvider';
+import TopBar from '@/components/shared/TopBar';
 import { signOut } from '@/app/actions/auth';
 
 export default function SettingsLayoutClient({

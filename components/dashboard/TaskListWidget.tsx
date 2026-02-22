@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/lib/supabase/types';
-import { EditTaskModal } from '../EditTaskModal';
+import { EditTaskModal } from '@/components/board/EditTaskModal';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 

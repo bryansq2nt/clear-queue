@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useI18n } from '@/components/I18nProvider';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { Plus } from 'lucide-react';
 import { getBudgetsByProjectId } from '@/app/actions/budgets';
 import { BudgetCard } from './components/BudgetCard';
