@@ -209,44 +209,46 @@ export default function Column({
                 ref={setNodeRef}
                 className={cn(
                   columnStyle.bg,
-                  'rounded-b-xl p-3 flex-1 space-y-3 overflow-y-auto shadow-sm min-h-[calc(100vh-250px)]',
+                  'rounded-b-xl p-3 flex-1 flex flex-col shadow-sm min-h-[calc(100vh-250px)]',
                   isOver && 'bg-opacity-80'
                 )}
               >
-                <SortableContext
-                  items={tasks.map((t) => t.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-3">
-                    {tasks.map((task) => {
-                      const selectionProps =
-                        (task as any).__selectionProps || {};
-                      return (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          project={projects.find(
-                            (p) => p.id === task.project_id
-                          )}
-                          onTaskUpdate={onTaskUpdate}
-                          onTaskUpdated={onTaskUpdated}
-                          onEditError={onEditError}
-                          {...selectionProps}
-                        />
-                      );
-                    })}
-                  </div>
-                </SortableContext>
-                {/* Ver más (load more) when paginated */}
+                <div className="flex-1 min-h-0 overflow-y-auto space-y-3">
+                  <SortableContext
+                    items={tasks.map((t) => t.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-3">
+                      {tasks.map((task) => {
+                        const selectionProps =
+                          (task as any).__selectionProps || {};
+                        return (
+                          <TaskCard
+                            key={task.id}
+                            task={task}
+                            project={projects.find(
+                              (p) => p.id === task.project_id
+                            )}
+                            onTaskUpdate={onTaskUpdate}
+                            onTaskUpdated={onTaskUpdated}
+                            onEditError={onEditError}
+                            {...selectionProps}
+                          />
+                        );
+                      })}
+                    </div>
+                  </SortableContext>
+                </div>
+                {/* Ver más (load more) — pegado al fondo del recuadro */}
                 {onLoadMore && hasMore && (
-                  <div className="mt-3">
+                  <div className="flex-shrink-0 pt-1.5">
                     {isLoadingMore ? (
-                      <div className="w-full py-2.5 rounded-lg bg-muted/60 cq-skeleton-shimmer" />
+                      <div className="w-full py-2 rounded cq-skeleton-shimmer bg-muted/40" />
                     ) : (
                       <button
                         type="button"
                         onClick={() => onLoadMore()}
-                        className="w-full py-2.5 rounded-lg border border-border bg-muted/50 hover:bg-muted text-sm font-medium text-foreground transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                       >
                         {t('kanban.view_more')}
                       </button>
@@ -255,7 +257,7 @@ export default function Column({
                 )}
                 {/* Add Task Button */}
                 <button
-                  className="w-full py-3 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-primary hover:bg-accent transition-all flex items-center justify-center gap-2 text-sm font-medium mt-3"
+                  className="flex-shrink-0 w-full py-3 mt-1.5 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-primary hover:bg-accent transition-all flex items-center justify-center gap-2 text-sm font-medium"
                   onClick={() => setIsAddModalOpen(true)}
                 >
                   <Plus className="w-4 h-4" />

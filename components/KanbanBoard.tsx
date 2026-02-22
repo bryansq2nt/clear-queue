@@ -89,6 +89,7 @@ function TaskListForStatus({
   onToggleSelection,
   onTaskUpdated,
   onEditError,
+  footer,
 }: {
   status: Task['status'];
   tasks: Task[];
@@ -104,6 +105,7 @@ function TaskListForStatus({
     previousTask: Task;
     retry: () => Promise<{ data?: Task; error?: string }>;
   }) => void;
+  footer?: React.ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const taskIds = tasks.map((t) => t.id);
@@ -112,28 +114,33 @@ function TaskListForStatus({
     <div
       ref={setNodeRef}
       className={cn(
-        'rounded-xl p-3 flex-1 min-h-[200px] overflow-y-auto space-y-3 bg-card/50 border border-border',
+        'rounded-xl p-3 flex-1 min-h-[200px] flex flex-col bg-card/50 border border-border',
         isOver && 'ring-2 ring-primary/50'
       )}
     >
-      <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-        <div className="space-y-3">
-          {tasks.map((task) => {
-            const selectionProps = (task as any).__selectionProps || {};
-            return (
-              <TaskCard
-                key={task.id}
-                task={task}
-                project={projects.find((p) => p.id === task.project_id)}
-                onTaskUpdate={onTaskUpdate}
-                onTaskUpdated={onTaskUpdated}
-                onEditError={onEditError}
-                {...selectionProps}
-              />
-            );
-          })}
-        </div>
-      </SortableContext>
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-3">
+        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+          <div className="space-y-3">
+            {tasks.map((task) => {
+              const selectionProps = (task as any).__selectionProps || {};
+              return (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  project={projects.find((p) => p.id === task.project_id)}
+                  onTaskUpdate={onTaskUpdate}
+                  onTaskUpdated={onTaskUpdated}
+                  onEditError={onEditError}
+                  {...selectionProps}
+                />
+              );
+            })}
+          </div>
+        </SortableContext>
+      </div>
+      {footer != null ? (
+        <div className="flex-shrink-0 pt-1.5">{footer}</div>
+      ) : null}
     </div>
   );
 }
@@ -171,6 +178,12 @@ export default function KanbanBoard({
     currentProjectId || (tasks.length > 0 ? tasks[0].project_id : '');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks);
+  const [mobileListReady, setMobileListReady] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMobileListReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -316,64 +329,71 @@ export default function KanbanBoard({
             })}
           </div>
           <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
-            {(() => {
-              const columnTasks = optimisticTasks
-                .filter((t) => t.status === selectedTab)
-                .sort((a, b) => a.order_index - b.order_index)
-                .map((task) => ({
-                  ...task,
-                  __selectionProps: {
-                    selectionMode,
-                    isSelected: selectedTaskIds.has(task.id),
-                    onToggleSelection,
-                  },
-                }));
-              const totalCount = counts?.[selectedTab] ?? columnTasks.length;
-              const hasMore =
-                onLoadMore != null && totalCount > columnTasks.length;
-              const isLoadingMore = loadingMoreStatus === selectedTab;
-              return (
-                <>
-                  <TaskListForStatus
-                    status={selectedTab}
-                    tasks={columnTasks}
-                    projects={projects}
-                    projectId={projectId}
-                    onTaskUpdate={onTaskUpdate}
-                    selectionMode={selectionMode}
-                    selectedTaskIds={selectedTaskIds}
-                    onToggleSelection={onToggleSelection}
-                    onTaskUpdated={onTaskUpdated}
-                    onEditError={onEditError}
-                  />
-                  {onLoadMore && hasMore && (
-                    <div className="mt-3 flex-shrink-0">
-                      {isLoadingMore ? (
-                        <div className="w-full py-2.5 rounded-lg bg-muted/60 cq-skeleton-shimmer" />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => onLoadMore(selectedTab)}
-                          className="w-full py-2.5 rounded-lg border border-border bg-muted/50 hover:bg-muted text-sm font-medium text-foreground transition-colors flex items-center justify-center gap-2"
-                        >
-                          {t('kanban.view_more')}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {onAddTask && (
-                    <button
-                      type="button"
-                      onClick={() => onAddTask(selectedTab)}
-                      className="mt-3 w-full py-3 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-primary hover:bg-accent transition-all flex items-center justify-center gap-2 text-sm font-medium flex-shrink-0"
-                    >
-                      <Plus className="w-4 h-4" />
-                      {t('kanban.add_task')}
-                    </button>
-                  )}
-                </>
-              );
-            })()}
+            {!mobileListReady ? (
+              <div
+                className="rounded-xl p-3 flex-1 min-h-[200px] bg-card/50 border border-border"
+                aria-hidden
+              />
+            ) : (
+              (() => {
+                const columnTasks = optimisticTasks
+                  .filter((t) => t.status === selectedTab)
+                  .sort((a, b) => a.order_index - b.order_index)
+                  .map((task) => ({
+                    ...task,
+                    __selectionProps: {
+                      selectionMode,
+                      isSelected: selectedTaskIds.has(task.id),
+                      onToggleSelection,
+                    },
+                  }));
+                const totalCount = counts?.[selectedTab] ?? columnTasks.length;
+                const hasMore =
+                  onLoadMore != null && totalCount > columnTasks.length;
+                const isLoadingMore = loadingMoreStatus === selectedTab;
+                return (
+                  <>
+                    <TaskListForStatus
+                      status={selectedTab}
+                      tasks={columnTasks}
+                      projects={projects}
+                      projectId={projectId}
+                      onTaskUpdate={onTaskUpdate}
+                      selectionMode={selectionMode}
+                      selectedTaskIds={selectedTaskIds}
+                      onToggleSelection={onToggleSelection}
+                      onTaskUpdated={onTaskUpdated}
+                      onEditError={onEditError}
+                      footer={
+                        onLoadMore && hasMore ? (
+                          isLoadingMore ? (
+                            <div className="w-full py-2 rounded cq-skeleton-shimmer bg-muted/40" />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => onLoadMore(selectedTab)}
+                              className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {t('kanban.view_more')}
+                            </button>
+                          )
+                        ) : undefined
+                      }
+                    />
+                    {onAddTask && (
+                      <button
+                        type="button"
+                        onClick={() => onAddTask(selectedTab)}
+                        className="mt-1.5 w-full py-3 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-primary hover:bg-accent transition-all flex items-center justify-center gap-2 text-sm font-medium flex-shrink-0"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {t('kanban.add_task')}
+                      </button>
+                    )}
+                  </>
+                );
+              })()
+            )}
           </div>
         </div>
 
