@@ -22,7 +22,6 @@ import { useI18n } from '@/components/I18nProvider';
 import { Database } from '@/lib/supabase/types';
 import { updateTaskOrder } from '@/app/actions/tasks';
 import { cn } from '@/lib/utils';
-import { Plus } from 'lucide-react';
 import { applyOptimisticTaskMove } from '@/lib/kanban/optimistic';
 import { toastError } from '@/lib/ui/toast';
 
@@ -76,6 +75,14 @@ interface KanbanBoardProps {
   onLoadMore?: (status: Task['status']) => void | Promise<void>;
   /** Status of the column currently loading more (for shimmer on "Ver más" button) */
   loadingMoreStatus?: Task['status'] | null;
+  /** When provided, add-task from column uses optimistic add (no refresh). */
+  onTaskAdded?: (task: Task) => void;
+  onTaskConfirmed?: (realTask: Task, optimisticId: string) => void;
+  onAddTaskError?: (params: {
+    message: string;
+    retry: () => Promise<{ data?: Task; error?: string }>;
+    optimisticId?: string;
+  }) => void;
 }
 
 function TaskListForStatus({
@@ -164,6 +171,9 @@ export default function KanbanBoard({
   counts,
   onLoadMore,
   loadingMoreStatus,
+  onTaskAdded,
+  onTaskConfirmed,
+  onAddTaskError,
 }: KanbanBoardProps) {
   const { t } = useI18n();
   const [selectedTabState, setSelectedTabState] =
@@ -380,16 +390,6 @@ export default function KanbanBoard({
                         ) : undefined
                       }
                     />
-                    {onAddTask && (
-                      <button
-                        type="button"
-                        onClick={() => onAddTask(selectedTab)}
-                        className="mt-1.5 w-full py-3 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-primary hover:bg-accent transition-all flex items-center justify-center gap-2 text-sm font-medium flex-shrink-0"
-                      >
-                        <Plus className="w-4 h-4" />
-                        {t('kanban.add_task')}
-                      </button>
-                    )}
                   </>
                 );
               })()
@@ -427,6 +427,9 @@ export default function KanbanBoard({
                 totalCount={counts?.[status]}
                 onLoadMore={onLoadMore ? () => onLoadMore(status) : undefined}
                 isLoadingMore={loadingMoreStatus === status}
+                onTaskAdded={onTaskAdded}
+                onTaskConfirmed={onTaskConfirmed}
+                onAddTaskError={onAddTaskError}
               />
             );
           })}

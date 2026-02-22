@@ -9,6 +9,7 @@ import { MutationErrorDialog } from '@/components/MutationErrorDialog';
 import { useI18n } from '@/components/I18nProvider';
 import { getTasksByProjectIdPaginated } from '@/app/actions/tasks';
 import { BOARD_STATUSES, LOAD_MORE_TASKS_PER_COLUMN } from '@/lib/board';
+import { Plus } from 'lucide-react';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 type Project = Database['public']['Tables']['projects']['Row'];
@@ -20,6 +21,8 @@ type ErrorDialogState = {
   message: string;
   onTryAgain: () => void | Promise<void>;
   onCancel: () => void;
+  /** When set, cancel should remove this optimistic task from the board */
+  optimisticId?: string;
 };
 
 function sortTasksByOrder(a: Task[]): Task[] {
@@ -209,41 +212,170 @@ export default function ContextBoardClient({
           onTaskUpdated={handleTaskUpdated}
           onEditError={openEditErrorDialog}
           skipRevalidateOnMove
+          onTaskAdded={(task) => {
+            const s = task.status;
+            setTasksByStatus((prev) => ({
+              ...prev,
+              [s]: sortTasksByOrder([...prev[s], task]),
+            }));
+            setCounts((c) => ({ ...c, [s]: c[s] + 1 }));
+          }}
+          onTaskConfirmed={(realTask, optimisticId) => {
+            setTasksByStatus((prev) => {
+              const next = { ...prev };
+              const s = realTask.status;
+              for (const status of BOARD_STATUSES) {
+                const idx = next[status].findIndex(
+                  (t) => t.id === optimisticId
+                );
+                if (idx >= 0) {
+                  next[status] = next[status]
+                    .filter((t) => t.id !== optimisticId)
+                    .concat(realTask);
+                  next[status] = sortTasksByOrder(next[status]);
+                  return next;
+                }
+              }
+              return prev;
+            });
+          }}
+          onAddTaskError={(params) => {
+            setErrorDialog({
+              open: true,
+              title: t('mutation_error.title'),
+              message: params.message,
+              optimisticId: params.optimisticId,
+              onTryAgain: async () => {
+                const result = await params.retry();
+                if (result?.error) throw new Error(result.error);
+                if (result?.data && params.optimisticId) {
+                  setTasksByStatus((prev) => {
+                    const next = { ...prev };
+                    const s = result.data!.status;
+                    const id = params.optimisticId!;
+                    for (const status of BOARD_STATUSES) {
+                      const idx = next[status].findIndex((t) => t.id === id);
+                      if (idx >= 0) {
+                        next[status] = next[status]
+                          .filter((t) => t.id !== id)
+                          .concat(result.data!);
+                        next[status] = sortTasksByOrder(next[status]);
+                        return next;
+                      }
+                    }
+                    return prev;
+                  });
+                }
+              },
+              onCancel: () => {
+                if (params.optimisticId) {
+                  const id = params.optimisticId;
+                  let removedStatus: TaskStatus | null = null;
+                  setTasksByStatus((prev) => {
+                    const next = { ...prev };
+                    for (const status of BOARD_STATUSES) {
+                      if (next[status].some((t) => t.id === id)) {
+                        next[status] = next[status].filter((t) => t.id !== id);
+                        next[status] = sortTasksByOrder(next[status]);
+                        removedStatus = status;
+                        break;
+                      }
+                    }
+                    return next;
+                  });
+                  if (removedStatus !== null) {
+                    setCounts((c) => ({
+                      ...c,
+                      [removedStatus!]: c[removedStatus!] - 1,
+                    }));
+                  }
+                }
+              },
+            });
+          }}
         />
       </div>
       <AddTaskModal
         isOpen={isAddTaskOpen}
         onClose={() => setIsAddTaskOpen(false)}
         onTaskAdded={(createdTask) => {
-          if (createdTask) {
-            const s = createdTask.status;
-            setTasksByStatus((prev) => ({
-              ...prev,
-              [s]: sortTasksByOrder([...prev[s], createdTask]),
-            }));
-            setCounts((c) => ({ ...c, [s]: c[s] + 1 }));
-          }
+          const s = createdTask.status;
+          setTasksByStatus((prev) => ({
+            ...prev,
+            [s]: sortTasksByOrder([...prev[s], createdTask]),
+          }));
+          setCounts((c) => ({ ...c, [s]: c[s] + 1 }));
           setIsAddTaskOpen(false);
+        }}
+        onTaskConfirmed={(realTask, optimisticId) => {
+          setTasksByStatus((prev) => {
+            const next = { ...prev };
+            const s = realTask.status;
+            for (const status of BOARD_STATUSES) {
+              const idx = next[status].findIndex((t) => t.id === optimisticId);
+              if (idx >= 0) {
+                next[status] = next[status]
+                  .filter((t) => t.id !== optimisticId)
+                  .concat(realTask);
+                next[status] = sortTasksByOrder(next[status]);
+                return next;
+              }
+            }
+            return prev;
+          });
         }}
         onAddError={(params) => {
           setErrorDialog({
             open: true,
             title: t('mutation_error.title'),
             message: params.message,
+            optimisticId: params.optimisticId,
             onTryAgain: async () => {
               const result = await params.retry();
               if (result?.error) throw new Error(result.error);
-              if (result?.data) {
-                const s = result.data.status;
-                setTasksByStatus((prev) => ({
-                  ...prev,
-                  [s]: sortTasksByOrder([...prev[s], result.data!]),
-                }));
-                setCounts((c) => ({ ...c, [s]: c[s] + 1 }));
-                setIsAddTaskOpen(false);
+              if (result?.data && params.optimisticId) {
+                setTasksByStatus((prev) => {
+                  const next = { ...prev };
+                  const s = result.data!.status;
+                  const id = params.optimisticId!;
+                  for (const status of BOARD_STATUSES) {
+                    const idx = next[status].findIndex((t) => t.id === id);
+                    if (idx >= 0) {
+                      next[status] = next[status]
+                        .filter((t) => t.id !== id)
+                        .concat(result.data!);
+                      next[status] = sortTasksByOrder(next[status]);
+                      return next;
+                    }
+                  }
+                  return prev;
+                });
               }
             },
-            onCancel: () => {},
+            onCancel: () => {
+              if (params.optimisticId) {
+                const id = params.optimisticId;
+                let removedStatus: TaskStatus | null = null;
+                setTasksByStatus((prev) => {
+                  const next = { ...prev };
+                  for (const status of BOARD_STATUSES) {
+                    if (next[status].some((t) => t.id === id)) {
+                      next[status] = next[status].filter((t) => t.id !== id);
+                      next[status] = sortTasksByOrder(next[status]);
+                      removedStatus = status;
+                      break;
+                    }
+                  }
+                  return next;
+                });
+                if (removedStatus !== null) {
+                  setCounts((c) => ({
+                    ...c,
+                    [removedStatus!]: c[removedStatus!] - 1,
+                  }));
+                }
+              }
+            },
           });
         }}
         defaultProjectId={projectId}
@@ -264,6 +396,15 @@ export default function ContextBoardClient({
           onCancel={errorDialog.onCancel}
         />
       )}
+      {/* FAB: Add task — mobile only; desktop uses per-column add at top */}
+      <button
+        type="button"
+        onClick={() => setIsAddTaskOpen(true)}
+        aria-label={t('tasks.add_task')}
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8 lg:hidden"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
     </>
   );
 }

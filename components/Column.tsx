@@ -35,6 +35,14 @@ interface ColumnProps {
   onLoadMore?: () => void | Promise<void>;
   /** This column is currently loading more tasks */
   isLoadingMore?: boolean;
+  /** When provided, add-task uses optimistic add (no loading/refresh). */
+  onTaskAdded?: (task: Task) => void;
+  onTaskConfirmed?: (realTask: Task, optimisticId: string) => void;
+  onAddTaskError?: (params: {
+    message: string;
+    retry: () => Promise<{ data?: Task; error?: string }>;
+    optimisticId?: string;
+  }) => void;
 }
 
 export default function Column({
@@ -52,6 +60,9 @@ export default function Column({
   totalCount,
   onLoadMore,
   isLoadingMore,
+  onTaskAdded,
+  onTaskConfirmed,
+  onAddTaskError,
 }: ColumnProps) {
   const { t } = useI18n();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -213,6 +224,17 @@ export default function Column({
                   isOver && 'bg-opacity-80'
                 )}
               >
+                {/* Add Task — at top of column (desktop); status = this column */}
+                {currentProjectId && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="flex-shrink-0 w-full py-3 mb-3 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-primary hover:bg-accent transition-all flex items-center justify-center gap-2 text-sm font-medium"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {t('kanban.add_task')}
+                  </button>
+                )}
                 <div className="flex-1 min-h-0 overflow-y-auto space-y-3">
                   <SortableContext
                     items={tasks.map((t) => t.id)}
@@ -255,14 +277,6 @@ export default function Column({
                     )}
                   </div>
                 )}
-                {/* Add Task Button */}
-                <button
-                  className="flex-shrink-0 w-full py-3 mt-1.5 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-primary hover:bg-accent transition-all flex items-center justify-center gap-2 text-sm font-medium"
-                  onClick={() => setIsAddModalOpen(true)}
-                >
-                  <Plus className="w-4 h-4" />
-                  {t('kanban.add_task')}
-                </button>
               </div>
             )}
           </div>
@@ -272,7 +286,15 @@ export default function Column({
         <AddTaskModal
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
-          onTaskAdded={onTaskUpdate}
+          onTaskAdded={
+            onTaskAdded ??
+            ((task) => {
+              void task;
+              onTaskUpdate();
+            })
+          }
+          onTaskConfirmed={onTaskConfirmed}
+          onAddError={onAddTaskError}
           defaultProjectId={currentProjectId}
           defaultStatus={id}
         />
