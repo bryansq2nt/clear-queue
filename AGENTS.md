@@ -42,6 +42,50 @@ These are the architectural laws of ClearQueue. Every rule below follows from th
 
 ---
 
+## 1b. Browser / Client-side API rules (CRITICAL)
+
+### window.open() with async URL fetching
+
+**Never** pre-open a blank window and navigate it after an `await`.
+
+When `noopener` or `noreferrer` is in the features string, `window.open()` returns
+`null` per the HTML spec. Setting `location.href` on that null reference is a silent
+no-op — the tab opens blank and stays blank. On some desktop browsers it triggers a
+Google search for `about:blank`.
+
+```ts
+// ❌ NEVER DO THIS — win is always null when noopener is set
+const win = window.open('', '_blank', 'noopener,noreferrer');
+const { url } = await fetchSignedUrl(id);
+win.location.href = url; // no-op
+```
+
+**Rule:** If the URL is synchronously available, call `window.open(url, '_blank', 'noopener,noreferrer')` once.
+If the URL requires an async fetch, create a Next.js API route that authenticates
+server-side and returns a `302` redirect. The click handler opens the route URL
+synchronously — no async inside the gesture, no popup blocking.
+
+```ts
+// ✅ API route handles the async work server-side
+export async function GET(_req, { params }) {
+  const user = await getUser();
+  if (!user) return new NextResponse('Unauthorized', { status: 401 });
+  const { data } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(path, 3600);
+  return NextResponse.redirect(data.signedUrl, 302);
+}
+
+// ✅ Component — synchronous, one line
+const handleOpen = () => {
+  window.open(`/api/resource/${id}/view`, '_blank', 'noopener,noreferrer');
+};
+```
+
+**Real example:** `app/api/documents/[fileId]/view/route.ts` + `components/context/documents/DocumentRow.tsx`
+
+---
+
 ## 2. Repo architecture map
 
 Based on the Context Pack folder map:

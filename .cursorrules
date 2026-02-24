@@ -1,5 +1,14 @@
 # Cursor AI — Project Rules
 
+@AGENTS.md
+@CONVENTIONS.md
+
+The two files above are the authoritative project rules. Everything below is
+Cursor-specific guidance and a quick-reference summary. When in doubt, defer
+to AGENTS.md and CONVENTIONS.md.
+
+---
+
 Follow these rules for all code generation and edits in this repo.
 
 ---
@@ -144,6 +153,29 @@ Every response that changes code must include:
 3. **Risks / tradeoffs** — any side-effects or trade-offs.
 4. **How to test** — step-by-step verification.
 5. **Follow-ups** — any deferred work flagged.
+
+---
+
+## Browser / Client-side APIs (CRITICAL)
+
+### window.open() with async URL fetching
+
+**Never** pre-open a blank window and navigate it after an `await`.
+`noopener`/`noreferrer` causes `window.open()` to return `null` — the tab opens blank
+and stays blank. On desktop it triggers a Google search for `about:blank`.
+
+```ts
+// ❌ NEVER — win is null when noopener is set
+const win = window.open('', '_blank', 'noopener,noreferrer');
+const { url } = await fetchSignedUrl(id);
+win.location.href = url; // silent no-op
+```
+
+- **URL known synchronously:** `window.open(url, '_blank', 'noopener,noreferrer')` — one call.
+- **URL needs async fetch:** Create a Next.js API route (`app/api/.../route.ts`) that
+  authenticates and returns `302`. Open the route URL synchronously.
+
+See `app/api/documents/[fileId]/view/route.ts` as the reference implementation.
 
 ---
 
