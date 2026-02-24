@@ -14,6 +14,7 @@ import {
   DollarSign,
   Receipt,
   CheckSquare,
+  FolderOpen,
 } from 'lucide-react';
 
 export interface ContextTabBarProps {
@@ -31,6 +32,7 @@ const TABS = [
   { slug: 'budgets', labelKey: 'context.budgets', icon: DollarSign },
   { slug: 'billings', labelKey: 'context.billings', icon: Receipt },
   { slug: 'todos', labelKey: 'context.todos', icon: CheckSquare },
+  { slug: 'documents', labelKey: 'context.documents', icon: FolderOpen },
 ] as const;
 
 export function ContextTabBar({ projectId, onExitStart }: ContextTabBarProps) {

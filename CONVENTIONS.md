@@ -4,6 +4,23 @@ This document defines **official conventions** for structure, naming, queries, c
 
 ---
 
+## 0. Layering model (official)
+
+```
+UI  →  Application  →  Domain  →  Infrastructure
+```
+
+Dependencies must **always point inward**. Outer layers call inner layers; inner layers never import from outer layers.
+
+| Layer              | Where                                                                               | Responsibilities                                                                                              |
+| ------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **UI**             | `app/**/page.tsx`, `app/**/layout.tsx`, `components/**`                             | Render state, collect input, call server actions, optimistic visual updates only                              |
+| **Application**    | `app/actions/*.ts`, `app/context/[id]/<tab>/actions.ts`                             | `requireAuth`, validate inputs, enforce scoping, call domain + DB/RPC, `revalidatePath`, return typed results |
+| **Domain**         | `lib/**` (e.g. `lib/board.ts`, `lib/validation/**`, `lib/todo/**`)                  | Business rules, transformations (DB rows → view models), reusable validation helpers                          |
+| **Infrastructure** | `lib/supabase/server.ts`, `lib/supabase/types.ts`, `supabase/migrations/**`, Sentry | Persistence, RPC, RLS, indexes, monitoring, platform concerns                                                 |
+
+---
+
 ## 1. Folder structure conventions
 
 ### app/

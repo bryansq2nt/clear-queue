@@ -219,7 +219,7 @@ export async function addNoteLink(
   const { data, error } = await supabase
     .from('note_links')
     .insert(insertPayload as never)
-    .select()
+    .select('id, note_id, title, url, created_at')
     .single();
 
   if (error) {

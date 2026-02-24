@@ -228,10 +228,10 @@ export const getDocuments = cache(async (projectId: string): Promise<ProjectFile
 - Orders by `last_opened_at DESC NULLS LAST`, then `created_at DESC`.
 - Wrapped in React `cache()` for request deduplication.
 
-### 4.2 `uploadDocumentAction`
+### 4.2 `uploadDocument`
 
 ```ts
-uploadDocumentAction(projectId: string, formData: FormData): Promise<{ success: boolean; error?: string; data?: ProjectFile }>
+uploadDocument(projectId: string, formData: FormData): Promise<{ success: boolean; error?: string; data?: ProjectFile }>
 ```
 
 Steps:
@@ -246,46 +246,46 @@ Steps:
 8. `revalidatePath` on all three paths.
 9. Return `{ success: true, data: insertedRow }`.
 
-### 4.3 `updateDocumentAction`
+### 4.3 `updateDocument`
 
 ```ts
-updateDocumentAction(fileId: string, input: { title?: string; description?: string; document_category?: string; tags?: string[] }): Promise<{ success: boolean; error?: string; data?: ProjectFile }>
+updateDocument(fileId: string, input: { title?: string; description?: string; document_category?: string; tags?: string[] }): Promise<{ success: boolean; error?: string; data?: ProjectFile }>
 ```
 
 - Fetches row, verifies `owner_id = user.id` and `kind = 'document'`.
 - Updates only provided fields.
 - Returns updated row.
 
-### 4.4 `archiveDocumentAction`
+### 4.4 `archiveDocument`
 
 ```ts
-archiveDocumentAction(fileId: string): Promise<{ success: boolean; error?: string }>
+archiveDocument(fileId: string): Promise<{ success: boolean; error?: string }>
 ```
 
 - Sets `archived_at = now()`.
 
-### 4.5 `markDocumentFinalAction`
+### 4.5 `markDocumentFinal`
 
 ```ts
-markDocumentFinalAction(fileId: string, isFinal: boolean): Promise<{ success: boolean; error?: string }>
+markDocumentFinal(fileId: string, isFinal: boolean): Promise<{ success: boolean; error?: string }>
 ```
 
 - Sets `is_final = isFinal`.
 
-### 4.6 `getDocumentSignedUrlAction`
+### 4.6 `getDocumentSignedUrl`
 
 ```ts
-getDocumentSignedUrlAction(fileId: string): Promise<{ url?: string; error?: string }>
+getDocumentSignedUrl(fileId: string): Promise<{ url?: string; error?: string }>
 ```
 
 - Fetches row, verifies ownership.
 - Calls Supabase `storage.from('project-docs').createSignedUrl(path, 3600)`.
 - Returns signed URL. Never exposes raw path to client.
 
-### 4.7 `touchDocumentAction`
+### 4.7 `touchDocument`
 
 ```ts
-touchDocumentAction(fileId: string): Promise<void>
+touchDocument(fileId: string): Promise<void>
 ```
 
 - Sets `last_opened_at = now()`. Fire-and-forget, no revalidation, no throw on error.
@@ -353,13 +353,17 @@ app/context/[projectId]/documents/
 ### 6.2 Shared UI components
 
 ```
+components/skeletons/
+  SkeletonDocuments.tsx             ← full list skeleton (N shimmer rows)
+  SkeletonDocumentRow.tsx           ← single shimmer row for loading state
+
 components/context/documents/
   DocumentRow.tsx                   ← single list row
-  DocumentRowSkeleton.tsx           ← shimmer row for loading state
-  SkeletonDocuments.tsx             ← full list skeleton (N shimmer rows)
   UploadDocumentDialog.tsx          ← upload form inside Dialog
   EditDocumentDialog.tsx            ← edit metadata inside Dialog
 ```
+
+> **Convention:** All skeleton components belong in `components/skeletons/` and must use the `Skeleton*` prefix (see `SkeletonNotes`, `SkeletonBoard`, `SkeletonBudgets`). Do not place skeletons in feature folders.
 
 ### 6.3 Component specs
 
@@ -391,28 +395,32 @@ components/context/documents/
 
 - Props: `file: ProjectFile`, `onMarkFinal`, `onArchive`, `onEdit`.
 - Left: file type icon (color-coded by extension).
-- Center: title (clickable, calls `getDocumentSignedUrlAction` then `window.open(url, '_blank')` then `touchDocumentAction`), category badge, size, date.
+- Center: title (clickable, calls `getDocumentSignedUrl` then `window.open(url, '_blank')` then `touchDocument`), category badge, size, date.
 - Right: Final toggle + overflow menu (Edit, Archive).
 - Min height 44px.
 - Loading state on title click while fetching signed URL.
 
-**`SkeletonDocuments.tsx`**
+**`SkeletonDocuments.tsx`** (`components/skeletons/SkeletonDocuments.tsx`)
 
-- Renders 4–5 shimmer rows. No spinner. No "Loading..." text. Matches real row dimensions.
+- Renders 4–5 `<SkeletonDocumentRow />` shimmer rows. No spinner. No "Loading..." text. Matches real row dimensions.
+
+**`SkeletonDocumentRow.tsx`** (`components/skeletons/SkeletonDocumentRow.tsx`)
+
+- Single shimmer row matching the real `DocumentRow` dimensions. Used by `SkeletonDocuments`.
 
 **`UploadDocumentDialog.tsx`**
 
 - Uses `Dialog` from `@/components/ui/dialog`.
 - Fields: file picker (drag+drop), title, category (Select), description (Textarea), tags (Input).
 - MIME validation on file select (before form submit), inline error.
-- On submit: build FormData, call `uploadDocumentAction`, loading state on button, error message on failure.
+- On submit: build FormData, call `uploadDocument`, loading state on button, error message on failure.
 - On success: `onSuccess()` closes dialog and triggers refresh.
 
 **`EditDocumentDialog.tsx`**
 
 - Same structure as Upload but no file picker.
 - Pre-filled with existing document data.
-- Calls `updateDocumentAction`.
+- Calls `updateDocument`.
 
 ---
 
@@ -445,6 +453,7 @@ type CacheKeyType =
   | 'ideas'
   | 'owner'
   | 'budgets'
+  | 'billings'
   | 'todos'
   | 'project'
   | 'documents';
@@ -510,7 +519,8 @@ Exit criteria: all actions work, edge cases handled, no TypeScript errors.
 
 Tasks:
 
-- Create `SkeletonDocuments`, `DocumentRowSkeleton`, `DocumentRow`.
+- Create `SkeletonDocuments`, `SkeletonDocumentRow` in `components/skeletons/`.
+- Create `DocumentRow` in `components/context/documents/`.
 - Create `UploadDocumentDialog`, `EditDocumentDialog`.
 - Create `ContextDocumentsClient`.
 - Create `ContextDocumentsFromCache`.

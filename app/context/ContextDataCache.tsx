@@ -20,6 +20,7 @@ export type CacheKey =
   | { type: 'budgets'; projectId: string }
   | { type: 'billings'; projectId: string }
   | { type: 'todos'; projectId: string }
+  | { type: 'documents'; projectId: string }
   | { type: 'noteDetail'; noteId: string };
 
 function cacheKeyToString(k: CacheKey): string {

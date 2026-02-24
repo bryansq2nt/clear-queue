@@ -107,6 +107,46 @@ Refer to: docs/patterns/context-session-cache.md and docs/context-session-cache-
 
 ---
 
+## Separation of Concerns (CRITICAL)
+
+- **No business rules in `components/**`**. Components render and collect input only.
+- **Server actions** coordinate use-cases (auth, validation, DB/RPC, revalidation).
+- **Domain logic** goes to `lib/**` (transformations, validations, multi-step rules).
+- **Infrastructure changes** go to `supabase/migrations/**` and `lib/supabase/**`.
+
+---
+
+## Performance / N+1 Prevention (CRITICAL)
+
+- **NEVER** call the DB per-item in a list loop. If related data is needed:
+  - Use join/nesting in a single Supabase query, or
+  - Create a view, or
+  - Create an RPC returning a table shape.
+- **ALWAYS** select explicit columns (never `SELECT *` or `.select()` with no args after insert).
+- **ALWAYS** paginate list endpoints when results can grow unbounded.
+- **Query budget:** context tab initial load ≤ 3 DB round trips; detail pages ≤ 2.
+
+---
+
+## Tests Required
+
+- **Domain logic change (`lib/**`):** Add or update a Vitest test.
+- **New module or context tab:** Add at least one Playwright happy-path E2E test.
+- **Bug fixed by E2E:** Add a lower-level unit/integration test where feasible.
+
+---
+
+## Response / PR Output Format (required)
+
+Every response that changes code must include:
+1. **Summary** — what changed and why.
+2. **Files changed** — list of all touched files.
+3. **Risks / tradeoffs** — any side-effects or trade-offs.
+4. **How to test** — step-by-step verification.
+5. **Follow-ups** — any deferred work flagged.
+
+---
+
 ## Code Style and Formatting
 
 - **ALWAYS** match the project’s Prettier config (`.prettierrc`): semicolons, single quotes, `tabWidth: 2`, `trailingComma: "es5"`.

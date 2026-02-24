@@ -4,6 +4,20 @@ This document guides **humans and AI agents** working in the repo. It is the sin
 
 ---
 
+## 0. Core invariants (never compromise)
+
+These are the architectural laws of ClearQueue. Every rule below follows from them.
+
+| Invariant                                                 | What it means                                                                                                                                                                                          |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Layering — UI → Application → Domain → Infrastructure** | Dependencies point inward only. UI must not contain business rules. Application (server actions) coordinates use-cases. Domain (`lib/**`) expresses business logic. Infrastructure is DB/SDK plumbing. |
+| **Project-scoped isolation**                              | Every "context" operation is project-scoped. No cross-project reads or writes.                                                                                                                         |
+| **Atomicity by default**                                  | Any multi-step write must be atomic at the DB boundary (`_atomic` RPC) or a single SQL statement. No partial state ever reaches the client.                                                            |
+| **Cache correctness > cache cleverness**                  | Caching is allowed only when it cannot create stale or inconsistent UX. Invalidation is explicit and centralized.                                                                                      |
+| **Security is defense in depth**                          | RLS is the final guard, but application queries must still scope by owner/project and validate inputs. Never rely on RLS as the only filter.                                                           |
+
+---
+
 ## 1. How to work here (rules for everyone)
 
 - **Do not** use `createClient()` from `@/lib/supabase/client` in any component under `components/` or in any file matching `app/**/*Client.tsx`. Data access and mutations run only in server actions or server components using `@/lib/supabase/server`. (Enforced by ESLint: `clear-queue/no-client-supabase-in-components`.)

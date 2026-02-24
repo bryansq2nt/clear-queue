@@ -136,7 +136,7 @@ Adding Document Hub would mean adding e.g. `app/context/[projectId]/documents/` 
 
 ### 2.2 Example of a complete, working server action file
 
-**`app/notes/actions.ts`** is a good reference. It includes:
+**`app/actions/notes.ts`** is a good reference. It includes:
 
 - `'use server'`
 - `cache()` for read-only actions (`getNotes`)
@@ -344,7 +344,7 @@ So: **use RLS for enforcement**, and **use `getProjectById(projectId)` when you 
 
 ### 5.2 How an existing module (Notes) implements cache
 
-- **Fetch (read):** `getNotes({ projectId })` in `app/notes/actions.ts` is wrapped in React `cache(...)` so it’s deduped per request. It’s not using `unstable_cache` or tags.
+- **Fetch (read):** `getNotes({ projectId })` in `app/actions/notes.ts` is wrapped in React `cache(...)` so it’s deduped per request. It’s not using `unstable_cache` or tags.
 - **Cache wrapper:** `ContextNotesFromCache` (client component):
   - Reads from `useContextDataCache()` with key `{ type: 'notes', projectId }`.
   - On **cache hit:** Renders `ContextNotesClient` with cached data, no loading.
@@ -390,7 +390,8 @@ There is no other central cache file. Server-side “cache” is just React `cac
   - Prettier: semicolons, single quotes, `tabWidth: 2`, `trailingComma: "es5"`; run Prettier after edits.
   - Before generating: check `docs/patterns/`, use `templates/`, follow CURSOR_RULES.md if present.
 
-- **AGENTS.md** and **CONVENTIONS.md** do **not** exist in the repo.
+- **AGENTS.md** exists at the repo root. It is the authoritative contract for humans and AI agents. It defines core invariants, repo architecture, golden paths, DoD checklist, and transitional notes.
+- **CONVENTIONS.md** exists at the repo root. It defines the official four-layer model (UI → Application → Domain → Infrastructure), folder structure, naming conventions, query/cache patterns, module blueprint, and testing strategy.
 
 ---
 
@@ -437,7 +438,7 @@ So strict mode is on; indexed access is not strictly checked.
 
 The **Notes** module under the context area is the best reference for “list + detail with session cache and server actions”:
 
-- Lives under **`app/context/[projectId]/notes/`** (and uses shared actions from `app/notes/actions.ts`).
+- Lives under **`app/context/[projectId]/notes/`** (and uses shared actions from `app/actions/notes.ts`).
 - Uses the full pattern: server page → `*FromCache` → `*Client`, cache key `notes:${projectId}`, `onRefresh` after mutations, no `router.refresh()`.
 - Has a list view and a detail view (`[noteId]`) plus `new` for creation.
 - Server actions use explicit selects, `owner_id` / `project_id` scoping, `revalidatePath`, and return `{ data?, error? }`.
@@ -450,7 +451,7 @@ Use Notes as the **reference implementation** for Document Hub (list + optional 
 
 | Purpose                      | File                                                                                                                                                                                                        |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Server actions**           | `app/notes/actions.ts` — getNotes (cached), getNoteById, createNote, updateNote, deleteNote, getNoteLinks, addNoteLink, deleteNoteLink; all with explicit columns, requireAuth, revalidatePath.             |
+| **Server actions**           | `app/actions/notes.ts` — getNotes (cached), getNoteById, createNote, updateNote, deleteNote, getNoteLinks, addNoteLink, deleteNoteLink; all with explicit columns, requireAuth, revalidatePath.             |
 | **Main list page (context)** | `app/context/[projectId]/notes/page.tsx` — async page, requireAuth, renders `<ContextNotesFromCache projectId={projectId} />`.                                                                              |
 | **Cache wrapper**            | `app/context/[projectId]/notes/ContextNotesFromCache.tsx` — get/set cache key `{ type: 'notes', projectId }`, loading = `<SkeletonNotes />`, renders `ContextNotesClient` with initialNotes and onRefresh.  |
 | **List/row client**          | `app/context/[projectId]/notes/ContextNotesClient.tsx` — receives initialNotes and onRefresh; list of cards (title, updated_at, dropdown menu View/Edit/Delete); FAB to create; navigates to detail or new. |

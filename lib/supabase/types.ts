@@ -911,6 +911,98 @@ export type Database = {
           updated_at?: string;
         };
       };
+      project_files: {
+        Row: {
+          id: string;
+          project_id: string;
+          owner_id: string;
+          kind: 'media' | 'document';
+          document_category:
+            | 'brief'
+            | 'contract'
+            | 'invoice'
+            | 'proposal'
+            | 'report'
+            | 'spreadsheet'
+            | 'notes'
+            | 'other'
+            | null;
+          title: string;
+          description: string | null;
+          bucket: string;
+          path: string;
+          mime_type: string;
+          file_ext: string | null;
+          size_bytes: number;
+          tags: string[];
+          is_final: boolean;
+          last_opened_at: string | null;
+          archived_at: string | null;
+          deleted_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          owner_id: string;
+          kind: 'media' | 'document';
+          document_category?:
+            | 'brief'
+            | 'contract'
+            | 'invoice'
+            | 'proposal'
+            | 'report'
+            | 'spreadsheet'
+            | 'notes'
+            | 'other'
+            | null;
+          title: string;
+          description?: string | null;
+          bucket: string;
+          path: string;
+          mime_type: string;
+          file_ext?: string | null;
+          size_bytes: number;
+          tags?: string[];
+          is_final?: boolean;
+          last_opened_at?: string | null;
+          archived_at?: string | null;
+          deleted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          owner_id?: string;
+          kind?: 'media' | 'document';
+          document_category?:
+            | 'brief'
+            | 'contract'
+            | 'invoice'
+            | 'proposal'
+            | 'report'
+            | 'spreadsheet'
+            | 'notes'
+            | 'other'
+            | null;
+          title?: string;
+          description?: string | null;
+          bucket?: string;
+          path?: string;
+          mime_type?: string;
+          file_ext?: string | null;
+          size_bytes?: number;
+          tags?: string[];
+          is_final?: boolean;
+          last_opened_at?: string | null;
+          archived_at?: string | null;
+          deleted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -930,6 +1022,16 @@ export type Database = {
         | 'marketing'
         | 'operations'
         | 'client'
+        | 'other';
+      project_file_kind_enum: 'media' | 'document';
+      project_document_category_enum:
+        | 'brief'
+        | 'contract'
+        | 'invoice'
+        | 'proposal'
+        | 'report'
+        | 'spreadsheet'
+        | 'notes'
         | 'other';
     };
     CompositeTypes: {

@@ -81,7 +81,9 @@ export async function uploadUserAsset(
   const { data: row, error: insertError } = await supabase
     .from('user_assets')
     .insert(insertPayload as never)
-    .select()
+    .select(
+      'id, user_id, kind, bucket, path, mime_type, size_bytes, width, height, created_at'
+    )
     .single();
 
   if (insertError) {
