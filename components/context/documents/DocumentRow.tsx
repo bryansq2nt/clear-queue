@@ -5,9 +5,7 @@ import { Database } from '@/lib/supabase/types';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { cn } from '@/lib/utils';
 import {
-  getDocumentSignedUrl,
   getDocumentDownloadUrl,
-  touchDocument,
   markDocumentFinal,
 } from '@/app/actions/documents';
 import {
@@ -87,8 +85,6 @@ export function DocumentRow({
   onFinalToggle,
 }: DocumentRowProps) {
   const { t, locale } = useI18n();
-  const [isOpening, setIsOpening] = useState(false);
-  const [openError, setOpenError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isFinalPending, setIsFinalPending] = useState(false);
 
@@ -96,30 +92,12 @@ export function DocumentRow({
   const Icon = EXT_ICON_MAP[ext] ?? FileText;
   const iconColor = EXT_COLOR_MAP[ext] ?? 'text-muted-foreground';
 
-  const handleOpen = async () => {
-    if (isOpening) return;
-    setOpenError(null);
-
-    // Open a blank window synchronously while still inside the user gesture.
-    // Mobile browsers (iOS Safari) block window.open() called after an await
-    // because the browser gesture context is lost at that point.
-    const newWindow = window.open('', '_blank', 'noopener,noreferrer');
-
-    setIsOpening(true);
-    const { url, error } = await getDocumentSignedUrl(file.id);
-    setIsOpening(false);
-
-    if (error || !url) {
-      newWindow?.close();
-      setOpenError(t('documents.error_opening'));
-      return;
-    }
-
-    if (newWindow) {
-      newWindow.location.href = url;
-    }
-    // fire-and-forget
-    touchDocument(file.id);
+  const handleOpen = () => {
+    window.open(
+      `/api/documents/${file.id}/view`,
+      '_blank',
+      'noopener,noreferrer'
+    );
   };
 
   const handleDownload = async () => {
@@ -157,7 +135,6 @@ export function DocumentRow({
         <button
           type="button"
           onClick={handleOpen}
-          disabled={isOpening}
           className="text-left w-full"
           aria-label={t('documents.open_document')}
         >
@@ -170,14 +147,8 @@ export function DocumentRow({
                 {t('documents.final_badge')}
               </span>
             )}
-            {isOpening && (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground flex-shrink-0" />
-            )}
           </span>
         </button>
-        {openError && (
-          <p className="text-xs text-destructive mt-0.5">{openError}</p>
-        )}
         <p className="text-xs text-muted-foreground mt-0.5">{t(categoryKey)}</p>
       </div>
 
