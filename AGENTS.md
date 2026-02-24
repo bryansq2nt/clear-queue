@@ -242,6 +242,49 @@ Before considering a change “done”:
 
 ---
 
+## 4b. Self-audit — run this on your own output before declaring done
+
+The Definition of Done (section 4) is a final confirmation pass. This self-audit
+is different: it requires actively looking for failure modes in the code you just
+wrote, not just confirming a checklist.
+
+After writing any implementation, ask each question out loud and answer it:
+
+### Data & queries
+
+- [ ] **N+1 check:** Does any function call the DB inside a loop over a list? If yes → replace with JOIN, nested select, view, or RPC.
+- [ ] **Explicit select check:** Does every `.select()` call have an explicit column list? Any `.select()` with no arguments or `'*'` is a violation.
+- [ ] **Scope check:** Does every query filter by `owner_id` or `user_id` AND by `project_id` where applicable? A query scoped only by one of these is likely wrong.
+- [ ] **Round-trip count:** How many DB calls does this feature make on initial load? If > 3 for a tab or > 2 for a detail page — refactor before shipping.
+
+### Writes & atomicity
+
+- [ ] **Multi-step write check:** If this feature performs 2+ writes that must both succeed, is it using a `_atomic` RPC? Two sequential awaits that each call the DB is always wrong.
+- [ ] **Revalidation check:** Does every mutation call `revalidatePath` (or `revalidateTag`) after success?
+- [ ] **Return data check:** Does the server action return the created/updated row so the UI can update without a refetch? If it returns nothing after a write, the client must refetch — which is a rule violation.
+
+### Security
+
+- [ ] **Auth check:** Is `requireAuth()` (or `getUser()`) the very first call in every server action and API route handler?
+- [ ] **Client Supabase check:** Does any component or `*Client.tsx` file import from `@/lib/supabase/client` for data access? That is always wrong.
+- [ ] **Input validation check:** Is every user-supplied value (from FormData, query params, or request body) validated and trimmed before it reaches the DB?
+
+### UI & UX
+
+- [ ] **Loading state check:** Is every async operation covered by a shimmer skeleton — not a spinner, not "Loading…" text?
+- [ ] **Error handling check:** Are mutation errors shown via `MutationErrorDialog` (or equivalent), not `alert()` or bare `console.error`?
+- [ ] **Optimistic update check:** After a mutation succeeds, does the UI update from the returned data — not from a `router.refresh()` or a full page reload?
+
+### Observability
+
+- [ ] **Sentry check:** Does every error path in server actions and API routes call `captureWithContext` with `module`, `action`, `userIntent`, and `expected`?
+
+### Browser APIs
+
+- [ ] **window.open() check:** If any code opens a new tab, is the URL passed synchronously to `window.open()`? Any pattern that opens a blank window and navigates it after an `await` is broken (see section 1b).
+
+---
+
 ## 5. When unsure, write an audit note
 
 - If you are unsure whether a pattern is allowed, or you find a deviation from these rules, **do not guess**. Add a short audit note so the team can decide.
