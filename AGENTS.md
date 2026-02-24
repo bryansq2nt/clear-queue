@@ -40,6 +40,8 @@ These are the architectural laws of ClearQueue. Every rule below follows from th
 
 - **Do** name exported server actions **verb-first** and **without** the `Action` suffix (see CONVENTIONS.md). Reads: `get*` / `list*`. Writes: `create*` / `update*` / `delete*` / `move*` / `toggle*` / `duplicate*`.
 
+- **Do** use `captureWithContext` from `@/lib/sentry` (not bare `Sentry.captureException`) in every server action and API route error path. Always include `module`, `action`, `userIntent`, and `expected`. Reference: `app/actions/documents.ts`.
+
 ---
 
 ## 1b. Browser / Client-side API rules (CRITICAL)
@@ -83,6 +85,54 @@ const handleOpen = () => {
 ```
 
 **Real example:** `app/api/documents/[fileId]/view/route.ts` + `components/context/documents/DocumentRow.tsx`
+
+---
+
+## 1c. Pre-flight — required before writing any code
+
+Before generating or editing any code, complete this checklist in order.
+
+**1. Identify which layers are touched.**
+UI / Application / Domain / Infrastructure — dependencies must point inward only. If a component needs data, it calls a server action, not the DB directly.
+
+**2. Find the reference implementation to follow — do not invent patterns.**
+
+| What you are building    | Reference to read first                                                       |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| New context tab          | `app/context/[projectId]/notes/` (ContextNotesFromCache + ContextNotesClient) |
+| New server action        | `app/actions/notes.ts`, `app/actions/documents.ts`                            |
+| Multi-step write         | `app/actions/tasks.ts` → `create_task_atomic` RPC                             |
+| Error dialog             | `components/board/MutationErrorDialog.tsx`                                    |
+| Skeleton / loading state | `components/skeletons/SkeletonNotes.tsx`                                      |
+| File upload              | `lib/storage/upload.ts`                                                       |
+| API route                | `app/api/documents/[fileId]/view/route.ts`                                    |
+
+**3. List every file that will change before touching any of them.**
+If the list is longer than expected, the scope is probably too large — break it up.
+
+**4. Define the test plan.**
+
+- New logic in `lib/**` → add or update a Vitest test.
+- New context tab or user-facing module → add at least one Playwright happy-path test.
+- Bug caught by E2E → add a lower-level unit/integration test where feasible.
+
+**5. Identify DB impact.**
+
+- Schema change → migration (`YYYYMMDDHHMMSS_description.sql`) with RLS + indexes + `updated_at` trigger (see CONVENTIONS.md migration checklist).
+- Multi-step write → Postgres RPC with `_atomic` suffix; no client-side two-step sequences.
+
+---
+
+## 1d. Performance contracts (non-negotiable)
+
+| Operation                           | Max DB round trips | Rule                |
+| ----------------------------------- | ------------------ | ------------------- |
+| Context tab initial load or refresh | **3**              | Architecture rule   |
+| Detail page load                    | **2**              | Architecture rule   |
+| Single insert / update / delete     | **1**              | One query, one call |
+| Multi-step write                    | **1 RPC call**     | Atomicity invariant |
+
+**Never** issue a DB call per item in a list loop. If you need related data for every row, use a JOIN, a nested Supabase select, a view, or an RPC that returns the full shape. A loop over a list that calls the DB per item is always wrong and will be flagged in review.
 
 ---
 
@@ -208,15 +258,44 @@ Before considering a change “done”:
 
 ---
 
+## 6b. Known tech debt — do not copy these patterns
+
+The following are **known violations** of the rules in this file. They are documented in `docs/audits/AUDIT_SUMMARY.md` and exist because they predate the current standards. They are not fixed yet. **Do not copy them. Do not make them worse.**
+
+| Location                                                       | Violation                                             | Correct approach                                                                   |
+| -------------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `app/context/[projectId]/links/actions.ts:413`                 | N+1 loop — one `UPDATE` per link in reorder           | Must be a `reorder_links_atomic` RPC (one call)                                    |
+| Task ordering (multiple actions files)                         | Non-atomic reorder; concurrent `max(sort_order)` race | Correct pattern is `move_task_atomic` RPC — already used in `app/actions/tasks.ts` |
+| `revalidatePath('/dashboard')` in several actions              | Path does not exist in the router                     | New code revalidates only real paths: `/`, `/context`, `/context/${projectId}`     |
+| Exports suffixed with `Action` (e.g. `listProjectLinksAction`) | Naming convention violation                           | New code: verb-first, no suffix (e.g. `listProjectLinks`)                          |
+
+**If you open one of these files as a reference implementation, read it for structure only — do not copy the specific pattern flagged above.**
+
+---
+
 ## 7. Quick reference
 
-| Topic          | Reference file(s)                                                                                  |
-| -------------- | -------------------------------------------------------------------------------------------------- |
-| Context tab    | `app/context/[projectId]/notes/ContextNotesFromCache.tsx`, `ContextNotesClient.tsx`                |
-| Cache provider | `app/context/layout.tsx`, `app/context/ContextDataCache.tsx`                                       |
-| Server actions | `app/actions/notes.ts`, `app/actions/tasks.ts`, `app/actions/projects.ts`                          |
-| RPC usage      | `app/actions/tasks.ts`, `app/actions/budgets.ts`, `lib/todo/lists.ts`                              |
-| Error dialog   | `app/context/[projectId]/board/ContextBoardClient.tsx`, `components/board/MutationErrorDialog.tsx` |
-| Tabs + i18n    | `components/context/ContextTabBar.tsx`, `components/shared/I18nProvider.tsx`, `lib/i18n.ts`        |
-| Data loading   | `app/profile/page.tsx`, `app/profile/ProfilePageClient.tsx`                                        |
-| Full audit     | `docs/audits/REPO_CONTEXT_PACK.md`                                                                 |
+### Code references
+
+| Topic                | Reference file(s)                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| Context tab          | `app/context/[projectId]/notes/ContextNotesFromCache.tsx`, `ContextNotesClient.tsx`                |
+| Cache provider       | `app/context/layout.tsx`, `app/context/ContextDataCache.tsx`                                       |
+| Server actions       | `app/actions/notes.ts`, `app/actions/tasks.ts`, `app/actions/projects.ts`                          |
+| RPC usage            | `app/actions/tasks.ts`, `app/actions/budgets.ts`, `lib/todo/lists.ts`                              |
+| Error dialog         | `app/context/[projectId]/board/ContextBoardClient.tsx`, `components/board/MutationErrorDialog.tsx` |
+| Tabs + i18n          | `components/context/ContextTabBar.tsx`, `components/shared/I18nProvider.tsx`, `lib/i18n.ts`        |
+| File upload          | `lib/storage/upload.ts`                                                                            |
+| API route (redirect) | `app/api/documents/[fileId]/view/route.ts`                                                         |
+| Sentry context       | `app/actions/documents.ts` (captureWithContext usage throughout)                                   |
+| Full audit           | `docs/audits/REPO_CONTEXT_PACK.md`, `docs/audits/AUDIT_SUMMARY.md`                                 |
+
+### Pattern deep-dives (read before implementing)
+
+| Before you build…                       | Read this pattern doc first              |
+| --------------------------------------- | ---------------------------------------- |
+| Any data loading (page, tab, component) | `docs/patterns/data-loading.md`          |
+| Any server action (read or write)       | `docs/patterns/server-actions.md`        |
+| Any Supabase query                      | `docs/patterns/database-queries.md`      |
+| Any multi-step write                    | `docs/patterns/transactions.md`          |
+| Any context tab with caching            | `docs/patterns/context-session-cache.md` |

@@ -7,6 +7,16 @@ The two files above are the authoritative project rules. Everything below is
 Cursor-specific guidance and a quick-reference summary. When in doubt, defer
 to AGENTS.md and CONVENTIONS.md.
 
+Before implementing anything, read the relevant pattern doc from `docs/patterns/`:
+
+| Building… | Read first |
+| --------- | ---------- |
+| Data loading (page, tab) | `docs/patterns/data-loading.md` |
+| Server action | `docs/patterns/server-actions.md` |
+| Supabase query | `docs/patterns/database-queries.md` |
+| Multi-step / atomic write | `docs/patterns/transactions.md` |
+| Context tab with caching | `docs/patterns/context-session-cache.md` |
+
 ---
 
 Follow these rules for all code generation and edits in this repo.

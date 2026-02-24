@@ -131,6 +131,26 @@ export const getNotes = cache(
 
 **Example:** `app/actions/notes.ts` — `createNote`: requireAuth, validate project_id/title/content, insert with owner_id/project_id/title/content, `.select(...).single()`, revalidatePath('/notes', '/notes/[id]', '/context'), return `{ data }` or `{ error }`.
 
+### Error reporting in server actions
+
+Every server action and API route that handles a mutation or critical read must report errors using `captureWithContext` from `@/lib/sentry`, not bare `Sentry.captureException`. This gives every Sentry event enough context to identify what the user was trying to do without reading code.
+
+```ts
+import { captureWithContext } from '@/lib/sentry';
+
+// On error in a server action:
+captureWithContext(error, {
+  module: 'documents', // feature area (tasks, notes, documents, board, budgets…)
+  action: 'uploadDocument', // exact function name
+  userIntent: 'Upload a project document', // plain language — what was the user doing?
+  expected: 'File stored in bucket and DB row inserted', // happy-path description
+});
+```
+
+Fields are all required. Never include passwords, tokens, or raw user data beyond what the privacy policy allows.
+
+**Reference:** `app/actions/documents.ts` uses `captureWithContext` throughout as the canonical example.
+
 ### Atomic multi-step write (RPC)
 
 - **Policy:** Any multi-step write must be atomic via a Postgres RPC (snake_case + `_atomic`). No client-side “step 1 then step 2” for dependent writes unless explicitly approved.
@@ -170,6 +190,23 @@ export const getNotes = cache(
 
 - **Keys:** Add strings to `locales/en.json` and `locales/es.json` (nested keys, e.g. `common.save`, `context.notes`).
 - **Usage:** In client components, use `useI18n()` from `@/components/shared/I18nProvider` and call `t(key)` or `formatCurrency(amount)`. Reference: `components/context/ContextTabBar.tsx`, `lib/i18n.ts`, `components/shared/I18nProvider.tsx`.
+- **Tone — English:** Natural and direct (modern product voice). Sentence case for all buttons and labels (`Save changes`, not `Save Changes`). Clarity over cleverness.
+- **Tone — Spanish:** Professional but natural. Neutral regional tone usable across Latin America — no country-specific slang. Short and clear. Sentence case for buttons and labels.
+- **Placeholders:** `{count}`, `{name}`, `{title}` — preserve exactly in both locale files.
+
+#### Terminology decisions (locked — do not change without a documented reason)
+
+These terms were chosen deliberately. Using synonyms creates inconsistency across the product.
+
+| Concept                    | English  | Spanish     | Note                                                            |
+| -------------------------- | -------- | ----------- | --------------------------------------------------------------- |
+| Task status: not started   | Pending  | Pendientes  |                                                                 |
+| Task status: can't proceed | Blocked  | Detenidas   | **Not** "Bloqueadas" — implies inability to unblock             |
+| Task status: finished      | Done     | Completadas |                                                                 |
+| Task status: high priority | Critical | Urgentes    | **Not** "Críticas"                                              |
+| Monetary amount            | Amount   | Importe     | **Not** "Monto" or "Cantidad" — "Importe" is the LATAM standard |
+| App settings page          | Settings | Ajustes     | **Not** "Configuración"                                         |
+| App home / overview        | —        | Panel       | If ever needed as a label                                       |
 
 ### Error handling (mutation errors)
 
@@ -206,6 +243,25 @@ export const getNotes = cache(
 - **New table or column:** Add a migration in `supabase/migrations/` with timestamp name (e.g. `YYYYMMDDHHMMSS_description.sql`). Define RLS (owner*id or project join). Use `update_updated_at_column()` and a trigger `update*<table>\_updated_at`for`updated_at` columns.
 - **Multi-step write:** Add a Postgres function **snake_case** + **`_atomic`** and call it from a server action. Do not implement multi-step writes as two client-triggered writes unless explicitly approved.
 - **Reference migrations:** `001_initial_schema.sql`, `20260216010000_atomic_todo_and_task_creation.sql`, `20260222140000_fix_move_task_atomic_project_scope.sql`, `20260221120000_link_categories_owned.sql`.
+
+### Migration checklist — every new table must have all of these
+
+Before committing a migration, verify every item is present:
+
+- [ ] **RLS enabled:** `ALTER TABLE public.<table> ENABLE ROW LEVEL SECURITY;`
+- [ ] **RLS policies:** SELECT, INSERT, UPDATE, DELETE policies scoped to `auth.uid()` via `owner_id`, or via a projects ownership join for project-scoped data.
+- [ ] **Compound query indexes:** One index per common query pattern (e.g. `(owner_id, project_id, archived_at)`, `(project_id, created_at DESC)`). Don't rely on the PK alone.
+- [ ] **`updated_at` trigger** using the shared helper:
+  ```sql
+  CREATE TRIGGER update_<table>_updated_at
+    BEFORE UPDATE ON public.<table>
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  ```
+- [ ] **FK constraints** with explicit `ON DELETE CASCADE` or `ON DELETE SET NULL` — never leave orphaned rows.
+- [ ] **Soft-delete column (if used):** `deleted_at TIMESTAMPTZ NULL` with an index on `(owner_id, deleted_at)` or `(project_id, deleted_at)`.
+- [ ] **Enum types** defined in the migration if the table uses them; enum values documented in `lib/supabase/types.ts`.
+
+**Reference:** `supabase/migrations/20260224100000_document_hub.sql` (complete example with enums, table, indexes, RLS, storage bucket, trigger).
 
 ### 6.4 Tests to add
 

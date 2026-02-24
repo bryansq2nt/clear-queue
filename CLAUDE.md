@@ -1,10 +1,26 @@
 # CLAUDE.md — Bootstrap for Claude Code
 
 This file is read automatically by Claude Code at startup.
-The two imports below load the full project rules and conventions.
+The imports below load the full project rules and conventions.
 
 @AGENTS.md
 @CONVENTIONS.md
+
+---
+
+## Pattern deep-dives — read before implementing
+
+AGENTS.md and CONVENTIONS.md contain the rules. The files below contain the
+**how-to detail** with real examples. Read the relevant one before writing code
+for that area — do not rely on memory or invention.
+
+| Before you build…                        | Read this first                          |
+| ---------------------------------------- | ---------------------------------------- |
+| Any data loading (page, tab, component)  | `docs/patterns/data-loading.md`          |
+| Any server action (read or write)        | `docs/patterns/server-actions.md`        |
+| Any Supabase query                       | `docs/patterns/database-queries.md`      |
+| Any multi-step write or atomic operation | `docs/patterns/transactions.md`          |
+| Any context tab with session caching     | `docs/patterns/context-session-cache.md` |
 
 ---
 
