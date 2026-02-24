@@ -99,14 +99,25 @@ export function DocumentRow({
   const handleOpen = async () => {
     if (isOpening) return;
     setOpenError(null);
+
+    // Open a blank window synchronously while still inside the user gesture.
+    // Mobile browsers (iOS Safari) block window.open() called after an await
+    // because the browser gesture context is lost at that point.
+    const newWindow = window.open('', '_blank', 'noopener,noreferrer');
+
     setIsOpening(true);
     const { url, error } = await getDocumentSignedUrl(file.id);
     setIsOpening(false);
+
     if (error || !url) {
+      newWindow?.close();
       setOpenError(t('documents.error_opening'));
       return;
     }
-    window.open(url, '_blank', 'noopener,noreferrer');
+
+    if (newWindow) {
+      newWindow.location.href = url;
+    }
     // fire-and-forget
     touchDocument(file.id);
   };
