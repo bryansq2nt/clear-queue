@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Database } from '@/lib/supabase/types';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { uploadDocument, uploadDocumentsBulk } from '@/app/actions/documents';
@@ -28,29 +28,43 @@ import {
 } from '@/components/ui/select';
 
 type ProjectFile = Database['public']['Tables']['project_files']['Row'];
+type DocumentFolder =
+  Database['public']['Tables']['project_document_folders']['Row'];
 
 interface UploadDocumentDialogProps {
   open: boolean;
   projectId: string;
+  folders?: DocumentFolder[];
+  /** When opening from inside a folder view, pre-select this folder (null = "Ninguna"). */
+  defaultFolderId?: string | null;
+  /** Category to pre-select so user can just pick file and upload (e.g. "other"). */
+  defaultCategory?: string;
   onClose: () => void;
   /** Called with one file (single upload) or array (bulk upload). */
   onSuccess: (fileOrFiles: ProjectFile | ProjectFile[]) => void;
 }
 
+const DEFAULT_CATEGORY = 'other';
+
 export function UploadDocumentDialog({
   open,
   projectId,
+  folders = [],
+  defaultFolderId,
+  defaultCategory = DEFAULT_CATEGORY,
   onClose,
   onSuccess,
 }: UploadDocumentDialogProps) {
   const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevOpenRef = useRef(false);
 
   const [file, setFile] = useState<File | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
+  const [folderId, setFolderId] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -58,6 +72,14 @@ export function UploadDocumentDialog({
   const [bulkErrors, setBulkErrors] = useState<
     { name: string; error: string }[]
   >([]);
+
+  useEffect(() => {
+    if (open && !prevOpenRef.current) {
+      setFolderId(defaultFolderId ?? '');
+      setCategory(defaultCategory || DEFAULT_CATEGORY);
+    }
+    prevOpenRef.current = open;
+  }, [open, defaultFolderId, defaultCategory]);
 
   const isBulkMode = files.length > 1;
 
@@ -67,6 +89,7 @@ export function UploadDocumentDialog({
     setFileError(null);
     setTitle('');
     setCategory('');
+    setFolderId('');
     setDescription('');
     setTags('');
     setIsUploading(false);
@@ -145,6 +168,7 @@ export function UploadDocumentDialog({
       }
       const formData = new FormData();
       formData.set('document_category', category);
+      if (folderId.trim()) formData.set('folder_id', folderId.trim());
       files.forEach((f) => formData.append('file', f));
       setIsUploading(true);
       const result = await uploadDocumentsBulk(projectId, formData);
@@ -178,6 +202,7 @@ export function UploadDocumentDialog({
     formData.set('file', file);
     formData.set('title', title.trim() || file.name.replace(/\.[^.]+$/, ''));
     formData.set('document_category', category);
+    if (folderId.trim()) formData.set('folder_id', folderId.trim());
     formData.set('description', description);
     formData.set('tags', tags);
 
@@ -266,6 +291,31 @@ export function UploadDocumentDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Folder */}
+          {folders.length > 0 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="doc-folder">{t('documents.folder_label')}</Label>
+              <Select
+                value={folderId || 'none'}
+                onValueChange={(v) => setFolderId(v === 'none' ? '' : v)}
+              >
+                <SelectTrigger id="doc-folder">
+                  <SelectValue placeholder={t('documents.folder_none')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    {t('documents.folder_none')}
+                  </SelectItem>
+                  {folders.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Description — only in single-file mode */}
           {!isBulkMode && (

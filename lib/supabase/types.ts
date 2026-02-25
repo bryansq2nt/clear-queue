@@ -911,6 +911,35 @@ export type Database = {
           updated_at?: string;
         };
       };
+      project_document_folders: {
+        Row: {
+          id: string;
+          project_id: string;
+          owner_id: string;
+          name: string;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          owner_id: string;
+          name: string;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          owner_id?: string;
+          name?: string;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       project_files: {
         Row: {
           id: string;
@@ -939,6 +968,7 @@ export type Database = {
           last_opened_at: string | null;
           archived_at: string | null;
           deleted_at: string | null;
+          folder_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -969,6 +999,7 @@ export type Database = {
           last_opened_at?: string | null;
           archived_at?: string | null;
           deleted_at?: string | null;
+          folder_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -999,6 +1030,7 @@ export type Database = {
           last_opened_at?: string | null;
           archived_at?: string | null;
           deleted_at?: string | null;
+          folder_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };

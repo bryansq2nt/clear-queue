@@ -44,17 +44,8 @@ const EXT_ICON_MAP: Record<string, React.ElementType> = {
   txt: FileText,
 };
 
-const EXT_COLOR_MAP: Record<string, string> = {
-  pdf: 'text-red-500',
-  doc: 'text-blue-500',
-  docx: 'text-blue-500',
-  xls: 'text-green-500',
-  xlsx: 'text-green-500',
-  csv: 'text-green-600',
-  ppt: 'text-orange-500',
-  pptx: 'text-orange-500',
-  txt: 'text-muted-foreground',
-};
+/** Use theme primary for all document icons (no red/blue per type). */
+const DOCUMENT_ICON_CLASS = 'text-primary';
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -97,7 +88,6 @@ export function DocumentRow({
 
   const ext = file.file_ext ?? 'txt';
   const Icon = EXT_ICON_MAP[ext] ?? FileText;
-  const iconColor = EXT_COLOR_MAP[ext] ?? 'text-muted-foreground';
 
   const handleOpen = () => {
     window.open(
@@ -140,7 +130,7 @@ export function DocumentRow({
     >
       {/* File type icon */}
       <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
-        <Icon className={cn('w-6 h-6', iconColor)} />
+        <Icon className={cn('w-6 h-6', DOCUMENT_ICON_CLASS)} />
       </div>
 
       {/* Title + category */}
@@ -220,7 +210,7 @@ export function DocumentRow({
         <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
           <DropdownMenuItem onClick={() => onEdit(file)}>
             <Edit className="w-4 h-4 mr-2" />
-            {t('documents.edit')}
+            {t('documents.edit_info')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleDownload} disabled={isDownloading}>
             {isDownloading ? (

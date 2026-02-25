@@ -24,10 +24,13 @@ import {
 } from '@/components/ui/select';
 
 type ProjectFile = Database['public']['Tables']['project_files']['Row'];
+type DocumentFolder =
+  Database['public']['Tables']['project_document_folders']['Row'];
 
 interface EditDocumentDialogProps {
   open: boolean;
   file: ProjectFile | null;
+  folders?: DocumentFolder[];
   onClose: () => void;
   onSuccess: (updated: ProjectFile) => void;
 }
@@ -35,6 +38,7 @@ interface EditDocumentDialogProps {
 export function EditDocumentDialog({
   open,
   file,
+  folders = [],
   onClose,
   onSuccess,
 }: EditDocumentDialogProps) {
@@ -42,16 +46,17 @@ export function EditDocumentDialog({
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
+  const [folderId, setFolderId] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Populate form whenever the target file changes
   useEffect(() => {
     if (file) {
       setTitle(file.title);
       setCategory(file.document_category ?? '');
+      setFolderId(file.folder_id ?? '');
       setDescription(file.description ?? '');
       setTags((file.tags ?? []).join(', '));
       setSubmitError(null);
@@ -85,6 +90,7 @@ export function EditDocumentDialog({
       document_category: category || undefined,
       description: description.trim() || null,
       tags: parsedTags,
+      folder_id: folderId.trim() || null,
     });
     setIsSaving(false);
 
@@ -100,7 +106,7 @@ export function EditDocumentDialog({
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('documents.edit')}</DialogTitle>
+          <DialogTitle>{t('documents.edit_info')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
@@ -133,6 +139,33 @@ export function EditDocumentDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Folder */}
+          {folders.length > 0 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-doc-folder">
+                {t('documents.folder_label')}
+              </Label>
+              <Select
+                value={folderId || 'none'}
+                onValueChange={(v) => setFolderId(v === 'none' ? '' : v)}
+              >
+                <SelectTrigger id="edit-doc-folder">
+                  <SelectValue placeholder={t('documents.folder_none')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    {t('documents.folder_none')}
+                  </SelectItem>
+                  {folders.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Description */}
           <div className="space-y-1.5">

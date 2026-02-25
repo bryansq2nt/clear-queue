@@ -7,6 +7,7 @@ import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 import { getProjectById } from '@/app/actions/projects';
+import { getFolderForProject } from '@/app/actions/document-folders';
 import {
   DOCUMENT_MAX_SIZE_BYTES,
   DOCUMENT_EXT_MAP,
@@ -19,7 +20,7 @@ type ProjectFileInsert =
   Database['public']['Tables']['project_files']['Insert'];
 
 const PROJECT_FILE_COLS =
-  'id, project_id, owner_id, kind, document_category, title, description, bucket, path, mime_type, file_ext, size_bytes, tags, is_final, last_opened_at, archived_at, deleted_at, created_at, updated_at';
+  'id, project_id, owner_id, kind, document_category, title, description, bucket, path, mime_type, file_ext, size_bytes, tags, is_final, last_opened_at, archived_at, deleted_at, folder_id, created_at, updated_at';
 
 const BUCKET = 'project-docs';
 
@@ -37,22 +38,34 @@ const MAX_RECENT_DOCUMENTS = 5;
 // ------------------------------------------------------------
 
 export const getDocuments = cache(
-  async (projectId: string): Promise<ProjectFile[]> => {
+  async (
+    projectId: string,
+    folderId?: string | null
+  ): Promise<ProjectFile[]> => {
     const user = await requireAuth();
     const supabase = await createClient();
 
     const pid = projectId?.trim();
     if (!pid) return [];
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('project_files')
       .select(PROJECT_FILE_COLS)
       .eq('project_id', pid)
       .eq('owner_id', user.id)
       .eq('kind', 'document')
       .is('archived_at', null)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+      .is('deleted_at', null);
+
+    if (folderId === null) {
+      query = query.is('folder_id', null);
+    } else if (typeof folderId === 'string' && folderId.trim()) {
+      query = query.eq('folder_id', folderId.trim());
+    }
+
+    const { data, error } = await query.order('created_at', {
+      ascending: false,
+    });
 
     if (error) {
       captureWithContext(error, {
@@ -148,6 +161,21 @@ export async function uploadDocument(
           .filter(Boolean)
       : [];
 
+  const rawFolderId = formData.get('folder_id');
+  const folderId =
+    typeof rawFolderId === 'string' && rawFolderId.trim()
+      ? rawFolderId.trim()
+      : null;
+
+  if (folderId) {
+    const folder = await getFolderForProject(folderId, pid);
+    if (!folder)
+      return {
+        success: false,
+        error: 'Folder not found or does not belong to this project',
+      };
+  }
+
   // Build server-side storage path: {owner_id}/{project_id}/{yyyy}/{mm}/{uuid}.{ext}
   const ext = DOCUMENT_EXT_MAP[file.type] ?? 'bin';
   const now = new Date();
@@ -186,6 +214,7 @@ export async function uploadDocument(
     file_ext: ext,
     size_bytes: file.size,
     tags,
+    folder_id: folderId,
   };
 
   const { data, error: insertError } = await supabase
@@ -247,6 +276,27 @@ export async function uploadDocumentsBulk(
       success: false,
       errors: [{ index: 0, name: '', error: 'A valid category is required' }],
     };
+  }
+
+  const rawFolderId = formData.get('folder_id');
+  const folderId =
+    typeof rawFolderId === 'string' && rawFolderId.trim()
+      ? rawFolderId.trim()
+      : null;
+
+  if (folderId) {
+    const folder = await getFolderForProject(folderId, pid);
+    if (!folder)
+      return {
+        success: false,
+        errors: [
+          {
+            index: 0,
+            name: '',
+            error: 'Folder not found or does not belong to this project',
+          },
+        ],
+      };
   }
 
   const rawFiles = formData.getAll('file');
@@ -317,6 +367,7 @@ export async function uploadDocumentsBulk(
       file_ext: ext,
       size_bytes: file.size,
       tags: [],
+      folder_id: folderId,
     };
 
     const { data: row, error: insertError } = await supabase
@@ -359,6 +410,7 @@ export async function updateDocument(
     description?: string | null;
     document_category?: string;
     tags?: string[];
+    folder_id?: string | null;
   }
 ): Promise<{ success: boolean; error?: string; data?: ProjectFile }> {
   const user = await requireAuth();
@@ -378,6 +430,21 @@ export async function updateDocument(
 
   if (fetchError || !existing) {
     return { success: false, error: 'Document not found or access denied' };
+  }
+
+  const projectId = (existing as { project_id: string }).project_id;
+
+  if (
+    input.folder_id !== undefined &&
+    input.folder_id !== null &&
+    input.folder_id.trim() !== ''
+  ) {
+    const folder = await getFolderForProject(input.folder_id, projectId);
+    if (!folder)
+      return {
+        success: false,
+        error: 'Folder not found or does not belong to this project',
+      };
   }
 
   const updates: Database['public']['Tables']['project_files']['Update'] = {};
@@ -401,6 +468,9 @@ export async function updateDocument(
   }
   if (input.tags !== undefined) {
     updates.tags = input.tags.map((t) => t.trim()).filter(Boolean);
+  }
+  if (input.folder_id !== undefined) {
+    updates.folder_id = input.folder_id;
   }
 
   if (Object.keys(updates).length === 0) {
