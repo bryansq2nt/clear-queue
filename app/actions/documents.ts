@@ -29,6 +29,9 @@ function revalidateDocumentPaths(projectId: string) {
   revalidatePath(`/context/${projectId}/documents`);
 }
 
+/** Max "recent" docs (opened or uploaded) shown first, like project picker. */
+const MAX_RECENT_DOCUMENTS = 5;
+
 // ------------------------------------------------------------
 // Reads
 // ------------------------------------------------------------
@@ -49,7 +52,6 @@ export const getDocuments = cache(
       .eq('kind', 'document')
       .is('archived_at', null)
       .is('deleted_at', null)
-      .order('last_opened_at', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -63,7 +65,26 @@ export const getDocuments = cache(
       return [];
     }
 
-    return (data as ProjectFile[]) ?? [];
+    const list = (data as ProjectFile[]) ?? [];
+    if (list.length <= MAX_RECENT_DOCUMENTS) return list;
+
+    // Recent = max 5 by (last_opened_at ?? created_at) desc; treat newly uploaded as recent.
+    const byRecent = [...list].sort((a, b) => {
+      const aAt = a.last_opened_at ?? a.created_at;
+      const bAt = b.last_opened_at ?? b.created_at;
+      return new Date(bAt).getTime() - new Date(aAt).getTime();
+    });
+    const recentIds = new Set(
+      byRecent.slice(0, MAX_RECENT_DOCUMENTS).map((d) => d.id)
+    );
+    const recent = byRecent.slice(0, MAX_RECENT_DOCUMENTS);
+    const rest = list
+      .filter((d) => !recentIds.has(d.id))
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    return [...recent, ...rest];
   }
 );
 
@@ -188,6 +209,147 @@ export async function uploadDocument(
 
   revalidateDocumentPaths(pid);
   return { success: true, data: data as ProjectFile };
+}
+
+export type BulkUploadError = { index: number; name: string; error: string };
+
+export async function uploadDocumentsBulk(
+  projectId: string,
+  formData: FormData
+): Promise<{
+  success: boolean;
+  data?: ProjectFile[];
+  errors?: BulkUploadError[];
+}> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const pid = projectId?.trim();
+  if (!pid)
+    return {
+      success: false,
+      errors: [{ index: 0, name: '', error: 'Project ID is required' }],
+    };
+
+  const project = await getProjectById(pid);
+  if (!project)
+    return {
+      success: false,
+      errors: [
+        { index: 0, name: '', error: 'Project not found or access denied' },
+      ],
+    };
+
+  const rawCategory = formData.get('document_category');
+  const category = typeof rawCategory === 'string' ? rawCategory.trim() : '';
+  if (!isValidDocumentCategory(category)) {
+    return {
+      success: false,
+      errors: [{ index: 0, name: '', error: 'A valid category is required' }],
+    };
+  }
+
+  const rawFiles = formData.getAll('file');
+  const files = rawFiles.filter(
+    (f): f is File => f instanceof File && f.size > 0
+  );
+  if (files.length === 0) {
+    return {
+      success: false,
+      errors: [{ index: 0, name: '', error: 'At least one file is required' }],
+    };
+  }
+
+  const created: ProjectFile[] = [];
+  const errors: BulkUploadError[] = [];
+  const now = new Date();
+  const yyyy = now.getUTCFullYear().toString();
+  const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const title = file.name.replace(/\.[^.]+$/, '').trim() || file.name;
+
+    if (!isValidMimeType(file.type)) {
+      errors.push({
+        index: i,
+        name: file.name,
+        error: 'File type not supported',
+      });
+      continue;
+    }
+    if (file.size > DOCUMENT_MAX_SIZE_BYTES) {
+      errors.push({
+        index: i,
+        name: file.name,
+        error: 'File exceeds 50 MB limit',
+      });
+      continue;
+    }
+
+    const ext = DOCUMENT_EXT_MAP[file.type] ?? 'bin';
+    const uuid = crypto.randomUUID();
+    const storagePath = `${user.id}/${pid}/${yyyy}/${mm}/${uuid}.${ext}`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(storagePath, file, { contentType: file.type, upsert: false });
+
+    if (uploadError || !uploadData?.path) {
+      errors.push({
+        index: i,
+        name: file.name,
+        error: uploadError?.message ?? 'Upload failed',
+      });
+      continue;
+    }
+
+    const insertPayload: ProjectFileInsert = {
+      project_id: pid,
+      owner_id: user.id,
+      kind: 'document',
+      document_category: category,
+      title,
+      description: null,
+      bucket: BUCKET,
+      path: uploadData.path,
+      mime_type: file.type,
+      file_ext: ext,
+      size_bytes: file.size,
+      tags: [],
+    };
+
+    const { data: row, error: insertError } = await supabase
+      .from('project_files')
+      .insert(insertPayload as never)
+      .select(PROJECT_FILE_COLS)
+      .single();
+
+    if (insertError) {
+      await supabase.storage.from(BUCKET).remove([uploadData.path]);
+      captureWithContext(insertError, {
+        module: 'documents',
+        action: 'uploadDocumentsBulk',
+        userIntent: 'Subir documentos en lote',
+        expected: 'Fila insertada en project_files',
+        extra: { projectId: pid, index: i, name: file.name },
+      });
+      errors.push({ index: i, name: file.name, error: insertError.message });
+      continue;
+    }
+
+    created.push(row as ProjectFile);
+  }
+
+  if (created.length > 0) {
+    revalidateDocumentPaths(pid);
+  }
+
+  return {
+    success: created.length > 0,
+    data: created.length > 0 ? created : undefined,
+    errors: errors.length > 0 ? errors : undefined,
+  };
 }
 
 export async function updateDocument(

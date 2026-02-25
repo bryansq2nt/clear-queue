@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Database } from '@/lib/supabase/types';
 import { useI18n } from '@/components/shared/I18nProvider';
 import {
   getDocuments,
   archiveDocument,
   deleteDocument,
+  touchDocument,
 } from '@/app/actions/documents';
 import { DocumentRow } from '@/components/context/documents/DocumentRow';
 import { UploadDocumentDialog } from '@/components/context/documents/UploadDocumentDialog';
@@ -14,6 +15,28 @@ import { EditDocumentDialog } from '@/components/context/documents/EditDocumentD
 import { FolderOpen, Plus } from 'lucide-react';
 
 type ProjectFile = Database['public']['Tables']['project_files']['Row'];
+
+const MAX_RECENT_DOCUMENTS = 5;
+
+function sortDocumentsForDisplay(list: ProjectFile[]): ProjectFile[] {
+  if (list.length <= MAX_RECENT_DOCUMENTS) return list;
+  const byRecent = [...list].sort((a, b) => {
+    const aAt = a.last_opened_at ?? a.created_at;
+    const bAt = b.last_opened_at ?? b.created_at;
+    return new Date(bAt).getTime() - new Date(aAt).getTime();
+  });
+  const recentIds = new Set(
+    byRecent.slice(0, MAX_RECENT_DOCUMENTS).map((d) => d.id)
+  );
+  const recent = byRecent.slice(0, MAX_RECENT_DOCUMENTS);
+  const rest = list
+    .filter((d) => !recentIds.has(d.id))
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  return [...recent, ...rest];
+}
 
 interface ContextDocumentsClientProps {
   projectId: string;
@@ -44,9 +67,12 @@ export default function ContextDocumentsClient({
     setDocuments(data);
   };
 
-  const handleUploadSuccess = (file: ProjectFile) => {
+  const handleUploadSuccess = (fileOrFiles: ProjectFile | ProjectFile[]) => {
     setIsUploadOpen(false);
-    setDocuments((prev) => [file, ...prev]);
+    const next = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles];
+    setDocuments((prev) => [...next, ...prev]);
+    // Keep session cache in sync so returning to this tab shows the new list
+    void onRefresh?.();
   };
 
   const handleEditSuccess = (updated: ProjectFile) => {
@@ -54,12 +80,14 @@ export default function ContextDocumentsClient({
     setDocuments((prev) =>
       prev.map((d) => (d.id === updated.id ? updated : d))
     );
+    void onRefresh?.();
   };
 
   const handleArchive = async (file: ProjectFile) => {
     const { success } = await archiveDocument(file.id);
     if (success) {
       setDocuments((prev) => prev.filter((d) => d.id !== file.id));
+      void onRefresh?.();
     }
   };
 
@@ -67,6 +95,7 @@ export default function ContextDocumentsClient({
     const { success } = await deleteDocument(file.id);
     if (success) {
       setDocuments((prev) => prev.filter((d) => d.id !== file.id));
+      void onRefresh?.();
     }
   };
 
@@ -75,6 +104,24 @@ export default function ContextDocumentsClient({
       prev.map((d) => (d.id === file.id ? { ...d, is_final: isFinal } : d))
     );
   };
+
+  const handleDocumentOpened = (file: ProjectFile) => {
+    void touchDocument(file.id);
+    setDocuments((prev) =>
+      sortDocumentsForDisplay(
+        prev.map((d) =>
+          d.id === file.id
+            ? { ...d, last_opened_at: new Date().toISOString() }
+            : d
+        )
+      )
+    );
+  };
+
+  const recentDocumentIds = useMemo(
+    () => new Set(documents.slice(0, MAX_RECENT_DOCUMENTS).map((d) => d.id)),
+    [documents]
+  );
 
   return (
     <div className="p-4 md:p-6 min-h-full">
@@ -101,6 +148,8 @@ export default function ContextDocumentsClient({
             <DocumentRow
               key={file.id}
               file={file}
+              isRecentlyOpened={recentDocumentIds.has(file.id)}
+              onDocumentOpened={handleDocumentOpened}
               onEdit={(f) => setEditTarget(f)}
               onArchive={handleArchive}
               onDelete={handleDelete}

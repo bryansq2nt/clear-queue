@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   Circle,
   Loader2,
+  Clock,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -71,6 +72,10 @@ function formatDate(iso: string, locale: string): string {
 
 interface DocumentRowProps {
   file: ProjectFile;
+  /** Whether this doc is in the "recently opened" top 5 (show highlight). */
+  isRecentlyOpened?: boolean;
+  /** Called when user opens the document (so UI can reorder optimistically). */
+  onDocumentOpened?: (file: ProjectFile) => void;
   onEdit: (file: ProjectFile) => void;
   onArchive: (file: ProjectFile) => void;
   onDelete: (file: ProjectFile) => void;
@@ -79,6 +84,8 @@ interface DocumentRowProps {
 
 export function DocumentRow({
   file,
+  isRecentlyOpened = false,
+  onDocumentOpened,
   onEdit,
   onArchive,
   onDelete,
@@ -98,6 +105,7 @@ export function DocumentRow({
       '_blank',
       'noopener,noreferrer'
     );
+    onDocumentOpened?.(file);
   };
 
   const handleDownload = async () => {
@@ -124,7 +132,12 @@ export function DocumentRow({
     `documents.category_${file.document_category ?? 'other'}` as const;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 min-h-[56px] hover:bg-muted/30 transition-colors group">
+    <div
+      className={cn(
+        'flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 min-h-[56px] hover:bg-muted/30 transition-colors group',
+        isRecentlyOpened && 'border-l-4 border-l-primary bg-primary/5'
+      )}
+    >
       {/* File type icon */}
       <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
         <Icon className={cn('w-6 h-6', iconColor)} />
@@ -142,6 +155,14 @@ export function DocumentRow({
             <span className="text-sm font-medium truncate hover:underline cursor-pointer">
               {file.title}
             </span>
+            {isRecentlyOpened && (
+              <span title={t('context.recently_opened')}>
+                <Clock
+                  className="w-4 h-4 flex-shrink-0 text-primary"
+                  aria-label={t('context.recently_opened')}
+                />
+              </span>
+            )}
             {file.is_final && (
               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 flex-shrink-0">
                 {t('documents.final_badge')}

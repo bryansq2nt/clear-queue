@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { Database } from '@/lib/supabase/types';
 import { useI18n } from '@/components/shared/I18nProvider';
-import { uploadDocument } from '@/app/actions/documents';
+import { uploadDocument, uploadDocumentsBulk } from '@/app/actions/documents';
 import {
   DOCUMENT_CATEGORY_VALUES,
   isValidMimeType,
@@ -33,7 +33,8 @@ interface UploadDocumentDialogProps {
   open: boolean;
   projectId: string;
   onClose: () => void;
-  onSuccess: (file: ProjectFile) => void;
+  /** Called with one file (single upload) or array (bulk upload). */
+  onSuccess: (fileOrFiles: ProjectFile | ProjectFile[]) => void;
 }
 
 export function UploadDocumentDialog({
@@ -46,6 +47,7 @@ export function UploadDocumentDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
@@ -53,9 +55,15 @@ export function UploadDocumentDialog({
   const [tags, setTags] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [bulkErrors, setBulkErrors] = useState<
+    { name: string; error: string }[]
+  >([]);
+
+  const isBulkMode = files.length > 1;
 
   const resetForm = () => {
     setFile(null);
+    setFiles([]);
     setFileError(null);
     setTitle('');
     setCategory('');
@@ -63,6 +71,7 @@ export function UploadDocumentDialog({
     setTags('');
     setIsUploading(false);
     setSubmitError(null);
+    setBulkErrors([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -73,34 +82,88 @@ export function UploadDocumentDialog({
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0] ?? null;
+    const selectedList = e.target.files ? Array.from(e.target.files) : [];
     setFileError(null);
+    setBulkErrors([]);
 
-    if (!selected) {
+    if (selectedList.length === 0) {
       setFile(null);
-      return;
-    }
-    if (!isValidMimeType(selected.type)) {
-      setFileError(t('documents.file_type_unsupported'));
-      setFile(null);
-      return;
-    }
-    if (selected.size > DOCUMENT_MAX_SIZE_BYTES) {
-      setFileError(t('documents.file_too_large'));
-      setFile(null);
+      setFiles([]);
       return;
     }
 
-    setFile(selected);
-    // Auto-fill title from filename if empty
-    if (!title) {
-      setTitle(selected.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '));
+    const invalid: string[] = [];
+    const valid: File[] = [];
+    for (const f of selectedList) {
+      if (!isValidMimeType(f.type)) {
+        invalid.push(f.name);
+        continue;
+      }
+      if (f.size > DOCUMENT_MAX_SIZE_BYTES) {
+        invalid.push(f.name);
+        continue;
+      }
+      valid.push(f);
+    }
+    if (invalid.length > 0) {
+      setFileError(
+        t('documents.file_type_unsupported') +
+          (invalid.length > 0 ? ` (${invalid.join(', ')})` : '')
+      );
+    }
+    if (valid.length === 0) {
+      setFile(null);
+      setFiles([]);
+      return;
+    }
+
+    if (valid.length === 1) {
+      setFile(valid[0]);
+      setFiles([]);
+      if (!title) {
+        setTitle(valid[0].name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '));
+      }
+    } else {
+      setFile(null);
+      setFiles(valid);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    setBulkErrors([]);
+
+    if (isBulkMode) {
+      if (files.length === 0) {
+        setFileError(t('documents.file_required'));
+        return;
+      }
+      if (!category) {
+        setSubmitError(t('documents.category_required'));
+        return;
+      }
+      const formData = new FormData();
+      formData.set('document_category', category);
+      files.forEach((f) => formData.append('file', f));
+      setIsUploading(true);
+      const result = await uploadDocumentsBulk(projectId, formData);
+      setIsUploading(false);
+      if (result.errors?.length) {
+        setBulkErrors(
+          result.errors.map((e) => ({ name: e.name, error: e.error }))
+        );
+      }
+      if (result.data?.length) {
+        const created = result.data;
+        resetForm();
+        onSuccess(created);
+      }
+      if (!result.data?.length && result.errors?.length) {
+        setSubmitError(t('documents.upload_error'));
+      }
+      return;
+    }
 
     if (!file) {
       setFileError(t('documents.file_required'));
@@ -141,33 +204,49 @@ export function UploadDocumentDialog({
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           {/* File picker */}
           <div className="space-y-1.5">
-            <Label htmlFor="doc-file">{t('documents.file_label')}</Label>
+            <Label htmlFor="doc-file">
+              {isBulkMode
+                ? t('documents.bulk_files_label')
+                : t('documents.file_label')}
+            </Label>
             <Input
               id="doc-file"
               ref={fileInputRef}
               type="file"
               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt"
+              multiple
               onChange={handleFileChange}
               className="cursor-pointer"
             />
             <p className="text-xs text-muted-foreground">
-              {t('documents.file_hint')}
+              {isBulkMode
+                ? t('documents.bulk_file_hint')
+                : t('documents.file_hint')}
             </p>
+            {isBulkMode && files.length > 0 && (
+              <ul className="text-xs text-muted-foreground list-disc list-inside max-h-32 overflow-y-auto">
+                {files.map((f, i) => (
+                  <li key={i}>{f.name}</li>
+                ))}
+              </ul>
+            )}
             {fileError && (
               <p className="text-xs text-destructive">{fileError}</p>
             )}
           </div>
 
-          {/* Title */}
-          <div className="space-y-1.5">
-            <Label htmlFor="doc-title">{t('documents.title_label')}</Label>
-            <Input
-              id="doc-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={t('documents.title_placeholder')}
-            />
-          </div>
+          {/* Title — only in single-file mode */}
+          {!isBulkMode && (
+            <div className="space-y-1.5">
+              <Label htmlFor="doc-title">{t('documents.title_label')}</Label>
+              <Input
+                id="doc-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={t('documents.title_placeholder')}
+              />
+            </div>
+          )}
 
           {/* Category */}
           <div className="space-y-1.5">
@@ -188,30 +267,47 @@ export function UploadDocumentDialog({
             </Select>
           </div>
 
-          {/* Description */}
-          <div className="space-y-1.5">
-            <Label htmlFor="doc-description">
-              {t('documents.description_label')}
-            </Label>
-            <Textarea
-              id="doc-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t('documents.description_placeholder')}
-              rows={2}
-            />
-          </div>
+          {/* Description — only in single-file mode */}
+          {!isBulkMode && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="doc-description">
+                  {t('documents.description_label')}
+                </Label>
+                <Textarea
+                  id="doc-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder={t('documents.description_placeholder')}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="doc-tags">{t('documents.tags_label')}</Label>
+                <Input
+                  id="doc-tags"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  placeholder={t('documents.tags_placeholder')}
+                />
+              </div>
+            </>
+          )}
 
-          {/* Tags */}
-          <div className="space-y-1.5">
-            <Label htmlFor="doc-tags">{t('documents.tags_label')}</Label>
-            <Input
-              id="doc-tags"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder={t('documents.tags_placeholder')}
-            />
-          </div>
+          {bulkErrors.length > 0 && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 space-y-1">
+              <p className="text-xs font-medium text-destructive">
+                {t('documents.bulk_partial_errors')}
+              </p>
+              <ul className="text-xs text-destructive list-disc list-inside">
+                {bulkErrors.map((e, i) => (
+                  <li key={i}>
+                    {e.name}: {e.error}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {submitError && (
             <p className="text-sm text-destructive">{submitError}</p>
@@ -226,8 +322,20 @@ export function UploadDocumentDialog({
             >
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={isUploading}>
-              {isUploading ? t('documents.uploading') : t('documents.upload')}
+            <Button
+              type="submit"
+              disabled={
+                isUploading ||
+                (!isBulkMode && !file) ||
+                (isBulkMode && files.length === 0) ||
+                !category
+              }
+            >
+              {isUploading
+                ? t('documents.uploading')
+                : isBulkMode
+                  ? t('documents.bulk_upload')
+                  : t('documents.upload')}
             </Button>
           </div>
         </form>

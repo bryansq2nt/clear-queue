@@ -23,8 +23,9 @@ export default function ContextDocumentsFromCache({
   );
   const [loading, setLoading] = useState(!cached);
 
+  /** Background refresh: fetch and update cache + state without invalidating.
+   * Avoids showing skeleton; used after mutations so returning to the tab shows fresh data. */
   const loadData = useCallback(async () => {
-    cache.invalidate({ type: 'documents', projectId });
     const data = await getDocuments(projectId);
     cache.set({ type: 'documents', projectId }, data);
     setDocuments(data);
