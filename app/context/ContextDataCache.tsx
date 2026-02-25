@@ -22,6 +22,7 @@ export type CacheKey =
   | { type: 'todos'; projectId: string }
   | { type: 'documents'; projectId: string }
   | { type: 'documentFolders'; projectId: string }
+  | { type: 'noteFolders'; projectId: string }
   | { type: 'noteDetail'; noteId: string };
 
 function cacheKeyToString(k: CacheKey): string {

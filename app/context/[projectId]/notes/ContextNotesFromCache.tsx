@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { getNotes } from '@/app/actions/notes';
+import { listFolders } from '@/app/actions/note-folders';
 import type { Database } from '@/lib/supabase/types';
 import { SkeletonNotes } from '@/components/skeletons/SkeletonNotes';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextNotesClient from './ContextNotesClient';
 
 type Note = Database['public']['Tables']['notes']['Row'];
+type NoteFolder = Database['public']['Tables']['project_note_folders']['Row'];
 
 interface ContextNotesFromCacheProps {
   projectId: string;
@@ -17,37 +19,57 @@ export default function ContextNotesFromCache({
   projectId,
 }: ContextNotesFromCacheProps) {
   const cache = useContextDataCache();
-  const cached = cache.get<Note[]>({ type: 'notes', projectId });
-  const [notes, setNotes] = useState<Note[] | null>(cached ?? null);
-  const [loading, setLoading] = useState(!cached);
+  const cachedNotes = cache.get<Note[]>({ type: 'notes', projectId });
+  const cachedFolders = cache.get<NoteFolder[]>({
+    type: 'noteFolders',
+    projectId,
+  });
+  const [notes, setNotes] = useState<Note[] | null>(cachedNotes ?? null);
+  const [folders, setFolders] = useState<NoteFolder[] | null>(
+    cachedFolders !== undefined ? cachedFolders : null
+  );
+  const [loading, setLoading] = useState(
+    !cachedNotes || cachedFolders === undefined
+  );
 
   const loadData = useCallback(async () => {
     cache.invalidate({ type: 'notes', projectId });
-    const data = await getNotes({ projectId });
+    cache.invalidate({ type: 'noteFolders', projectId });
+    const [data, folderList] = await Promise.all([
+      getNotes({ projectId }),
+      listFolders(projectId),
+    ]);
     cache.set({ type: 'notes', projectId }, data);
+    cache.set({ type: 'noteFolders', projectId }, folderList);
     setNotes(data);
+    setFolders(folderList);
   }, [projectId, cache]);
 
   useEffect(() => {
-    if (cached) {
-      setNotes(cached);
+    if (cachedNotes && cachedFolders !== undefined) {
+      setNotes(cachedNotes);
+      setFolders(cachedFolders);
       setLoading(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
-    getNotes({ projectId }).then((data) => {
-      if (cancelled) return;
-      cache.set({ type: 'notes', projectId }, data);
-      setNotes(data);
-      setLoading(false);
-    });
+    Promise.all([getNotes({ projectId }), listFolders(projectId)]).then(
+      ([data, folderList]) => {
+        if (cancelled) return;
+        cache.set({ type: 'notes', projectId }, data);
+        cache.set({ type: 'noteFolders', projectId }, folderList);
+        setNotes(data);
+        setFolders(folderList);
+        setLoading(false);
+      }
+    );
     return () => {
       cancelled = true;
     };
-  }, [projectId, cached, cache]);
+  }, [projectId, cachedNotes, cachedFolders, cache]);
 
-  if (loading || notes === null) {
+  if (loading || notes === null || folders === null) {
     return <SkeletonNotes />;
   }
 
@@ -55,6 +77,7 @@ export default function ContextNotesFromCache({
     <ContextNotesClient
       projectId={projectId}
       initialNotes={notes}
+      initialFolders={folders}
       onRefresh={loadData}
     />
   );

@@ -8,6 +8,8 @@ import { ArrowLeft } from 'lucide-react';
 interface ContextNewNoteClientProps {
   projectId: string;
   preselectedProjectId: string;
+  /** When opening new note from inside a folder, pass folder id so the note is created in that folder */
+  defaultFolderId?: string | null;
 }
 
 /**
@@ -16,6 +18,7 @@ interface ContextNewNoteClientProps {
 export default function ContextNewNoteClient({
   projectId,
   preselectedProjectId,
+  defaultFolderId,
 }: ContextNewNoteClientProps) {
   const { t } = useI18n();
   const listHref = `/context/${projectId}/notes`;
@@ -39,6 +42,7 @@ export default function ContextNewNoteClient({
         }}
         initialLinks={[]}
         preselectedProjectId={preselectedProjectId}
+        defaultFolderId={defaultFolderId}
         listHref={listHref}
         getDetailHref={getDetailHref}
       />

@@ -19,10 +19,11 @@ import {
   deleteNoteLink,
 } from '@/app/actions/notes';
 import { getProjects } from '@/app/actions/budgets';
-import { Link2, Plus, Trash2, Check, Save } from 'lucide-react';
+import { Link2, Plus, Trash2, Check, Save, FolderOpen } from 'lucide-react';
 import { Database } from '@/lib/supabase/types';
 
 type NoteLink = Database['public']['Tables']['note_links']['Row'];
+type NoteFolder = Database['public']['Tables']['project_note_folders']['Row'];
 
 export type LocalLink = { id: string; title?: string; url: string };
 
@@ -38,12 +39,18 @@ export interface NoteEditorProps {
   initialNote: { title: string; content: string; project_id: string };
   initialLinks: NoteLink[] | LocalLink[];
   preselectedProjectId?: string | null;
+  /** When provided (e.g. from notes tab folder view), new note is created in this folder */
+  defaultFolderId?: string | null;
   /** When provided (e.g. context view), redirect here after delete instead of /notes */
   listHref?: string;
   /** When provided (e.g. context view), redirect here after create instead of /notes/[id] */
   getDetailHref?: (noteId: string) => string;
   /** When true (e.g. context view), hide the toolbar and show Delete as a FAB like Link/Save */
   deleteAsFab?: boolean;
+  /** In context edit mode: list of folders so user can move note to a folder */
+  folders?: NoteFolder[];
+  /** In context edit mode: current folder id for this note */
+  initialFolderId?: string | null;
   /** Called after a successful save (e.g. to invalidate cache) */
   onSaveSuccess?: () => void;
   /** Called after a successful delete, before redirect (e.g. to invalidate cache) */
@@ -56,9 +63,12 @@ export function NoteEditor({
   initialNote,
   initialLinks,
   preselectedProjectId,
+  defaultFolderId,
   listHref,
   getDetailHref,
   deleteAsFab = false,
+  folders,
+  initialFolderId,
   onSaveSuccess,
   onDeleteSuccess,
 }: NoteEditorProps) {
@@ -79,6 +89,9 @@ export function NoteEditor({
   const [showAddLink, setShowAddLink] = useState(false);
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [folderId, setFolderId] = useState<string | null>(
+    initialFolderId ?? null
+  );
   const lastSavedRef = useRef<{
     title: string;
     content: string;
@@ -108,8 +121,9 @@ export function NoteEditor({
     setContent(initialNote.content);
     setProjectId(initialNote.project_id || preselectedProjectId || '');
     setLinks(initialLinks);
+    setFolderId(initialFolderId ?? null);
     lastSavedRef.current = initialNote;
-  }, [initialNote, initialLinks, preselectedProjectId]);
+  }, [initialNote, initialLinks, preselectedProjectId, initialFolderId]);
 
   const hasChanges = useCallback(() => {
     const t = title.trim();
@@ -179,6 +193,7 @@ export function NoteEditor({
       project_id: projectId,
       title: trimmedTitle,
       content: content ?? '',
+      folder_id: defaultFolderId ?? undefined,
     });
     if (result.error) {
       setError(result.error);
@@ -295,42 +310,107 @@ export function NoteEditor({
         </button>
       )}
 
-      {/* FAB Project (link project) - above Save */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            aria-label={t('notes.link_project')}
-            title={selectedProjectName}
-            className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-[7rem] md:right-8"
+      {/* FAB Project (link project) — hidden in context: note is linked to open project by default */}
+      {!preselectedProjectId && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={t('notes.link_project')}
+              title={selectedProjectName}
+              className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-[7rem] md:right-8"
+            >
+              <Link2 className="h-6 w-6" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            side="top"
+            className="max-h-[min(60vh,320px)] overflow-y-auto"
           >
-            <Link2 className="h-6 w-6" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          side="top"
-          className="max-h-[min(60vh,320px)] overflow-y-auto"
-        >
-          {projects.map((p) => (
+            {projects.map((p) => (
+              <DropdownMenuItem
+                key={p.id}
+                onClick={() => setProjectId(p.id)}
+                className="flex items-center justify-between gap-2"
+              >
+                <span className={projectId === p.id ? 'font-medium' : ''}>
+                  {p.name}
+                </span>
+                {projectId === p.id ? (
+                  <Check className="w-4 h-4 shrink-0" />
+                ) : null}
+              </DropdownMenuItem>
+            ))}
+            {projects.length === 0 && (
+              <DropdownMenuItem disabled>
+                {t('common.loading')}
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      {/* FAB Folder — in context edit mode: change which folder this note is in */}
+      {preselectedProjectId && isEdit && noteId && folders && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={t('notes.change_folder')}
+              title={t('notes.change_folder')}
+              className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-[7rem] md:right-8"
+            >
+              <FolderOpen className="h-6 w-6" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            side="top"
+            className="max-h-[min(60vh,320px)] overflow-y-auto"
+          >
             <DropdownMenuItem
-              key={p.id}
-              onClick={() => setProjectId(p.id)}
+              onClick={async () => {
+                const { error } = await updateNote(noteId, { folder_id: null });
+                if (!error) {
+                  setFolderId(null);
+                  onSaveSuccess?.();
+                }
+              }}
               className="flex items-center justify-between gap-2"
             >
-              <span className={projectId === p.id ? 'font-medium' : ''}>
-                {p.name}
+              <span className={folderId === null ? 'font-medium' : ''}>
+                {t('notes.folder_no_folder')}
               </span>
-              {projectId === p.id ? (
+              {folderId === null ? (
                 <Check className="w-4 h-4 shrink-0" />
               ) : null}
             </DropdownMenuItem>
-          ))}
-          {projects.length === 0 && (
-            <DropdownMenuItem disabled>{t('common.loading')}</DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            {folders.map((f) => (
+              <DropdownMenuItem
+                key={f.id}
+                onClick={async () => {
+                  const { error } = await updateNote(noteId, {
+                    folder_id: f.id,
+                  });
+                  if (!error) {
+                    setFolderId(f.id);
+                    onSaveSuccess?.();
+                  }
+                }}
+                className="flex items-center justify-between gap-2"
+              >
+                <span className={folderId === f.id ? 'font-medium' : ''}>
+                  {f.name}
+                </span>
+                {folderId === f.id ? (
+                  <Check className="w-4 h-4 shrink-0" />
+                ) : null}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       {/* FAB Save */}
       <button

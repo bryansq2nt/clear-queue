@@ -16,7 +16,7 @@ export const getNotes = cache(
     const supabase = await createClient();
 
     const noteCols =
-      'id, owner_id, project_id, title, content, created_at, updated_at';
+      'id, owner_id, project_id, title, content, folder_id, last_opened_at, created_at, updated_at';
     let query = supabase
       .from('notes')
       .select(noteCols)
@@ -42,7 +42,9 @@ export async function getNoteById(noteId: string): Promise<Note | null> {
 
   const { data, error } = await supabase
     .from('notes')
-    .select('id, owner_id, project_id, title, content, created_at, updated_at')
+    .select(
+      'id, owner_id, project_id, title, content, folder_id, last_opened_at, created_at, updated_at'
+    )
     .eq('id', noteId)
     .eq('owner_id', user.id)
     .single();
@@ -51,10 +53,35 @@ export async function getNoteById(noteId: string): Promise<Note | null> {
   return data as Note;
 }
 
+export async function touchNote(noteId: string): Promise<void> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const updates: Database['public']['Tables']['notes']['Update'] = {
+    last_opened_at: new Date().toISOString(),
+  };
+  const { error } = await supabase
+    .from('notes')
+    .update(updates as never)
+    .eq('id', noteId)
+    .eq('owner_id', user.id);
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'notes',
+      action: 'touchNote',
+      userIntent: 'Mark note as opened',
+      expected: 'last_opened_at updated',
+      extra: { noteId },
+    });
+  }
+}
+
 export async function createNote(params: {
   project_id: string;
   title: string;
   content: string;
+  folder_id?: string | null;
 }): Promise<{ error?: string; data?: Note }> {
   const user = await requireAuth();
   const supabase = await createClient();
@@ -62,6 +89,10 @@ export async function createNote(params: {
   const project_id = params.project_id?.trim();
   const title = params.title?.trim();
   const content = params.content?.trim();
+  const folder_id =
+    params.folder_id === undefined || params.folder_id === ''
+      ? null
+      : params.folder_id?.trim() || null;
 
   if (!project_id) return { error: 'Project is required' };
   if (!title) return { error: 'Title is required' };
@@ -73,12 +104,15 @@ export async function createNote(params: {
     project_id,
     title,
     content: content ?? '',
+    folder_id: folder_id ?? undefined,
   };
 
   const { data, error } = await supabase
     .from('notes')
     .insert(insertPayload as never)
-    .select('id, owner_id, project_id, title, content, created_at, updated_at')
+    .select(
+      'id, owner_id, project_id, title, content, folder_id, last_opened_at, created_at, updated_at'
+    )
     .single();
 
   if (error) {
@@ -94,12 +128,18 @@ export async function createNote(params: {
   revalidatePath('/notes');
   revalidatePath('/notes/[id]');
   revalidatePath('/context');
+  revalidatePath(`/context/${project_id}/notes`);
   return { data: data as Note };
 }
 
 export async function updateNote(
   noteId: string,
-  params: { title?: string; content?: string; project_id?: string }
+  params: {
+    title?: string;
+    content?: string;
+    project_id?: string;
+    folder_id?: string | null;
+  }
 ): Promise<{ error?: string; data?: Note }> {
   const user = await requireAuth();
   const supabase = await createClient();
@@ -109,6 +149,11 @@ export async function updateNote(
   if (params.content !== undefined) updates.content = params.content;
   if (params.project_id !== undefined)
     updates.project_id = params.project_id.trim() || undefined;
+  if (params.folder_id !== undefined)
+    updates.folder_id =
+      params.folder_id === null || params.folder_id === ''
+        ? null
+        : params.folder_id?.trim() || null;
 
   if (Object.keys(updates).length === 0) {
     const existing = await getNoteById(noteId);
@@ -120,7 +165,9 @@ export async function updateNote(
     .update(updates as never)
     .eq('id', noteId)
     .eq('owner_id', user.id)
-    .select('id, owner_id, project_id, title, content, created_at, updated_at')
+    .select(
+      'id, owner_id, project_id, title, content, folder_id, last_opened_at, created_at, updated_at'
+    )
     .single();
 
   if (error) {
@@ -133,10 +180,12 @@ export async function updateNote(
     });
     return { error: error.message };
   }
+  const note = data as Note;
   revalidatePath('/notes');
   revalidatePath('/notes/[id]');
   revalidatePath('/context');
-  return { data: data as Note };
+  revalidatePath(`/context/${note.project_id}/notes`);
+  return { data: note };
 }
 
 export async function deleteNote(noteId: string): Promise<{ error?: string }> {

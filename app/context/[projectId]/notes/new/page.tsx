@@ -4,8 +4,10 @@ import ContextNewNoteClient from './ContextNewNoteClient';
 
 export default async function ContextNewNotePage({
   params,
+  searchParams,
 }: {
   params: { projectId: string };
+  searchParams: { folderId?: string };
 }) {
   await requireAuth();
   const project = await getProjectById(params.projectId);
@@ -14,10 +16,13 @@ export default async function ContextNewNotePage({
     return null;
   }
 
+  const { folderId } = searchParams;
+
   return (
     <ContextNewNoteClient
       projectId={params.projectId}
       preselectedProjectId={params.projectId}
+      defaultFolderId={folderId ?? undefined}
     />
   );
 }
