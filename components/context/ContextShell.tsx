@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useI18n } from '@/components/shared/I18nProvider';
 import { ContextTabBar } from './ContextTabBar';
 import ContextProjectPicker from '@/app/context/ContextProjectPicker';
 import { getHomePageData } from '@/app/actions/home';
+import { LogOut } from 'lucide-react';
 
 const EXIT_TRANSITION_MS = 280;
 
@@ -26,6 +29,7 @@ export function ContextShell({
 }: ContextShellProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useI18n();
   const [isEntering, setIsEntering] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
   const [homeData, setHomeData] =
@@ -84,13 +88,32 @@ export function ContextShell({
         }}
       >
         <header className="bg-primary text-primary-foreground shadow flex-shrink-0">
-          <div className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-center min-w-0">
-            <h1 className="text-base md:text-xl font-bold truncate min-w-0 text-center px-2">
+          <div className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3 min-w-0">
+            <div className="flex-1 min-w-0" aria-hidden />
+            <h1 className="text-base md:text-xl font-bold truncate min-w-0 text-center px-2 flex-shrink-0">
               {projectName}
             </h1>
+            <div className="flex flex-1 justify-end min-w-0 flex-shrink-0">
+              <Link
+                href="/?from=project"
+                onClick={(e) => {
+                  if (homeData) {
+                    e.preventDefault();
+                    handleExitStart();
+                  }
+                }}
+                className="flex items-center gap-2 py-2 px-3 rounded-md text-primary-foreground hover:bg-primary-foreground/10 transition-colors min-h-[44px]"
+                aria-label={t('context.exit')}
+              >
+                <LogOut className="w-5 h-5 flex-shrink-0" aria-hidden />
+                <span className="hidden sm:inline font-medium">
+                  {t('context.exit')}
+                </span>
+              </Link>
+            </div>
           </div>
         </header>
-        <ContextTabBar projectId={projectId} onExitStart={handleExitStart} />
+        <ContextTabBar projectId={projectId} />
         <main
           id="context-tab-content"
           className="relative flex-1 overflow-auto min-h-0"
