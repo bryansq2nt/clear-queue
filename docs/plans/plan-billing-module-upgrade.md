@@ -1,8 +1,8 @@
-# Plan: Billing Module Upgrade
+# Plan: Billing Module Upgrade (v2 — aprobado y ampliado)
 
 **Date:** 2026-02-24  
-**Status:** Draft — pending approval  
-**Scope:** Billings tab in project context (`/context/[projectId]/billings`)
+**Status:** Aprobado — ejecución fase por fase  
+**Scope:** Billings tab en project context (`/context/[projectId]/billings`) + integración Document Hub + Budgets + recordatorios
 
 ---
 
@@ -22,184 +22,243 @@
 | currency                | text        | Default 'USD'                           |
 | status                  | text        | pending \| paid \| overdue \| cancelled |
 | due_date                | date        | Opcional                                |
-| paid_at                 | timestamptz | Opcional, se setea al marcar paid       |
+| paid_at                 | timestamptz | Opcional                                |
 | notes                   | text        | Opcional                                |
 | created_at / updated_at | timestamptz |                                         |
 
-- **No hay categorías**: no se puede clasificar el tipo de gasto/cobro ni filtrar.
-- **No hay adjuntos**: no hay forma de subir recibo o ticket por billing.
-- **Filtros**: no hay filtros en la UI (solo lista completa por proyecto).
-- **Errores**: se usa `alert()` en lugar del patrón `MutationErrorDialog` (ver AGENTS.md).
+- Sin categorías, sin adjuntos, sin filtros, errores con `alert()`.
 
 ### UI actual
 
-- Resumen: Total, Pagado, Pendiente (3 cards).
-- Formulario inline: cliente (select o nombre libre), título, monto, fecha vencimiento, notas.
-- Tabla: título, cliente, vence, monto, estado (select), editar.
-- FAB: “Nuevo cargo”.
-
-### Flujo de datos
-
-- `ContextBillingsFromCache` → cache por `projectId` + tipo `billings`.
-- `getBillingsByProjectId(projectId)` con joins a `projects` y `clients`.
-- Acciones: `createBilling`, `updateBilling`, `updateBillingStatus`.
-- Revalidación: `/billings` y `/context/${projectId}/billings`.
+- Resumen: Total, Pagado, Pendiente. Formulario inline, tabla, FAB “Nuevo cargo”.
 
 ---
 
-## 2. Objetivos del plan
+## 2. Objetivos del plan (actualizados)
 
-- Añadir **categorías de billing** para clasificar y filtrar (tipos de gasto/cobro).
-- Permitir **adjuntar recibo o ticket** por billing (un archivo por entrada, o varios según diseño).
-- Hacer el módulo **más útil** sin complicarlo demasiado: filtros, mejor UX, opcionalmente más datos para reportes.
+- **Categorías por usuario** (globales en todos sus proyectos), con categorías por defecto y CRUD.
+- **Filtros** por categoría, estado y rango de fechas (aprobado).
+- **Recibos/tickets** reutilizando el módulo de documentos; carpeta/vista “Receipts & tickets” no modificable (solo renombrar, ver, descargar; eliminar/reemplazar solo desde el bill).
+- **UX:** MutationErrorDialog, modal create/edit, mejoras de tabla/cards.
+- **Campos:** Tipo de billing (cobro / pago / gasto), método de pago, issue date; para gastos: quién pagó y si alguien debe devolver.
+- **Export** por período (mes, año) y por categoría.
+- **Vínculo con Budgets:** Adjudicar el bill a un ítem de presupuesto del proyecto actual.
+- **Recordatorios** con widget al top (como “documentos recientes” en Documents).
 
-Todo debe seguir: AGENTS.md, CONVENTIONS.md, patrones en `docs/patterns/` (data-loading, server-actions, context-session-cache, transactions si hay multi-step).
-
----
-
-## 3. Features propuestas (para aprobar / rechazar)
-
-### A. Categorías de billing (prioridad alta)
-
-**Qué:** Un billing puede tener una categoría (ej. “Servicios”, “Materiales”, “Honorarios”, “Otro”). Las categorías pueden ser:
-
-- **Opción 1 — Lista fija (enum):** Valores predefinidos en DB (más simple, sin CRUD de categorías).
-- **Opción 2 — Categorías por usuario/proyecto:** Tabla `billing_categories` (owner_id, name, color?, sort_order), el usuario crea/edita sus categorías (más flexible, más trabajo).
-
-**Recomendación:** Empezar con **Opción 1** (enum) para tener filtros rápido; luego, si hace falta, migrar a tabla en una fase 2.
-
-**Cambios:**
-
-- Migration: enum `billing_category_enum` + columna `category` en `billings` (nullable al inicio para no romper datos existentes, luego backfill “other”).
-- UI: select de categoría en formulario create/edit; filtro por categoría en la lista (dropdown o chips).
-- Acciones: incluir `category` en create/update; getters filtran por categoría (query param o filtro en cliente).
-
-**Filtros:** Lista filtrable por categoría (y opcionalmente por status, ver B).
+Todo debe seguir AGENTS.md, CONVENTIONS.md y patrones en `docs/patterns/`.
 
 ---
 
-### B. Filtros en la lista (prioridad alta)
+## 3. Features aprobadas y especificaciones
 
-**Qué:**
+### A. Categorías de billing — por usuario (globales)
 
-- Filtro por **categoría** (cuando exista).
-- Filtro por **estado** (pending, paid, overdue, cancelled) — ya existe el dato, solo falta UI (chips o select).
-- Opcional: **rango de fechas** (due_date o created_at) para ver “este mes” / “este año”.
+**Decisión:** Categorías **por usuario** (owner_id), no por proyecto. Las mismas categorías se ven en todos sus proyectos. El usuario puede agregar y remover categorías. Cada usuario tiene **categorías creadas por defecto** para no empezar con lista vacía.
 
-**Implementación:** Filtros en cliente sobre la lista ya cargada (sin nuevo endpoint) para no superar el contrato de ≤3 round trips por tab. Si en el futuro la lista crece mucho, se puede pasar a filtros server-side con query params.
+**Schema:**
 
----
+- Tabla **`billing_categories`**:  
+  `id`, `owner_id` (FK auth.users), `name`, `color` (text nullable), `sort_order` (int default 0), `created_at`, `updated_at`.  
+  RLS: todas las políticas por `owner_id`.  
+  Índice: `(owner_id, sort_order)`.
+- Columna en **`billings`**: `category_id uuid NULL REFERENCES billing_categories(id) ON DELETE SET NULL`.
 
-### C. Adjunto de recibo / ticket por billing (prioridad alta)
+**Categorías por defecto:** Al crear usuario o al primer uso del módulo de billings, si el usuario no tiene categorías, insertar desde app (o RPC) un set fijo, ej.: “Servicios”, “Materiales”, “Honorarios”, “Suscripciones”, “Otro”. Opción alternativa: trigger o job que inserte defaults al primer INSERT en billings si no existe ninguna categoría para ese owner (evita doble trabajo luego).
 
-**Qué:** Poder subir (y ver) un recibo o ticket asociado a un billing. Un archivo por billing (el caso más común); si se quiere “varios archivos”, se puede dejar para una fase posterior.
-
-**Opciones de diseño:**
-
-- **Opción 1 — Columna en `billings`:** `receipt_file_id uuid REFERENCES project_files(id)` (o tabla dedicada `billing_receipts`). Reutiliza `project_files` + storage existente si los recibos viven por proyecto.
-- **Opción 2 — Storage dedicado “billing-receipts”:** Bucket/rama solo para recibos, tabla `billing_receipts (billing_id, file_path, ...)` con RLS por owner.
-
-**Recomendación:** Reutilizar **project_files** y asociar con una FK opcional desde `billings` (ej. `receipt_file_id`) o una tabla de unión `billing_receipts (billing_id, project_file_id)` si en el futuro se permiten varios archivos. Así se reutiliza upload, signed URLs y vista de documentos.  
-Requisito: el billing ya tiene `project_id`; el archivo se sube al mismo proyecto y se enlaza al billing.
-
-**Cambios:**
-
-- Migration: añadir `receipt_file_id uuid NULL REFERENCES project_files(id) ON DELETE SET NULL` en `billings` (o tabla `billing_receipts` con 1:1 por ahora).
-- Storage: mismo bucket/patrón que Document Hub (subir a project-docs o similar), con categoría “receipt”/“invoice” si existe en `project_document_category_enum`, o un tipo nuevo.
-- Server actions: upload de archivo + actualizar billing con `receipt_file_id`; acción para “quitar recibo” (SET NULL). Descarga/vista: mismo patrón que Document Hub (API route 302 para signed URL).
-- UI: en la fila o detalle del billing, botón “Subir recibo” / “Ver recibo” según exista o no archivo.
-
-**Referencia en repo:** `app/api/documents/[fileId]/view/route.ts` + `lib/storage/upload.ts` (y Document Hub); no abrir ventana en blanco y luego navegar después de await (regla window.open en AGENTS.md).
+**UI:** Select de categoría en formulario create/edit; filtro por categoría en la lista (dropdown o chips). En settings o dentro del módulo billings, pantalla o modal para “Gestionar categorías” (añadir, editar nombre/color, borrar, reordenar). Las categorías se cargan una vez por usuario (acción `getBillingCategories(owner_id)` cacheable).
 
 ---
 
-### D. Mejoras de UX y consistencia (prioridad media)
+### B. Filtros (aprobado)
 
-- **Errores:** Sustituir `alert()` por el patrón `MutationErrorDialog` (como en board/tasks) en create/update/updateStatus.
-- **Formulario:** Considerar modal en lugar de formulario inline para crear/editar (más espacio y menos ruido).
-- **Tabla:** En móvil, considerar cards en lugar de tabla, o tabla scrolleable con columnas prioritarias.
-- **Resumen:** Mantener Total / Pagado / Pendiente; opcionalmente “Total por categoría” si hay categorías.
+- Filtro por **categoría**.
+- Filtro por **estado** (pending, paid, overdue, cancelled).
+- Filtro por **rango de fechas** (due_date o issued_at/created_at): ej. “Este mes”, “Este año”, custom.
 
----
-
-### E. Campos opcionales (prioridad baja — aprobar si aplica)
-
-- **Método de pago / referencia:** Ej. “Transferencia”, “Tarjeta”, “Efectivo”, “Otro” (text libre o enum). Útil para conciliación.
-- **Fecha de emisión:** Además de `due_date`, un `issued_at` para facturas (opcional).
-- **Número de factura / referencia externa:** Campo texto para número de factura o ID en sistema externo.
-
-Solo añadir si realmente lo van a usar; cada campo implica formulario, validación y posiblemente filtros.
+Implementación: filtros en cliente sobre la lista ya cargada (≤3 round trips por tab). Si la lista crece, valorar filtros server-side.
 
 ---
 
-### F. Export y reportes (prioridad baja)
+### C. Recibos / tickets — Document Hub + carpeta “Receipts & tickets”
 
-- **Export CSV:** Botón “Exportar” que genere CSV de los billings visibles (con filtros aplicados) para contabilidad. Implementación: server action que devuelve CSV o blob, o API route que devuelve archivo.
-- **Totales por período:** “Pendiente este mes” / “Pagado este trimestre” como variante del resumen (requiere filtro por fechas o cálculos por fecha).
+**Decisión:** Los receipts/tickets adjuntos a un bill se suben **reutilizando el módulo de documentos** (project_files + storage). Esos archivos se muestran en una **carpeta aparte no modificable** en el módulo de documentos: “Receipts & tickets”. Desde esa vista: **renombrar** (título), **ver** y **descargar** permitidos; **eliminar no permitido**. Para eliminar o reemplazar un recibo/ticket se hace **desde el bill en el módulo Billing**; así el usuario entiende que no puede dejar un bill sin archivo desde Documents.
 
----
+**Schema:**
 
-### G. Integración con otros módulos (futuro, no en este plan)
+- En **`billings`**: `receipt_file_id uuid NULL REFERENCES project_files(id) ON DELETE SET NULL`.
+- Los archivos de recibos se suben al mismo bucket/patrón del Document Hub (project-docs), con `document_category` = `invoice` o un valor específico `receipt` si se añade al enum. Se asocian al proyecto del bill (`project_id`) y se enlazan con `receipt_file_id`.
 
-- **Vínculo con Budgets:** Opcionalmente relacionar un billing con un ítem de presupuesto (budget_item_id). Útil para “gasto real vs presupuestado”. Dejar fuera del alcance inicial.
-- **Recordatorios:** Notificaciones o avisos de vencimiento. Fuera de alcance por ahora.
+**Document Hub — carpeta “Receipts & tickets”:**
 
----
+- **Origen de datos:** Lista de archivos que son recibos del proyecto:  
+  `SELECT id FROM project_files WHERE id IN (SELECT receipt_file_id FROM billings WHERE project_id = :projectId AND receipt_file_id IS NOT NULL)`.
+- **Comportamiento:**
+  - Esta “carpeta” es una vista especial (no es un folder_id editable): no se puede crear/eliminar la carpeta ni subir directamente a ella; los archivos entran solo al adjuntar desde un bill.
+  - En la lista de esa carpeta: **renombrar** (actualizar `project_files.title`) permitido; **ver/descargar** (misma API route 302 que Document Hub) permitido; **eliminar** y **mover** deshabilitados (tooltip: “Para quitar o reemplazar este recibo, ve a Facturación y quita o reemplaza el adjunto del cargo”).
+  - No se permite eliminar el archivo desde Documents; si se hace “reemplazar” desde Billing, el archivo viejo puede quedar huérfano (opción: soft-delete o marcar como “replaced” para no mostrarlo en Receipts).
 
-## 4. Fases sugeridas de implementación
+**Billing UI:** En la fila o detalle del billing: “Subir recibo” / “Ver recibo” / “Reemplazar” / “Quitar recibo” según corresponda. Upload reutiliza flujo Document Hub; al guardar se actualiza `billings.receipt_file_id`.
 
-| Fase                  | Contenido                                                                                                  | Dependencias                                      |
-| --------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| **Fase 1**            | Categorías (enum) + columna en `billings` + select en formulario + filtro por categoría en UI              | Ninguna                                           |
-| **Fase 2**            | Filtros por estado (y opcionalmente por rango de fechas en cliente)                                        | Ninguna                                           |
-| **Fase 3**            | Adjunto recibo: schema (receipt_file_id o billing_receipts), upload, vista/descarga, UI “Subir/Ver recibo” | Document Hub / project_files y storage existentes |
-| **Fase 4**            | UX: MutationErrorDialog, modal create/edit, mejoras tabla/cards                                            | Ninguna                                           |
-| **Fase 5** (opcional) | Campos opcionales (método de pago, issued_at, ref externa)                                                 | Fase 1                                            |
-| **Fase 6** (opcional) | Export CSV, totales por período                                                                            | Fase 1, 2                                         |
-
-El orden se puede ajustar; por ejemplo, hacer Fase 3 (recibos) antes que Fase 2 si la prioridad es tener recibos ya.
+**Referencia:** `app/api/documents/[fileId]/view/route.ts`, Document Hub, regla `window.open` en AGENTS.md.
 
 ---
 
-## 5. Esquema de cambios (resumen)
+### D. Mejoras de UI y MutationErrorDialog
 
-- **billings:** `category` (enum, nullable al inicio), `receipt_file_id` (uuid, nullable, FK project_files) — o tabla `billing_receipts` si se prefiere 1:N desde el inicio.
-- **Nuevo enum:** `billing_category_enum` (ej. services, materials, fees, subscription, other).
-- **RLS:** Sin cambio si solo se añaden columnas; si hay tabla nueva (billing_receipts o billing_categories), políticas por owner_id/project_id según patrón existente.
-- **Índices:** `idx_billings_project_category`, `idx_billings_status` (ya existe), opcional `idx_billings_due_date` (ya existe).
+- Sustituir **todos** los `alert()` por el patrón **MutationErrorDialog** (como en board/tasks).
+- **Formulario:** Modal para crear/editar en lugar de formulario inline.
+- **Tabla/cards:** Mejorar legibilidad; en móvil considerar cards o tabla scrolleable.
+- Respetar shimmer en loading; no spinners ni “Loading…”.
+
+---
+
+### E. Tipo de billing, método de pago, issue date y gastos
+
+**Tipos de billing:** Un billing puede ser:
+
+- **Cobro (charge):** lo que emites al cliente; tendrá **issue date** (fecha de emisión).
+- **Pago (payment):** pagos que registras (ej. pagos a proveedores).
+- **Gasto (spending):** gastos (ej. tú pagas algo por el cliente o suscripciones/artículos pagados con tarjeta del cliente).
+
+**Schema:**
+
+- **`billings`**:
+  - `type` text NOT NULL default 'charge' CHECK (type IN ('charge', 'payment', 'spending')).
+  - `issued_at` date NULL — para cobros (y opcionalmente otros).
+  - `payment_method` text NULL — ej. enum o texto: 'cash', 'transfer', 'card', 'client_card', 'other'.
+  - Para **spendings**:
+    - `paid_by` text NULL — quién pagó: 'me', 'client', 'other' (o texto libre si se prefiere).
+    - `expect_reimbursement` boolean NOT NULL default false — si alguien debe devolver el dinero (ej. tú pagas y luego cobras al cliente).
+    - `reimburse_to_client_id` uuid NULL REFERENCES clients(id) — opcional, a quién se le debe cobrar la devolución.
+
+**Casos de uso:** (7) “Yo pago algo por mis clientes pero luego debo cobrarles” → spending, paid_by=me, expect_reimbursement=true, reimburse_to_client_id=cliente. (8) “Pago suscripciones o artículos con tarjetas de mis clientes” → spending, payment_method=client_card, paid_by=client (o similar). **Método de pago** y **issue date** aprobados explícitamente.
+
+**UI:** Selector de tipo (cobro / pago / gasto). Si “cobro”, mostrar issued_at. Siempre opción de método de pago. Si “gasto”, mostrar paid_by, expect_reimbursement y opcionalmente reimburse_to_client_id.
+
+---
+
+### F. Export por período y por categoría (aprobado)
+
+- **Export** (CSV o similar) con filtros:
+  - Por **período:** por mes, por año, rango custom.
+  - Por **categoría**.
+  - Combinable con estado, tipo, etc.
+- Los datos exportados serán los billings visibles según filtros (o explícitamente “exportar por mes X”, “por año Y”, “por categoría Z”).
+
+Implementación: server action o API route que devuelve CSV con columnas: tipo, categoría, título, cliente, monto, estado, due_date, issued_at, payment_method, etc.
+
+---
+
+### G. Vínculo con Budgets (aprobado)
+
+- Poder **adjudicar un bill a un ítem de presupuesto** del proyecto.
+- **Solo ítems de budgets del proyecto actual** (project_id del bill = project_id del budget).
+
+**Schema:**
+
+- **`billings`**: `budget_item_id uuid NULL REFERENCES budget_items(id) ON DELETE SET NULL`.
+- Al elegir “Vincular a presupuesto”, el selector muestra solo budget_items de budgets cuyo `project_id` = projectId actual. Validación en server action.
+
+**UI:** En formulario create/edit, selector opcional “Ítem de presupuesto” (listar budgets del proyecto → categorías → ítems). Mostrar en la tabla/detalle el ítem vinculado (nombre del ítem o del budget).
+
+---
+
+### H. Recordatorios y widget al top
+
+- **Recordatorios** por billing: el usuario puede definir uno o más recordatorios (fecha/hora + mensaje opcional).
+- En la vista de Billings, un **widget al top** (igual que “Documentos recientes” en Documents) que muestre los **próximos recordatorios** (ej. próximos 7 días o próximos N recordatorios), con enlace al bill correspondiente.
+
+**Schema:**
+
+- Tabla **`billing_reminders`**:  
+  `id`, `billing_id` (FK billings ON DELETE CASCADE), `owner_id` (FK auth.users, para RLS), `remind_at` (timestamptz NOT NULL), `message` (text NULL), `created_at`.  
+  RLS por `owner_id`. Índice: `(owner_id, remind_at)`.
+- Widget: consultar reminders donde `remind_at` entre now y now+7 días (o límite N), orden por `remind_at`, join con billings para mostrar título, monto, due_date.
+
+**UI (Billings):** En create/edit billing, sección “Recordatorio” (añadir fecha/hora y mensaje opcional; si se permiten varios, lista de recordatorios). En la parte superior del tab Billings, sección “Próximos recordatorios” con lista de ítems (fecha, mensaje, título del bill, enlace a editar/ver el bill).
+
+---
+
+## 4. Esquema de cambios (resumen)
+
+### Tablas nuevas
+
+- **`billing_categories`**: id, owner_id, name, color, sort_order, created_at, updated_at. RLS por owner_id. Índice (owner_id, sort_order).
+- **`billing_reminders`**: id, billing_id, owner_id, remind_at, message, created_at. RLS por owner_id. Índice (owner_id, remind_at).
+
+### Cambios en `billings`
+
+| Columna                | Tipo          | Notas                                            |
+| ---------------------- | ------------- | ------------------------------------------------ |
+| category_id            | uuid NULL     | FK billing_categories ON DELETE SET NULL         |
+| type                   | text NOT NULL | 'charge', 'payment', 'spending' (default charge) |
+| issued_at              | date NULL     | Fecha emisión (cobros)                           |
+| payment_method         | text NULL     | cash, transfer, card, client_card, other         |
+| paid_by                | text NULL     | me, client, other (spendings)                    |
+| expect_reimbursement   | boolean       | default false                                    |
+| reimburse_to_client_id | uuid NULL     | FK clients ON DELETE SET NULL                    |
+| receipt_file_id        | uuid NULL     | FK project_files ON DELETE SET NULL              |
+| budget_item_id         | uuid NULL     | FK budget_items ON DELETE SET NULL               |
+
+### Document Hub
+
+- Añadir categoría `receipt` a `project_document_category_enum` si no existe (o usar `invoice`).
+- Vista/carpeta especial “Receipts & tickets” por proyecto: archivos con id en (SELECT receipt_file_id FROM billings WHERE project_id = ?). En esa vista: renombrar sí; eliminar/mover no.
+
+### Índices
+
+- billings: (project_id, category_id), (project_id, type), (budget_item_id) si se filtra por ello.
+- billing_reminders: (owner_id, remind_at).
+
+---
+
+## 5. Fases de implementación (orden sugerido)
+
+| Fase       | Contenido                                                                                                                                                                                                    | Dependencias                |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| **Fase 1** | Categorías por usuario: tabla `billing_categories`, seed por defecto, CRUD categorías, columna `category_id` en billings, select en formulario, filtro por categoría. Gestión de categorías (modal o vista). | Ninguna                     |
+| **Fase 2** | Filtros: por estado, por categoría, por rango de fechas (en cliente).                                                                                                                                        | Fase 1                      |
+| **Fase 3** | Tipo de billing (charge/payment/spending), issued_at, payment_method, paid_by, expect_reimbursement, reimburse_to_client_id. UI condicional por tipo.                                                        | Ninguna                     |
+| **Fase 4** | Recibos: receipt_file_id, upload desde Billing, carpeta “Receipts & tickets” en Documents (solo lectura de eliminación, renombrar/ver/descargar). Reemplazar/quitar recibo desde Billing.                    | Document Hub, project_files |
+| **Fase 5** | UX: MutationErrorDialog, modal create/edit, mejoras tabla/cards.                                                                                                                                             | Ninguna                     |
+| **Fase 6** | Vínculo Budgets: budget_item_id, selector solo ítems del proyecto actual.                                                                                                                                    | Budgets existente           |
+| **Fase 7** | Recordatorios: tabla billing_reminders, UI en create/edit billing, widget “Próximos recordatorios” al top del tab Billings.                                                                                  | Ninguna                     |
+| **Fase 8** | Export: por período (mes, año), por categoría; server action o API route CSV.                                                                                                                                | Fase 1, 2                   |
+
+El orden se puede ajustar (ej. Fase 4 antes que 2 si priorizan recibos). Fase 5 puede hacerse en paralelo o después de 1–3.
 
 ---
 
 ## 6. Riesgos y consideraciones
 
-- **Categorías:** Si luego se pasa de enum a tabla, hará falta migración de datos (mapeo enum → category_id).
-- **Recibos:** Reutilizar `project_files` implica que borrar un archivo (soft delete) debe dejar `receipt_file_id` en NULL o manejar “archivo no disponible” en UI.
-- **Performance:** Filtros en cliente están bien mientras la lista por proyecto sea razonable (< ~500 filas); si crece, mover filtros al servidor.
-- **i18n:** Añadir claves para categorías, filtros, “Subir recibo”, “Ver recibo”, “Sin recibo”, etc. (EN/ES).
+- **Categorías por usuario:** Si un usuario borra una categoría que está en uso, `category_id` en billings queda SET NULL (o prohibir borrar si tiene billings). Definir política (ej. “desasignar” vs “no permitir borrar si hay billings”).
+- **Receipts en Documents:** Archivos “reemplazados” desde Billing: decidir si el archivo viejo se oculta en “Receipts & tickets” (ej. ya no está en receipt_file_id) y si se puede eliminar desde Documents entonces (opcional).
+- **Recordatorios:** Por ahora solo visualización en widget; notificaciones push/email quedan fuera de este plan.
+- **i18n:** Añadir claves EN/ES para todos los nuevos labels (tipos, métodos de pago, paid_by, recordatorios, Receipts & tickets, etc.).
+- **Performance:** Filtros en cliente; si crece la lista, valorar paginación o filtros server-side. Export puede ser server-side con filtros.
 
 ---
 
-## 7. Checklist de aprobación
+## 7. Checklist de aprobación (actualizado)
 
-Marcar lo que se aprueba para implementar:
+- [x] **A. Categorías** — por usuario, globales, con defaults y CRUD.
+- [x] **B. Filtros** — por categoría, estado y rango de fechas.
+- [x] **C. Recibos/tickets** — un archivo por bill, Document Hub, carpeta “Receipts & tickets” no eliminable desde Documents; eliminar/reemplazar solo desde Billing.
+- [x] **D. UX** — MutationErrorDialog, modal, mejoras tabla/cards.
+- [x] **E. Campos** — método de pago, issue date; tipo charge/payment/spending; para gastos: quién pagó y expectativa de reembolso.
+- [x] **F. Export** — por período (mes, año), por categoría.
+- [x] **G. Budgets** — vínculo con budget_item del proyecto actual.
+- [x] **H. Recordatorios** — tabla + widget al top como “documentos recientes”.
 
-- [ ] **A. Categorías de billing** — enum + filtro (Opción 1) / tabla usuario (Opción 2) / rechazado
-- [ ] **B. Filtros** — por categoría + estado (+ fechas opcional) / rechazado
-- [ ] **C. Recibo/ticket** — un archivo por billing usando project_files / rechazado
-- [ ] **D. UX** — MutationErrorDialog + modal + mejoras tabla / rechazado
-- [ ] **E. Campos opcionales** — método de pago, issued_at, ref / rechazado
-- [ ] **F. Export CSV** — incluir en plan / rechazado
-
-**Notas del revisor:**  
-_(espacio para que indiques prioridades, cambios o exclusiones)_
+**Notas:** Ejecución fase por fase; se puede ajustar orden de fases según prioridad.
 
 ---
 
 ## 8. Referencias
 
-- `app/context/[projectId]/billings/` — UI actual
-- `app/actions/billings.ts` — acciones
+- `app/context/[projectId]/billings/`, `app/actions/billings.ts`
 - `supabase/migrations/20260213120000_add_billings_module.sql`, `20260213121000_billings_add_client_and_overdue.sql`
-- `docs/patterns/data-loading.md`, `server-actions.md`, `context-session-cache.md`
-- Document Hub: `supabase/migrations/20260224100000_document_hub.sql`, `app/api/documents/[fileId]/view/route.ts`
-- AGENTS.md — MutationErrorDialog, no alert(), window.open
+- Document Hub: `20260224100000_document_hub.sql`, `20260224120000_document_hub_folders.sql`, `app/api/documents/[fileId]/view/route.ts`
+- Documents widget: `ContextDocumentsClient.tsx` — sección “Recently opened”.
+- Budgets: `supabase/migrations/202601250000_presupuestos.sql` (budgets, budget_categories, budget_items)
+- AGENTS.md — MutationErrorDialog, window.open, data loading, RPC para multi-step
