@@ -194,6 +194,44 @@ export async function updateFolder(
   return { success: true, data: row };
 }
 
+export async function deleteFolders(
+  projectId: string,
+  folderIds: string[]
+): Promise<{ success: boolean; error?: string }> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const pid = projectId?.trim();
+  if (!pid) return { success: false, error: 'Project ID is required' };
+
+  const validIds = (folderIds ?? [])
+    .map((id) => id?.trim())
+    .filter(Boolean) as string[];
+  if (validIds.length === 0)
+    return { success: false, error: 'No folder IDs provided' };
+
+  const { error } = await supabase
+    .from('project_document_folders')
+    .delete()
+    .in('id', validIds)
+    .eq('project_id', pid)
+    .eq('owner_id', user.id);
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'document-folders',
+      action: 'deleteFolders',
+      userIntent: 'Eliminar carpetas en bloque',
+      expected: 'Carpetas eliminadas (documentos quedan sin carpeta)',
+      extra: { projectId: pid, count: validIds.length },
+    });
+    return { success: false, error: error.message };
+  }
+
+  revalidateDocumentPaths(pid);
+  return { success: true };
+}
+
 export async function deleteFolder(
   folderId: string
 ): Promise<{ success: boolean; error?: string }> {

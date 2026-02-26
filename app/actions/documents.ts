@@ -674,6 +674,43 @@ export async function deleteDocument(
   return { success: true };
 }
 
+export async function deleteDocuments(
+  projectId: string,
+  fileIds: string[]
+): Promise<{ error?: string }> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const pid = projectId?.trim();
+  if (!pid) return { error: 'Project ID is required' };
+
+  const validIds = (fileIds ?? [])
+    .map((id) => id?.trim())
+    .filter(Boolean) as string[];
+  if (validIds.length === 0) return { error: 'No file IDs provided' };
+
+  const { error } = await supabase
+    .from('project_files')
+    .update({ deleted_at: new Date().toISOString() } as never)
+    .in('id', validIds)
+    .eq('owner_id', user.id)
+    .eq('kind', 'document');
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'documents',
+      action: 'deleteDocuments',
+      userIntent: 'Eliminar documentos en bloque',
+      expected: 'deleted_at actualizado en todos los documentos seleccionados',
+      extra: { projectId: pid, count: validIds.length },
+    });
+    return { error: error.message };
+  }
+
+  revalidateDocumentPaths(pid);
+  return {};
+}
+
 export async function getDocumentDownloadUrl(
   fileId: string
 ): Promise<{ url?: string; error?: string }> {
