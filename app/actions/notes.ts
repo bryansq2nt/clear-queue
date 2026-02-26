@@ -213,6 +213,41 @@ export async function deleteNote(noteId: string): Promise<{ error?: string }> {
   return {};
 }
 
+/**
+ * Bulk-delete multiple notes owned by the authenticated user in a single
+ * query.  Associated note_links are removed automatically via CASCADE.
+ */
+export async function deleteNotes(
+  noteIds: string[]
+): Promise<{ error?: string }> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const validIds = noteIds.map((id) => id.trim()).filter(Boolean);
+  if (validIds.length === 0) return {};
+
+  const { error } = await supabase
+    .from('notes')
+    .delete()
+    .in('id', validIds)
+    .eq('owner_id', user.id);
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'notes',
+      action: 'deleteNotes',
+      userIntent: 'Delete multiple notes',
+      expected: 'Notes and associated links permanently deleted',
+      extra: { count: validIds.length },
+    });
+    return { error: error.message };
+  }
+
+  revalidatePath('/notes');
+  revalidatePath('/context');
+  return {};
+}
+
 // ---------------------------------------------------------------------------
 // Note links
 // ---------------------------------------------------------------------------

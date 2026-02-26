@@ -151,3 +151,12 @@
 .PhoneInput-theme .PhoneInputCountryIconImg {
   @apply w-5;
 }
+
+@keyframes toast-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}

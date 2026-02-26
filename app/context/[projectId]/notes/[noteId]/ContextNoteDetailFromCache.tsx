@@ -54,6 +54,12 @@ export default function ContextNoteDetailFromCache({
     cache.invalidate({ type: 'noteDetail', noteId });
   };
 
+  const onDeleteSuccess = () => {
+    invalidateNote();
+    cache.invalidate({ type: 'notes', projectId });
+    cache.invalidate({ type: 'noteFolders', projectId });
+  };
+
   useEffect(() => {
     const c = cache.get<NoteDetailData>({ type: 'noteDetail', noteId });
     if (c && c.note.project_id === projectId && c.folders) {
@@ -108,7 +114,7 @@ export default function ContextNoteDetailFromCache({
       folders={data.folders}
       initialFolderId={data.note.folder_id}
       onSaveSuccess={invalidateNote}
-      onDeleteSuccess={invalidateNote}
+      onDeleteSuccess={onDeleteSuccess}
     />
   );
 }

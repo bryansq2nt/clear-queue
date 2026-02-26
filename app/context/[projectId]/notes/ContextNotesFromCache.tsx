@@ -13,10 +13,13 @@ type NoteFolder = Database['public']['Tables']['project_note_folders']['Row'];
 
 interface ContextNotesFromCacheProps {
   projectId: string;
+  /** When opening with ?folderId=xxx or ?folderId=root, preselect that folder */
+  initialFolderId?: string;
 }
 
 export default function ContextNotesFromCache({
   projectId,
+  initialFolderId,
 }: ContextNotesFromCacheProps) {
   const cache = useContextDataCache();
   const cachedNotes = cache.get<Note[]>({ type: 'notes', projectId });
@@ -78,6 +81,7 @@ export default function ContextNotesFromCache({
       projectId={projectId}
       initialNotes={notes}
       initialFolders={folders}
+      initialFolderId={initialFolderId}
       onRefresh={loadData}
     />
   );

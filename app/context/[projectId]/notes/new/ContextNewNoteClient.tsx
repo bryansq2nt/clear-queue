@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/shared/I18nProvider';
+import { useContextDataCache } from '@/app/context/ContextDataCache';
 import { NoteEditor } from '../components/NoteEditor';
 import { ArrowLeft } from 'lucide-react';
 
@@ -21,13 +23,27 @@ export default function ContextNewNoteClient({
   defaultFolderId,
 }: ContextNewNoteClientProps) {
   const { t } = useI18n();
-  const listHref = `/context/${projectId}/notes`;
+  const router = useRouter();
+  const cache = useContextDataCache();
+  const folderQuery =
+    defaultFolderId !== undefined
+      ? `?folderId=${defaultFolderId === null || defaultFolderId === 'root' ? 'root' : defaultFolderId}`
+      : '';
+  const listHref = `/context/${projectId}/notes${folderQuery}`;
   const getDetailHref = (id: string) => `/context/${projectId}/notes/${id}`;
+
+  const handleBack = (e: React.MouseEvent) => {
+    e.preventDefault();
+    cache.invalidate({ type: 'notes', projectId });
+    cache.invalidate({ type: 'noteFolders', projectId });
+    router.push(listHref);
+  };
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
       <Link
         href={listHref}
+        onClick={handleBack}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4"
       >
         <ArrowLeft className="w-4 h-4" />

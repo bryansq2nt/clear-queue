@@ -4,6 +4,7 @@ import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import ThemeProvider from '@/components/shared/ThemeProvider';
 import { I18nProvider } from '@/components/shared/I18nProvider';
+import { ActionToastProvider } from '@/components/shared/ActionToastProvider';
 import * as Sentry from '@sentry/nextjs';
 import { getProfileOptional } from '@/app/profile/actions';
 import { getPreferencesOptional } from '@/app/settings/appearance/actions';
@@ -79,7 +80,7 @@ export default async function RootLayout({
             initialProfile={profile}
             initialPreferences={preferences}
           >
-            {children}
+            <ActionToastProvider>{children}</ActionToastProvider>
           </I18nProvider>
         </ThemeProvider>
         <Analytics />

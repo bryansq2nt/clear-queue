@@ -233,3 +233,43 @@ export async function deleteFolder(
   revalidateNotePaths((existing as { project_id: string }).project_id);
   return { success: true };
 }
+
+/**
+ * Bulk-delete multiple folders owned by the authenticated user in a single
+ * query.  Notes inside the deleted folders are NOT deleted — the DB sets their
+ * folder_id to NULL (ON DELETE SET NULL).
+ */
+export async function deleteFolders(
+  projectId: string,
+  folderIds: string[]
+): Promise<{ success: boolean; error?: string }> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const pid = projectId?.trim();
+  if (!pid) return { success: false, error: 'Project ID is required' };
+
+  const validIds = folderIds.map((id) => id.trim()).filter(Boolean);
+  if (validIds.length === 0) return { success: true };
+
+  const { error } = await supabase
+    .from('project_note_folders')
+    .delete()
+    .in('id', validIds)
+    .eq('project_id', pid)
+    .eq('owner_id', user.id);
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'note-folders',
+      action: 'deleteFolders',
+      userIntent: 'Delete multiple folders',
+      expected: 'Folders deleted, notes unassigned (folder_id set to null)',
+      extra: { projectId: pid, count: validIds.length },
+    });
+    return { success: false, error: error.message };
+  }
+
+  revalidateNotePaths(pid);
+  return { success: true };
+}
