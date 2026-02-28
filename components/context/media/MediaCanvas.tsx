@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Archive,
   Download,
+  Heart,
   MoreVertical,
   Pencil,
   Share2,
-  Star,
   Trash2,
   X,
 } from 'lucide-react';
@@ -37,6 +37,7 @@ interface MediaCanvasProps {
   onMarkFinal: (isFinal: boolean) => void;
   onEdit: () => void;
   onArchive: () => void;
+  onUnarchive?: () => void;
   onDelete: () => void;
   onShare?: () => void;
   onDownload?: () => void;
@@ -50,10 +51,12 @@ export function MediaCanvas({
   onMarkFinal,
   onEdit,
   onArchive,
+  onUnarchive,
   onDelete,
   onShare,
   onDownload,
 }: MediaCanvasProps) {
+  const isArchived = Boolean(file.archived_at);
   const { t } = useI18n();
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -230,33 +233,6 @@ export function MediaCanvas({
           >
             <DropdownMenuItem
               onClick={() => {
-                onEdit();
-                setMenuOpen(false);
-              }}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={handleDeleteFromMenu}
-              className={cn(
-                deleteConfirm && 'text-destructive focus:text-destructive'
-              )}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {deleteConfirm ? 'Confirm delete?' : 'Delete'}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                onArchive();
-                setMenuOpen(false);
-              }}
-            >
-              <Archive className="mr-2 h-4 w-4" />
-              Archive
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
                 onShare?.();
                 setMenuOpen(false);
               }}
@@ -274,6 +250,37 @@ export function MediaCanvas({
             >
               <Download className="mr-2 h-4 w-4" />
               Download
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                onEdit();
+                setMenuOpen(false);
+              }}
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                if (isArchived) {
+                  onUnarchive?.();
+                } else {
+                  onArchive();
+                }
+                setMenuOpen(false);
+              }}
+            >
+              <Archive className="mr-2 h-4 w-4" />
+              {isArchived ? t('media.unarchive') : t('media.archive')}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleDeleteFromMenu}
+              className={cn(
+                deleteConfirm && 'text-destructive focus:text-destructive'
+              )}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {deleteConfirm ? 'Confirm delete?' : 'Delete'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -330,13 +337,15 @@ export function MediaCanvas({
             className={cn(
               'flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-md px-2 transition-colors',
               file.is_final
-                ? 'text-yellow-400 hover:text-yellow-300'
+                ? 'text-red-400 hover:text-red-300'
                 : 'text-white/70 hover:text-white'
             )}
-            aria-label={file.is_final ? 'Remove final mark' : 'Mark as final'}
-            title={file.is_final ? 'Remove final mark' : 'Mark as final'}
+            aria-label={
+              file.is_final ? 'Remove from favorites' : 'Add to favorites'
+            }
+            title={file.is_final ? 'Remove from favorites' : 'Add to favorites'}
           >
-            <Star
+            <Heart
               className="h-5 w-5"
               fill={file.is_final ? 'currentColor' : 'none'}
             />

@@ -33,9 +33,18 @@ function revalidateMediaPaths(projectId: string) {
 // Reads
 // ------------------------------------------------------------
 
+export type GetMediaOptions = {
+  offset?: number;
+  limit?: number;
+  category?: string | null;
+  favoritesOnly?: boolean;
+  sortOrder?: 'asc' | 'desc';
+  includeArchived?: boolean;
+};
+
 export async function getMedia(
   projectId: string,
-  options: { offset?: number; limit?: number } = {}
+  options: GetMediaOptions = {}
 ): Promise<{ items: ProjectFile[]; hasMore: boolean }> {
   const user = await requireAuth();
   const supabase = await createClient();
@@ -45,18 +54,29 @@ export async function getMedia(
 
   const offset = options.offset ?? 0;
   const limit = options.limit ?? MEDIA_PAGE_SIZE;
+  const ascending = options.sortOrder === 'asc';
 
-  // Fetch limit + 1 to detect hasMore without a COUNT query
-  const { data, error } = await supabase
+  let query = supabase
     .from('project_files')
     .select(MEDIA_FILE_COLS)
     .eq('project_id', pid)
     .eq('owner_id', user.id)
     .eq('kind', 'media')
-    .is('archived_at', null)
     .is('deleted_at', null)
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending })
     .range(offset, offset + limit);
+
+  if (!options.includeArchived) {
+    query = query.is('archived_at', null);
+  }
+  if (options.category?.trim()) {
+    query = query.eq('media_category', options.category.trim());
+  }
+  if (options.favoritesOnly) {
+    query = query.eq('is_final', true);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     captureWithContext(error, {
@@ -322,6 +342,48 @@ export async function archiveMedia(
       action: 'archiveMedia',
       userIntent: 'Archivar archivo de media',
       expected: 'archived_at actualizado',
+      extra: { fileId: id },
+    });
+    return { success: false, error: error.message };
+  }
+
+  revalidateMediaPaths((existing as { project_id: string }).project_id);
+  return { success: true };
+}
+
+export async function unarchiveMedia(
+  fileId: string
+): Promise<{ success: boolean; error?: string }> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const id = fileId?.trim();
+  if (!id) return { success: false, error: 'File ID is required' };
+
+  const { data: existing, error: fetchError } = await supabase
+    .from('project_files')
+    .select('id, project_id, owner_id')
+    .eq('id', id)
+    .eq('owner_id', user.id)
+    .eq('kind', 'media')
+    .single();
+
+  if (fetchError || !existing) {
+    return { success: false, error: 'Media not found or access denied' };
+  }
+
+  const { error } = await supabase
+    .from('project_files')
+    .update({ archived_at: null } as never)
+    .eq('id', id)
+    .eq('owner_id', user.id);
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'media',
+      action: 'unarchiveMedia',
+      userIntent: 'Desarchivar archivo de media',
+      expected: 'archived_at en null',
       extra: { fileId: id },
     });
     return { success: false, error: error.message };

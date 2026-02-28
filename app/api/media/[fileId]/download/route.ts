@@ -21,7 +21,7 @@ export async function GET(
 
   const { data: rawRow, error } = await supabase
     .from('project_files')
-    .select('id, owner_id, path, title, file_ext')
+    .select('id, owner_id, path, title, file_ext, mime_type')
     .eq('id', fileId)
     .eq('owner_id', user.id)
     .eq('kind', 'media')
@@ -34,6 +34,7 @@ export async function GET(
     path: string;
     title: string;
     file_ext: string | null;
+    mime_type: string;
   } | null;
 
   if (error || !row) {
@@ -53,5 +54,17 @@ export async function GET(
     return new NextResponse('Could not generate download URL', { status: 500 });
   }
 
-  return NextResponse.redirect(signed.signedUrl, 302);
+  // Proxy the file so the client can fetch() and trigger download without opening a new tab
+  const fileRes = await fetch(signed.signedUrl);
+  if (!fileRes.ok) {
+    return new NextResponse('Could not fetch file', { status: 502 });
+  }
+  const body = await fileRes.arrayBuffer();
+  return new NextResponse(body, {
+    status: 200,
+    headers: {
+      'Content-Type': row.mime_type || 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${filename.replace(/"/g, '\\"')}"`,
+    },
+  });
 }
