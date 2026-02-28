@@ -829,7 +829,11 @@
     "category_reference": "Referencia",
     "category_screenshot": "Captura",
     "category_mockup": "Maqueta",
-    "category_other": "Otro"
+    "category_other": "Otro",
+    "show_more": "Ver más",
+    "show_less": "Ver menos",
+    "share_link_copied": "Enlace de compartir copiado al portapapeles.",
+    "share_error": "No se pudo crear el enlace de compartir."
   },
   "toast": {
     "go": "Ir",

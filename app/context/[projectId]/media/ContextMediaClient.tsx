@@ -5,7 +5,7 @@ import { Image as ImageIcon, Plus } from 'lucide-react';
 import { Database } from '@/lib/supabase/types';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { useContextDataCache } from '@/app/context/ContextDataCache';
-import { toastError } from '@/lib/ui/toast';
+import { toastError, toastSuccess } from '@/lib/ui/toast';
 import {
   getMedia,
   getMediaSignedUrl,
@@ -13,6 +13,7 @@ import {
   archiveMedia,
   deleteMedia,
   markMediaFinal,
+  createMediaShareLink,
 } from '@/app/actions/media';
 import { MEDIA_PAGE_SIZE } from '@/lib/validation/project-media';
 import { MediaCard } from '@/components/context/media/MediaCard';
@@ -239,6 +240,30 @@ export default function ContextMediaClient({
           onEdit={() => setEditTarget(canvasFile)}
           onArchive={() => void handleCanvasArchive()}
           onDelete={() => void handleCanvasDelete()}
+          onDownload={() => {
+            window.open(
+              `/api/media/${canvasFile.id}/download`,
+              '_blank',
+              'noopener,noreferrer'
+            );
+          }}
+          onShare={async () => {
+            const result = await createMediaShareLink(canvasFile.id);
+            if (result.error) {
+              toastError(t('media.share_error'));
+              return;
+            }
+            const fullUrl =
+              typeof window !== 'undefined' && result.url
+                ? `${window.location.origin}${result.url}`
+                : (result.url ?? '');
+            try {
+              await navigator.clipboard.writeText(fullUrl);
+              toastSuccess(t('media.share_link_copied'));
+            } catch {
+              toastError(t('media.share_error'));
+            }
+          }}
         />
       )}
 

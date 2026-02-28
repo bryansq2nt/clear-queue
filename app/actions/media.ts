@@ -493,3 +493,125 @@ export async function touchMedia(fileId: string): Promise<void> {
     // fire-and-forget: never throw
   }
 }
+
+const SHARE_LINK_EXPIRY_SEC = 7 * 24 * 3600; // 7 days
+
+export async function createMediaShareLink(
+  fileId: string
+): Promise<{ url?: string; error?: string }> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const id = fileId?.trim();
+  if (!id) return { error: 'File ID is required' };
+
+  const { data: row, error: fetchError } = await supabase
+    .from('project_files')
+    .select('id, owner_id, path, title, description, mime_type')
+    .eq('id', id)
+    .eq('owner_id', user.id)
+    .eq('kind', 'media')
+    .is('deleted_at', null)
+    .single();
+
+  if (fetchError || !row) {
+    return { error: 'Media not found or access denied' };
+  }
+
+  const file = row as {
+    id: string;
+    path: string;
+    title: string;
+    description: string | null;
+    mime_type: string;
+  };
+
+  const { data: signedData, error: signedError } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(file.path, SHARE_LINK_EXPIRY_SEC);
+
+  if (signedError || !signedData?.signedUrl) {
+    captureWithContext(
+      signedError ?? new Error('Signed URL generation failed'),
+      {
+        module: 'media',
+        action: 'createMediaShareLink',
+        userIntent: 'Crear enlace de compartir',
+        expected: 'URL firmada generada',
+        extra: { fileId: id },
+      }
+    );
+    return {
+      error: signedError?.message ?? 'Could not generate share URL',
+    };
+  }
+
+  const token = crypto.randomUUID().replace(/-/g, '');
+  const expiresAt = new Date(
+    Date.now() + SHARE_LINK_EXPIRY_SEC * 1000
+  ).toISOString();
+
+  const { error: insertError } = await supabase
+    .from('media_share_tokens')
+    .insert({
+      file_id: file.id,
+      token,
+      signed_url: signedData.signedUrl,
+      title: file.title || 'Media',
+      description: file.description,
+      mime_type: file.mime_type,
+      expires_at: expiresAt,
+      created_at: new Date().toISOString(),
+    } as never);
+
+  if (insertError) {
+    captureWithContext(insertError, {
+      module: 'media',
+      action: 'createMediaShareLink',
+      userIntent: 'Crear enlace de compartir',
+      expected: 'Token insertado',
+      extra: { fileId: id },
+    });
+    return { error: insertError.message };
+  }
+
+  return { url: `/share/media/${token}` };
+}
+
+export async function getMediaShareByToken(token: string): Promise<{
+  signed_url?: string;
+  title?: string;
+  description?: string | null;
+  mime_type?: string;
+  error?: string;
+}> {
+  const supabase = await createClient();
+  const t = token?.trim();
+  if (!t) return { error: 'Token required' };
+
+  // RPC get_media_share_by_token not yet in generated types (media_share_tokens migration)
+  const { data, error } = await (
+    supabase as unknown as {
+      rpc: (
+        n: string,
+        p: { p_token: string }
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+    }
+  ).rpc('get_media_share_by_token', { p_token: t });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || !row.signed_url) {
+    return { error: 'Not found or expired' };
+  }
+
+  return {
+    signed_url: row.signed_url as string,
+    title: row.title as string,
+    description: (row.description as string | null) ?? null,
+    mime_type: row.mime_type as string,
+  };
+}

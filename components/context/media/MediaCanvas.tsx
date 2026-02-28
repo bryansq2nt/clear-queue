@@ -1,12 +1,28 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, Pencil, Star, Trash2, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Archive,
+  Download,
+  MoreVertical,
+  Pencil,
+  Share2,
+  Star,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useI18n } from '@/components/shared/I18nProvider';
+import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 import {
   isImageMimeType,
   isVideoMimeType,
-  MEDIA_CANVAS_ACTIONBAR_HIDE_DELAY_MS,
 } from '@/lib/validation/project-media';
 import { cn } from '@/lib/utils';
 import { Database } from '@/lib/supabase/types';
@@ -22,6 +38,8 @@ interface MediaCanvasProps {
   onEdit: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  onShare?: () => void;
+  onDownload?: () => void;
 }
 
 export function MediaCanvas({
@@ -33,8 +51,10 @@ export function MediaCanvas({
   onEdit,
   onArchive,
   onDelete,
+  onShare,
+  onDownload,
 }: MediaCanvasProps) {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { t } = useI18n();
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Canvas entry animation — 10ms tick gives browser time to paint opacity-0 first
@@ -42,8 +62,13 @@ export function MediaCanvas({
   // Image fade-in once it loads from the signed URL
   const [imgLoaded, setImgLoaded] = useState(false);
 
-  const [barVisible, setBarVisible] = useState(true);
+  // Actions menu: closed on open; user opens via 3-dots
+  const [menuOpen, setMenuOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  // Bottom widget: expand full description
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  // Overlay UI (close, 3-dots, bottom bar): tap content to hide/show so user can focus on image
+  const [overlayVisible, setOverlayVisible] = useState(true);
 
   // Trigger canvas fade-in on mount
   useEffect(() => {
@@ -51,27 +76,19 @@ export function MediaCanvas({
     return () => clearTimeout(timer);
   }, []);
 
-  // Reset imgLoaded whenever the url changes (new file opened)
+  // Reset imgLoaded and description expanded when file/url changes (new file opened)
   useEffect(() => {
     setImgLoaded(false);
-  }, [url]);
+    setDescriptionExpanded(false);
+  }, [url, file.id]);
 
-  const showBar = useCallback(() => {
-    setBarVisible(true);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(
-      () => setBarVisible(false),
-      MEDIA_CANVAS_ACTIONBAR_HIDE_DELAY_MS
-    );
-  }, []);
-
-  // Start auto-hide timer when canvas opens
+  // When canvas opens, show overlay UI and keep menu closed
   useEffect(() => {
-    if (open) showBar();
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [open, showBar]);
+    if (open) {
+      setOverlayVisible(true);
+      setMenuOpen(false);
+    }
+  }, [open]);
 
   // Reset delete confirm when canvas closes
   useEffect(() => {
@@ -91,16 +108,13 @@ export function MediaCanvas({
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
+  // Tap content area → hide overlay UI (or show it again) so user can view image without interruptions
   const handleContentClick = () => {
-    if (barVisible) {
-      setBarVisible(false);
-      if (timerRef.current) clearTimeout(timerRef.current);
-    } else {
-      showBar();
-    }
+    setMenuOpen(false);
+    setOverlayVisible((prev) => !prev);
   };
 
-  const handleDeleteClick = () => {
+  const handleDeleteFromMenu = () => {
     if (!deleteConfirm) {
       setDeleteConfirm(true);
       deleteTimerRef.current = setTimeout(() => setDeleteConfirm(false), 3000);
@@ -119,134 +133,215 @@ export function MediaCanvas({
         mounted ? 'opacity-100' : 'opacity-0'
       )}
     >
-      {/* Content area — clicking toggles action bar */}
+      {/* Content area — Facebook-style margins so image doesn’t fill edge-to-edge */}
       <div
-        className="relative h-full w-full cursor-pointer"
+        className="absolute inset-0 cursor-pointer flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-10"
         onClick={handleContentClick}
       >
         {/* Skeleton while signed URL is fetching */}
         {url === null && (
-          <div className="flex h-full items-center justify-center">
+          <div className="flex h-full w-full max-h-full max-w-full items-center justify-center">
             <Skeleton className="h-64 w-64 rounded-xl" />
           </div>
         )}
 
-        {/* Image — fades in once loaded */}
+        {/* Image — 25% smaller (max 75% of space) so it never covers close/menu buttons */}
         {url !== null && isImageMimeType(file.mime_type) && (
-          <img
-            src={url}
-            alt={file.title}
-            onLoad={() => setImgLoaded(true)}
-            className={cn(
-              'h-full w-full object-contain transition-opacity duration-200',
-              imgLoaded ? 'opacity-100' : 'opacity-0'
-            )}
-          />
+          <div className="h-full w-full min-h-0 min-w-0 max-h-[75%] max-w-[75%]">
+            <TransformWrapper
+              initialScale={1}
+              minScale={0.5}
+              maxScale={4}
+              limitToBounds
+              centerOnInit
+              doubleClick={{ mode: 'reset' }}
+            >
+              <TransformComponent
+                wrapperStyle={{ width: '100%', height: '100%' }}
+                contentStyle={{ width: '100%', height: '100%' }}
+              >
+                <img
+                  src={url}
+                  alt={file.title}
+                  onLoad={() => setImgLoaded(true)}
+                  className={cn(
+                    'h-full w-full object-contain transition-opacity duration-200',
+                    imgLoaded ? 'opacity-100' : 'opacity-0'
+                  )}
+                  draggable={false}
+                />
+              </TransformComponent>
+            </TransformWrapper>
+          </div>
         )}
 
-        {/* Video */}
+        {/* Video — same max 75% size as image */}
         {url !== null && isVideoMimeType(file.mime_type) && (
-          <video
-            src={url}
-            controls
-            className="h-full w-full"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="h-full w-full min-h-0 min-w-0 max-h-[75%] max-w-[75%] flex items-center justify-center">
+            <video
+              src={url}
+              controls
+              className="max-h-full max-w-full w-auto h-auto object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         )}
       </div>
 
-      {/* Action bar — auto-hides with slide + fade */}
+      {/* Close — top-left; hidden when overlay is dismissed */}
+      <button
+        type="button"
+        onClick={onClose}
+        className={cn(
+          'fixed left-4 top-4 z-20 flex min-h-[48px] min-w-[48px] items-center justify-center rounded-md text-white/70 transition-opacity duration-200 hover:text-white',
+          !overlayVisible && 'pointer-events-none opacity-0'
+        )}
+        aria-label="Close"
+        title="Close"
+      >
+        <X className="h-6 w-6" />
+      </button>
+
+      {/* 3-dots actions menu — top-right; menu closed on open; tap content to hide/show overlay */}
       <div
         className={cn(
-          'fixed bottom-0 left-0 right-0 z-10 flex items-center gap-2 bg-black/70 px-4 py-3 backdrop-blur-sm transition-all duration-150',
-          barVisible
-            ? 'translate-y-0 opacity-100'
-            : 'pointer-events-none translate-y-2 opacity-0'
+          'fixed right-4 top-4 z-20 transition-opacity duration-200',
+          !overlayVisible && 'pointer-events-none opacity-0'
         )}
-        onMouseEnter={showBar}
+      >
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="fixed right-4 top-4 z-20 flex min-h-[48px] min-w-[48px] items-center justify-center rounded-md text-white/70 transition-colors hover:text-white"
+              aria-label="Actions"
+              title="Actions"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreVertical className="h-6 w-6" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            side="bottom"
+            sideOffset={8}
+            className="z-30 min-w-[10rem]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DropdownMenuItem
+              onClick={() => {
+                onEdit();
+                setMenuOpen(false);
+              }}
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleDeleteFromMenu}
+              className={cn(
+                deleteConfirm && 'text-destructive focus:text-destructive'
+              )}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {deleteConfirm ? 'Confirm delete?' : 'Delete'}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                onArchive();
+                setMenuOpen(false);
+              }}
+            >
+              <Archive className="mr-2 h-4 w-4" />
+              Archive
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                onShare?.();
+                setMenuOpen(false);
+              }}
+              disabled={!onShare}
+            >
+              <Share2 className="mr-2 h-4 w-4" />
+              Share
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                onDownload?.();
+                setMenuOpen(false);
+              }}
+              disabled={!onDownload}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Bottom widget: title, tags, collapsed description, expandable full description, Favorite; hidden when overlay dismissed */}
+      <div
+        className={cn(
+          'fixed bottom-0 left-0 right-0 z-10 max-h-[40vh] overflow-y-auto bg-black/70 px-4 py-3 backdrop-blur-sm transition-opacity duration-200',
+          !overlayVisible && 'pointer-events-none opacity-0'
+        )}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Title + category — left */}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-white">
-            {file.title}
-          </p>
-          {file.media_category && (
-            <p className="text-xs capitalize text-white/60">
-              {file.media_category}
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-white">
+              {file.title}
             </p>
-          )}
+            {file.media_category && (
+              <p className="text-xs capitalize text-white/60">
+                {file.media_category}
+              </p>
+            )}
+            {Array.isArray(file.tags) && file.tags.length > 0 && (
+              <p className="mt-1 text-xs text-white/70">
+                {file.tags.join(', ')}
+              </p>
+            )}
+            {file.description && (
+              <div className="mt-1">
+                <p
+                  className={cn(
+                    'text-xs text-white/70',
+                    !descriptionExpanded && 'line-clamp-2'
+                  )}
+                >
+                  {file.description}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setDescriptionExpanded((prev) => !prev)}
+                  className="mt-0.5 text-xs font-medium text-white/80 underline hover:text-white"
+                >
+                  {descriptionExpanded
+                    ? t('media.show_less')
+                    : t('media.show_more')}
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => onMarkFinal(!file.is_final)}
+            className={cn(
+              'flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-md px-2 transition-colors',
+              file.is_final
+                ? 'text-yellow-400 hover:text-yellow-300'
+                : 'text-white/70 hover:text-white'
+            )}
+            aria-label={file.is_final ? 'Remove final mark' : 'Mark as final'}
+            title={file.is_final ? 'Remove final mark' : 'Mark as final'}
+          >
+            <Star
+              className="h-5 w-5"
+              fill={file.is_final ? 'currentColor' : 'none'}
+            />
+          </button>
         </div>
-
-        {/* Mark as Final */}
-        <button
-          type="button"
-          onClick={() => onMarkFinal(!file.is_final)}
-          className={cn(
-            'flex min-h-[48px] min-w-[48px] items-center justify-center rounded-md px-2 transition-colors',
-            file.is_final
-              ? 'text-yellow-400 hover:text-yellow-300'
-              : 'text-white/70 hover:text-white'
-          )}
-          aria-label={file.is_final ? 'Remove final mark' : 'Mark as final'}
-          title={file.is_final ? 'Remove final mark' : 'Mark as final'}
-        >
-          <Star
-            className="h-5 w-5"
-            fill={file.is_final ? 'currentColor' : 'none'}
-          />
-        </button>
-
-        {/* Edit */}
-        <button
-          type="button"
-          onClick={() => {
-            onEdit();
-            showBar();
-          }}
-          className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-md px-2 text-white/70 transition-colors hover:text-white"
-          aria-label="Edit"
-          title="Edit"
-        >
-          <Pencil className="h-5 w-5" />
-        </button>
-
-        {/* Archive */}
-        <button
-          type="button"
-          onClick={onArchive}
-          className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-md px-2 text-white/70 transition-colors hover:text-white"
-          aria-label="Archive"
-          title="Archive"
-        >
-          <Archive className="h-5 w-5" />
-        </button>
-
-        {/* Delete — two-step confirm */}
-        <button
-          type="button"
-          onClick={handleDeleteClick}
-          className={cn(
-            'flex min-h-[48px] items-center justify-center rounded-md px-3 text-sm font-medium transition-colors',
-            deleteConfirm
-              ? 'text-red-400 hover:text-red-300'
-              : 'text-white/70 hover:text-white'
-          )}
-          aria-label={deleteConfirm ? 'Confirm delete' : 'Delete'}
-        >
-          {deleteConfirm ? 'Confirm?' : <Trash2 className="h-5 w-5" />}
-        </button>
-
-        {/* Close */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-md px-2 text-white/70 transition-colors hover:text-white"
-          aria-label="Close"
-          title="Close"
-        >
-          <X className="h-5 w-5" />
-        </button>
       </div>
     </div>
   );

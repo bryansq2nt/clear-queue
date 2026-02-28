@@ -892,7 +892,11 @@
     "category_reference": "Reference",
     "category_screenshot": "Screenshot",
     "category_mockup": "Mockup",
-    "category_other": "Other"
+    "category_other": "Other",
+    "show_more": "Show more",
+    "show_less": "Show less",
+    "share_link_copied": "Share link copied to clipboard.",
+    "share_error": "Could not create share link."
   },
   "toast": {
     "go": "Go",

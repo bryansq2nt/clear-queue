@@ -43,6 +43,8 @@ La documentación está organizada por categorías bajo `docs/`.
 | [Plan fase 3 cache fix](plans/plan-fase3-cache-fix.md)                                    | Fix del cache de sesión por contexto.                                |
 | [Plan owner / client / business](plans/plan-owner-add-client-business.md)                 | Añadir responsable y cliente/negocio al proyecto.                    |
 | [Plan contexto de errores en Sentry](plans/plan-sentry-error-context.md)                  | Diseño y plan: módulo, intención, esperado y sucedido en cada error. |
+| [Plan Media Vault implementación](plans/plan-media-vault-implementation.md)               | Fases 1–4: DB, acciones, UI y polish del módulo Media.               |
+| [Plan Media Canvas UX](plans/plan-media-canvas-ux.md)                                     | Layout full-bleed, menú de acciones, share, download, zoom/pan.      |
 
 ---
 
