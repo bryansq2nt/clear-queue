@@ -14,6 +14,7 @@ import {
   Receipt,
   CheckSquare,
   FolderOpen,
+  Image,
   Calendar,
 } from 'lucide-react';
 
@@ -25,6 +26,7 @@ const TABS = [
   { slug: 'board', labelKey: 'context.stages', icon: LayoutGrid },
   { slug: 'owner', labelKey: 'context.project_owner', icon: UserCircle },
   { slug: 'documents', labelKey: 'context.documents', icon: FolderOpen },
+  { slug: 'media', labelKey: 'context.media', icon: Image },
   { slug: 'calendar', labelKey: 'context.calendar', icon: Calendar },
   { slug: 'notes', labelKey: 'context.notes', icon: FileText },
   { slug: 'links', labelKey: 'context.links', icon: LinkIcon },

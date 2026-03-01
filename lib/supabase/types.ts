@@ -1056,6 +1056,14 @@ export type Database = {
             | 'notes'
             | 'other'
             | null;
+          media_category:
+            | 'branding'
+            | 'content'
+            | 'reference'
+            | 'screenshot'
+            | 'mockup'
+            | 'other'
+            | null;
           title: string;
           description: string | null;
           bucket: string;
@@ -1087,6 +1095,14 @@ export type Database = {
             | 'notes'
             | 'other'
             | null;
+          media_category?:
+            | 'branding'
+            | 'content'
+            | 'reference'
+            | 'screenshot'
+            | 'mockup'
+            | 'other'
+            | null;
           title: string;
           description?: string | null;
           bucket: string;
@@ -1116,6 +1132,14 @@ export type Database = {
             | 'report'
             | 'spreadsheet'
             | 'notes'
+            | 'other'
+            | null;
+          media_category?:
+            | 'branding'
+            | 'content'
+            | 'reference'
+            | 'screenshot'
+            | 'mockup'
             | 'other'
             | null;
           title?: string;
@@ -1172,6 +1196,13 @@ export type Database = {
         | 'report'
         | 'spreadsheet'
         | 'notes'
+        | 'other';
+      project_media_category_enum:
+        | 'branding'
+        | 'content'
+        | 'reference'
+        | 'screenshot'
+        | 'mockup'
         | 'other';
     };
     CompositeTypes: {

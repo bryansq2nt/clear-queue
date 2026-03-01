@@ -18,9 +18,9 @@ A personal project and task management system built with Next.js 14, TypeScript,
 - **Analytics Dashboard**: View project health, KPIs, blocked tasks, and upcoming deadlines
 - **Authentication**: Secure admin-only access via Supabase Auth
 
-## Documentación
+## Documentaciï¿½n
 
-- **[docs/README.md](docs/README.md)** ? Índice de documentación (audits, reports, plans, patterns, troubleshooting, research, testing, reference).
+- **[docs/README.md](docs/README.md)** ? ï¿½ndice de documentaciï¿½n (audits, reports, plans, patterns, troubleshooting, research, testing, reference).
 - **Calidad:** reglas custom en [docs/reference/eslint-rules-README.md](docs/reference/eslint-rules-README.md); estado en [docs/reports/IMPLEMENTATION_STATUS_REPORT.md](docs/reports/IMPLEMENTATION_STATUS_REPORT.md).
 - **Troubleshooting:** [docs/troubleshooting/TROUBLESHOOTING.md](docs/troubleshooting/TROUBLESHOOTING.md).
 
