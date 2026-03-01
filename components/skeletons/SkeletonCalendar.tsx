@@ -3,7 +3,7 @@
 import { Skeleton } from '@/components/ui/skeleton';
 
 /**
- * Skeleton for the calendar tab: filters + day groups + rows.
+ * Skeleton for the calendar tab: filters + month grid.
  */
 export function SkeletonCalendar() {
   return (
@@ -13,17 +13,17 @@ export function SkeletonCalendar() {
           <Skeleton key={i} className="h-9 w-24 rounded-md" />
         ))}
       </div>
-      <div className="space-y-6">
-        {[1, 2, 3].map((day) => (
-          <div key={day} className="space-y-2">
-            <Skeleton className="h-6 w-32 rounded" />
-            <div className="space-y-2 pl-2">
-              {[1, 2, 3].map((row) => (
-                <Skeleton key={row} className="h-14 w-full rounded-lg" />
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className="rounded-lg border border-border bg-card p-2">
+        <div className="flex items-center justify-between px-1 py-2">
+          <Skeleton className="h-8 w-8 rounded" />
+          <Skeleton className="h-5 w-32 rounded" />
+          <Skeleton className="h-8 w-8 rounded" />
+        </div>
+        <div className="grid grid-cols-7 gap-0.5">
+          {Array.from({ length: 7 * 6 }, (_, i) => (
+            <Skeleton key={i} className="aspect-square rounded-md" />
+          ))}
+        </div>
       </div>
     </div>
   );

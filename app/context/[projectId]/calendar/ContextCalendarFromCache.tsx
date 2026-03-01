@@ -11,13 +11,20 @@ interface ContextCalendarFromCacheProps {
   projectId: string;
 }
 
-function getDefaultRange(): { start: string; end: string } {
-  const today = new Date();
-  const end = new Date(today);
-  end.setDate(end.getDate() + 13);
+/** Range for a given month (year, month 0-11). */
+function getMonthRangeFor(
+  year: number,
+  month: number
+): {
+  start: string;
+  end: string;
+} {
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 0);
+  const pad = (n: number) => String(n).padStart(2, '0');
   return {
-    start: today.toISOString().slice(0, 10),
-    end: end.toISOString().slice(0, 10),
+    start: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
+    end: `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`,
   };
 }
 
@@ -35,7 +42,8 @@ export default function ContextCalendarFromCache({
 
   const loadData = useCallback(async () => {
     cache.invalidate(cacheKey);
-    const range = getDefaultRange();
+    const now = new Date();
+    const range = getMonthRangeFor(now.getFullYear(), now.getMonth());
     const data = await getProjectCalendarFeed({
       projectId,
       start: range.start,
@@ -45,6 +53,20 @@ export default function ContextCalendarFromCache({
     setItems(data);
   }, [projectId, cache, cacheKey]);
 
+  const loadDataForMonth = useCallback(
+    async (year: number, month: number) => {
+      const range = getMonthRangeFor(year, month);
+      const data = await getProjectCalendarFeed({
+        projectId,
+        start: range.start,
+        end: range.end,
+      });
+      cache.set(cacheKey, data);
+      setItems(data);
+    },
+    [projectId, cache, cacheKey]
+  );
+
   useEffect(() => {
     if (cached) {
       setItems(cached);
@@ -53,7 +75,8 @@ export default function ContextCalendarFromCache({
     }
     let cancelled = false;
     setLoading(true);
-    const range = getDefaultRange();
+    const now = new Date();
+    const range = getMonthRangeFor(now.getFullYear(), now.getMonth());
     getProjectCalendarFeed({
       projectId,
       start: range.start,
@@ -73,7 +96,8 @@ export default function ContextCalendarFromCache({
     return <SkeletonCalendar />;
   }
 
-  const range = getDefaultRange();
+  const now = new Date();
+  const range = getMonthRangeFor(now.getFullYear(), now.getMonth());
   return (
     <ContextCalendarClient
       projectId={projectId}
@@ -81,6 +105,7 @@ export default function ContextCalendarFromCache({
       start={range.start}
       end={range.end}
       onRefresh={loadData}
+      onLoadMonth={loadDataForMonth}
     />
   );
 }

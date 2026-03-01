@@ -34,11 +34,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DatePickerCalendar } from './DatePickerCalendar';
+import { Calendar } from 'lucide-react';
 
-function toLocalDateTime(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function formatDisplayDate(dateKey: string, allDay: boolean): string {
+  const d = new Date(dateKey + 'T12:00:00');
+  if (allDay) {
+    return d.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 interface CreateEventDialogProps {
@@ -47,6 +59,8 @@ interface CreateEventDialogProps {
   projectId: string;
   /** When set, dialog is in edit mode and loads this event. */
   eventId?: string | null;
+  /** When set and not editing, pre-fill start and end date (YYYY-MM-DD). */
+  defaultDateKey?: string | null;
   onSuccess: () => void;
   onError?: (message: string) => void;
 }
@@ -56,6 +70,7 @@ export function CreateEventDialog({
   onOpenChange,
   projectId,
   eventId,
+  defaultDateKey,
   onSuccess,
   onError,
 }: CreateEventDialogProps) {
@@ -67,8 +82,15 @@ export function CreateEventDialog({
   const [eventType, setEventType] = useState<CalendarEventType>('meeting');
   const [status, setStatus] = useState<CalendarEventStatus>('scheduled');
   const [allDay, setAllDay] = useState(false);
-  const [startAt, setStartAt] = useState('');
-  const [endAt, setEndAt] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endDate, setEndDate] = useState('');
+  const [endTime, setEndTime] = useState('17:00');
+  const [calendarOpen, setCalendarOpen] = useState<'start' | 'end' | null>(
+    null
+  );
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -87,8 +109,22 @@ export function CreateEventDialog({
           setEventType(data.event_type);
           setStatus(data.status);
           setAllDay(data.all_day);
-          setStartAt(toLocalDateTime(data.start_at));
-          setEndAt(data.end_at ? toLocalDateTime(data.end_at) : '');
+          const start = new Date(data.start_at);
+          const pad = (n: number) => String(n).padStart(2, '0');
+          setStartDate(
+            `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`
+          );
+          setStartTime(`${pad(start.getHours())}:${pad(start.getMinutes())}`);
+          if (data.end_at) {
+            const end = new Date(data.end_at);
+            setEndDate(
+              `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`
+            );
+            setEndTime(`${pad(end.getHours())}:${pad(end.getMinutes())}`);
+          } else {
+            setEndDate('');
+            setEndTime('17:00');
+          }
         }
       });
     }
@@ -104,19 +140,31 @@ export function CreateEventDialog({
       setAllDay(false);
       const now = new Date();
       const pad = (n: number) => String(n).padStart(2, '0');
-      setStartAt(
-        `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T09:00`
+      setStartDate(
+        `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
       );
-      setEndAt('');
+      setStartTime('09:00');
+      setEndDate('');
+      setEndTime('17:00');
+      setCalendarOpen(null);
       setLoadError(null);
     }
   }, [open]);
 
+  useEffect(() => {
+    if (open && !eventId && defaultDateKey) {
+      setStartDate(defaultDateKey);
+      setEndDate(defaultDateKey);
+    }
+  }, [open, eventId, defaultDateKey]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const startIso = new Date(startAt).toISOString();
-    const endIso = endAt ? new Date(endAt).toISOString() : null;
+    const startIso = `${startDate}T${allDay ? '00:00' : startTime}:00`;
+    const endIso = endDate
+      ? `${endDate}T${allDay ? '23:59' : endTime}:00`
+      : null;
 
     if (isEdit && eventId) {
       const result = await updateCalendarEvent(eventId, {
@@ -126,8 +174,8 @@ export function CreateEventDialog({
         event_type: eventType,
         status,
         all_day: allDay,
-        start_at: startIso,
-        end_at: endIso,
+        start_at: new Date(startIso).toISOString(),
+        end_at: endIso ? new Date(endIso).toISOString() : null,
       });
       setLoading(false);
       if (result.error) {
@@ -142,8 +190,8 @@ export function CreateEventDialog({
         event_type: eventType,
         status,
         all_day: allDay,
-        start_at: startIso,
-        end_at: endIso,
+        start_at: new Date(startIso).toISOString(),
+        end_at: endIso ? new Date(endIso).toISOString() : null,
       });
       setLoading(false);
       if (result.error) {
@@ -155,9 +203,19 @@ export function CreateEventDialog({
     onSuccess();
   }
 
+  const handleCalendarSelect = (dateKey: string) => {
+    if (calendarOpen === 'start') {
+      setStartDate(dateKey);
+      setCalendarOpen(null);
+    } else if (calendarOpen === 'end') {
+      setEndDate(dateKey);
+      setCalendarOpen(null);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? t('common.edit') : 'New event'}</DialogTitle>
           <DialogDescription>
@@ -172,6 +230,7 @@ export function CreateEventDialog({
           </p>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Title, Type, Status, Dates first */}
           <div>
             <Label htmlFor="cal-event-title">Title</Label>
             <Input
@@ -218,6 +277,86 @@ export function CreateEventDialog({
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="cal-event-allday"
+              checked={allDay}
+              onChange={(e) => setAllDay(e.target.checked)}
+              className="rounded border-input"
+            />
+            <Label htmlFor="cal-event-allday">All day</Label>
+          </div>
+          <div>
+            <Label>Start</Label>
+            <div className="mt-1 flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 justify-start gap-2"
+                onClick={() => {
+                  setCalYear(
+                    startDate
+                      ? new Date(startDate + 'T12:00:00').getFullYear()
+                      : new Date().getFullYear()
+                  );
+                  setCalMonth(
+                    startDate
+                      ? new Date(startDate + 'T12:00:00').getMonth()
+                      : new Date().getMonth()
+                  );
+                  setCalendarOpen('start');
+                }}
+              >
+                <Calendar className="h-4 w-4" />
+                {startDate ? formatDisplayDate(startDate, allDay) : 'Pick date'}
+              </Button>
+              {!allDay && (
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-28"
+                />
+              )}
+            </div>
+          </div>
+          <div>
+            <Label>End (optional)</Label>
+            <div className="mt-1 flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 justify-start gap-2"
+                onClick={() => {
+                  setCalYear(
+                    endDate
+                      ? new Date(endDate + 'T12:00:00').getFullYear()
+                      : new Date(startDate + 'T12:00:00').getFullYear()
+                  );
+                  setCalMonth(
+                    endDate
+                      ? new Date(endDate + 'T12:00:00').getMonth()
+                      : new Date(startDate + 'T12:00:00').getMonth()
+                  );
+                  setCalendarOpen('end');
+                }}
+              >
+                <Calendar className="h-4 w-4" />
+                {endDate ? formatDisplayDate(endDate, allDay) : 'Pick date'}
+              </Button>
+              {!allDay && (
+                <Input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-28"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Description and Location at the end */}
           <div>
             <Label htmlFor="cal-event-desc">Description (optional)</Label>
             <Textarea
@@ -237,47 +376,29 @@ export function CreateEventDialog({
               className="mt-1"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="cal-event-allday"
-              checked={allDay}
-              onChange={(e) => setAllDay(e.target.checked)}
-              className="rounded border-input"
-            />
-            <Label htmlFor="cal-event-allday">All day</Label>
-          </div>
-          <div>
-            <Label htmlFor="cal-event-start">Start</Label>
-            <Input
-              id="cal-event-start"
-              type={allDay ? 'date' : 'datetime-local'}
-              value={allDay ? startAt.slice(0, 10) : startAt}
-              onChange={(e) =>
-                setStartAt(allDay ? `${e.target.value}T00:00` : e.target.value)
-              }
-              required
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="cal-event-end">End (optional)</Label>
-            <Input
-              id="cal-event-end"
-              type={allDay ? 'date' : 'datetime-local'}
-              value={endAt ? (allDay ? endAt.slice(0, 10) : endAt) : ''}
-              onChange={(e) =>
-                setEndAt(
-                  e.target.value
-                    ? allDay
-                      ? `${e.target.value}T23:59`
-                      : e.target.value
-                    : ''
-                )
-              }
-              className="mt-1"
-            />
-          </div>
+
+          {/* Inline calendar picker when "Pick date" is opened */}
+          {calendarOpen && (
+            <div className="rounded-lg border border-border bg-muted/30 p-2">
+              <DatePickerCalendar
+                year={calYear}
+                month={calMonth}
+                value={calendarOpen === 'start' ? startDate : endDate}
+                onSelect={handleCalendarSelect}
+                onPrevMonth={() => {
+                  const d = new Date(calYear, calMonth - 1);
+                  setCalYear(d.getFullYear());
+                  setCalMonth(d.getMonth());
+                }}
+                onNextMonth={() => {
+                  const d = new Date(calYear, calMonth + 1);
+                  setCalYear(d.getFullYear());
+                  setCalMonth(d.getMonth());
+                }}
+              />
+            </div>
+          )}
+
           <DialogFooter>
             <Button
               type="button"

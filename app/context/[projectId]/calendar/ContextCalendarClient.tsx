@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { CalendarFeedItem } from '@/app/actions/calendar';
 import { deleteCalendarEvent } from '@/app/actions/calendar';
-import { CalendarAgenda } from '@/components/context/calendar/CalendarAgenda';
+import { CalendarMonthGrid } from '@/components/context/calendar/CalendarMonthGrid';
+import { CalendarDayDialog } from '@/components/context/calendar/CalendarDayDialog';
 import {
   CalendarFilters,
   type SourceFilter,
 } from '@/components/context/calendar/CalendarFilters';
 import { CreateEventDialog } from '@/components/context/calendar/CreateEventDialog';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
 
 interface ContextCalendarClientProps {
   projectId: string;
@@ -18,6 +17,7 @@ interface ContextCalendarClientProps {
   start: string;
   end: string;
   onRefresh?: () => void | Promise<void>;
+  onLoadMonth?: (year: number, month: number) => void | Promise<void>;
 }
 
 export default function ContextCalendarClient({
@@ -26,22 +26,68 @@ export default function ContextCalendarClient({
   start,
   end,
   onRefresh,
+  onLoadMonth,
 }: ContextCalendarClientProps) {
   const [items, setItems] = useState<CalendarFeedItem[]>(initialItems);
   useEffect(() => {
     setItems(initialItems);
   }, [initialItems]);
+  const now = useMemo(() => new Date(), []);
+  const [viewYear, setViewYear] = useState(now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [defaultDateKeyForCreate, setDefaultDateKeyForCreate] = useState<
+    string | null
+  >(null);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [dayDialogOpen, setDayDialogOpen] = useState(false);
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
+
+  const filteredItems = useMemo(() => {
+    let list = items;
+    if (sourceFilter !== 'all') {
+      list = list.filter((i) => i.source_type === sourceFilter);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter((i) => i.title.toLowerCase().includes(q));
+    }
+    return list;
+  }, [items, sourceFilter, searchQuery]);
+
+  const itemsForSelectedDay = useMemo(() => {
+    if (!selectedDateKey) return [];
+    return filteredItems.filter((i) => i.date_key === selectedDateKey);
+  }, [filteredItems, selectedDateKey]);
+
+  const handleDayClick = useCallback((dateKey: string) => {
+    setSelectedDateKey(dateKey);
+    setDayDialogOpen(true);
+  }, []);
+
+  const handlePrevMonth = useCallback(() => {
+    const d = new Date(viewYear, viewMonth - 1);
+    setViewYear(d.getFullYear());
+    setViewMonth(d.getMonth());
+    onLoadMonth?.(d.getFullYear(), d.getMonth());
+  }, [viewYear, viewMonth, onLoadMonth]);
+
+  const handleNextMonth = useCallback(() => {
+    const d = new Date(viewYear, viewMonth + 1);
+    setViewYear(d.getFullYear());
+    setViewMonth(d.getMonth());
+    onLoadMonth?.(d.getFullYear(), d.getMonth());
+  }, [viewYear, viewMonth, onLoadMonth]);
 
   const handleRefresh = useCallback(() => {
     onRefresh?.();
   }, [onRefresh]);
 
   const handleEditEvent = useCallback((sourceId: string) => {
+    setDayDialogOpen(false);
     setEditingEventId(sourceId);
   }, []);
 
@@ -59,8 +105,20 @@ export default function ContextCalendarClient({
     [handleRefresh]
   );
 
+  const handleAddEventForDay = useCallback((dateKey: string) => {
+    setDefaultDateKeyForCreate(dateKey);
+    setDayDialogOpen(false);
+    setCreateOpen(true);
+  }, []);
+
+  const handleCreateOpenChange = useCallback((open: boolean) => {
+    setCreateOpen(open);
+    if (!open) setDefaultDateKeyForCreate(null);
+  }, []);
+
   const handleCreateSuccess = useCallback(() => {
     setCreateOpen(false);
+    setDefaultDateKeyForCreate(null);
     handleRefresh();
   }, [handleRefresh]);
 
@@ -79,10 +137,6 @@ export default function ContextCalendarClient({
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
         />
-        <Button onClick={() => setCreateOpen(true)} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          New event
-        </Button>
       </div>
 
       {mutationError && (
@@ -91,18 +145,30 @@ export default function ContextCalendarClient({
         </p>
       )}
 
-      <CalendarAgenda
-        items={items}
-        sourceFilter={sourceFilter}
-        searchQuery={searchQuery}
+      <CalendarMonthGrid
+        year={viewYear}
+        month={viewMonth}
+        items={filteredItems}
+        onDayClick={handleDayClick}
+        onPrevMonth={handlePrevMonth}
+        onNextMonth={handleNextMonth}
+      />
+
+      <CalendarDayDialog
+        open={dayDialogOpen}
+        onOpenChange={setDayDialogOpen}
+        dateKey={selectedDateKey ?? ''}
+        items={itemsForSelectedDay}
+        onAddEvent={handleAddEventForDay}
         onEditEvent={handleEditEvent}
         onDeleteEvent={handleDeleteEvent}
       />
 
       <CreateEventDialog
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={handleCreateOpenChange}
         projectId={projectId}
+        defaultDateKey={defaultDateKeyForCreate}
         onSuccess={handleCreateSuccess}
         onError={setMutationError}
       />

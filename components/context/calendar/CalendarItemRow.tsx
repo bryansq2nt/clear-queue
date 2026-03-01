@@ -37,11 +37,29 @@ export function CalendarItemRow({
   const isEvent = item.source_type === 'event';
   const canEditDelete = isEvent && onEditEvent && onDeleteEvent;
 
+  const handleRowClick = () => {
+    if (canEditDelete && onEditEvent) onEditEvent(item.source_id);
+  };
+
   return (
     <div
+      role={canEditDelete ? 'button' : undefined}
+      tabIndex={canEditDelete ? 0 : undefined}
+      onClick={canEditDelete ? handleRowClick : undefined}
+      onKeyDown={
+        canEditDelete
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleRowClick();
+              }
+            }
+          : undefined
+      }
       className={cn(
         'flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm',
-        'hover:bg-muted/50 transition-colors'
+        'hover:bg-muted/50 transition-colors',
+        canEditDelete && 'cursor-pointer'
       )}
     >
       <span
@@ -68,7 +86,7 @@ export function CalendarItemRow({
         </span>
       )}
       {canEditDelete && (
-        <div className="flex gap-1">
+        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             onClick={() => onEditEvent(item.source_id)}
