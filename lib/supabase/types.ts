@@ -873,6 +873,71 @@ export type Database = {
           updated_at?: string;
         };
       };
+      calendar_events: {
+        Row: {
+          id: string;
+          owner_id: string;
+          project_id: string | null;
+          title: string;
+          description: string | null;
+          location: string | null;
+          event_type:
+            | 'meeting'
+            | 'site_visit'
+            | 'inspection'
+            | 'reminder'
+            | 'focus_block'
+            | 'other';
+          status: 'scheduled' | 'done' | 'cancelled';
+          all_day: boolean;
+          start_at: string;
+          end_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          project_id?: string | null;
+          title: string;
+          description?: string | null;
+          location?: string | null;
+          event_type:
+            | 'meeting'
+            | 'site_visit'
+            | 'inspection'
+            | 'reminder'
+            | 'focus_block'
+            | 'other';
+          status?: 'scheduled' | 'done' | 'cancelled';
+          all_day?: boolean;
+          start_at: string;
+          end_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          owner_id?: string;
+          project_id?: string | null;
+          title?: string;
+          description?: string | null;
+          location?: string | null;
+          event_type?:
+            | 'meeting'
+            | 'site_visit'
+            | 'inspection'
+            | 'reminder'
+            | 'focus_block'
+            | 'other';
+          status?: 'scheduled' | 'done' | 'cancelled';
+          all_day?: boolean;
+          start_at?: string;
+          end_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       todo_lists: {
         Row: {
           id: string;
@@ -1075,6 +1140,14 @@ export type Database = {
       [_ in never]: never;
     };
     Enums: {
+      calendar_event_type_enum:
+        | 'meeting'
+        | 'site_visit'
+        | 'inspection'
+        | 'reminder'
+        | 'focus_block'
+        | 'other';
+      calendar_event_status_enum: 'scheduled' | 'done' | 'cancelled';
       project_link_type_enum:
         | 'environment'
         | 'tool'

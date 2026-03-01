@@ -23,7 +23,8 @@ export type CacheKey =
   | { type: 'documents'; projectId: string }
   | { type: 'documentFolders'; projectId: string }
   | { type: 'noteFolders'; projectId: string }
-  | { type: 'noteDetail'; noteId: string };
+  | { type: 'noteDetail'; noteId: string }
+  | { type: 'calendar'; projectId: string };
 
 function cacheKeyToString(k: CacheKey): string {
   if (k.type === 'noteDetail') return `${k.type}:${k.noteId}`;
