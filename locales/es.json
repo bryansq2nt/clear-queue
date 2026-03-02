@@ -97,6 +97,7 @@
     "documents": "Documentos",
     "media": "Media",
     "calendar": "Calendario",
+    "settings": "Ajustes",
     "welcome_back_name": "Bienvenido de nuevo, {name}",
     "work_on_something_else": "¿Quieres trabajar en algo diferente?",
     "work_on_something_else_name": "¿Quieres trabajar en algo diferente, {name}?",
@@ -867,5 +868,33 @@
     "personal": "Personal",
     "research": "Investigación",
     "archived": "Archivado"
+  },
+  "modules": {
+    "title": "Módulos del proyecto",
+    "subtitle": "Active solo lo que realmente usa. Menos ruido, más enfoque.",
+    "essential_tooltip": "Módulo esencial — no se puede desactivar",
+    "toggle_enabled_toast": "Módulo activado",
+    "toggle_disabled_toast": "Módulo desactivado",
+    "board_description": "Tablero kanban para gestionar las tareas del proyecto",
+    "owner_description": "Vincula un cliente o empresa a este proyecto",
+    "documents_description": "Sube, organiza y comparte archivos del proyecto",
+    "media_description": "Fotos y videos del proyecto",
+    "calendar_description": "Fechas, eventos y agenda",
+    "notes_description": "Notas internas y referencias",
+    "links_description": "Links útiles, herramientas y recursos",
+    "ideas_description": "Lluvia de ideas y mapas conceptuales",
+    "budgets_description": "Planificación de presupuestos y estimaciones",
+    "billings_description": "Seguimiento de facturación y cobros",
+    "module_disabled_title": "Este módulo está desactivado para este proyecto",
+    "module_disabled_description": "Puedes activarlo desde los ajustes del proyecto.",
+    "module_disabled_cta": "Abrir ajustes"
+  },
+  "project_settings": {
+    "drawer_title": "Ajustes del proyecto",
+    "nav_modules": "Módulos",
+    "nav_general": "General",
+    "nav_access": "Accesos",
+    "back_to_menu": "Volver al menú",
+    "close": "Cerrar ajustes"
   }
 }

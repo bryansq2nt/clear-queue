@@ -1,11 +1,21 @@
+import { requireAuth } from '@/lib/auth';
+import { getProjectModules } from '@/app/actions/modules';
+import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
 import ContextBillingsFromCache from './ContextBillingsFromCache';
 
-interface ContextBillingsPageProps {
-  params: { projectId: string };
-}
-
-export default function ContextBillingsPage({
+export default async function ContextBillingsPage({
   params,
-}: ContextBillingsPageProps) {
-  return <ContextBillingsFromCache projectId={params.projectId} />;
+}: {
+  params: { projectId: string };
+}) {
+  await requireAuth();
+  const { projectId } = params;
+
+  const modules = await getProjectModules(projectId);
+  const mod = modules.find((m) => m.key === 'billings');
+  if (!mod?.enabled) {
+    return <ModuleDisabledView moduleKey="billings" projectId={projectId} />;
+  }
+
+  return <ContextBillingsFromCache projectId={projectId} />;
 }

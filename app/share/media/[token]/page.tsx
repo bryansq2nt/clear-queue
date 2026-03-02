@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getMediaShareByToken } from '@/app/actions/media';
 import {
@@ -26,11 +27,16 @@ export default async function ShareMediaPage({ params }: PageProps) {
         {/* Media */}
         <div className="flex min-h-[50vh] items-center justify-center">
           {isImageMimeType(mime_type ?? '') && (
-            <img
-              src={signed_url}
-              alt={title ?? 'Shared media'}
-              className="max-h-[85vh] w-auto max-w-full object-contain"
-            />
+            <div className="relative h-[85vh] w-full max-w-full">
+              <Image
+                src={signed_url}
+                alt={title ?? 'Shared media'}
+                fill
+                className="object-contain"
+                unoptimized
+                sizes="(max-width: 896px) 100vw, 896px"
+              />
+            </div>
           )}
           {isVideoMimeType(mime_type ?? '') && (
             <video

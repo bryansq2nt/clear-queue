@@ -100,6 +100,7 @@
     "documents": "Documents",
     "media": "Media",
     "calendar": "Calendar",
+    "settings": "Settings",
     "welcome_back_name": "Welcome back, {name}",
     "work_on_something_else": "Want to work on something different?",
     "work_on_something_else_name": "Want to work on something different, {name}?",
@@ -930,5 +931,33 @@
     "personal": "Personal",
     "research": "Research",
     "archived": "Archived"
+  },
+  "modules": {
+    "title": "Project modules",
+    "subtitle": "Enable only what you really use. Less noise, more focus.",
+    "essential_tooltip": "Essential module — cannot be disabled",
+    "toggle_enabled_toast": "Module enabled",
+    "toggle_disabled_toast": "Module disabled",
+    "board_description": "Kanban board to manage project tasks",
+    "owner_description": "Link a client or business to this project",
+    "documents_description": "Upload, organize, and share project files",
+    "media_description": "Photos and videos for the project",
+    "calendar_description": "Dates, events, and scheduling",
+    "notes_description": "Internal notes and references",
+    "links_description": "Useful links, tools, and resources",
+    "ideas_description": "Brainstorming and idea mapping",
+    "budgets_description": "Budget planning and estimates",
+    "billings_description": "Invoicing and billing tracking",
+    "module_disabled_title": "This module is disabled for this project",
+    "module_disabled_description": "You can enable it from the project settings.",
+    "module_disabled_cta": "Open settings"
+  },
+  "project_settings": {
+    "drawer_title": "Project settings",
+    "nav_modules": "Modules",
+    "nav_general": "General",
+    "nav_access": "Access",
+    "back_to_menu": "Back to menu",
+    "close": "Close settings"
   }
 }

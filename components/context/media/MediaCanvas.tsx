@@ -163,6 +163,7 @@ export function MediaCanvas({
                 wrapperStyle={{ width: '100%', height: '100%' }}
                 contentStyle={{ width: '100%', height: '100%' }}
               >
+                {/* eslint-disable-next-line @next/next/no-img-element -- src is blob/signed URL; next/image does not support blob or dynamic signed URLs in zoom wrapper */}
                 <img
                   src={url}
                   alt={file.title}

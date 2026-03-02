@@ -80,6 +80,7 @@ export function MediaCard({ file, onClick, onToggleFavorite }: MediaCardProps) {
       )}
 
       {status === 'ready' && isImageMimeType(file.mime_type) && url && (
+        // eslint-disable-next-line @next/next/no-img-element -- src is a blob URL from cache; next/image does not support blob:
         <img
           src={url}
           alt={file.title}
