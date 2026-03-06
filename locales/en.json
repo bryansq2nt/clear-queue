@@ -100,6 +100,7 @@
     "documents": "Documents",
     "media": "Media",
     "calendar": "Calendar",
+    "copilot": "Copilot",
     "settings": "Settings",
     "welcome_back_name": "Welcome back, {name}",
     "work_on_something_else": "Want to work on something different?",
@@ -948,9 +949,19 @@
     "ideas_description": "Brainstorming and idea mapping",
     "budgets_description": "Budget planning and estimates",
     "billings_description": "Invoicing and billing tracking",
+    "copilot_description": "AI planning assistant for your project",
     "module_disabled_title": "This module is disabled for this project",
     "module_disabled_description": "You can enable it from the project settings.",
     "module_disabled_cta": "Open settings"
+  },
+  "copilot": {
+    "input_placeholder": "Ask about this project…",
+    "send": "Send message",
+    "thinking": "Thinking…",
+    "empty_state": "I'm your project assistant. Ask me anything about this project — tasks, notes, planning, next steps.",
+    "rate_limit_daily": "You've reached your daily message limit. Your quota resets at {time}.",
+    "rate_limit_hourly": "You've reached your hourly message limit. Try again at {time}.",
+    "error_message": "Something went wrong. Please try again."
   },
   "project_settings": {
     "drawer_title": "Project settings",

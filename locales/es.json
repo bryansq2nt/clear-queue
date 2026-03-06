@@ -97,6 +97,7 @@
     "documents": "Documentos",
     "media": "Media",
     "calendar": "Calendario",
+    "copilot": "Copilot",
     "settings": "Ajustes",
     "welcome_back_name": "Bienvenido de nuevo, {name}",
     "work_on_something_else": "¿Quieres trabajar en algo diferente?",
@@ -885,9 +886,19 @@
     "ideas_description": "Lluvia de ideas y mapas conceptuales",
     "budgets_description": "Planificación de presupuestos y estimaciones",
     "billings_description": "Seguimiento de facturación y cobros",
+    "copilot_description": "Asistente de planificación con IA para tu proyecto",
     "module_disabled_title": "Este módulo está desactivado para este proyecto",
     "module_disabled_description": "Puedes activarlo desde los ajustes del proyecto.",
     "module_disabled_cta": "Abrir ajustes"
+  },
+  "copilot": {
+    "input_placeholder": "Pregunta sobre este proyecto…",
+    "send": "Enviar mensaje",
+    "thinking": "Pensando…",
+    "empty_state": "Soy tu asistente de proyecto. Pregúntame lo que quieras sobre este proyecto: tareas, notas, planificación, próximos pasos.",
+    "rate_limit_daily": "Alcanzaste tu límite diario de mensajes. Tu cuota se renueva a las {time}.",
+    "rate_limit_hourly": "Alcanzaste tu límite por hora. Vuelve a intentarlo a las {time}.",
+    "error_message": "Algo salió mal. Por favor, intenta de nuevo."
   },
   "project_settings": {
     "drawer_title": "Ajustes del proyecto",
