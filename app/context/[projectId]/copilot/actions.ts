@@ -8,7 +8,9 @@ import type {
   CopilotSession,
   CopilotMessage,
   CopilotMessageRole,
+  CopilotProposal,
 } from '@/lib/copilot/schema';
+import type { ParsedProposal } from '@/lib/copilot/parser';
 
 // ─────────────────────────────────────────────────────────────────
 // Sessions
@@ -145,4 +147,104 @@ export async function saveCopilotMessage(
   }
 
   return data as CopilotMessage;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Proposals
+// ─────────────────────────────────────────────────────────────────
+
+export async function getProposalsForSession(
+  sessionId: string
+): Promise<CopilotProposal[]> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { data, error } = await (supabase as any)
+    .from('copilot_proposals')
+    .select(
+      'id, session_id, message_id, project_id, owner_id, type, payload, status, created_entity_id, reviewed_at, created_at, updated_at'
+    )
+    .eq('session_id', sessionId)
+    .eq('owner_id', user.id)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'copilot',
+      action: 'getProposalsForSession',
+      userIntent: 'Load proposals for copilot session on tab open',
+      expected: 'Proposal rows for session returned',
+      extra: { sessionId },
+    });
+    return [];
+  }
+
+  return (data as CopilotProposal[]) ?? [];
+}
+
+const PROPOSAL_COLS =
+  'id, session_id, message_id, project_id, owner_id, type, payload, status, created_entity_id, reviewed_at, created_at, updated_at';
+
+export async function saveCopilotProposals(
+  sessionId: string,
+  messageId: string,
+  projectId: string,
+  proposals: ParsedProposal[]
+): Promise<CopilotProposal[]> {
+  if (proposals.length === 0) return [];
+
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const rows = proposals.map((p) => ({
+    session_id: sessionId,
+    message_id: messageId,
+    project_id: projectId,
+    owner_id: user.id,
+    type: p.type,
+    payload: p,
+    status: 'pending',
+  }));
+
+  const { data, error } = await (supabase as any)
+    .from('copilot_proposals')
+    .insert(rows)
+    .select(PROPOSAL_COLS);
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'copilot',
+      action: 'saveCopilotProposals',
+      userIntent: 'Persist AI-generated proposals linked to a message',
+      expected: 'Proposal rows inserted and returned',
+      extra: { sessionId, messageId, projectId, count: proposals.length },
+    });
+    return [];
+  }
+
+  return (data as CopilotProposal[]) || [];
+}
+
+export async function rejectProposal(proposalId: string): Promise<boolean> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { error } = await (supabase as any)
+    .from('copilot_proposals')
+    .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
+    .eq('id', proposalId)
+    .eq('owner_id', user.id);
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'copilot',
+      action: 'rejectProposal',
+      userIntent: 'Reject an AI-generated proposal',
+      expected: 'Proposal status updated to rejected',
+      extra: { proposalId },
+    });
+    return false;
+  }
+
+  return true;
 }

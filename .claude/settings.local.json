@@ -6,7 +6,8 @@
       "Bash(grep -n \"toast\\\\|sonner\" /Users/mutechlabs/development/clear-queue/app/context/[projectId]/media/ContextMediaClient.tsx | head -10)",
       "Bash(cat /Users/mutechlabs/development/clear-queue/package.json | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(k,v\\) for k,v in sorted\\(d.get\\('dependencies',{}\\).items\\(\\)\\)]\")",
       "Bash(npm install @radix-ui/react-switch 2>&1 | tail -5)",
-      "Bash(npm install @anthropic-ai/sdk)"
+      "Bash(npm install @anthropic-ai/sdk)",
+      "Bash(ls /Users/mutechlabs/development/clear-queue/tests/ 2>/dev/null || ls /Users/mutechlabs/development/clear-queue/test/ 2>/dev/null || find /Users/mutechlabs/development/clear-queue -name \"*.test.ts\" -not -path \"*/node_modules/*\" | head -10)"
     ]
   }
 }

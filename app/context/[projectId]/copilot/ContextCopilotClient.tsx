@@ -3,11 +3,18 @@
 import { useState, useCallback } from 'react';
 import { CopilotChatWindow } from '@/components/context/copilot/CopilotChatWindow';
 import { CopilotInputBar } from '@/components/context/copilot/CopilotInputBar';
-import { saveCopilotMessage } from './actions';
+import { CopilotProposalCard } from '@/components/context/copilot/CopilotProposalCard';
+import {
+  saveCopilotMessage,
+  saveCopilotProposals,
+  rejectProposal,
+} from './actions';
 import { useI18n } from '@/components/shared/I18nProvider';
+import { parseProposals } from '@/lib/copilot/parser';
 import type {
   CopilotSession,
   CopilotMessage,
+  CopilotProposal,
   RateLimitError,
 } from '@/lib/copilot/schema';
 
@@ -15,12 +22,14 @@ interface ContextCopilotClientProps {
   projectId: string;
   session: CopilotSession;
   initialMessages: CopilotMessage[];
+  initialProposalsByMessage?: Record<string, CopilotProposal[]>;
 }
 
 export default function ContextCopilotClient({
   projectId,
   session,
   initialMessages,
+  initialProposalsByMessage = {},
 }: ContextCopilotClientProps) {
   const { t } = useI18n();
   const [messages, setMessages] = useState<CopilotMessage[]>(initialMessages);
@@ -31,6 +40,25 @@ export default function ContextCopilotClient({
     null
   );
   const [error, setError] = useState<string | null>(null);
+  // Map of assistantMessageId -> proposals (from DB on load + newly saved this visit)
+  const [proposalsByMessage, setProposalsByMessage] = useState<
+    Record<string, CopilotProposal[]>
+  >(initialProposalsByMessage);
+
+  const handleReject = useCallback(async (proposalId: string) => {
+    const success = await rejectProposal(proposalId);
+    if (success) {
+      setProposalsByMessage((prev) => {
+        const next = { ...prev };
+        for (const msgId of Object.keys(next)) {
+          next[msgId] = next[msgId].map((p) =>
+            p.id === proposalId ? { ...p, status: 'rejected' as const } : p
+          );
+        }
+        return next;
+      });
+    }
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     const content = inputValue.trim();
@@ -61,7 +89,6 @@ export default function ContextCopilotClient({
       content
     );
     if (saved) {
-      // Replace optimistic message with persisted one
       setMessages((prev) =>
         prev.map((m) => (m.id === optimisticUserMsg.id ? saved : m))
       );
@@ -141,6 +168,23 @@ export default function ContextCopilotClient({
         );
         if (assistantMsg) {
           setMessages((prev) => [...prev, assistantMsg]);
+
+          // Parse and persist proposals from the completed response
+          const parsed = parseProposals(fullText);
+          if (parsed.length > 0) {
+            const savedProposals = await saveCopilotProposals(
+              session.id,
+              assistantMsg.id,
+              projectId,
+              parsed
+            );
+            if (savedProposals.length > 0) {
+              setProposalsByMessage((prev) => ({
+                ...prev,
+                [assistantMsg.id]: savedProposals,
+              }));
+            }
+          }
         }
       }
     } catch (err) {
@@ -169,6 +213,8 @@ export default function ContextCopilotClient({
         messages={messages}
         streamingContent={streamingContent}
         isStreaming={isStreaming}
+        proposalsByMessage={proposalsByMessage}
+        onRejectProposal={handleReject}
       />
 
       {/* Error states */}

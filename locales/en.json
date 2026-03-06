@@ -961,7 +961,12 @@
     "empty_state": "I'm your project assistant. Ask me anything about this project — tasks, notes, planning, next steps.",
     "rate_limit_daily": "You've reached your daily message limit. Your quota resets at {time}.",
     "rate_limit_hourly": "You've reached your hourly message limit. Try again at {time}.",
-    "error_message": "Something went wrong. Please try again."
+    "error_message": "Something went wrong. Please try again.",
+    "proposal_task": "Task",
+    "proposal_note": "Note",
+    "approve": "Approve",
+    "reject": "Reject",
+    "proposal_rejected": "Rejected"
   },
   "project_settings": {
     "drawer_title": "Project settings",

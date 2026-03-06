@@ -898,7 +898,12 @@
     "empty_state": "Soy tu asistente de proyecto. Pregúntame lo que quieras sobre este proyecto: tareas, notas, planificación, próximos pasos.",
     "rate_limit_daily": "Alcanzaste tu límite diario de mensajes. Tu cuota se renueva a las {time}.",
     "rate_limit_hourly": "Alcanzaste tu límite por hora. Vuelve a intentarlo a las {time}.",
-    "error_message": "Algo salió mal. Por favor, intenta de nuevo."
+    "error_message": "Algo salió mal. Por favor, intenta de nuevo.",
+    "proposal_task": "Tarea",
+    "proposal_note": "Nota",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "proposal_rejected": "Rechazado"
   },
   "project_settings": {
     "drawer_title": "Ajustes del proyecto",

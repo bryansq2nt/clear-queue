@@ -11,9 +11,14 @@ import {
   getCopilotSession,
   createCopilotSession,
   getCopilotMessages,
+  getProposalsForSession,
 } from './actions';
 import ContextCopilotClient from './ContextCopilotClient';
-import type { CopilotSession, CopilotMessage } from '@/lib/copilot/schema';
+import type {
+  CopilotSession,
+  CopilotMessage,
+  CopilotProposal,
+} from '@/lib/copilot/schema';
 
 interface ContextCopilotFromCacheProps {
   projectId: string;
@@ -24,6 +29,9 @@ export default function ContextCopilotFromCache({
 }: ContextCopilotFromCacheProps) {
   const [session, setSession] = useState<CopilotSession | null>(null);
   const [messages, setMessages] = useState<CopilotMessage[] | null>(null);
+  const [initialProposalsByMessage, setInitialProposalsByMessage] = useState<
+    Record<string, CopilotProposal[]>
+  >({});
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
@@ -36,9 +44,21 @@ export default function ContextCopilotFromCache({
       setLoading(false);
       return;
     }
-    const msgs = await getCopilotMessages(s.id);
+    const [msgs, proposals] = await Promise.all([
+      getCopilotMessages(s.id),
+      getProposalsForSession(s.id),
+    ]);
     setSession(s);
     setMessages(msgs);
+    setInitialProposalsByMessage(
+      proposals.reduce<Record<string, CopilotProposal[]>>((acc, p) => {
+        const mid = p.message_id;
+        if (mid == null) return acc;
+        if (!acc[mid]) acc[mid] = [];
+        acc[mid].push(p);
+        return acc;
+      }, {})
+    );
     setLoading(false);
   }, [projectId]);
 
@@ -55,6 +75,7 @@ export default function ContextCopilotFromCache({
       projectId={projectId}
       session={session}
       initialMessages={messages}
+      initialProposalsByMessage={initialProposalsByMessage}
     />
   );
 }
