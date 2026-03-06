@@ -7,8 +7,10 @@ import { CopilotProposalCard } from '@/components/context/copilot/CopilotProposa
 import {
   saveCopilotMessage,
   saveCopilotProposals,
+  approveProposal,
   rejectProposal,
 } from './actions';
+import { useContextDataCache } from '@/app/context/ContextDataCache';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { parseProposals } from '@/lib/copilot/parser';
 import type {
@@ -32,6 +34,7 @@ export default function ContextCopilotClient({
   initialProposalsByMessage = {},
 }: ContextCopilotClientProps) {
   const { t } = useI18n();
+  const { invalidateProject } = useContextDataCache();
   const [messages, setMessages] = useState<CopilotMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -44,6 +47,33 @@ export default function ContextCopilotClient({
   const [proposalsByMessage, setProposalsByMessage] = useState<
     Record<string, CopilotProposal[]>
   >(initialProposalsByMessage);
+
+  const handleApprove = useCallback(
+    async (proposalId: string) => {
+      const result = await approveProposal(proposalId);
+      if (result.error) return { error: result.error };
+      if (result.data) {
+        invalidateProject(result.data.project_id);
+        setProposalsByMessage((prev) => {
+          const next = { ...prev };
+          for (const msgId of Object.keys(next)) {
+            next[msgId] = next[msgId].map((p) =>
+              p.id === proposalId
+                ? {
+                    ...p,
+                    status: 'approved' as const,
+                    created_entity_id: result.data!.created_entity_id,
+                  }
+                : p
+            );
+          }
+          return next;
+        });
+      }
+      return {};
+    },
+    [invalidateProject]
+  );
 
   const handleReject = useCallback(async (proposalId: string) => {
     const success = await rejectProposal(proposalId);
@@ -214,6 +244,7 @@ export default function ContextCopilotClient({
         streamingContent={streamingContent}
         isStreaming={isStreaming}
         proposalsByMessage={proposalsByMessage}
+        onApproveProposal={handleApprove}
         onRejectProposal={handleReject}
       />
 

@@ -1,7 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, XCircle, FileText, CheckSquare } from 'lucide-react';
+import Link from 'next/link';
+import {
+  CheckCircle2,
+  XCircle,
+  FileText,
+  CheckSquare,
+  ExternalLink,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/components/shared/I18nProvider';
 import type {
@@ -12,15 +19,19 @@ import type {
 
 interface CopilotProposalCardProps {
   proposal: CopilotProposal;
+  onApprove: (proposalId: string) => Promise<{ error?: string }>;
   onReject: (proposalId: string) => Promise<void>;
 }
 
 export function CopilotProposalCard({
   proposal,
+  onApprove,
   onReject,
 }: CopilotProposalCardProps) {
   const { t } = useI18n();
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
 
   const isRejected = proposal.status === 'rejected';
   const isApproved = proposal.status === 'approved';
@@ -34,6 +45,22 @@ export function CopilotProposalCard({
     await onReject(proposal.id);
     setIsRejecting(false);
   };
+
+  const handleApprove = async () => {
+    if (isApproving || isRejected || isApproved) return;
+    setApproveError(null);
+    setIsApproving(true);
+    const result = await onApprove(proposal.id);
+    setIsApproving(false);
+    if (result?.error) setApproveError(result.error);
+  };
+
+  const createdLink =
+    isApproved && proposal.created_entity_id && proposal.project_id
+      ? isTask
+        ? `/context/${proposal.project_id}/board`
+        : `/context/${proposal.project_id}/notes/${proposal.created_entity_id}`
+      : null;
 
   return (
     <div
@@ -64,18 +91,16 @@ export function CopilotProposalCard({
 
         {!isRejected && !isApproved && (
           <div className="flex items-center gap-1.5">
-            {/* Approve — disabled until Phase 3 */}
             <button
               type="button"
-              disabled
+              onClick={handleApprove}
+              disabled={isApproving}
               aria-label={t('copilot.approve')}
-              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary opacity-40 cursor-not-allowed"
+              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <CheckCircle2 className="h-3 w-3" aria-hidden />
               {t('copilot.approve')}
             </button>
-
-            {/* Reject */}
             <button
               type="button"
               onClick={handleReject}
@@ -112,10 +137,29 @@ export function CopilotProposalCard({
           ) : null;
         })()}
 
-      {!isTask && (
+      {!isTask && !isApproved && (
         <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
           {(payload as NoteProposalPayload).content}
         </p>
+      )}
+
+      {/* Approved: created link */}
+      {isApproved && createdLink && (
+        <p className="mt-2">
+          <Link
+            href={createdLink}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            {isTask
+              ? t('copilot.created_view_board')
+              : t('copilot.created_view_notes')}
+            <ExternalLink className="h-3 w-3" aria-hidden />
+          </Link>
+        </p>
+      )}
+
+      {approveError && (
+        <p className="mt-2 text-xs text-destructive">{approveError}</p>
       )}
     </div>
   );

@@ -248,3 +248,59 @@ export async function rejectProposal(proposalId: string): Promise<boolean> {
 
   return true;
 }
+
+export type ApproveProposalResult = {
+  data?: {
+    created_entity_id: string;
+    type: 'task' | 'note';
+    project_id: string;
+  };
+  error?: string;
+};
+
+export async function approveProposal(
+  proposalId: string
+): Promise<ApproveProposalResult> {
+  await requireAuth();
+  const supabase = await createClient();
+
+  const { data, error } = await (supabase as any).rpc(
+    'approve_copilot_proposal_atomic',
+    { in_proposal_id: proposalId }
+  );
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'copilot',
+      action: 'approveProposal',
+      userIntent: 'Approve AI-generated proposal and create entity',
+      expected: 'Task or note created and proposal marked approved',
+      extra: { proposalId },
+    });
+    return {
+      error: error.message ?? 'Failed to approve proposal',
+    };
+  }
+
+  const result = data as {
+    created_entity_id: string;
+    type: 'task' | 'note';
+    project_id: string;
+  } | null;
+  if (!result?.created_entity_id || !result?.type || !result?.project_id) {
+    return { error: 'Invalid response from server' };
+  }
+
+  revalidatePath('/dashboard');
+  revalidatePath('/context');
+  revalidatePath(`/context/${result.project_id}/board`);
+  revalidatePath(`/context/${result.project_id}/notes`);
+
+  return {
+    data: {
+      created_entity_id: result.created_entity_id,
+      type: result.type,
+      project_id: result.project_id,
+    },
+  };
+}

@@ -12,6 +12,7 @@ interface CopilotChatWindowProps {
   streamingContent: string;
   isStreaming: boolean;
   proposalsByMessage: Record<string, CopilotProposal[]>;
+  onApproveProposal: (proposalId: string) => Promise<{ error?: string }>;
   onRejectProposal: (proposalId: string) => Promise<void>;
 }
 
@@ -20,6 +21,7 @@ export function CopilotChatWindow({
   streamingContent,
   isStreaming,
   proposalsByMessage,
+  onApproveProposal,
   onRejectProposal,
 }: CopilotChatWindowProps) {
   const { t } = useI18n();
@@ -65,6 +67,7 @@ export function CopilotChatWindow({
                   <CopilotProposalCard
                     key={p.id}
                     proposal={p}
+                    onApprove={onApproveProposal}
                     onReject={onRejectProposal}
                   />
                 ))}

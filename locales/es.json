@@ -903,7 +903,9 @@
     "proposal_note": "Nota",
     "approve": "Aprobar",
     "reject": "Rechazar",
-    "proposal_rejected": "Rechazado"
+    "proposal_rejected": "Rechazado",
+    "created_view_board": "Creado — ver en el tablero",
+    "created_view_notes": "Creado — ver en notas"
   },
   "project_settings": {
     "drawer_title": "Ajustes del proyecto",

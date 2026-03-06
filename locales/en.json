@@ -966,7 +966,9 @@
     "proposal_note": "Note",
     "approve": "Approve",
     "reject": "Reject",
-    "proposal_rejected": "Rejected"
+    "proposal_rejected": "Rejected",
+    "created_view_board": "Created — view on board",
+    "created_view_notes": "Created — view in notes"
   },
   "project_settings": {
     "drawer_title": "Project settings",
