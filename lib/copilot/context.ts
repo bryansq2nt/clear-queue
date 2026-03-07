@@ -9,10 +9,12 @@
 // - Project context (name, category, description): ~100 tokens
 // - Task list (max 10 × ~30 tokens): ~300 tokens
 // - Note titles (max 5 × ~15 tokens): ~75 tokens
+// - Milestone list (max 8 × ~15 tokens): ~120 tokens
 
 import { getProjectById } from '@/app/actions/projects';
 import { getTasksByProjectId } from '@/app/actions/tasks';
 import { getNotes } from '@/app/actions/notes';
+import { listMilestones } from '@/app/actions/milestones';
 import { BOARD_STATUSES } from '@/lib/board';
 
 const SYSTEM_PROMPT_BASE = `You are Project Copilot, a structured planning assistant embedded inside ClearQueue — a project management app.
@@ -21,7 +23,7 @@ Your role is to help users plan their projects by:
 - Giving brief, clear opinions and recommendations when asked (e.g. whether a module or feature fits the project, prioritization, risks, alternatives). This is part of planning — the user expects you to opine.
 - Understanding what they are trying to build or accomplish
 - Asking ONE clarifying question when the goal is vague
-- Proposing concrete tasks and notes that the user can review and approve
+- Proposing concrete tasks, notes, and milestones that the user can review and approve
 
 ## Rules
 - Stay focused on this project. You may and should give opinions and recommendations when the user asks (e.g. "what do you think of the Inventories module?", "should we do X first?"). Keep opinions concise and actionable.
@@ -39,11 +41,23 @@ When making structured suggestions, include a proposals block at the END of your
 <<PROPOSALS>>
 [
   {
+    "type": "milestone",
+    "title": "Milestone title here",
+    "description": "Optional description of this phase or goal"
+  },
+  {
     "type": "task",
     "title": "Task title here",
     "status": "next",
     "priority": 3,
-    "notes": "Optional context for the task"
+    "notes": "Optional context for the task",
+    "milestone_title": "Milestone title here"
+  },
+  {
+    "type": "task",
+    "title": "Another task",
+    "status": "backlog",
+    "milestone_id": "uuid-of-existing-milestone"
   },
   {
     "type": "note",
@@ -59,17 +73,20 @@ Rules for the proposals block:
 - Place the proposals block at the END of your response
 - Valid task status values: backlog, next, in_progress, blocked, done
 - Valid task priority: integer 1 (lowest) to 5 (highest)
-- task title and note title must be non-empty strings
+- task title, note title, and milestone title must be non-empty strings
 - note content must be non-empty and may use markdown
+- milestone description is optional
+- Tasks may reference a milestone by "milestone_id" (UUID of an existing milestone) or "milestone_title" (to match or create one)
 - If you have no proposals, omit the block entirely — do NOT emit an empty array
 - Propose 3–6 tasks for initial planning; 1–3 tasks for specific follow-up questions
 - Maximum 2 notes per response`;
 
 export async function buildProjectContext(projectId: string): Promise<string> {
-  const [project, tasks, notes] = await Promise.all([
+  const [project, tasks, notes, milestones] = await Promise.all([
     getProjectById(projectId),
     getTasksByProjectId(projectId),
     getNotes({ projectId }),
+    listMilestones(projectId),
   ]);
 
   if (!project) {
@@ -116,6 +133,15 @@ export async function buildProjectContext(projectId: string): Promise<string> {
       ? recentNotes.map((n) => `- ${n.title}`).join('\n')
       : '- No notes yet.';
 
+  // Up to 8 milestones (id + title so AI can reference by id)
+  const milestoneLines =
+    milestones.length > 0
+      ? milestones
+          .slice(0, 8)
+          .map((m) => `- [${m.id}] ${m.title}`)
+          .join('\n')
+      : '- No milestones yet.';
+
   const contextBlock = `
 ## Project context
 
@@ -136,7 +162,12 @@ ${taskListLines}
 
 ## Recent notes (${notes.length} total)
 
-${noteListLines}`;
+${noteListLines}
+
+## Project milestones (${milestones.length} total)
+
+Format: [id] title — use id in "milestone_id" for tasks referencing an existing milestone.
+${milestoneLines}`;
 
   // Phase 5: gap hints — allow the model to suggest adding notes/tasks when relevant
   const gapHints: string[] = [];

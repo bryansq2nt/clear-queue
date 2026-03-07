@@ -6,7 +6,7 @@
 export type CopilotSessionStatus = 'active' | 'archived';
 export type CopilotMessageRole = 'user' | 'assistant';
 export type CopilotProposalStatus = 'pending' | 'approved' | 'rejected';
-export type ProposalType = 'task' | 'note';
+export type ProposalType = 'task' | 'note' | 'milestone';
 
 export interface CopilotSession {
   id: string;
@@ -36,7 +36,7 @@ export interface CopilotProposal {
   project_id: string;
   owner_id: string;
   type: ProposalType;
-  payload: TaskProposalPayload | NoteProposalPayload;
+  payload: TaskProposalPayload | NoteProposalPayload | MilestoneProposalPayload;
   status: CopilotProposalStatus;
   created_entity_id: string | null;
   reviewed_at: string | null;
@@ -53,6 +53,8 @@ export interface TaskProposalPayload {
   notes?: string | null;
   tags?: string | null;
   due_date?: string | null;
+  milestone_id?: string | null;
+  milestone_title?: string | null;
 }
 
 // Note proposal payload — maps to notes.Insert (project_id and owner_id injected server-side)
@@ -60,6 +62,13 @@ export interface NoteProposalPayload {
   type: 'note';
   title: string;
   content: string;
+}
+
+// Milestone proposal payload — maps to milestones.Insert (project_id injected server-side)
+export interface MilestoneProposalPayload {
+  type: 'milestone';
+  title: string;
+  description?: string | null;
 }
 
 // Shape of a message sent to the API route from the client

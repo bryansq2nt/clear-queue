@@ -467,7 +467,7 @@ export async function rejectProposal(proposalId: string): Promise<boolean> {
 export type ApproveProposalResult = {
   data?: {
     created_entity_id: string;
-    type: 'task' | 'note';
+    type: 'task' | 'note' | 'milestone';
     project_id: string;
   };
   error?: string;
@@ -499,7 +499,7 @@ export async function approveProposal(
 
   const result = data as {
     created_entity_id: string;
-    type: 'task' | 'note';
+    type: 'task' | 'note' | 'milestone';
     project_id: string;
   } | null;
   if (!result?.created_entity_id || !result?.type || !result?.project_id) {
@@ -510,6 +510,7 @@ export async function approveProposal(
   revalidatePath('/context');
   revalidatePath(`/context/${result.project_id}/board`);
   revalidatePath(`/context/${result.project_id}/notes`);
+  revalidatePath(`/context/${result.project_id}/milestones`);
 
   return {
     data: {

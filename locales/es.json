@@ -915,7 +915,9 @@
     "edit_session_title": "Editar título de sesión",
     "session_title_placeholder": "Título de sesión",
     "archived": "archivada",
-    "start_fresh": "Empezar de nuevo"
+    "start_fresh": "Empezar de nuevo",
+    "proposal_milestone": "Hito",
+    "created_view_milestones": "Creado — ver en hitos"
   },
   "milestones": {
     "timeline": "Línea de tiempo",

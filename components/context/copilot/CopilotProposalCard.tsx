@@ -7,6 +7,7 @@ import {
   XCircle,
   FileText,
   CheckSquare,
+  Flag,
   ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,6 +16,7 @@ import type {
   CopilotProposal,
   TaskProposalPayload,
   NoteProposalPayload,
+  MilestoneProposalPayload,
 } from '@/lib/copilot/schema';
 
 interface CopilotProposalCardProps {
@@ -36,8 +38,12 @@ export function CopilotProposalCard({
   const isRejected = proposal.status === 'rejected';
   const isApproved = proposal.status === 'approved';
 
-  const payload = proposal.payload as TaskProposalPayload | NoteProposalPayload;
+  const payload = proposal.payload as
+    | TaskProposalPayload
+    | NoteProposalPayload
+    | MilestoneProposalPayload;
   const isTask = payload.type === 'task';
+  const isMilestone = payload.type === 'milestone';
 
   const handleReject = async () => {
     if (isRejecting || isRejected || isApproved) return;
@@ -59,8 +65,22 @@ export function CopilotProposalCard({
     isApproved && proposal.created_entity_id && proposal.project_id
       ? isTask
         ? `/context/${proposal.project_id}/board`
-        : `/context/${proposal.project_id}/notes/${proposal.created_entity_id}`
+        : isMilestone
+          ? `/context/${proposal.project_id}/milestones`
+          : `/context/${proposal.project_id}/notes/${proposal.created_entity_id}`
       : null;
+
+  const typeLabel = isTask
+    ? t('copilot.proposal_task')
+    : isMilestone
+      ? t('copilot.proposal_milestone')
+      : t('copilot.proposal_note');
+
+  const createdLinkLabel = isTask
+    ? t('copilot.created_view_board')
+    : isMilestone
+      ? t('copilot.created_view_milestones')
+      : t('copilot.created_view_notes');
 
   return (
     <div
@@ -76,12 +96,12 @@ export function CopilotProposalCard({
         <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           {isTask ? (
             <CheckSquare className="h-3.5 w-3.5" aria-hidden />
+          ) : isMilestone ? (
+            <Flag className="h-3.5 w-3.5" aria-hidden />
           ) : (
             <FileText className="h-3.5 w-3.5" aria-hidden />
           )}
-          <span>
-            {isTask ? t('copilot.proposal_task') : t('copilot.proposal_note')}
-          </span>
+          <span>{typeLabel}</span>
           {isRejected && (
             <span className="ml-1 text-destructive/70">
               — {t('copilot.proposal_rejected')}
@@ -137,7 +157,15 @@ export function CopilotProposalCard({
           ) : null;
         })()}
 
-      {!isTask && !isApproved && (
+      {isMilestone &&
+        !isApproved &&
+        (payload as MilestoneProposalPayload).description && (
+          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+            {(payload as MilestoneProposalPayload).description}
+          </p>
+        )}
+
+      {!isTask && !isMilestone && !isApproved && (
         <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
           {(payload as NoteProposalPayload).content}
         </p>
@@ -150,9 +178,7 @@ export function CopilotProposalCard({
             href={createdLink}
             className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
           >
-            {isTask
-              ? t('copilot.created_view_board')
-              : t('copilot.created_view_notes')}
+            {createdLinkLabel}
             <ExternalLink className="h-3 w-3" aria-hidden />
           </Link>
         </p>

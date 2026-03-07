@@ -1,7 +1,14 @@
 import { captureWithContext } from '@/lib/sentry';
-import type { TaskProposalPayload, NoteProposalPayload } from './schema';
+import type {
+  TaskProposalPayload,
+  NoteProposalPayload,
+  MilestoneProposalPayload,
+} from './schema';
 
-export type ParsedProposal = TaskProposalPayload | NoteProposalPayload;
+export type ParsedProposal =
+  | TaskProposalPayload
+  | NoteProposalPayload
+  | MilestoneProposalPayload;
 
 const VALID_TASK_STATUSES = new Set([
   'backlog',
@@ -10,6 +17,10 @@ const VALID_TASK_STATUSES = new Set([
   'blocked',
   'done',
 ]);
+
+// Basic UUID v4 shape check (8-4-4-4-12 hex groups)
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function validateTaskShape(item: unknown): TaskProposalPayload | null {
   if (!item || typeof item !== 'object') return null;
@@ -26,6 +37,17 @@ function validateTaskShape(item: unknown): TaskProposalPayload | null {
     obj.priority <= 5
       ? obj.priority
       : undefined;
+
+  const rawMilestoneId =
+    typeof obj.milestone_id === 'string' ? obj.milestone_id.trim() : null;
+  const milestoneId =
+    rawMilestoneId && UUID_RE.test(rawMilestoneId) ? rawMilestoneId : null;
+
+  const milestoneTitle =
+    typeof obj.milestone_title === 'string' && obj.milestone_title.trim()
+      ? obj.milestone_title.trim()
+      : null;
+
   return {
     type: 'task',
     title: obj.title.trim(),
@@ -34,6 +56,8 @@ function validateTaskShape(item: unknown): TaskProposalPayload | null {
     notes: typeof obj.notes === 'string' ? obj.notes : null,
     tags: typeof obj.tags === 'string' ? obj.tags : null,
     due_date: typeof obj.due_date === 'string' ? obj.due_date : null,
+    milestone_id: milestoneId,
+    milestone_title: milestoneTitle,
   };
 }
 
@@ -46,6 +70,23 @@ function validateNoteShape(item: unknown): NoteProposalPayload | null {
     type: 'note',
     title: obj.title.trim(),
     content: obj.content.trim(),
+  };
+}
+
+function validateMilestoneShape(
+  item: unknown
+): MilestoneProposalPayload | null {
+  if (!item || typeof item !== 'object') return null;
+  const obj = item as Record<string, unknown>;
+  if (typeof obj.title !== 'string' || !obj.title.trim()) return null;
+  const description =
+    typeof obj.description === 'string' && obj.description.trim()
+      ? obj.description.trim().slice(0, 2000)
+      : null;
+  return {
+    type: 'milestone',
+    title: obj.title.trim().slice(0, 200),
+    description,
   };
 }
 
@@ -74,6 +115,9 @@ export function parseProposals(content: string): ParsedProposal[] {
         if (validated) result.push(validated);
       } else if (obj.type === 'note') {
         const validated = validateNoteShape(item);
+        if (validated) result.push(validated);
+      } else if (obj.type === 'milestone') {
+        const validated = validateMilestoneShape(item);
         if (validated) result.push(validated);
       }
     }

@@ -41,6 +41,8 @@ describe('parseProposals', () => {
       notes: null,
       tags: null,
       due_date: null,
+      milestone_id: null,
+      milestone_title: null,
     });
   });
 
@@ -156,6 +158,116 @@ describe('parseProposals', () => {
       type: 'task',
       title: 'T',
       status: 'backlog',
+    });
+  });
+
+  // ─── Milestone proposals ───────────────────────────────────────────────────
+
+  it('extracts a valid milestone proposal', () => {
+    const content = `<<PROPOSALS>>
+[{"type":"milestone","title":"Phase 1","description":"Initial release scope"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      type: 'milestone',
+      title: 'Phase 1',
+      description: 'Initial release scope',
+    });
+  });
+
+  it('extracts milestone proposal with no description', () => {
+    const content = `<<PROPOSALS>>
+[{"type":"milestone","title":"MVP Launch"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      type: 'milestone',
+      title: 'MVP Launch',
+      description: null,
+    });
+  });
+
+  it('skips milestone with empty title', () => {
+    const content = `<<PROPOSALS>>
+[{"type":"milestone","title":""},{"type":"milestone","title":"  "}]
+<<\/PROPOSALS>>`;
+    expect(parseProposals(content)).toEqual([]);
+  });
+
+  it('truncates milestone title at 200 chars', () => {
+    const longTitle = 'A'.repeat(250);
+    const content = `<<PROPOSALS>>
+[{"type":"milestone","title":"${longTitle}"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect((result[0] as { title: string }).title).toHaveLength(200);
+  });
+
+  it('extracts mixed milestone and task proposals', () => {
+    const content = `<<PROPOSALS>>
+[
+  {"type":"milestone","title":"Phase 1","description":"Foundation"},
+  {"type":"task","title":"Set up repo","status":"next","milestone_title":"Phase 1"}
+]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ type: 'milestone', title: 'Phase 1' });
+    expect(result[1]).toMatchObject({
+      type: 'task',
+      title: 'Set up repo',
+      milestone_title: 'Phase 1',
+    });
+  });
+
+  // ─── Task with milestone fields ────────────────────────────────────────────
+
+  it('extracts task with valid milestone_id', () => {
+    const content = `<<PROPOSALS>>
+[{"type":"task","title":"Deploy","status":"next","milestone_id":"550e8400-e29b-41d4-a716-446655440000"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: 'task',
+      title: 'Deploy',
+      milestone_id: '550e8400-e29b-41d4-a716-446655440000',
+    });
+  });
+
+  it('sets milestone_id to null for non-UUID string', () => {
+    const content = `<<PROPOSALS>>
+[{"type":"task","title":"Deploy","status":"next","milestone_id":"not-a-uuid"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ type: 'task', milestone_id: null });
+  });
+
+  it('extracts task with milestone_title', () => {
+    const content = `<<PROPOSALS>>
+[{"type":"task","title":"Build API","milestone_title":"Backend phase"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: 'task',
+      milestone_title: 'Backend phase',
+    });
+  });
+
+  it('sets milestone_title to null when missing', () => {
+    const content = `<<PROPOSALS>>
+[{"type":"task","title":"Task without milestone"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      milestone_id: null,
+      milestone_title: null,
     });
   });
 });
