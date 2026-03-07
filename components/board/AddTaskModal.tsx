@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { createTask } from '@/app/actions/tasks';
+import { listMilestones } from '@/app/actions/milestones';
+import type { Milestone } from '@/lib/milestones/schema';
 import { Database } from '@/lib/supabase/types';
 import { normalizeTagsForSave } from '@/lib/board';
 import {
@@ -63,6 +65,8 @@ export function AddTaskModal({
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState('');
+  const [milestoneId, setMilestoneId] = useState<string>('');
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [error, setError] = useState<string | null>(null);
   /** Only used when onTaskConfirmed is not provided (legacy path: wait for server). */
   const [isLoading, setIsLoading] = useState(false);
@@ -73,6 +77,12 @@ export function AddTaskModal({
       setStatus(defaultStatus);
     }
   }, [isOpen, defaultStatus]);
+
+  useEffect(() => {
+    if (isOpen && defaultProjectId) {
+      listMilestones(defaultProjectId).then(setMilestones);
+    }
+  }, [isOpen, defaultProjectId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -92,13 +102,14 @@ export function AddTaskModal({
     if (notes) formData.append('notes', notes);
     const tagsNormalized = normalizeTagsForSave(tags);
     if (tagsNormalized) formData.append('tags', tagsNormalized);
+    if (milestoneId) formData.append('milestone_id', milestoneId);
 
     const optimisticMode = !!onTaskConfirmed;
 
     if (optimisticMode) {
       const optimisticId = `temp-${Date.now()}`;
       const now = new Date().toISOString();
-      const optimisticTask: Task = {
+      const optimisticTask: Task & { milestone_id?: string | null } = {
         id: optimisticId,
         project_id: defaultProjectId,
         title: title.trim() || title,
@@ -110,6 +121,7 @@ export function AddTaskModal({
         order_index: -1,
         created_at: now,
         updated_at: now,
+        milestone_id: milestoneId || null,
       };
       onTaskAdded(optimisticTask);
       setTitle('');
@@ -118,6 +130,7 @@ export function AddTaskModal({
       setDueDate('');
       setNotes('');
       setTags('');
+      setMilestoneId('');
       onClose();
 
       createTask(formData).then((result) => {
@@ -158,6 +171,7 @@ export function AddTaskModal({
       setDueDate('');
       setNotes('');
       setTags('');
+      setMilestoneId('');
       const task = result.data as Task | undefined;
       if (task) onTaskAdded(task);
       onClose();
@@ -251,6 +265,27 @@ export function AddTaskModal({
                 onChange={(e) => setTags(e.target.value)}
                 placeholder={t('tasks.tags_placeholder')}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="milestone">{t('tasks.milestone_label')}</Label>
+              <Select
+                value={milestoneId || 'none'}
+                onValueChange={(v) => setMilestoneId(v === 'none' ? '' : v)}
+              >
+                <SelectTrigger id="milestone">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    {t('tasks.milestone_none')}
+                  </SelectItem>
+                  {milestones.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">

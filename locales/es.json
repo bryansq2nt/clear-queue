@@ -17,7 +17,8 @@
     "next": "Siguiente",
     "previous": "Anterior",
     "select": "Seleccionar",
-    "copy": "Copiar"
+    "copy": "Copiar",
+    "optional": "Opcional"
   },
   "mutation_error": {
     "try_again": "Reintentar",
@@ -97,6 +98,7 @@
     "documents": "Documentos",
     "media": "Media",
     "calendar": "Calendario",
+    "milestones": "Hitos",
     "copilot": "Copilot",
     "settings": "Ajustes",
     "welcome_back_name": "Bienvenido de nuevo, {name}",
@@ -280,6 +282,8 @@
     "notes_placeholder": "Notas adicionales...",
     "tags_label": "Etiquetas",
     "tags_placeholder": "bug, dev, new feature",
+    "milestone_label": "Hito",
+    "milestone_none": "Sin hito",
     "create_task": "Crear tarea",
     "creating": "Creando...",
     "error_project_required": "Se requiere el proyecto",
@@ -887,6 +891,7 @@
     "budgets_description": "Planificación de presupuestos y estimaciones",
     "billings_description": "Seguimiento de facturación y cobros",
     "copilot_description": "Asistente de planificación con IA para tu proyecto",
+    "milestones_description": "Fases y metas del proyecto; sigue el avance con una línea de tiempo",
     "module_disabled_title": "Este módulo está desactivado para este proyecto",
     "module_disabled_description": "Puedes activarlo desde los ajustes del proyecto.",
     "module_disabled_cta": "Abrir ajustes"
@@ -911,6 +916,30 @@
     "session_title_placeholder": "Título de sesión",
     "archived": "archivada",
     "start_fresh": "Empezar de nuevo"
+  },
+  "milestones": {
+    "timeline": "Línea de tiempo",
+    "add": "Agregar hito",
+    "edit": "Editar hito",
+    "title_label": "Título",
+    "title_placeholder": "Título del hito",
+    "description_label": "Descripción",
+    "description_placeholder": "Descripción breve (opcional)",
+    "progress_count": "{done}/{total} tareas",
+    "current": "Actual",
+    "mark_complete": "Marcar como completado",
+    "empty": "Aún no hay hitos",
+    "empty_hint": "Agrega hitos para dividir el proyecto en fases y seguir el avance.",
+    "delete_dialog_title": "Eliminar hito",
+    "delete_confirm": "¿Eliminar este hito? Las tareas vinculadas se desvincularán.",
+    "complete_confirm_title": "Completar hito",
+    "complete_confirm_message": "Se marcarán todas las tareas de este hito como completadas. ¿Continuar?",
+    "complete_confirm_btn": "Sí, completar",
+    "complete_all_tasks_first": "Completa todas las tareas de este hito antes de marcarlo como cumplido.",
+    "mark_incomplete": "Marcar como no cumplido",
+    "reopen_dialog_title": "Reabrir hito",
+    "reopen_confirm_message": "El hito pasará a pendiente y todas sus tareas a \"Lo siguiente\". ¿Continuar?",
+    "reopen_confirm_btn": "Sí, reabrir"
   },
   "project_settings": {
     "drawer_title": "Ajustes del proyecto",

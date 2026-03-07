@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Database } from '@/lib/supabase/types';
+import { useContextDataCache } from '@/app/context/ContextDataCache';
 import KanbanBoard from '@/components/board/KanbanBoard';
 import { AddTaskModal } from '@/components/board/AddTaskModal';
 import { MutationErrorDialog } from '@/components/board/MutationErrorDialog';
@@ -65,6 +66,7 @@ export default function ContextBoardClient({
 }: ContextBoardClientProps) {
   const { t } = useI18n();
   const router = useRouter();
+  const cache = useContextDataCache();
   const [tasksByStatus, setTasksByStatus] =
     useState<Record<TaskStatus, Task[]>>(initialTasksByStatus);
   const [counts, setCounts] =
@@ -133,35 +135,39 @@ export default function ContextBoardClient({
     setTasksByStatus(groupTasksByStatus(newTasks));
   }, []);
 
-  const handleTaskUpdated = useCallback((updatedTask: Task) => {
-    setTasksByStatus((prev) => {
-      const next = { ...prev };
-      for (const s of BOARD_STATUSES) {
-        const idx = next[s].findIndex((t) => t.id === updatedTask.id);
-        if (idx >= 0) {
-          if (updatedTask.status === s) {
-            next[s] = next[s].map((t) =>
-              t.id === updatedTask.id ? updatedTask : t
-            );
-            next[s] = sortTasksByOrder(next[s]);
-          } else {
-            next[s] = next[s].filter((t) => t.id !== updatedTask.id);
-            next[updatedTask.status] = sortTasksByOrder([
-              ...next[updatedTask.status],
-              updatedTask,
-            ]);
-            setCounts((c) => ({
-              ...c,
-              [s]: c[s] - 1,
-              [updatedTask.status]: c[updatedTask.status] + 1,
-            }));
+  const handleTaskUpdated = useCallback(
+    (updatedTask: Task) => {
+      cache.invalidate({ type: 'milestones', projectId });
+      setTasksByStatus((prev) => {
+        const next = { ...prev };
+        for (const s of BOARD_STATUSES) {
+          const idx = next[s].findIndex((t) => t.id === updatedTask.id);
+          if (idx >= 0) {
+            if (updatedTask.status === s) {
+              next[s] = next[s].map((t) =>
+                t.id === updatedTask.id ? updatedTask : t
+              );
+              next[s] = sortTasksByOrder(next[s]);
+            } else {
+              next[s] = next[s].filter((t) => t.id !== updatedTask.id);
+              next[updatedTask.status] = sortTasksByOrder([
+                ...next[updatedTask.status],
+                updatedTask,
+              ]);
+              setCounts((c) => ({
+                ...c,
+                [s]: c[s] - 1,
+                [updatedTask.status]: c[updatedTask.status] + 1,
+              }));
+            }
+            return next;
           }
-          return next;
         }
-      }
-      return prev;
-    });
-  }, []);
+        return prev;
+      });
+    },
+    [cache, projectId]
+  );
 
   const openEditErrorDialog = useCallback(
     (params: {
@@ -213,6 +219,7 @@ export default function ContextBoardClient({
           onEditError={openEditErrorDialog}
           skipRevalidateOnMove
           onTaskAdded={(task) => {
+            cache.invalidate({ type: 'milestones', projectId });
             const s = task.status;
             setTasksByStatus((prev) => ({
               ...prev,
@@ -221,6 +228,7 @@ export default function ContextBoardClient({
             setCounts((c) => ({ ...c, [s]: c[s] + 1 }));
           }}
           onTaskConfirmed={(realTask, optimisticId) => {
+            cache.invalidate({ type: 'milestones', projectId });
             setTasksByStatus((prev) => {
               const next = { ...prev };
               const s = realTask.status;

@@ -17,7 +17,8 @@
     "next": "Next",
     "previous": "Previous",
     "select": "Select",
-    "copy": "Copy"
+    "copy": "Copy",
+    "optional": "Optional"
   },
   "mutation_error": {
     "try_again": "Try again",
@@ -100,6 +101,7 @@
     "documents": "Documents",
     "media": "Media",
     "calendar": "Calendar",
+    "milestones": "Milestones",
     "copilot": "Copilot",
     "settings": "Settings",
     "welcome_back_name": "Welcome back, {name}",
@@ -317,6 +319,8 @@
     "notes_placeholder": "Additional notes...",
     "tags_label": "Tags",
     "tags_placeholder": "bug, dev, new feature",
+    "milestone_label": "Milestone",
+    "milestone_none": "No milestone",
     "create_task": "Create task",
     "creating": "Creating...",
     "error_project_required": "Project ID is required",
@@ -950,6 +954,7 @@
     "budgets_description": "Budget planning and estimates",
     "billings_description": "Invoicing and billing tracking",
     "copilot_description": "AI planning assistant for your project",
+    "milestones_description": "Project phases and goals; track progress with a timeline",
     "module_disabled_title": "This module is disabled for this project",
     "module_disabled_description": "You can enable it from the project settings.",
     "module_disabled_cta": "Open settings"
@@ -974,6 +979,30 @@
     "session_title_placeholder": "Session title",
     "archived": "archived",
     "start_fresh": "Start fresh"
+  },
+  "milestones": {
+    "timeline": "Timeline",
+    "add": "Add milestone",
+    "edit": "Edit milestone",
+    "title_label": "Title",
+    "title_placeholder": "Milestone title",
+    "description_label": "Description",
+    "description_placeholder": "Short description (optional)",
+    "progress_count": "{done}/{total} tasks",
+    "current": "Current",
+    "mark_complete": "Mark as complete",
+    "empty": "No milestones yet",
+    "empty_hint": "Add milestones to break your project into phases and track progress.",
+    "delete_dialog_title": "Delete milestone",
+    "delete_confirm": "Delete this milestone? Tasks linked to it will be unlinked.",
+    "complete_confirm_title": "Complete milestone",
+    "complete_confirm_message": "All tasks in this milestone will be marked as completed. Continue?",
+    "complete_confirm_btn": "Yes, complete",
+    "complete_all_tasks_first": "Complete all tasks in this milestone before marking it complete.",
+    "mark_incomplete": "Mark as not done",
+    "reopen_dialog_title": "Reopen milestone",
+    "reopen_confirm_message": "The milestone will be set to pending and all its tasks to \"Next up\". Continue?",
+    "reopen_confirm_btn": "Yes, reopen"
   },
   "project_settings": {
     "drawer_title": "Project settings",

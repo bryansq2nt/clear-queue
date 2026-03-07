@@ -29,6 +29,7 @@ export async function createTask(formData: FormData) {
   const dueDate = formData.get('due_date') as string | null;
   const notes = formData.get('notes') as string | null;
   const tags = formData.get('tags') as string | null;
+  const milestoneId = (formData.get('milestone_id') as string) || null;
 
   const { data, error } = await supabase.rpc(
     'create_task_atomic' as never,
@@ -40,6 +41,7 @@ export async function createTask(formData: FormData) {
       in_due_date: dueDate || null,
       in_notes: notes || null,
       in_tags: tags || null,
+      in_milestone_id: milestoneId || null,
     } as never
   );
 
@@ -72,8 +74,9 @@ export async function updateTask(id: string, formData: FormData) {
   const dueDate = formData.get('due_date') as string | null;
   const notes = formData.get('notes') as string | null;
   const tags = formData.get('tags') as string | null | undefined;
+  const milestoneId = formData.get('milestone_id') as string | null | undefined;
 
-  const updates: TaskUpdate = {};
+  const updates: TaskUpdate & { milestone_id?: string | null } = {};
   if (title) updates.title = title;
   if (projectId) updates.project_id = projectId;
   if (status) updates.status = status;
@@ -81,6 +84,7 @@ export async function updateTask(id: string, formData: FormData) {
   if (dueDate !== undefined) updates.due_date = dueDate || null;
   if (notes !== undefined) updates.notes = notes || null;
   if (tags !== undefined) updates.tags = tags || null;
+  if (milestoneId !== undefined) updates.milestone_id = milestoneId || null;
 
   const { data, error } = await supabase
     .from('tasks')
@@ -154,7 +158,7 @@ export async function deleteTasksByIds(ids: string[]) {
 }
 
 const TASK_COLS =
-  'id, project_id, title, status, priority, due_date, notes, tags, order_index, created_at, updated_at';
+  'id, project_id, title, status, priority, due_date, notes, tags, order_index, milestone_id, created_at, updated_at';
 const PROJECT_COLS =
   'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at';
 

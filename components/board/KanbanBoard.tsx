@@ -237,7 +237,8 @@ export default function KanbanBoard({
 
     let newOrderIndex: number;
     if (isColumn) {
-      newOrderIndex = columnTasks.length;
+      // Completed tasks go at the beginning of the "done" column
+      newOrderIndex = newStatus === 'done' ? 0 : columnTasks.length;
     } else {
       const targetTask = optimisticTasks.find((t) => t.id === over.id);
       if (!targetTask) return;

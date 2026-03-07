@@ -10,6 +10,7 @@ import {
   Lightbulb,
   DollarSign,
   Receipt,
+  Flag,
   Bot,
 } from 'lucide-react';
 
@@ -28,6 +29,7 @@ export type ModuleKey =
   | 'ideas'
   | 'budgets'
   | 'billings'
+  | 'milestones'
   | 'copilot';
 
 export interface ModuleDefinition {
@@ -173,6 +175,15 @@ export const MODULE_REGISTRY: Record<ModuleKey, ModuleDefinition> = {
     lock: false,
     nav: { showInProjectTabs: true, slug: 'billings', order: 10 },
   },
+  milestones: {
+    key: 'milestones',
+    labelKey: 'context.milestones',
+    descriptionKey: 'modules.milestones_description',
+    icon: Flag,
+    defaultEnabled: false,
+    lock: false,
+    nav: { showInProjectTabs: true, slug: 'milestones', order: 11 },
+  },
   copilot: {
     key: 'copilot',
     labelKey: 'context.copilot',
@@ -180,7 +191,7 @@ export const MODULE_REGISTRY: Record<ModuleKey, ModuleDefinition> = {
     icon: Bot,
     defaultEnabled: false,
     lock: false,
-    nav: { showInProjectTabs: true, slug: 'copilot', order: 11 },
+    nav: { showInProjectTabs: true, slug: 'copilot', order: 12 },
   },
 };
 

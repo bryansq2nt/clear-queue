@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { updateTask, deleteTask } from '@/app/actions/tasks';
+import { listMilestones } from '@/app/actions/milestones';
+import type { Milestone } from '@/lib/milestones/schema';
 import { Database } from '@/lib/supabase/types';
 import { normalizeTagsForSave } from '@/lib/board';
 import {
@@ -59,9 +61,13 @@ export function EditTaskModal({
   const [dueDate, setDueDate] = useState(task.due_date || '');
   const [notes, setNotes] = useState(task.notes || '');
   const [tags, setTags] = useState(task.tags || '');
+  const [milestoneId, setMilestoneId] = useState<string>('');
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const taskWithMilestone = task as Task & { milestone_id?: string | null };
 
   useEffect(() => {
     if (isOpen && task) {
@@ -71,8 +77,15 @@ export function EditTaskModal({
       setDueDate(task.due_date || '');
       setNotes(task.notes || '');
       setTags(task.tags || '');
+      setMilestoneId(taskWithMilestone.milestone_id ?? '');
     }
-  }, [isOpen, task]);
+  }, [isOpen, task, taskWithMilestone.milestone_id]);
+
+  useEffect(() => {
+    if (isOpen && task?.project_id) {
+      listMilestones(task.project_id).then(setMilestones);
+    }
+  }, [isOpen, task?.project_id]);
 
   function buildFormData() {
     const formData = new FormData();
@@ -83,6 +96,7 @@ export function EditTaskModal({
     formData.append('due_date', dueDate || '');
     formData.append('notes', notes || '');
     formData.append('tags', normalizeTagsForSave(tags));
+    if (milestoneId) formData.append('milestone_id', milestoneId);
     return formData;
   }
 
@@ -94,7 +108,7 @@ export function EditTaskModal({
     const formData = buildFormData();
 
     if (onTaskUpdated) {
-      const optimisticTask: Task = {
+      const optimisticTask: Task & { milestone_id?: string | null } = {
         ...task,
         title,
         status,
@@ -102,6 +116,7 @@ export function EditTaskModal({
         due_date: dueDate || null,
         notes: notes || '',
         tags: normalizeTagsForSave(tags) || null,
+        milestone_id: milestoneId || null,
       };
       onTaskUpdated(optimisticTask);
       onClose();
@@ -248,6 +263,27 @@ export function EditTaskModal({
                 onChange={(e) => setTags(e.target.value)}
                 placeholder={t('tasks.tags_placeholder')}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="milestone">{t('tasks.milestone_label')}</Label>
+              <Select
+                value={milestoneId || 'none'}
+                onValueChange={(v) => setMilestoneId(v === 'none' ? '' : v)}
+              >
+                <SelectTrigger id="milestone">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    {t('tasks.milestone_none')}
+                  </SelectItem>
+                  {milestones.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
