@@ -988,7 +988,11 @@
     "proposal_delete_note": "Delete note",
     "proposal_update_note": "Update note",
     "context_request_banner": "The Copilot needs more project data to answer accurately.",
-    "context_request_btn": "Load full context and answer again"
+    "context_request_btn": "Load full context and answer again",
+    "approve_all": "Approve all",
+    "reject_all": "Reject all",
+    "approving_all": "Approving…",
+    "rejecting_all": "Rejecting…"
   },
   "milestones": {
     "timeline": "Timeline",

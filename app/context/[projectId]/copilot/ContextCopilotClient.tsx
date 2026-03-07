@@ -75,6 +75,10 @@ export default function ContextCopilotClient({
   const [contextRequestMessageId, setContextRequestMessageId] = useState<
     string | null
   >(null);
+  // Track which message has a bulk action in progress
+  const [bulkActionMessageId, setBulkActionMessageId] = useState<string | null>(
+    null
+  );
 
   // Ref to keep the latest messages value accessible in callbacks without stale closure
   const messagesRef = useRef(messages);
@@ -121,6 +125,74 @@ export default function ContextCopilotClient({
       });
     }
   }, []);
+
+  const handleApproveAll = useCallback(
+    async (messageId: string): Promise<{ error?: string }> => {
+      const pending = (proposalsByMessage[messageId] ?? []).filter(
+        (p) => p.status === 'pending'
+      );
+      if (pending.length === 0) return {};
+      setBulkActionMessageId(messageId);
+      try {
+        for (const p of pending) {
+          const result = await approveProposal(p.id);
+          if (result.error) return { error: result.error };
+          if (result.data) {
+            invalidateProject(result.data.project_id);
+            setProposalsByMessage((prev) => {
+              const next = { ...prev };
+              for (const msgId of Object.keys(next)) {
+                next[msgId] = next[msgId].map((proposal) =>
+                  proposal.id === p.id
+                    ? {
+                        ...proposal,
+                        status: 'approved' as const,
+                        created_entity_id: result.data!.created_entity_id,
+                      }
+                    : proposal
+                );
+              }
+              return next;
+            });
+          }
+        }
+        return {};
+      } finally {
+        setBulkActionMessageId(null);
+      }
+    },
+    [proposalsByMessage, invalidateProject]
+  );
+
+  const handleRejectAll = useCallback(
+    async (messageId: string): Promise<void> => {
+      const pending = (proposalsByMessage[messageId] ?? []).filter(
+        (p) => p.status === 'pending'
+      );
+      if (pending.length === 0) return;
+      setBulkActionMessageId(messageId);
+      try {
+        for (const p of pending) {
+          const success = await rejectProposal(p.id);
+          if (!success) break;
+          setProposalsByMessage((prev) => {
+            const next = { ...prev };
+            for (const msgId of Object.keys(next)) {
+              next[msgId] = next[msgId].map((proposal) =>
+                proposal.id === p.id
+                  ? { ...proposal, status: 'rejected' as const }
+                  : proposal
+              );
+            }
+            return next;
+          });
+        }
+      } finally {
+        setBulkActionMessageId(null);
+      }
+    },
+    [proposalsByMessage]
+  );
 
   /**
    * Core streaming + persist helper.
@@ -450,6 +522,9 @@ export default function ContextCopilotClient({
         proposalsByMessage={proposalsByMessage}
         onApproveProposal={handleApprove}
         onRejectProposal={handleReject}
+        onApproveAll={handleApproveAll}
+        onRejectAll={handleRejectAll}
+        bulkActionMessageId={bulkActionMessageId}
         sessionId={session.id}
         contextRequestMessageId={contextRequestMessageId}
         onRetryWithFullContext={handleRetryWithFullContext}

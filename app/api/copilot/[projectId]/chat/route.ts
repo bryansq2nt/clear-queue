@@ -18,8 +18,9 @@ import {
 import { buildProjectContext } from '@/lib/copilot/context';
 import { captureWithContext } from '@/lib/sentry';
 
-const DAILY_LIMIT = 30;
-const HOURLY_LIMIT = 15;
+// Raised for development; can be lowered or read from env for production.
+const DAILY_LIMIT = 200;
+const HOURLY_LIMIT = 60;
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_MESSAGES_IN_CONTEXT = 20;
 

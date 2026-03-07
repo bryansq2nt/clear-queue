@@ -4,9 +4,22 @@
 **Status:** Planning  
 **Goal:** Add soft, clean UI options "Approve all" and "Reject all" for the proposals attached to an assistant message, so the user can approve or reject all pending proposals in one action instead of clicking each card.
 
+**Scope:** Bulk actions apply to **every** pending proposal on that message, regardless of type — today (tasks, notes, milestones, delete*\*, update*\*) and any **future** proposal types (e.g. readings, links to link vault). The implementation is type-agnostic and future-proof.
+
 ---
 
-## 1. Current behavior
+## 1. Type-agnostic and future-proof
+
+- **All current types:** "Approve all" / "Reject all" work for every kind of proposal the Copilot can suggest today: **tasks**, **notes**, **milestones**, and **mutations** (delete_milestone, update_milestone, delete_task, update_task, delete_note, update_note). There is no special case per type — we iterate over all pending proposals for the message and call the same `approveProposal(proposalId)` / `rejectProposal(proposalId)`. The server (and RPC or action) already dispatches by `proposal.type` and payload.
+- **Future types:** When you add new proposal types (e.g. **readings** — blogs, documentation — or **links** that get added to the link vault module), you will:
+  - Add the new type to the schema, parser, and approve flow on the server.
+  - Add a card variant in `CopilotProposalCard` to render that type.
+  - **No change to bulk approve/reject:** the bulk handlers only care about "pending proposals for this message". New types stored in `copilot_proposals` with status `pending` are automatically included in "Approve all" and "Reject all".
+- So the plan aligns with your idea: one bulk UX that covers existing and coming proposal types.
+
+---
+
+## 2. Current behavior
 
 - Each assistant message can have multiple proposals (task, note, milestone, delete*\*, update*\*).
 - Each proposal is rendered as a `CopilotProposalCard` with individual "Approve" and "Reject" buttons.
@@ -15,7 +28,7 @@
 
 ---
 
-## 2. Desired behavior
+## 3. Desired behavior
 
 - When an assistant message has **two or more pending** proposals, show a compact row above the proposal cards with:
   - **"Approve all"** — approves every pending proposal for that message (same as clicking Approve on each).
@@ -26,9 +39,9 @@
 
 ---
 
-## 3. Implementation plan
+## 4. Implementation plan
 
-### 3.1. ContextCopilotClient — bulk handlers
+### 4.1. ContextCopilotClient — bulk handlers
 
 **File:** `app/context/[projectId]/copilot/ContextCopilotClient.tsx`
 
@@ -48,7 +61,7 @@
 
 - Pass **onApproveAll** and **onRejectAll** (and optionally a loading flag per message) down to `CopilotChatWindow`.
 
-### 3.2. CopilotChatWindow — bulk UI
+### 4.2. CopilotChatWindow — bulk UI
 
 **File:** `components/context/copilot/CopilotChatWindow.tsx`
 
@@ -63,7 +76,7 @@
 - While a bulk action is in progress for this message (parent passes e.g. `bulkActionMessageId === msg.id`), disable both bulk buttons and show "Approving…" or "Rejecting…" (text or spinner). Optionally disable individual Approve/Reject on each card for this message during bulk.
 - Align the toolbar with the cards (e.g. same left margin as the proposal cards — `ml-11` or whatever the cards use so it lines up with the message content).
 
-### 3.3. Props and types
+### 4.3. Props and types
 
 - **CopilotChatWindow** new props:
   - `onApproveAll: (messageId: string) => Promise<{ error?: string }>`
@@ -71,7 +84,7 @@
   - Optional: `bulkActionMessageId: string | null` (when set, that message’s bulk buttons show loading and are disabled).
 - **ContextCopilotClient:** Implement and pass the two handlers and the optional loading state.
 
-### 3.4. i18n
+### 4.4. i18n
 
 **Files:** `locales/en.json`, `locales/es.json`
 
@@ -81,19 +94,19 @@
   - Optional: **approving_all:** "Approving…" / "Aprobando…"
   - Optional: **rejecting_all:** "Rejecting…" / "Rechazando…"
 
-### 3.5. Error handling
+### 4.5. Error handling
 
 - If **Approve all** fails on the Nth proposal, show the error (e.g. in the same way as single approve — CopilotProposalCard or a small toast/banner). The first N−1 are already approved; no automatic rollback. User can retry the failed one individually or leave it.
 - If **Reject all** fails (e.g. network), optionally show a short message; the already-rejected ones stay rejected.
 
-### 3.6. Accessibility and UX
+### 4.6. Accessibility and UX
 
 - Buttons: `aria-label` with the same text as visible label (e.g. "Approve all").
 - Avoid double submission: disable "Approve all" and "Reject all" while either bulk action is in progress for that message.
 
 ---
 
-## 4. File checklist
+## 5. File checklist
 
 | File                                                       | Action                                                                                                                                                                                                                                               |
 | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -104,7 +117,7 @@
 
 ---
 
-## 5. Success criteria
+## 6. Success criteria
 
 - When an assistant message has 2+ pending proposals, "Approve all" and "Reject all" appear above the cards.
 - Clicking "Approve all" approves every pending proposal for that message (server + local state); on first error, stop and show error.
@@ -114,7 +127,7 @@
 
 ---
 
-## 6. References
+## 7. References
 
 - Current approve/reject: `ContextCopilotClient.tsx` — `handleApprove`, `handleReject`, `setProposalsByMessage`.
 - Proposal cards: `CopilotChatWindow.tsx` — `proposalsByMessage[msg.id].map(...)`, `CopilotProposalCard`.
