@@ -900,6 +900,8 @@
     "input_placeholder": "Pregunta sobre este proyecto…",
     "send": "Enviar mensaje",
     "thinking": "Pensando…",
+    "reasoning": "Razonando…",
+    "creating": "Creando…",
     "empty_state": "Soy tu asistente de proyecto. Pregúntame lo que quieras sobre este proyecto: tareas, notas, planificación, próximos pasos.",
     "rate_limit_daily": "Alcanzaste tu límite diario de mensajes. Tu cuota se renueva a las {time}.",
     "rate_limit_hourly": "Alcanzaste tu límite por hora. Vuelve a intentarlo a las {time}.",
@@ -929,7 +931,13 @@
     "approve_all": "Aprobar todo",
     "reject_all": "Rechazar todo",
     "approving_all": "Aprobando…",
-    "rejecting_all": "Rechazando…"
+    "rejecting_all": "Rechazando…",
+    "proposal_mind_map": "Mapa mental",
+    "created_view_ideas": "Creado — ver en ideas",
+    "proposal_link": "Enlace",
+    "proposal_delete_link": "Eliminar enlace",
+    "proposal_update_link": "Actualizar enlace",
+    "created_view_links": "Guardado — ver en enlaces"
   },
   "milestones": {
     "timeline": "Línea de tiempo",

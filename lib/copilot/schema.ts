@@ -15,7 +15,8 @@ export type ProposalType =
   | 'delete_task'
   | 'update_task'
   | 'delete_note'
-  | 'update_note';
+  | 'update_note'
+  | 'mind_map';
 
 export interface CopilotSession {
   id: string;
@@ -54,7 +55,8 @@ export interface CopilotProposal {
     | DeleteTaskPayload
     | UpdateTaskPayload
     | DeleteNotePayload
-    | UpdateNotePayload;
+    | UpdateNotePayload
+    | MindMapProposalPayload;
   status: CopilotProposalStatus;
   created_entity_id: string | null;
   reviewed_at: string | null;
@@ -139,6 +141,93 @@ export interface UpdateNotePayload {
   title?: string;
   content?: string;
 }
+
+// ─── Mind map payload ─────────────────────────────────────────────────────────
+
+/** A single node in a mind map proposal. temp_id is a local key used only to reference this node in edges. */
+export interface MindMapNode {
+  temp_id: string;
+  title: string;
+  description?: string | null;
+  /** Optional canvas position. Defaults to a radial layout when absent. */
+  x?: number;
+  y?: number;
+}
+
+/** A directed edge between two nodes, referenced by temp_id. */
+export interface MindMapEdge {
+  from: string;
+  to: string;
+  /** Connection type string (e.g. "relates_to", "includes", "depends_on"). Defaults to "relates_to". */
+  type?: string;
+}
+
+/**
+ * Mind map proposal — creates an idea board with nodes (ideas) and connections.
+ * On approve: board → ideas → idea_board_items → idea_connections are all created.
+ */
+export interface MindMapProposalPayload {
+  type: 'mind_map';
+  board_name: string;
+  board_description?: string | null;
+  nodes: MindMapNode[];
+  edges: MindMapEdge[];
+}
+
+// ─── Links payload ────────────────────────────────────────────────────────────
+
+/** Valid values for the link_type field (mirrors project_link_type_enum). */
+export type CopilotLinkType =
+  | 'environment'
+  | 'tool'
+  | 'resource'
+  | 'social'
+  | 'reference'
+  | 'other';
+
+/** Create a new project link. category_name is resolved to category_id server-side. */
+export interface LinkProposalPayload {
+  type: 'link';
+  title: string;
+  url: string;
+  category_name?: string | null;
+  description?: string | null;
+  link_type?: CopilotLinkType | null;
+}
+
+export interface DeleteLinkPayload {
+  type: 'delete_link';
+  entity_id: string;
+  entity_title?: string;
+}
+
+export interface UpdateLinkPayload {
+  type: 'update_link';
+  entity_id: string;
+  entity_title?: string;
+  title?: string;
+  url?: string;
+  category_name?: string | null;
+  description?: string | null;
+}
+
+// ─── ParsedProposal union ─────────────────────────────────────────────────────
+
+/** Union of all validated proposal payload types returned by the parser. */
+export type ParsedProposal =
+  | TaskProposalPayload
+  | NoteProposalPayload
+  | MilestoneProposalPayload
+  | DeleteMilestonePayload
+  | UpdateMilestonePayload
+  | DeleteTaskPayload
+  | UpdateTaskPayload
+  | DeleteNotePayload
+  | UpdateNotePayload
+  | MindMapProposalPayload
+  | LinkProposalPayload
+  | DeleteLinkPayload
+  | UpdateLinkPayload;
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 

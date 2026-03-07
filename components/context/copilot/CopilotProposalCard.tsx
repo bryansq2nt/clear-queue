@@ -2,59 +2,28 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import {
-  CheckCircle2,
-  XCircle,
-  FileText,
-  CheckSquare,
-  Flag,
-  Trash2,
-  Pencil,
-  ExternalLink,
-} from 'lucide-react';
+import { CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/components/shared/I18nProvider';
+import { getProposalTypeConfig } from './card-renderers';
 import type {
   CopilotProposal,
   TaskProposalPayload,
-  NoteProposalPayload,
   MilestoneProposalPayload,
-  DeleteMilestonePayload,
-  UpdateMilestonePayload,
-  DeleteTaskPayload,
+  NoteProposalPayload,
+  MindMapProposalPayload,
   UpdateTaskPayload,
-  DeleteNotePayload,
+  UpdateMilestonePayload,
   UpdateNotePayload,
+  LinkProposalPayload,
+  UpdateLinkPayload,
 } from '@/lib/copilot/schema';
-
-type AnyPayload =
-  | TaskProposalPayload
-  | NoteProposalPayload
-  | MilestoneProposalPayload
-  | DeleteMilestonePayload
-  | UpdateMilestonePayload
-  | DeleteTaskPayload
-  | UpdateTaskPayload
-  | DeleteNotePayload
-  | UpdateNotePayload;
 
 interface CopilotProposalCardProps {
   proposal: CopilotProposal;
   onApprove: (proposalId: string) => Promise<{ error?: string }>;
   onReject: (proposalId: string) => Promise<void>;
 }
-
-const DELETE_TYPES = new Set([
-  'delete_milestone',
-  'delete_task',
-  'delete_note',
-]);
-
-const UPDATE_TYPES = new Set([
-  'update_milestone',
-  'update_task',
-  'update_note',
-]);
 
 export function CopilotProposalCard({
   proposal,
@@ -69,14 +38,14 @@ export function CopilotProposalCard({
   const isRejected = proposal.status === 'rejected';
   const isApproved = proposal.status === 'approved';
 
-  const payload = proposal.payload as AnyPayload;
-  const pType = payload.type;
+  const payload = proposal.payload as unknown as Record<string, unknown>;
+  const pType = String(payload.type ?? '');
 
-  const isCreate =
-    pType === 'task' || pType === 'note' || pType === 'milestone';
-  const isDelete = DELETE_TYPES.has(pType);
-  const isUpdate = UPDATE_TYPES.has(pType);
-  const isMutation = isDelete || isUpdate;
+  const config = getProposalTypeConfig(pType);
+  const { Icon, cardVariant } = config;
+
+  const isDelete = cardVariant === 'delete';
+  const isUpdate = cardVariant === 'update';
 
   const handleReject = async () => {
     if (isRejecting || isRejected || isApproved) return;
@@ -94,114 +63,79 @@ export function CopilotProposalCard({
     if (result?.error) setApproveError(result.error);
   };
 
-  // ─── Type label + icon ────────────────────────────────────────────────────
-  let typeLabel: string;
-  let TypeIcon: React.ComponentType<{
-    className?: string;
-    'aria-hidden'?: boolean | 'true' | 'false';
-  }>;
+  // ─── Type label ───────────────────────────────────────────────────────────
+  const typeLabel = config.labelKey ? t(config.labelKey) : pType;
 
-  switch (pType) {
-    case 'task':
-      typeLabel = t('copilot.proposal_task');
-      TypeIcon = CheckSquare;
-      break;
-    case 'note':
-      typeLabel = t('copilot.proposal_note');
-      TypeIcon = FileText;
-      break;
-    case 'milestone':
-      typeLabel = t('copilot.proposal_milestone');
-      TypeIcon = Flag;
-      break;
-    case 'delete_milestone':
-      typeLabel = t('copilot.proposal_delete_milestone');
-      TypeIcon = Trash2;
-      break;
-    case 'update_milestone':
-      typeLabel = t('copilot.proposal_update_milestone');
-      TypeIcon = Pencil;
-      break;
-    case 'delete_task':
-      typeLabel = t('copilot.proposal_delete_task');
-      TypeIcon = Trash2;
-      break;
-    case 'update_task':
-      typeLabel = t('copilot.proposal_update_task');
-      TypeIcon = Pencil;
-      break;
-    case 'delete_note':
-      typeLabel = t('copilot.proposal_delete_note');
-      TypeIcon = Trash2;
-      break;
-    case 'update_note':
-      typeLabel = t('copilot.proposal_update_note');
-      TypeIcon = Pencil;
-      break;
-    default:
-      typeLabel = pType;
-      TypeIcon = FileText;
-  }
+  // ─── Display title ────────────────────────────────────────────────────────
+  const displayTitle: string = config.getTitle
+    ? config.getTitle(payload)
+    : isDelete || isUpdate
+      ? ((payload.entity_title as string | undefined) ??
+        (payload.entity_id as string))
+      : (payload.title as string);
 
-  // ─── Title to display ─────────────────────────────────────────────────────
-  const displayTitle: string = isMutation
-    ? ((payload as { entity_title?: string }).entity_title ??
-      (payload as { entity_id: string }).entity_id)
-    : (payload as { title: string }).title;
-
-  // ─── Created/acted link after approval ───────────────────────────────────
+  // ─── Created link after approval ──────────────────────────────────────────
   const createdLink =
-    isApproved && proposal.project_id
-      ? (() => {
-          switch (pType) {
-            case 'task':
-            case 'delete_task':
-            case 'update_task':
-              return `/context/${proposal.project_id}/board`;
-            case 'note':
-            case 'update_note':
-              return pType === 'note' && proposal.created_entity_id
-                ? `/context/${proposal.project_id}/notes/${proposal.created_entity_id}`
-                : `/context/${proposal.project_id}/notes`;
-            case 'milestone':
-            case 'delete_milestone':
-            case 'update_milestone':
-              return `/context/${proposal.project_id}/milestones`;
-            case 'delete_note':
-              return `/context/${proposal.project_id}/notes`;
-            default:
-              return null;
-          }
-        })()
+    isApproved && proposal.project_id && config.getViewLink
+      ? config.getViewLink(proposal.project_id, proposal.created_entity_id)
       : null;
 
-  const createdLinkLabel = (() => {
-    switch (pType) {
-      case 'task':
-      case 'update_task':
-        return t('copilot.created_view_board');
-      case 'note':
-      case 'update_note':
-        return t('copilot.created_view_notes');
-      case 'milestone':
-      case 'delete_milestone':
-      case 'update_milestone':
-        return t('copilot.created_view_milestones');
-      case 'delete_task':
-        return t('copilot.created_view_board');
-      case 'delete_note':
-        return t('copilot.created_view_notes');
-      default:
-        return null;
-    }
-  })();
+  const createdLinkLabel = config.viewLinkLabelKey
+    ? t(config.viewLinkLabelKey)
+    : null;
 
-  // ─── Mutation change summary ──────────────────────────────────────────────
-  const mutationSummary = (() => {
-    if (!isUpdate) return null;
-    const parts: string[] = [];
+  // ─── Type-specific details ────────────────────────────────────────────────
+  const details = (() => {
+    if (isApproved) return null;
+
+    if (pType === 'task') {
+      const tp = payload as unknown as TaskProposalPayload;
+      if (!tp.status && tp.priority == null) return null;
+      return (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {tp.status}
+          {tp.priority != null && ` · Priority ${tp.priority}`}
+        </p>
+      );
+    }
+
+    if (pType === 'milestone') {
+      const mp = payload as unknown as MilestoneProposalPayload;
+      if (!mp.description) return null;
+      return (
+        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+          {mp.description}
+        </p>
+      );
+    }
+
+    if (pType === 'note') {
+      const np = payload as unknown as NoteProposalPayload;
+      return (
+        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+          {np.content}
+        </p>
+      );
+    }
+
+    if (pType === 'mind_map') {
+      const mm = payload as unknown as MindMapProposalPayload;
+      return (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {mm.nodes.length} nodes · {mm.edges.length} connections
+          {mm.board_description && (
+            <>
+              {' '}
+              · <span className="italic">{mm.board_description}</span>
+            </>
+          )}
+        </p>
+      );
+    }
+
     if (pType === 'update_task') {
-      const p = payload as UpdateTaskPayload;
+      const p = payload as unknown as UpdateTaskPayload;
+      const parts: string[] = [];
       if (p.status) parts.push(`status → ${p.status}`);
       if (p.priority != null) parts.push(`priority → ${p.priority}`);
       if (p.title) parts.push(`title → "${p.title}"`);
@@ -209,17 +143,65 @@ export function CopilotProposalCard({
         parts.push(
           p.milestone_id ? `milestone → ${p.milestone_id}` : 'remove milestone'
         );
-    } else if (pType === 'update_milestone') {
-      const p = payload as UpdateMilestonePayload;
+      return parts.length > 0 ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {parts.join(' · ')}
+        </p>
+      ) : null;
+    }
+
+    if (pType === 'update_milestone') {
+      const p = payload as unknown as UpdateMilestonePayload;
+      const parts: string[] = [];
       if (p.title) parts.push(`title → "${p.title}"`);
       if (p.description !== undefined)
-        parts.push(p.description ? `description updated` : 'clear description');
-    } else if (pType === 'update_note') {
-      const p = payload as UpdateNotePayload;
+        parts.push(p.description ? 'description updated' : 'clear description');
+      return parts.length > 0 ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {parts.join(' · ')}
+        </p>
+      ) : null;
+    }
+
+    if (pType === 'update_note') {
+      const p = payload as unknown as UpdateNotePayload;
+      const parts: string[] = [];
       if (p.title) parts.push(`title → "${p.title}"`);
       if (p.content) parts.push('content updated');
+      return parts.length > 0 ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {parts.join(' · ')}
+        </p>
+      ) : null;
     }
-    return parts.length > 0 ? parts.join(' · ') : null;
+
+    if (pType === 'link') {
+      const p = payload as unknown as LinkProposalPayload;
+      return (
+        <p className="mt-1 text-xs text-muted-foreground truncate">
+          {p.url}
+          {p.category_name && ` · ${p.category_name}`}
+        </p>
+      );
+    }
+
+    if (pType === 'update_link') {
+      const p = payload as unknown as UpdateLinkPayload;
+      const parts: string[] = [];
+      if (p.title) parts.push(`title → "${p.title}"`);
+      if (p.url) parts.push(`url updated`);
+      if (p.category_name !== undefined)
+        parts.push(
+          p.category_name ? `category → ${p.category_name}` : 'remove category'
+        );
+      return parts.length > 0 ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {parts.join(' · ')}
+        </p>
+      ) : null;
+    }
+
+    return null;
   })();
 
   return (
@@ -236,7 +218,7 @@ export function CopilotProposalCard({
       {/* Header row */}
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <TypeIcon className="h-3.5 w-3.5" aria-hidden />
+          <Icon className="h-3.5 w-3.5" aria-hidden />
           <span>{typeLabel}</span>
           {isRejected && (
             <span className="ml-1 text-destructive/70">
@@ -287,36 +269,8 @@ export function CopilotProposalCard({
         {displayTitle}
       </p>
 
-      {/* Details — create types */}
-      {pType === 'task' &&
-        (() => {
-          const tp = payload as TaskProposalPayload;
-          return tp.status || tp.priority ? (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {tp.status}
-              {tp.priority != null && ` · Priority ${tp.priority}`}
-            </p>
-          ) : null;
-        })()}
-
-      {pType === 'milestone' &&
-        !isApproved &&
-        (payload as MilestoneProposalPayload).description && (
-          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-            {(payload as MilestoneProposalPayload).description}
-          </p>
-        )}
-
-      {pType === 'note' && !isApproved && (
-        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-          {(payload as NoteProposalPayload).content}
-        </p>
-      )}
-
-      {/* Details — mutation types */}
-      {mutationSummary && !isApproved && (
-        <p className="mt-1 text-xs text-muted-foreground">{mutationSummary}</p>
-      )}
+      {/* Type-specific details */}
+      {details}
 
       {/* Approved: link */}
       {isApproved && createdLink && createdLinkLabel && (

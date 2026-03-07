@@ -13,9 +13,7 @@ import type {
   ProposalType,
 } from '@/lib/copilot/schema';
 import type { ParsedProposal } from '@/lib/copilot/parser';
-import { deleteMilestone, updateMilestone } from '@/app/actions/milestones';
-import { deleteTask } from '@/app/actions/tasks';
-import { deleteNote, updateNote } from '@/app/actions/notes';
+import { COPILOT_REGISTRY } from '@/lib/copilot/registry';
 
 const SESSION_TITLE_MAX_LENGTH = 80;
 
@@ -477,17 +475,13 @@ export type ApproveProposalResult = {
   error?: string;
 };
 
-const MUTATION_TYPES = new Set<ProposalType>([
-  'delete_milestone',
-  'update_milestone',
-  'delete_task',
-  'update_task',
-  'delete_note',
-  'update_note',
-]);
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DEFAULT_REVALIDATE_PATHS = (projectId: string) => [
+  '/dashboard',
+  '/context',
+  `/context/${projectId}/board`,
+  `/context/${projectId}/notes`,
+  `/context/${projectId}/milestones`,
+];
 
 export async function approveProposal(
   proposalId: string
@@ -495,7 +489,6 @@ export async function approveProposal(
   const user = await requireAuth();
   const supabase = await createClient();
 
-  // Fetch proposal to determine whether it's a create or mutation
   const { data: proposalRow, error: fetchError } = await (supabase as any)
     .from('copilot_proposals')
     .select('id, type, payload, status, project_id, owner_id')
@@ -511,151 +504,58 @@ export async function approveProposal(
   }
 
   const type = proposalRow.type as ProposalType;
+  const capability = COPILOT_REGISTRY.get(type);
 
-  // ─── Mutation branch: call existing actions, then update proposal status ───
-  if (MUTATION_TYPES.has(type)) {
-    const payload = proposalRow.payload as Record<string, unknown>;
-    const entityId = payload?.entity_id;
-
-    if (typeof entityId !== 'string' || !UUID_RE.test(entityId.trim())) {
-      return { error: 'Invalid entity_id in proposal payload' };
-    }
-
-    let actionError: string | undefined;
-
-    if (type === 'delete_milestone') {
-      const result = await deleteMilestone(entityId.trim());
-      actionError = result.error;
-    } else if (type === 'update_milestone') {
-      const result = await updateMilestone(entityId.trim(), {
-        title: typeof payload.title === 'string' ? payload.title : undefined,
-        description:
-          payload.description !== undefined
-            ? (payload.description as string | null)
-            : undefined,
-      });
-      actionError = result.error;
-    } else if (type === 'delete_task') {
-      const result = await deleteTask(entityId.trim());
-      actionError = result?.error;
-    } else if (type === 'update_task') {
-      // Direct Supabase update to avoid FormData ambiguity for nullable fields
-      const updates: Record<string, unknown> = {};
-      if (typeof payload.title === 'string' && payload.title.trim())
-        updates.title = payload.title.trim();
-      if (typeof payload.status === 'string') updates.status = payload.status;
-      if (typeof payload.priority === 'number')
-        updates.priority = Math.floor(payload.priority);
-      if (payload.notes !== undefined)
-        updates.notes = payload.notes === null ? null : String(payload.notes);
-      if (payload.tags !== undefined)
-        updates.tags = payload.tags === null ? null : String(payload.tags);
-      if (payload.due_date !== undefined)
-        updates.due_date =
-          payload.due_date === null ? null : String(payload.due_date);
-      if (payload.milestone_id !== undefined)
-        updates.milestone_id =
-          typeof payload.milestone_id === 'string' &&
-          UUID_RE.test(payload.milestone_id.trim())
-            ? payload.milestone_id.trim()
-            : null;
-
-      if (Object.keys(updates).length > 0) {
-        const { error } = await (supabase as any)
-          .from('tasks')
-          .update(updates)
-          .eq('id', entityId.trim());
-        actionError = error?.message;
-      }
-    } else if (type === 'delete_note') {
-      const result = await deleteNote(entityId.trim());
-      actionError = result.error;
-    } else if (type === 'update_note') {
-      const result = await updateNote(entityId.trim(), {
-        title: typeof payload.title === 'string' ? payload.title : undefined,
-        content:
-          typeof payload.content === 'string' ? payload.content : undefined,
-      });
-      actionError = result.error;
-    }
-
-    if (actionError) {
-      captureWithContext(new Error(actionError), {
-        module: 'copilot',
-        action: 'approveProposal',
-        userIntent: 'Approve AI-generated mutation proposal',
-        expected: 'Entity mutated and proposal marked approved',
-        extra: { proposalId, type, entityId },
-      });
-      return { error: actionError };
-    }
-
-    // Mark proposal as approved
-    await (supabase as any)
-      .from('copilot_proposals')
-      .update({
-        status: 'approved',
-        created_entity_id: entityId.trim(),
-        reviewed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', proposalId)
-      .eq('owner_id', user.id);
-
-    revalidatePath('/dashboard');
-    revalidatePath('/context');
-    revalidatePath(`/context/${proposalRow.project_id}/board`);
-    revalidatePath(`/context/${proposalRow.project_id}/notes`);
-    revalidatePath(`/context/${proposalRow.project_id}/milestones`);
-
-    return {
-      data: {
-        created_entity_id: entityId.trim(),
-        type,
-        project_id: proposalRow.project_id,
-      },
-    };
+  if (!capability) {
+    return { error: `Unknown proposal type: ${type}` };
   }
 
-  // ─── Create branch: use the atomic RPC ────────────────────────────────────
-  const { data, error } = await (supabase as any).rpc(
-    'approve_copilot_proposal_atomic',
-    { in_proposal_id: proposalId }
+  const { entityId, error: actionError } = await capability.approve(
+    proposalRow.payload,
+    {
+      proposalId,
+      projectId: proposalRow.project_id,
+      userId: user.id,
+      supabase,
+    }
   );
 
-  if (error) {
-    captureWithContext(error, {
+  if (actionError) {
+    captureWithContext(new Error(actionError), {
       module: 'copilot',
       action: 'approveProposal',
-      userIntent: 'Approve AI-generated proposal and create entity',
-      expected: 'Task, note, or milestone created and proposal marked approved',
-      extra: { proposalId },
+      userIntent: 'Approve AI-generated proposal',
+      expected: 'Proposal action executed and marked approved',
+      extra: { proposalId, type },
     });
-    return {
-      error: error.message ?? 'Failed to approve proposal',
-    };
+    return { error: actionError };
   }
 
-  const result = data as {
-    created_entity_id: string;
-    type: 'task' | 'note' | 'milestone';
-    project_id: string;
-  } | null;
-  if (!result?.created_entity_id || !result?.type || !result?.project_id) {
-    return { error: 'Invalid response from server' };
-  }
+  // Mark proposal approved (no-op for RPC-based creates that already did this)
+  await (supabase as any)
+    .from('copilot_proposals')
+    .update({
+      status: 'approved',
+      created_entity_id: entityId ?? null,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', proposalId)
+    .eq('owner_id', user.id);
 
-  revalidatePath('/dashboard');
-  revalidatePath('/context');
-  revalidatePath(`/context/${result.project_id}/board`);
-  revalidatePath(`/context/${result.project_id}/notes`);
-  revalidatePath(`/context/${result.project_id}/milestones`);
+  const paths = capability.revalidatePaths
+    ? capability.revalidatePaths(proposalRow.project_id)
+    : DEFAULT_REVALIDATE_PATHS(proposalRow.project_id);
+
+  for (const path of paths) {
+    revalidatePath(path);
+  }
 
   return {
     data: {
-      created_entity_id: result.created_entity_id,
-      type: result.type,
-      project_id: result.project_id,
+      created_entity_id: entityId ?? proposalId,
+      type,
+      project_id: proposalRow.project_id,
     },
   };
 }

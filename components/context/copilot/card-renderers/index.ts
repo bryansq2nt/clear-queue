@@ -1,0 +1,142 @@
+'use client';
+
+import type React from 'react';
+import {
+  CheckSquare,
+  FileText,
+  Flag,
+  GitFork,
+  Trash2,
+  Pencil,
+  Link2,
+} from 'lucide-react';
+
+type LucideIcon = React.ComponentType<{
+  className?: string;
+  'aria-hidden'?: boolean | 'true' | 'false';
+}>;
+
+export interface ProposalTypeConfig {
+  labelKey: string;
+  Icon: LucideIcon;
+  cardVariant: 'create' | 'delete' | 'update' | 'graph';
+  /** Returns the link to navigate to after approval, or null if none. */
+  getViewLink?: (
+    projectId: string,
+    createdEntityId: string | null
+  ) => string | null;
+  viewLinkLabelKey?: string;
+  /** Returns the display title from the payload. Defaults: mutation → entity_title, create → title. */
+  getTitle?: (payload: unknown) => string;
+}
+
+const FALLBACK_CONFIG: ProposalTypeConfig = {
+  labelKey: '',
+  Icon: FileText,
+  cardVariant: 'create',
+};
+
+export const PROPOSAL_TYPE_CONFIG: Record<string, ProposalTypeConfig> = {
+  task: {
+    labelKey: 'copilot.proposal_task',
+    Icon: CheckSquare,
+    cardVariant: 'create',
+    getViewLink: (projectId) => `/context/${projectId}/board`,
+    viewLinkLabelKey: 'copilot.created_view_board',
+  },
+  note: {
+    labelKey: 'copilot.proposal_note',
+    Icon: FileText,
+    cardVariant: 'create',
+    getViewLink: (projectId, entityId) =>
+      entityId
+        ? `/context/${projectId}/notes/${entityId}`
+        : `/context/${projectId}/notes`,
+    viewLinkLabelKey: 'copilot.created_view_notes',
+  },
+  milestone: {
+    labelKey: 'copilot.proposal_milestone',
+    Icon: Flag,
+    cardVariant: 'create',
+    getViewLink: (projectId) => `/context/${projectId}/milestones`,
+    viewLinkLabelKey: 'copilot.created_view_milestones',
+  },
+  delete_milestone: {
+    labelKey: 'copilot.proposal_delete_milestone',
+    Icon: Trash2,
+    cardVariant: 'delete',
+    getViewLink: (projectId) => `/context/${projectId}/milestones`,
+    viewLinkLabelKey: 'copilot.created_view_milestones',
+  },
+  update_milestone: {
+    labelKey: 'copilot.proposal_update_milestone',
+    Icon: Pencil,
+    cardVariant: 'update',
+    getViewLink: (projectId) => `/context/${projectId}/milestones`,
+    viewLinkLabelKey: 'copilot.created_view_milestones',
+  },
+  delete_task: {
+    labelKey: 'copilot.proposal_delete_task',
+    Icon: Trash2,
+    cardVariant: 'delete',
+    getViewLink: (projectId) => `/context/${projectId}/board`,
+    viewLinkLabelKey: 'copilot.created_view_board',
+  },
+  update_task: {
+    labelKey: 'copilot.proposal_update_task',
+    Icon: Pencil,
+    cardVariant: 'update',
+    getViewLink: (projectId) => `/context/${projectId}/board`,
+    viewLinkLabelKey: 'copilot.created_view_board',
+  },
+  delete_note: {
+    labelKey: 'copilot.proposal_delete_note',
+    Icon: Trash2,
+    cardVariant: 'delete',
+    getViewLink: (projectId) => `/context/${projectId}/notes`,
+    viewLinkLabelKey: 'copilot.created_view_notes',
+  },
+  update_note: {
+    labelKey: 'copilot.proposal_update_note',
+    Icon: Pencil,
+    cardVariant: 'update',
+    getViewLink: (projectId) => `/context/${projectId}/notes`,
+    viewLinkLabelKey: 'copilot.created_view_notes',
+  },
+  mind_map: {
+    labelKey: 'copilot.proposal_mind_map',
+    Icon: GitFork,
+    cardVariant: 'graph',
+    getTitle: (payload) => (payload as { board_name: string }).board_name,
+    getViewLink: (projectId, entityId) =>
+      entityId
+        ? `/context/${projectId}/ideas/board/${entityId}`
+        : `/context/${projectId}/ideas`,
+    viewLinkLabelKey: 'copilot.created_view_ideas',
+  },
+  link: {
+    labelKey: 'copilot.proposal_link',
+    Icon: Link2,
+    cardVariant: 'create',
+    getViewLink: (projectId) => `/context/${projectId}/links`,
+    viewLinkLabelKey: 'copilot.created_view_links',
+  },
+  delete_link: {
+    labelKey: 'copilot.proposal_delete_link',
+    Icon: Trash2,
+    cardVariant: 'delete',
+    getViewLink: (projectId) => `/context/${projectId}/links`,
+    viewLinkLabelKey: 'copilot.created_view_links',
+  },
+  update_link: {
+    labelKey: 'copilot.proposal_update_link',
+    Icon: Pencil,
+    cardVariant: 'update',
+    getViewLink: (projectId) => `/context/${projectId}/links`,
+    viewLinkLabelKey: 'copilot.created_view_links',
+  },
+};
+
+export function getProposalTypeConfig(type: string): ProposalTypeConfig {
+  return PROPOSAL_TYPE_CONFIG[type] ?? { ...FALLBACK_CONFIG, labelKey: type };
+}

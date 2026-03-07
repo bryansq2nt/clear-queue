@@ -11,6 +11,9 @@ import { getProjectById } from '@/app/actions/projects';
 import { getTasksByProjectId } from '@/app/actions/tasks';
 import { getNotes } from '@/app/actions/notes';
 import { listMilestones } from '@/app/actions/milestones';
+import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/auth';
+import { fetchLinksContext } from '@/lib/copilot/registry/modules/links';
 import { BOARD_STATUSES } from '@/lib/board';
 
 const SYSTEM_PROMPT_BASE = `You are Project Copilot, a structured planning assistant embedded inside ClearQueue — a project management app.
@@ -96,6 +99,20 @@ When making structured suggestions, include a proposals block at the END of your
     "entity_title": "Note to update",
     "title": "New title",
     "content": "Updated content"
+  },
+  {
+    "type": "mind_map",
+    "board_name": "Teams module roadmap",
+    "board_description": "Visual plan for the Teams feature",
+    "nodes": [
+      { "temp_id": "n1", "title": "Teams module", "x": 0, "y": 0 },
+      { "temp_id": "n2", "title": "Invite users", "x": -200, "y": 120 },
+      { "temp_id": "n3", "title": "Create teams", "x": 200, "y": 120 }
+    ],
+    "edges": [
+      { "from": "n1", "to": "n2", "type": "includes" },
+      { "from": "n1", "to": "n3", "type": "includes" }
+    ]
   }
 ]
 <</PROPOSALS>>
@@ -113,7 +130,16 @@ Rules for the proposals block:
 - If you have no proposals, omit the block entirely — do NOT emit an empty array
 - Propose 3–6 tasks for initial planning; 1–3 tasks for specific follow-up questions
 - Maximum 2 notes per response
-- **Mutation proposals** (delete/update): entity_id must be a UUID from the project context — never invent ids. Include entity_title for display. For update_*, only include fields you want to change. You can only propose mutations for entities whose id appears in the context below.`;
+- **Mutation proposals** (delete/update): entity_id must be a UUID from the project context — never invent ids. Include entity_title for display. For update_*, only include fields you want to change. You can only propose mutations for entities whose id appears in the context below.
+- **mind_map proposals**: Use when the user asks for a roadmap, a mind map, a visual plan, or a diagram of connected concepts. Each node requires a unique temp_id (e.g. "n1", "n2") and a title. Edges reference nodes by temp_id (from/to). x/y are optional — if provided, use a spread layout (e.g. root at 0,0; children at ±200 x, ±150 y). Maximum 20 nodes. Emit at most one mind_map per response. board_name must be non-empty.
+- **link proposals**: Use to save URLs in the project link vault. Valid link_type values: environment, tool, resource, social, reference, other. category_name must match an existing category name exactly (case-insensitive) — do not invent categories. If the user does not specify a category, omit category_name. url must start with http:// or https://. For delete_link and update_link, entity_id must be a UUID from the links context — only available in full context mode.
+
+Example link proposals:
+\`\`\`json
+{"type":"link","title":"Stripe Docs","url":"https://stripe.com/docs","category_name":"References","link_type":"reference"}
+{"type":"delete_link","entity_id":"<uuid-from-context>","entity_title":"Old link title"}
+{"type":"update_link","entity_id":"<uuid-from-context>","entity_title":"Current title","category_name":"Tools"}
+\`\`\``;
 
 export async function buildProjectContext(
   projectId: string,
@@ -121,11 +147,14 @@ export async function buildProjectContext(
 ): Promise<string> {
   const scope = options?.scope ?? 'standard';
 
-  const [project, tasks, notes, milestones] = await Promise.all([
+  const [supabase] = await Promise.all([createClient(), requireAuth()]);
+
+  const [project, tasks, notes, milestones, linksContext] = await Promise.all([
     getProjectById(projectId),
     getTasksByProjectId(projectId),
     getNotes({ projectId }),
     listMilestones(projectId),
+    fetchLinksContext(projectId, scope, supabase),
   ]);
 
   if (!project) {
@@ -209,7 +238,9 @@ ${noteListLines}
 ## Milestones (${milestones.length} total — all shown with ids)
 
 Milestone format: [id] title
-${milestoneLines}`;
+${milestoneLines}
+
+${linksContext}`;
   } else {
     // Standard context: 10 tasks (titles + status only), 5 notes (titles only), 8 milestones with ids
     const recentTasks = [...tasks]
@@ -273,7 +304,9 @@ ${noteListLines}
 ## Project milestones (${milestones.length} total)
 
 Milestone format: [id] title — use the id when proposing delete_milestone or update_milestone.
-${milestoneLines}`;
+${milestoneLines}
+
+${linksContext}`;
   }
 
   // Gap hints (standard scope only)

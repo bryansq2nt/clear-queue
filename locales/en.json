@@ -963,6 +963,8 @@
     "input_placeholder": "Ask about this project…",
     "send": "Send message",
     "thinking": "Thinking…",
+    "reasoning": "Reasoning…",
+    "creating": "Creating…",
     "empty_state": "I'm your project assistant. Ask me anything about this project — tasks, notes, planning, next steps.",
     "rate_limit_daily": "You've reached your daily message limit. Your quota resets at {time}.",
     "rate_limit_hourly": "You've reached your hourly message limit. Try again at {time}.",
@@ -992,7 +994,13 @@
     "approve_all": "Approve all",
     "reject_all": "Reject all",
     "approving_all": "Approving…",
-    "rejecting_all": "Rejecting…"
+    "rejecting_all": "Rejecting…",
+    "proposal_mind_map": "Mind map",
+    "created_view_ideas": "Created — view in ideas",
+    "proposal_link": "Link",
+    "proposal_delete_link": "Delete link",
+    "proposal_update_link": "Update link",
+    "created_view_links": "Saved — view in links"
   },
   "milestones": {
     "timeline": "Timeline",

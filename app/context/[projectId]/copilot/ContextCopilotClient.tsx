@@ -46,6 +46,9 @@ interface ContextCopilotClientProps {
   refetchSessions?: () => void;
 }
 
+// Rotating status labels shown during AI streaming
+const STREAM_STATUS_KEYS = ['thinking', 'reasoning', 'creating'] as const;
+
 export default function ContextCopilotClient({
   projectId,
   session,
@@ -83,6 +86,11 @@ export default function ContextCopilotClient({
   // Ref to keep the latest messages value accessible in callbacks without stale closure
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+
+  // Rotating status labels while streaming (no raw backend output shown)
+  const streamStatusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
 
   const handleApprove = useCallback(
     async (proposalId: string) => {
@@ -205,7 +213,15 @@ export default function ContextCopilotClient({
       contextScope: 'standard' | 'full' = 'standard'
     ): Promise<string | null> => {
       setIsStreaming(true);
-      setStreamingContent('');
+      setStreamingContent(t('copilot.thinking'));
+
+      // Rotate status every 3s so the user sees progress without raw backend output
+      let statusIndex = 0;
+      streamStatusIntervalRef.current = setInterval(() => {
+        statusIndex = (statusIndex + 1) % STREAM_STATUS_KEYS.length;
+        const key = `copilot.${STREAM_STATUS_KEYS[statusIndex]}`;
+        setStreamingContent(t(key as 'copilot.thinking'));
+      }, 3000);
 
       try {
         const response = await fetch(`/api/copilot/${projectId}/chat`, {
@@ -256,7 +272,7 @@ export default function ContextCopilotClient({
                 typeof evt.delta.text === 'string'
               ) {
                 fullText += evt.delta.text;
-                setStreamingContent(fullText);
+                // Do not show raw streamed content; status message is shown instead
               }
             } catch {
               // ignore malformed lines
@@ -270,6 +286,10 @@ export default function ContextCopilotClient({
         setError(t('copilot.error_message'));
         return null;
       } finally {
+        if (streamStatusIntervalRef.current) {
+          clearInterval(streamStatusIntervalRef.current);
+          streamStatusIntervalRef.current = null;
+        }
         setIsStreaming(false);
         setStreamingContent('');
       }
