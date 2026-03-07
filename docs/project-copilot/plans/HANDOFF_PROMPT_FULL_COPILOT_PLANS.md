@@ -86,7 +86,7 @@ When done: (1) Summary of what was implemented in Part 1 and Part 2; (2) Full li
 ## Cómo usarlo
 
 1. Abre este archivo: `docs/project-copilot/plans/HANDOFF_PROMPT_FULL_COPILOT_PLANS.md`
-2. Copia **todo** el contenido que está entre las líneas que empiezan por ``` (incluidas las dos líneas de ```).
+2. Copia **todo** el contenido que está entre las líneas que empiezan por `(incluidas las dos líneas de`).
 3. Pégalo como **primer mensaje** en una nueva conversación de Claude Code.
 4. Claude ejecutará primero Part 1 (contexto expandible + scroll) y luego Part 2 (mutaciones + scroll si faltaba).
 5. Al final pedirá: resumen, archivos tocados, cómo probar y follow-ups.

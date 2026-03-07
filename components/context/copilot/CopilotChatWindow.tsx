@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { CopilotMessageBubble } from './CopilotMessageBubble';
 import { CopilotProposalCard } from './CopilotProposalCard';
 import { useI18n } from '@/components/shared/I18nProvider';
-import { Bot } from 'lucide-react';
+import { Bot, RefreshCw } from 'lucide-react';
 import type { CopilotMessage, CopilotProposal } from '@/lib/copilot/schema';
 
 interface CopilotChatWindowProps {
@@ -14,6 +14,9 @@ interface CopilotChatWindowProps {
   proposalsByMessage: Record<string, CopilotProposal[]>;
   onApproveProposal: (proposalId: string) => Promise<{ error?: string }>;
   onRejectProposal: (proposalId: string) => Promise<void>;
+  sessionId?: string;
+  contextRequestMessageId?: string | null;
+  onRetryWithFullContext?: () => void;
 }
 
 export function CopilotChatWindow({
@@ -23,12 +26,25 @@ export function CopilotChatWindow({
   proposalsByMessage,
   onApproveProposal,
   onRejectProposal,
+  sessionId,
+  contextRequestMessageId,
+  onRetryWithFullContext,
 }: CopilotChatWindowProps) {
   const { t } = useI18n();
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new content arrives, but only if user is near the bottom
+  // Scroll to bottom when session changes or messages first appear (initial load / session switch)
+  useEffect(() => {
+    if (messages.length > 0 && !isStreaming) {
+      const timer = setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [sessionId, messages.length, isStreaming]);
+
+  // Auto-scroll to bottom when new content arrives during streaming, only if near bottom
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -71,6 +87,25 @@ export function CopilotChatWindow({
                     onReject={onRejectProposal}
                   />
                 ))}
+              </div>
+            )}
+          {/* Context request banner */}
+          {msg.role === 'assistant' &&
+            contextRequestMessageId === msg.id &&
+            onRetryWithFullContext && (
+              <div className="ml-11 max-w-xl rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 text-sm">
+                <p className="text-amber-800 dark:text-amber-300 text-xs mb-2">
+                  {t('copilot.context_request_banner')}
+                </p>
+                <button
+                  type="button"
+                  onClick={onRetryWithFullContext}
+                  disabled={isStreaming}
+                  className="inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <RefreshCw className="h-3 w-3" aria-hidden />
+                  {t('copilot.context_request_btn')}
+                </button>
               </div>
             )}
         </div>

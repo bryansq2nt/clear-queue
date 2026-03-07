@@ -917,7 +917,15 @@
     "archived": "archivada",
     "start_fresh": "Empezar de nuevo",
     "proposal_milestone": "Hito",
-    "created_view_milestones": "Creado — ver en hitos"
+    "created_view_milestones": "Creado — ver en hitos",
+    "proposal_delete_milestone": "Eliminar hito",
+    "proposal_update_milestone": "Editar hito",
+    "proposal_delete_task": "Eliminar tarea",
+    "proposal_update_task": "Actualizar tarea",
+    "proposal_delete_note": "Eliminar nota",
+    "proposal_update_note": "Actualizar nota",
+    "context_request_banner": "El Copilot necesita más datos del proyecto para responder con precisión.",
+    "context_request_btn": "Cargar contexto completo y responder de nuevo"
   },
   "milestones": {
     "timeline": "Línea de tiempo",

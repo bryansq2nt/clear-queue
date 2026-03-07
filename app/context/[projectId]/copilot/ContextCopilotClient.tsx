@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { PlusCircle, Pencil } from 'lucide-react';
 import { CopilotChatWindow } from '@/components/context/copilot/CopilotChatWindow';
 import { CopilotInputBar } from '@/components/context/copilot/CopilotInputBar';
-import { CopilotProposalCard } from '@/components/context/copilot/CopilotProposalCard';
 import {
   saveCopilotMessage,
   saveCopilotProposals,
@@ -14,7 +13,7 @@ import {
 } from './actions';
 import { useContextDataCache } from '@/app/context/ContextDataCache';
 import { useI18n } from '@/components/shared/I18nProvider';
-import { parseProposals } from '@/lib/copilot/parser';
+import { parseProposals, parseContextRequest } from '@/lib/copilot/parser';
 import { cn } from '@/lib/utils';
 import type {
   CopilotSession,
@@ -67,12 +66,19 @@ export default function ContextCopilotClient({
     null
   );
   const [error, setError] = useState<string | null>(null);
-  // Map of assistantMessageId -> proposals (from DB on load + newly saved this visit)
   const [proposalsByMessage, setProposalsByMessage] = useState<
     Record<string, CopilotProposal[]>
   >(initialProposalsByMessage);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState('');
+  // Track which assistant message triggered a context request
+  const [contextRequestMessageId, setContextRequestMessageId] = useState<
+    string | null
+  >(null);
+
+  // Ref to keep the latest messages value accessible in callbacks without stale closure
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   const handleApprove = useCallback(
     async (proposalId: string) => {
@@ -116,6 +122,131 @@ export default function ContextCopilotClient({
     }
   }, []);
 
+  /**
+   * Core streaming + persist helper.
+   * Streams from the chat API, accumulates text, returns the full text on success.
+   * Sets isStreaming, streamingContent, error, rateLimitError as side effects.
+   */
+  const streamChatRequest = useCallback(
+    async (
+      contextMessages: { role: 'user' | 'assistant'; content: string }[],
+      contextScope: 'standard' | 'full' = 'standard'
+    ): Promise<string | null> => {
+      setIsStreaming(true);
+      setStreamingContent('');
+
+      try {
+        const response = await fetch(`/api/copilot/${projectId}/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: session.id,
+            messages: contextMessages,
+            contextScope,
+          }),
+        });
+
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          if (response.status === 429) {
+            setRateLimitError(body as RateLimitError);
+          } else {
+            setError(t('copilot.error_message'));
+          }
+          return null;
+        }
+
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            const raw = trimmed.startsWith('data: ')
+              ? trimmed.slice(6).trim()
+              : trimmed;
+            if (!raw) continue;
+            try {
+              const evt = JSON.parse(raw);
+              if (
+                evt.type === 'content_block_delta' &&
+                evt.delta?.type === 'text_delta' &&
+                typeof evt.delta.text === 'string'
+              ) {
+                fullText += evt.delta.text;
+                setStreamingContent(fullText);
+              }
+            } catch {
+              // ignore malformed lines
+            }
+          }
+        }
+
+        return fullText || null;
+      } catch (err) {
+        console.error('[copilot] stream error', err);
+        setError(t('copilot.error_message'));
+        return null;
+      } finally {
+        setIsStreaming(false);
+        setStreamingContent('');
+      }
+    },
+    [projectId, session.id, t]
+  );
+
+  /**
+   * Persist a completed assistant message, parse proposals and context request.
+   */
+  const persistAssistantMessage = useCallback(
+    async (fullText: string) => {
+      const assistantResult = await saveCopilotMessage(
+        session.id,
+        projectId,
+        'assistant',
+        fullText
+      );
+      const assistantMsg = assistantResult.data;
+      if (!assistantMsg) return;
+
+      setMessages((prev) => [...prev, assistantMsg]);
+
+      // Parse and save proposals
+      const parsed = parseProposals(fullText);
+      if (parsed.length > 0) {
+        const savedProposals = await saveCopilotProposals(
+          session.id,
+          assistantMsg.id,
+          projectId,
+          parsed
+        );
+        if (savedProposals.length > 0) {
+          setProposalsByMessage((prev) => ({
+            ...prev,
+            [assistantMsg.id]: savedProposals,
+          }));
+        }
+      }
+
+      // Check for context request
+      const contextReq = parseContextRequest(fullText);
+      if (contextReq) {
+        setContextRequestMessageId(assistantMsg.id);
+      }
+    },
+    [projectId, session.id]
+  );
+
   const handleSubmit = useCallback(async () => {
     const content = inputValue.trim();
     if (!content || isStreaming) return;
@@ -123,6 +254,7 @@ export default function ContextCopilotClient({
     setInputValue('');
     setError(null);
     setRateLimitError(null);
+    setContextRequestMessageId(null);
 
     // Optimistically add user message to UI
     const optimisticUserMsg: CopilotMessage = {
@@ -151,121 +283,65 @@ export default function ContextCopilotClient({
       if (result.wasFirstMessage && refetchSessions) refetchSessions();
     }
 
-    // Build context window: last 20 messages
+    // Build context window: last 20 messages (exclude the optimistic placeholder)
+    const currentMessages = messagesRef.current.filter(
+      (m) => m.id !== optimisticUserMsg.id
+    );
     const contextMessages = [
-      ...messages.filter((m) => m.id !== optimisticUserMsg.id),
+      ...currentMessages,
       { role: 'user' as const, content },
     ].slice(-20);
 
-    // Start streaming
-    setIsStreaming(true);
-    setStreamingContent('');
-
-    try {
-      const response = await fetch(`/api/copilot/${projectId}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: session.id,
-          messages: contextMessages,
-        }),
-      });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        if (response.status === 429) {
-          setRateLimitError(body as RateLimitError);
-        } else {
-          setError(t('copilot.error_message'));
-        }
-        setIsStreaming(false);
-        return;
-      }
-
-      // Parse stream: Anthropic SDK sends newline-delimited JSON (NDJSON), not SSE.
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let fullText = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed) continue;
-          // Support both NDJSON (raw JSON line) and SSE ("data: {...}")
-          const raw = trimmed.startsWith('data: ')
-            ? trimmed.slice(6).trim()
-            : trimmed;
-          if (!raw) continue;
-          try {
-            const evt = JSON.parse(raw);
-            if (
-              evt.type === 'content_block_delta' &&
-              evt.delta?.type === 'text_delta' &&
-              typeof evt.delta.text === 'string'
-            ) {
-              fullText += evt.delta.text;
-              setStreamingContent(fullText);
-            }
-          } catch {
-            // Ignore malformed lines
-          }
-        }
-      }
-
-      // Stream complete — persist assistant message
-      if (fullText) {
-        const assistantResult = await saveCopilotMessage(
-          session.id,
-          projectId,
-          'assistant',
-          fullText
-        );
-        const assistantMsg = assistantResult.data;
-        if (assistantMsg) {
-          setMessages((prev) => [...prev, assistantMsg]);
-
-          // Parse and persist proposals from the completed response
-          const parsed = parseProposals(fullText);
-          if (parsed.length > 0) {
-            const savedProposals = await saveCopilotProposals(
-              session.id,
-              assistantMsg.id,
-              projectId,
-              parsed
-            );
-            if (savedProposals.length > 0) {
-              setProposalsByMessage((prev) => ({
-                ...prev,
-                [assistantMsg.id]: savedProposals,
-              }));
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error('[copilot] stream error', err);
-      setError(t('copilot.error_message'));
-    } finally {
-      setIsStreaming(false);
-      setStreamingContent('');
+    const fullText = await streamChatRequest(contextMessages, 'standard');
+    if (fullText) {
+      await persistAssistantMessage(fullText);
     }
   }, [
     inputValue,
     isStreaming,
-    messages,
     projectId,
     refetchSessions,
     session.id,
-    t,
+    streamChatRequest,
+    persistAssistantMessage,
   ]);
+
+  /**
+   * Re-send the last user question with full context.
+   * Builds contextMessages up to the last user message (excluding the assistant's context-request reply).
+   */
+  const handleRetryWithFullContext = useCallback(async () => {
+    if (isStreaming) return;
+
+    // Clear the banner immediately
+    setContextRequestMessageId(null);
+    setError(null);
+    setRateLimitError(null);
+
+    // Build contextMessages: all messages up to and including the last user message
+    const currentMessages = messagesRef.current;
+    let lastUserIdx = -1;
+    for (let i = currentMessages.length - 1; i >= 0; i--) {
+      if (currentMessages[i].role === 'user') {
+        lastUserIdx = i;
+        break;
+      }
+    }
+    if (lastUserIdx < 0) return;
+
+    const contextMessages = currentMessages
+      .slice(0, lastUserIdx + 1)
+      .map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }))
+      .slice(-20);
+
+    const fullText = await streamChatRequest(contextMessages, 'full');
+    if (fullText) {
+      await persistAssistantMessage(fullText);
+    }
+  }, [isStreaming, streamChatRequest, persistAssistantMessage]);
 
   const formatResetTime = (resetAt: string) => {
     try {
@@ -374,6 +450,9 @@ export default function ContextCopilotClient({
         proposalsByMessage={proposalsByMessage}
         onApproveProposal={handleApprove}
         onRejectProposal={handleReject}
+        sessionId={session.id}
+        contextRequestMessageId={contextRequestMessageId}
+        onRetryWithFullContext={handleRetryWithFullContext}
       />
 
       {/* Error states */}

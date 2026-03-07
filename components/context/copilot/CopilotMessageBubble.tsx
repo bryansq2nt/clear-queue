@@ -10,9 +10,12 @@ interface CopilotMessageBubbleProps {
   isStreaming?: boolean;
 }
 
-/** Strip <<PROPOSALS>>...</PROPOSALS>> block from display content. */
-function stripProposalsBlock(content: string): string {
-  return content.replace(/<<PROPOSALS>>[\s\S]*?<\/PROPOSALS>>/g, '').trim();
+/** Strip <<PROPOSALS>> and <<REQUEST_CONTEXT>> blocks from display content. */
+function stripMetaBlocks(content: string): string {
+  return content
+    .replace(/<<PROPOSALS>>[\s\S]*?<<\/PROPOSALS>>/g, '')
+    .replace(/<<REQUEST_CONTEXT>>[\s\S]*?<<\/REQUEST_CONTEXT>>/g, '')
+    .trim();
 }
 
 export function CopilotMessageBubble({
@@ -21,7 +24,7 @@ export function CopilotMessageBubble({
   isStreaming = false,
 }: CopilotMessageBubbleProps) {
   const isAssistant = role === 'assistant';
-  const displayContent = isAssistant ? stripProposalsBlock(content) : content;
+  const displayContent = isAssistant ? stripMetaBlocks(content) : content;
 
   return (
     <div

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseProposals } from './parser';
+import {
+  parseProposals,
+  parseContextRequest,
+  stripContextRequestFromContent,
+} from './parser';
 
 vi.mock('@/lib/sentry', () => ({
   captureWithContext: vi.fn(),
@@ -269,5 +273,160 @@ describe('parseProposals', () => {
       milestone_id: null,
       milestone_title: null,
     });
+  });
+
+  // ─── Mutation proposals ────────────────────────────────────────────────────
+
+  it('parses delete_milestone proposal', () => {
+    const id = '550e8400-e29b-41d4-a716-446655440000';
+    const content = `<<PROPOSALS>>
+[{"type":"delete_milestone","entity_id":"${id}","entity_title":"Phase 1"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: 'delete_milestone',
+      entity_id: id,
+      entity_title: 'Phase 1',
+    });
+  });
+
+  it('skips delete_milestone with invalid entity_id', () => {
+    const content = `<<PROPOSALS>>
+[{"type":"delete_milestone","entity_id":"not-a-uuid"}]
+<<\/PROPOSALS>>`;
+    expect(parseProposals(content)).toEqual([]);
+  });
+
+  it('parses update_milestone proposal with changed fields', () => {
+    const id = '550e8400-e29b-41d4-a716-446655440001';
+    const content = `<<PROPOSALS>>
+[{"type":"update_milestone","entity_id":"${id}","entity_title":"Old Name","title":"New Name","description":"Updated desc"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: 'update_milestone',
+      entity_id: id,
+      title: 'New Name',
+      description: 'Updated desc',
+    });
+  });
+
+  it('parses delete_task proposal', () => {
+    const id = '550e8400-e29b-41d4-a716-446655440002';
+    const content = `<<PROPOSALS>>
+[{"type":"delete_task","entity_id":"${id}","entity_title":"My task"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ type: 'delete_task', entity_id: id });
+  });
+
+  it('parses update_task proposal with status and priority', () => {
+    const id = '550e8400-e29b-41d4-a716-446655440003';
+    const content = `<<PROPOSALS>>
+[{"type":"update_task","entity_id":"${id}","entity_title":"Fix bug","status":"done","priority":5}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: 'update_task',
+      entity_id: id,
+      status: 'done',
+      priority: 5,
+    });
+  });
+
+  it('ignores invalid status in update_task', () => {
+    const id = '550e8400-e29b-41d4-a716-446655440004';
+    const content = `<<PROPOSALS>>
+[{"type":"update_task","entity_id":"${id}","status":"invalid"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    const p = result[0] as { status?: string };
+    expect(p.status).toBeUndefined();
+  });
+
+  it('parses delete_note proposal', () => {
+    const id = '550e8400-e29b-41d4-a716-446655440005';
+    const content = `<<PROPOSALS>>
+[{"type":"delete_note","entity_id":"${id}","entity_title":"Meeting notes"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ type: 'delete_note', entity_id: id });
+  });
+
+  it('parses update_note proposal', () => {
+    const id = '550e8400-e29b-41d4-a716-446655440006';
+    const content = `<<PROPOSALS>>
+[{"type":"update_note","entity_id":"${id}","title":"New Title","content":"New body"}]
+<<\/PROPOSALS>>`;
+    const result = parseProposals(content);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: 'update_note',
+      entity_id: id,
+      title: 'New Title',
+      content: 'New body',
+    });
+  });
+
+  it('skips unknown proposal types', () => {
+    const content = `<<PROPOSALS>>
+[{"type":"delete_project","entity_id":"550e8400-e29b-41d4-a716-446655440007"}]
+<<\/PROPOSALS>>`;
+    expect(parseProposals(content)).toEqual([]);
+  });
+});
+
+// ─── parseContextRequest ────────────────────────────────────────────────────
+
+describe('parseContextRequest', () => {
+  it('returns null when no REQUEST_CONTEXT block', () => {
+    expect(parseContextRequest('Just some text.')).toBeNull();
+    expect(parseContextRequest('')).toBeNull();
+  });
+
+  it('parses tasks=true', () => {
+    const content = `Here I need more data.
+<<REQUEST_CONTEXT>>{"tasks":true}<</REQUEST_CONTEXT>>`;
+    expect(parseContextRequest(content)).toEqual({ tasks: true });
+  });
+
+  it('parses tasks=true and notes=true', () => {
+    const content = `<<REQUEST_CONTEXT>>{"tasks":true,"notes":true}<</REQUEST_CONTEXT>>`;
+    expect(parseContextRequest(content)).toEqual({ tasks: true, notes: true });
+  });
+
+  it('returns null for empty JSON object', () => {
+    const content = `<<REQUEST_CONTEXT>>{}<</REQUEST_CONTEXT>>`;
+    expect(parseContextRequest(content)).toBeNull();
+  });
+
+  it('returns null for malformed JSON', () => {
+    const content = `<<REQUEST_CONTEXT>>{invalid}<</REQUEST_CONTEXT>>`;
+    expect(parseContextRequest(content)).toBeNull();
+  });
+
+  it('ignores extra fields', () => {
+    const content = `<<REQUEST_CONTEXT>>{"tasks":true,"other":true}<</REQUEST_CONTEXT>>`;
+    expect(parseContextRequest(content)).toEqual({ tasks: true });
+  });
+});
+
+// ─── stripContextRequestFromContent ────────────────────────────────────────
+
+describe('stripContextRequestFromContent', () => {
+  it('removes REQUEST_CONTEXT block', () => {
+    const content =
+      'I need more data.\n<<REQUEST_CONTEXT>>{"tasks":true}<</REQUEST_CONTEXT>>';
+    expect(stripContextRequestFromContent(content)).toBe('I need more data.');
+  });
+
+  it('leaves content unchanged when no block', () => {
+    expect(stripContextRequestFromContent('Normal text.')).toBe('Normal text.');
   });
 });

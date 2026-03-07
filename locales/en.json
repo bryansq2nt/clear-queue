@@ -980,7 +980,15 @@
     "archived": "archived",
     "start_fresh": "Start fresh",
     "proposal_milestone": "Milestone",
-    "created_view_milestones": "Created — view in milestones"
+    "created_view_milestones": "Created — view in milestones",
+    "proposal_delete_milestone": "Delete milestone",
+    "proposal_update_milestone": "Update milestone",
+    "proposal_delete_task": "Delete task",
+    "proposal_update_task": "Update task",
+    "proposal_delete_note": "Delete note",
+    "proposal_update_note": "Update note",
+    "context_request_banner": "The Copilot needs more project data to answer accurately.",
+    "context_request_btn": "Load full context and answer again"
   },
   "milestones": {
     "timeline": "Timeline",

@@ -10,8 +10,12 @@ import type {
   CopilotMessage,
   CopilotMessageRole,
   CopilotProposal,
+  ProposalType,
 } from '@/lib/copilot/schema';
 import type { ParsedProposal } from '@/lib/copilot/parser';
+import { deleteMilestone, updateMilestone } from '@/app/actions/milestones';
+import { deleteTask } from '@/app/actions/tasks';
+import { deleteNote, updateNote } from '@/app/actions/notes';
 
 const SESSION_TITLE_MAX_LENGTH = 80;
 
@@ -467,18 +471,153 @@ export async function rejectProposal(proposalId: string): Promise<boolean> {
 export type ApproveProposalResult = {
   data?: {
     created_entity_id: string;
-    type: 'task' | 'note' | 'milestone';
+    type: ProposalType;
     project_id: string;
   };
   error?: string;
 };
 
+const MUTATION_TYPES = new Set<ProposalType>([
+  'delete_milestone',
+  'update_milestone',
+  'delete_task',
+  'update_task',
+  'delete_note',
+  'update_note',
+]);
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function approveProposal(
   proposalId: string
 ): Promise<ApproveProposalResult> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
+  // Fetch proposal to determine whether it's a create or mutation
+  const { data: proposalRow, error: fetchError } = await (supabase as any)
+    .from('copilot_proposals')
+    .select('id, type, payload, status, project_id, owner_id')
+    .eq('id', proposalId)
+    .eq('owner_id', user.id)
+    .single();
+
+  if (fetchError || !proposalRow) {
+    return { error: 'Proposal not found or access denied' };
+  }
+  if (proposalRow.status !== 'pending') {
+    return { error: 'Proposal already reviewed' };
+  }
+
+  const type = proposalRow.type as ProposalType;
+
+  // ─── Mutation branch: call existing actions, then update proposal status ───
+  if (MUTATION_TYPES.has(type)) {
+    const payload = proposalRow.payload as Record<string, unknown>;
+    const entityId = payload?.entity_id;
+
+    if (typeof entityId !== 'string' || !UUID_RE.test(entityId.trim())) {
+      return { error: 'Invalid entity_id in proposal payload' };
+    }
+
+    let actionError: string | undefined;
+
+    if (type === 'delete_milestone') {
+      const result = await deleteMilestone(entityId.trim());
+      actionError = result.error;
+    } else if (type === 'update_milestone') {
+      const result = await updateMilestone(entityId.trim(), {
+        title: typeof payload.title === 'string' ? payload.title : undefined,
+        description:
+          payload.description !== undefined
+            ? (payload.description as string | null)
+            : undefined,
+      });
+      actionError = result.error;
+    } else if (type === 'delete_task') {
+      const result = await deleteTask(entityId.trim());
+      actionError = result?.error;
+    } else if (type === 'update_task') {
+      // Direct Supabase update to avoid FormData ambiguity for nullable fields
+      const updates: Record<string, unknown> = {};
+      if (typeof payload.title === 'string' && payload.title.trim())
+        updates.title = payload.title.trim();
+      if (typeof payload.status === 'string') updates.status = payload.status;
+      if (typeof payload.priority === 'number')
+        updates.priority = Math.floor(payload.priority);
+      if (payload.notes !== undefined)
+        updates.notes = payload.notes === null ? null : String(payload.notes);
+      if (payload.tags !== undefined)
+        updates.tags = payload.tags === null ? null : String(payload.tags);
+      if (payload.due_date !== undefined)
+        updates.due_date =
+          payload.due_date === null ? null : String(payload.due_date);
+      if (payload.milestone_id !== undefined)
+        updates.milestone_id =
+          typeof payload.milestone_id === 'string' &&
+          UUID_RE.test(payload.milestone_id.trim())
+            ? payload.milestone_id.trim()
+            : null;
+
+      if (Object.keys(updates).length > 0) {
+        const { error } = await (supabase as any)
+          .from('tasks')
+          .update(updates)
+          .eq('id', entityId.trim());
+        actionError = error?.message;
+      }
+    } else if (type === 'delete_note') {
+      const result = await deleteNote(entityId.trim());
+      actionError = result.error;
+    } else if (type === 'update_note') {
+      const result = await updateNote(entityId.trim(), {
+        title: typeof payload.title === 'string' ? payload.title : undefined,
+        content:
+          typeof payload.content === 'string' ? payload.content : undefined,
+      });
+      actionError = result.error;
+    }
+
+    if (actionError) {
+      captureWithContext(new Error(actionError), {
+        module: 'copilot',
+        action: 'approveProposal',
+        userIntent: 'Approve AI-generated mutation proposal',
+        expected: 'Entity mutated and proposal marked approved',
+        extra: { proposalId, type, entityId },
+      });
+      return { error: actionError };
+    }
+
+    // Mark proposal as approved
+    await (supabase as any)
+      .from('copilot_proposals')
+      .update({
+        status: 'approved',
+        created_entity_id: entityId.trim(),
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', proposalId)
+      .eq('owner_id', user.id);
+
+    revalidatePath('/dashboard');
+    revalidatePath('/context');
+    revalidatePath(`/context/${proposalRow.project_id}/board`);
+    revalidatePath(`/context/${proposalRow.project_id}/notes`);
+    revalidatePath(`/context/${proposalRow.project_id}/milestones`);
+
+    return {
+      data: {
+        created_entity_id: entityId.trim(),
+        type,
+        project_id: proposalRow.project_id,
+      },
+    };
+  }
+
+  // ─── Create branch: use the atomic RPC ────────────────────────────────────
   const { data, error } = await (supabase as any).rpc(
     'approve_copilot_proposal_atomic',
     { in_proposal_id: proposalId }
@@ -489,7 +628,7 @@ export async function approveProposal(
       module: 'copilot',
       action: 'approveProposal',
       userIntent: 'Approve AI-generated proposal and create entity',
-      expected: 'Task or note created and proposal marked approved',
+      expected: 'Task, note, or milestone created and proposal marked approved',
       extra: { proposalId },
     });
     return {

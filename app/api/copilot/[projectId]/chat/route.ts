@@ -49,7 +49,11 @@ export async function POST(
   }
 
   // 3. Parse and validate request body
-  let body: { sessionId?: string; messages?: unknown[] };
+  let body: {
+    sessionId?: string;
+    messages?: unknown[];
+    contextScope?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -57,6 +61,8 @@ export async function POST(
   }
 
   const { sessionId, messages } = body;
+  const contextScope: 'standard' | 'full' =
+    body.contextScope === 'full' ? 'full' : 'standard';
 
   if (!sessionId || typeof sessionId !== 'string') {
     return NextResponse.json(
@@ -176,7 +182,9 @@ export async function POST(
   // 5. Build project context (system prompt) + approved/rejected proposals for plan iteration
   let systemPrompt: string;
   try {
-    systemPrompt = await buildProjectContext(projectId);
+    systemPrompt = await buildProjectContext(projectId, {
+      scope: contextScope,
+    });
     const [approvedTitles, rejectedTitles] = await Promise.all([
       getApprovedProposalTitlesForSession(sessionId),
       getRejectedProposalTitlesForSession(sessionId),
