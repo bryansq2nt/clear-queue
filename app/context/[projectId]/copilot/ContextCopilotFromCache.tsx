@@ -8,10 +8,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SkeletonCopilot } from '@/components/skeletons/SkeletonCopilot';
 import {
-  getCopilotSession,
+  getCopilotSessions,
   createCopilotSession,
   getCopilotMessages,
   getProposalsForSession,
+  startFreshCopilotSession,
 } from './actions';
 import ContextCopilotClient from './ContextCopilotClient';
 import type {
@@ -27,28 +28,21 @@ interface ContextCopilotFromCacheProps {
 export default function ContextCopilotFromCache({
   projectId,
 }: ContextCopilotFromCacheProps) {
-  const [session, setSession] = useState<CopilotSession | null>(null);
+  const [sessions, setSessions] = useState<CopilotSession[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+    null
+  );
   const [messages, setMessages] = useState<CopilotMessage[] | null>(null);
   const [initialProposalsByMessage, setInitialProposalsByMessage] = useState<
     Record<string, CopilotProposal[]>
   >({});
   const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    let s = await getCopilotSession(projectId);
-    if (!s) {
-      s = await createCopilotSession(projectId);
-    }
-    if (!s) {
-      setLoading(false);
-      return;
-    }
+  const loadMessagesAndProposals = useCallback(async (sessionId: string) => {
     const [msgs, proposals] = await Promise.all([
-      getCopilotMessages(s.id),
-      getProposalsForSession(s.id),
+      getCopilotMessages(sessionId),
+      getProposalsForSession(sessionId),
     ]);
-    setSession(s);
     setMessages(msgs);
     setInitialProposalsByMessage(
       proposals.reduce<Record<string, CopilotProposal[]>>((acc, p) => {
@@ -59,23 +53,74 @@ export default function ContextCopilotFromCache({
         return acc;
       }, {})
     );
+  }, []);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    let list = await getCopilotSessions(projectId);
+    if (list.length === 0) {
+      const newSession = await createCopilotSession(projectId);
+      if (newSession) list = [newSession];
+    }
+    setSessions(list);
+    const sidToLoad = list[0]?.id ?? null;
+    setSelectedSessionId(sidToLoad);
+    if (sidToLoad) {
+      await loadMessagesAndProposals(sidToLoad);
+    } else {
+      setMessages([]);
+      setInitialProposalsByMessage({});
+    }
     setLoading(false);
-  }, [projectId]);
+  }, [projectId, loadMessagesAndProposals]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  if (loading || !session || messages === null) {
+  const handleSelectSession = useCallback(
+    async (sessionId: string) => {
+      setSelectedSessionId(sessionId);
+      setLoading(true);
+      await loadMessagesAndProposals(sessionId);
+      setLoading(false);
+    },
+    [loadMessagesAndProposals]
+  );
+
+  const handleStartFresh = useCallback(async () => {
+    const newSession = await startFreshCopilotSession(projectId);
+    if (!newSession) return;
+    const list = await getCopilotSessions(projectId);
+    setSessions(list);
+    setSelectedSessionId(newSession.id);
+    setMessages([]);
+    setInitialProposalsByMessage({});
+  }, [projectId]);
+
+  const refetchSessions = useCallback(async () => {
+    const list = await getCopilotSessions(projectId);
+    setSessions(list);
+  }, [projectId]);
+
+  const session =
+    sessions.find((s) => s.id === selectedSessionId) ?? sessions[0] ?? null;
+
+  if (loading || !session) {
     return <SkeletonCopilot />;
   }
 
   return (
     <ContextCopilotClient
+      key={session.id}
       projectId={projectId}
       session={session}
-      initialMessages={messages}
+      sessions={sessions}
+      initialMessages={messages ?? []}
       initialProposalsByMessage={initialProposalsByMessage}
+      onSelectSession={handleSelectSession}
+      onStartFresh={handleStartFresh}
+      refetchSessions={refetchSessions}
     />
   );
 }

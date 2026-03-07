@@ -905,7 +905,12 @@
     "reject": "Rechazar",
     "proposal_rejected": "Rechazado",
     "created_view_board": "Creado — ver en el tablero",
-    "created_view_notes": "Creado — ver en notas"
+    "created_view_notes": "Creado — ver en notas",
+    "session_select": "Seleccionar sesión",
+    "edit_session_title": "Editar título de sesión",
+    "session_title_placeholder": "Título de sesión",
+    "archived": "archivada",
+    "start_fresh": "Empezar de nuevo"
   },
   "project_settings": {
     "drawer_title": "Ajustes del proyecto",

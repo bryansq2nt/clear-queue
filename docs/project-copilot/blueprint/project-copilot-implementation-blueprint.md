@@ -528,6 +528,66 @@ Copilot reads from:
 
 ---
 
+### Phase 5 — Editable session title and project gap hints (implemented 2026-03-06)
+
+**Goal:** Users can rename sessions; the AI can briefly suggest adding notes or tasks when the project has none.
+
+**User-visible outcome:**
+
+- Session title is editable via a pencil button next to the session selector (inline edit, save on Enter/blur).
+- When the project has 0 notes or 0 tasks, the model may mention it when relevant (e.g. “Consider adding a scope note”) without repeating every message.
+
+**Technical scope:**
+
+- `ContextCopilotClient.tsx`: pencil button toggles inline input for current session title; `updateSessionTitle` + `refetchSessions` on save.
+- `lib/copilot/context.ts`: append a short “Gap hints” block to the system prompt when `notes.length === 0` or `totalTasks === 0`, instructing the model to suggest notes/tasks only when it fits the conversation.
+
+**Dependencies:** Phase 4 session list and `updateSessionTitle` in place.
+
+**Exit criteria:** User can edit session title and see it persist; in projects with no notes/tasks, the assistant may occasionally suggest adding one when contextually relevant.
+
+---
+
+### Phase 6 — Plan iteration (implemented 2026-03-06)
+
+**Goal:** The AI can reference previously rejected proposals and revise the plan when the user asks (e.g. “revise the plan”, “suggest alternatives”).
+
+**User-visible outcome:**
+
+- When the user has rejected some proposals, the model does not re-propose them as-is.
+- When the user asks to revise or iterate, the model considers what was approved or rejected and suggests changes or alternatives.
+
+**Technical scope:**
+
+- `getRejectedProposalTitlesForSession(sessionId)` in `app/context/[projectId]/copilot/actions.ts` (mirrors approved, status = 'rejected').
+- Chat route: fetch approved and rejected titles in parallel; append “Rejected in this session” block when non-empty.
+- System prompt (base): add rule “When the user asks to revise or iterate on the plan, consider what was already approved or rejected in this session and suggest changes or alternatives.”
+
+**Dependencies:** Phase 5 complete.
+
+**Exit criteria:** Rejected proposal titles are injected into the system prompt; the model avoids re-proposing rejected items and can suggest alternatives when the user asks to revise.
+
+---
+
+### Phase 7 — Test coverage (implemented 2026-03-06)
+
+**Goal:** Unit tests for Copilot validation logic and a Playwright E2E skeleton for the Copilot happy-path.
+
+**User-visible outcome:**
+
+- No direct UX change. Tests protect against regressions and document intended E2E behavior.
+
+**Technical scope:**
+
+- `lib/validation/copilot.test.ts`: Vitest tests for `isValidTaskProposal` and `isValidNoteProposal` (null/non-object, type, title, status, priority for task; title/content for note).
+- `tests/copilot.spec.ts`: Two Playwright tests (skipped) — "opens Copilot tab and shows session UI", "shows empty state when session has no messages". Unskip and set baseURL + auth when E2E infra is in place.
+
+**Dependencies:** Phase 6 complete.
+
+**Exit criteria:** Validation unit tests pass; Playwright spec exists and reports skipped until E2E infra (baseURL, webServer, auth) is configured.
+
+---
+
 ## 7. Detailed Implementation Workstreams
 
 ### Frontend
@@ -919,6 +979,26 @@ This is the recommended step-by-step order of execution. Each step should be a d
 
 - [ ] To be detailed at Phase 3 exit
 - [ ] Depends on: milestone table migration (separate PR)
+
+### Phase 5 — Editable session title and project gap hints
+
+- [x] Inline edit for session title (pencil button → input → updateSessionTitle + refetchSessions)
+- [x] i18n: edit_session_title, session_title_placeholder (en + es)
+- [x] buildProjectContext: gap hints block when 0 notes or 0 tasks
+- [x] Blueprint updated with Phase 5 section
+
+### Phase 6 — Plan iteration
+
+- [x] getRejectedProposalTitlesForSession in copilot actions
+- [x] Chat route: Promise.all approved + rejected; append “Rejected in this session” when non-empty
+- [x] System prompt: rule for revise/iterate considering approved/rejected
+- [x] Blueprint updated with Phase 6 section
+
+### Phase 7 — Test coverage
+
+- [x] Vitest tests for lib/validation/copilot.ts (isValidTaskProposal, isValidNoteProposal)
+- [x] Playwright spec skeleton tests/copilot.spec.ts (two tests, skipped until E2E infra)
+- [x] Blueprint updated with Phase 7 section
 
 ---
 

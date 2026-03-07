@@ -11,6 +11,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import {
+  getApprovedProposalTitlesForSession,
+  getRejectedProposalTitlesForSession,
+} from '@/app/context/[projectId]/copilot/actions';
 import { buildProjectContext } from '@/lib/copilot/context';
 import { captureWithContext } from '@/lib/sentry';
 
@@ -18,10 +22,6 @@ const DAILY_LIMIT = 30;
 const HOURLY_LIMIT = 15;
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_MESSAGES_IN_CONTEXT = 20;
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
 
 export async function POST(
   req: NextRequest,
@@ -173,10 +173,20 @@ export async function POST(
     );
   }
 
-  // 5. Build project context (system prompt)
+  // 5. Build project context (system prompt) + approved/rejected proposals for plan iteration
   let systemPrompt: string;
   try {
     systemPrompt = await buildProjectContext(projectId);
+    const [approvedTitles, rejectedTitles] = await Promise.all([
+      getApprovedProposalTitlesForSession(sessionId),
+      getRejectedProposalTitlesForSession(sessionId),
+    ]);
+    if (approvedTitles.length > 0) {
+      systemPrompt += `\n\n## Already approved in this session\nThese have been created; do not propose them again:\n${approvedTitles.map((t) => `- ${t}`).join('\n')}`;
+    }
+    if (rejectedTitles.length > 0) {
+      systemPrompt += `\n\n## Rejected in this session\nDo not re-propose these as-is; suggest alternatives if the user asks to revise:\n${rejectedTitles.map((t) => `- ${t}`).join('\n')}`;
+    }
   } catch (err) {
     captureWithContext(err, {
       module: 'copilot',
@@ -191,9 +201,21 @@ export async function POST(
     );
   }
 
-  // 6. Stream from Anthropic
+  // 6. Stream from Anthropic (require API key so we fail with clear error, not pipe failure)
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey?.trim()) {
+    return NextResponse.json(
+      {
+        error:
+          'Anthropic API key not configured. Set ANTHROPIC_API_KEY in .env.local.',
+      },
+      { status: 503 }
+    );
+  }
+
   try {
-    const stream = anthropic.messages.stream({
+    const anthropicWithKey = new Anthropic({ apiKey });
+    const stream = anthropicWithKey.messages.stream({
       model: 'claude-sonnet-4-6',
       max_tokens: 1500,
       system: systemPrompt,

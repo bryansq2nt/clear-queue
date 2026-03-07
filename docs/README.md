@@ -17,6 +17,7 @@ La documentación está organizada por categorías bajo `docs/`.
 | [testing/](testing/)                 | Checklists y guías de pruebas (idea-graph)                                                               |
 | [reference/](reference/)             | Reglas ESLint, guías de usuario                                                                          |
 | [patterns/](patterns/)               | Patrones de código (server-actions, database-queries, data-loading, transactions, context-session-cache) |
+| [milestones/](milestones/)           | Concepto, modelo de datos e integración con IA (Copilot) para milestones por proyecto                    |
 | [anti-patterns/](anti-patterns/)     | Anti-patrones y cómo evitarlos                                                                           |
 
 ---
@@ -81,6 +82,15 @@ La documentación está organizada por categorías bajo `docs/`.
 ## Audits y análisis
 
 En [audits/](audits/): Phase 2–7, enterprise technical debt, milestone feasibility, multi-user signup, Miles v1, THEME_AUDIT, AUDIT_SUMMARY, PERFORMANCE_AUDIT, PROFILE_USEEFFECT_AUDIT, codebase findings, etc.
+
+---
+
+## Conceptos de dominio
+
+| Documento                                                                | Descripción                                                                                                                  |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| [Milestones – Concepto](milestones/README.md)                            | Qué son las milestones (metas/etapas), cómo se cumplen (tareas asociadas), modelo de datos e integración con el Copilot.     |
+| [Milestones – Plan de implementación](milestones/implementation-plan.md) | Fases para crear el módulo: DB, acciones, tab en contexto, CRUD, timeline de progreso, asociar tareas y preparación para IA. |
 
 ---
 

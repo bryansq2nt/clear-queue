@@ -1,5 +1,6 @@
 'use server';
 
+import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { captureWithContext } from '@/lib/sentry';
@@ -11,6 +12,8 @@ import type {
   CopilotProposal,
 } from '@/lib/copilot/schema';
 import type { ParsedProposal } from '@/lib/copilot/parser';
+
+const SESSION_TITLE_MAX_LENGTH = 80;
 
 // ─────────────────────────────────────────────────────────────────
 // Sessions
@@ -77,6 +80,153 @@ export async function createCopilotSession(
   return data as CopilotSession;
 }
 
+export async function getCopilotSessions(
+  projectId: string
+): Promise<CopilotSession[]> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { data, error } = await (supabase as any)
+    .from('copilot_sessions')
+    .select('id, project_id, owner_id, title, status, created_at, updated_at')
+    .eq('project_id', projectId)
+    .eq('owner_id', user.id)
+    .order('status', { ascending: true }) // active first (a before ar)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'copilot',
+      action: 'getCopilotSessions',
+      userIntent: 'List copilot sessions for project',
+      expected: 'Session rows for project returned',
+      extra: { projectId },
+    });
+    return [];
+  }
+
+  return (data as CopilotSession[]) ?? [];
+}
+
+export async function archiveCopilotSession(
+  sessionId: string
+): Promise<boolean> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { error } = await (supabase as any)
+    .from('copilot_sessions')
+    .update({ status: 'archived' })
+    .eq('id', sessionId)
+    .eq('owner_id', user.id);
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'copilot',
+      action: 'archiveCopilotSession',
+      userIntent: 'Archive a copilot session',
+      expected: 'Session status set to archived',
+      extra: { sessionId },
+    });
+    return false;
+  }
+
+  return true;
+}
+
+/** Archives the current active session (if any) and creates a new one. Returns the new session. */
+export async function startFreshCopilotSession(
+  projectId: string
+): Promise<CopilotSession | null> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { data: active } = await (supabase as any)
+    .from('copilot_sessions')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('owner_id', user.id)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (active?.id) {
+    await (supabase as any)
+      .from('copilot_sessions')
+      .update({ status: 'archived' })
+      .eq('id', active.id)
+      .eq('owner_id', user.id);
+  }
+
+  const newSession = await createCopilotSession(projectId);
+  return newSession;
+}
+
+/** Updates session title (owner-scoped). Used after auto-generating from first message. */
+export async function updateSessionTitle(
+  sessionId: string,
+  title: string
+): Promise<boolean> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+  const trimmed = title.trim().slice(0, SESSION_TITLE_MAX_LENGTH);
+  if (!trimmed) return false;
+
+  const { error } = await (supabase as any)
+    .from('copilot_sessions')
+    .update({ title: trimmed })
+    .eq('id', sessionId)
+    .eq('owner_id', user.id);
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'copilot',
+      action: 'updateSessionTitle',
+      userIntent: 'Set session title',
+      expected: 'Session title updated',
+      extra: { sessionId },
+    });
+    return false;
+  }
+  return true;
+}
+
+/** Generates a short conversation title from the first user message (AI). Falls back to truncated text. */
+async function generateSessionTitle(
+  firstMessageContent: string
+): Promise<string> {
+  const snippet = firstMessageContent.trim().slice(0, 400);
+  if (!snippet) return '';
+
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) {
+    return snippet.slice(0, SESSION_TITLE_MAX_LENGTH);
+  }
+
+  try {
+    const anthropic = new Anthropic({ apiKey });
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 30,
+      system:
+        'Reply with only a very short conversation title (3 to 6 words) that summarizes the user message. No quotes, no punctuation at the end.',
+      messages: [{ role: 'user', content: snippet }],
+    });
+    const text = msg.content?.[0]?.type === 'text' ? msg.content[0].text : '';
+    const title = text.trim().slice(0, SESSION_TITLE_MAX_LENGTH);
+    return title || snippet.slice(0, SESSION_TITLE_MAX_LENGTH);
+  } catch (err) {
+    captureWithContext(err, {
+      module: 'copilot',
+      action: 'generateSessionTitle',
+      userIntent: 'Generate session title from first message',
+      expected: 'Short title string',
+    });
+    return snippet.slice(0, SESSION_TITLE_MAX_LENGTH);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Messages
 // ─────────────────────────────────────────────────────────────────
@@ -110,15 +260,30 @@ export async function getCopilotMessages(
   return (data as CopilotMessage[]) || [];
 }
 
+export type SaveCopilotMessageResult = {
+  data: CopilotMessage | null;
+  wasFirstMessage?: boolean;
+};
+
 export async function saveCopilotMessage(
   sessionId: string,
   projectId: string,
   role: CopilotMessageRole,
   content: string,
   tokenCount?: number
-): Promise<CopilotMessage | null> {
+): Promise<SaveCopilotMessageResult> {
   const user = await requireAuth();
   const supabase = await createClient();
+
+  let wasFirstMessage = false;
+  if (role === 'user') {
+    const { count } = await (supabase as any)
+      .from('copilot_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', sessionId)
+      .eq('owner_id', user.id);
+    wasFirstMessage = (count ?? 0) === 0;
+  }
 
   const { data, error } = await (supabase as any)
     .from('copilot_messages')
@@ -143,10 +308,16 @@ export async function saveCopilotMessage(
       expected: 'Message row inserted and returned',
       extra: { sessionId, projectId, role },
     });
-    return null;
+    return { data: null };
   }
 
-  return data as CopilotMessage;
+  const message = data as CopilotMessage;
+  if (wasFirstMessage && content.trim()) {
+    const title = await generateSessionTitle(content.trim());
+    if (title) await updateSessionTitle(sessionId, title);
+  }
+
+  return { data: message, wasFirstMessage: wasFirstMessage || undefined };
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -180,6 +351,50 @@ export async function getProposalsForSession(
   }
 
   return (data as CopilotProposal[]) ?? [];
+}
+
+/** Returns titles of approved proposals in this session for system prompt context. */
+export async function getApprovedProposalTitlesForSession(
+  sessionId: string
+): Promise<string[]> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { data, error } = await (supabase as any)
+    .from('copilot_proposals')
+    .select('payload')
+    .eq('session_id', sessionId)
+    .eq('owner_id', user.id)
+    .eq('status', 'approved');
+
+  if (error) return [];
+
+  const rows = (data as { payload: { title?: string } }[]) ?? [];
+  return rows
+    .map((r) => r.payload?.title)
+    .filter((t): t is string => typeof t === 'string' && t.trim().length > 0);
+}
+
+/** Returns titles of rejected proposals in this session for plan-iteration context. */
+export async function getRejectedProposalTitlesForSession(
+  sessionId: string
+): Promise<string[]> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { data, error } = await (supabase as any)
+    .from('copilot_proposals')
+    .select('payload')
+    .eq('session_id', sessionId)
+    .eq('owner_id', user.id)
+    .eq('status', 'rejected');
+
+  if (error) return [];
+
+  const rows = (data as { payload: { title?: string } }[]) ?? [];
+  return rows
+    .map((r) => r.payload?.title)
+    .filter((t): t is string => typeof t === 'string' && t.trim().length > 0);
 }
 
 const PROPOSAL_COLS =

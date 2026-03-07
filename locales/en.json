@@ -968,7 +968,12 @@
     "reject": "Reject",
     "proposal_rejected": "Rejected",
     "created_view_board": "Created — view on board",
-    "created_view_notes": "Created — view in notes"
+    "created_view_notes": "Created — view in notes",
+    "session_select": "Select session",
+    "edit_session_title": "Edit session title",
+    "session_title_placeholder": "Session title",
+    "archived": "archived",
+    "start_fresh": "Start fresh"
   },
   "project_settings": {
     "drawer_title": "Project settings",
