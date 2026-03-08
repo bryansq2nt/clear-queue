@@ -9,6 +9,7 @@ import {
   saveCopilotProposals,
   approveProposal,
   rejectProposal,
+  undoDeleteProposal,
   updateSessionTitle,
 } from './actions';
 import { useContextDataCache } from '@/app/context/ContextDataCache';
@@ -47,8 +48,40 @@ interface ContextCopilotClientProps {
   refetchSessions?: () => void;
 }
 
-// Rotating status labels shown during AI streaming
-const STREAM_STATUS_KEYS = ['thinking', 'reasoning', 'creating'] as const;
+// Smart status detection: returns i18n key based on stream buffer content
+function detectStreamStatus(buffer: string, elapsed: number): string {
+  if (buffer.includes('<<PROPOSALS>>')) {
+    // Detect proposal type in buffer
+    const typeMatch = buffer.match(/"type"\s*:\s*"([^"]+)"/);
+    const pType = typeMatch?.[1] ?? '';
+    if (pType === 'task' || pType === 'update_task' || pType === 'delete_task')
+      return 'copilot.generating_tasks';
+    if (
+      pType === 'milestone' ||
+      pType === 'update_milestone' ||
+      pType === 'delete_milestone'
+    )
+      return 'copilot.creating_milestones';
+    if (pType === 'note' || pType === 'update_note' || pType === 'delete_note')
+      return 'copilot.creating_note';
+    if (pType === 'mind_map') return 'copilot.creating_mind_map';
+    if (
+      pType === 'billing' ||
+      pType === 'update_billing' ||
+      pType === 'delete_billing'
+    )
+      return 'copilot.creating_billing_records';
+    if (pType === 'budget' || pType.startsWith('budget'))
+      return 'copilot.creating_budget';
+    if (pType === 'link' || pType.includes('link'))
+      return 'copilot.preparing_proposals';
+    if (pType === 'todo_item' || pType.includes('todo'))
+      return 'copilot.preparing_proposals';
+    return 'copilot.preparing_proposals';
+  }
+  if (elapsed > 2000) return 'copilot.reasoning';
+  return 'copilot.reading';
+}
 
 export default function ContextCopilotClient({
   projectId,
@@ -84,6 +117,10 @@ export default function ContextCopilotClient({
   const [bulkActionMessageId, setBulkActionMessageId] = useState<string | null>(
     null
   );
+  const [bulkActionType, setBulkActionType] = useState<
+    'approving' | 'rejecting' | null
+  >(null);
+  const shouldAbortBulk = useRef(false);
   const [isDeletingSession, setIsDeletingSession] = useState(false);
 
   // Ref to keep the latest messages value accessible in callbacks without stale closure
@@ -139,13 +176,22 @@ export default function ContextCopilotClient({
 
   const handleApproveAll = useCallback(
     async (messageId: string): Promise<{ error?: string }> => {
-      const pending = (proposalsByMessage[messageId] ?? []).filter(
+      const allPending = (proposalsByMessage[messageId] ?? []).filter(
         (p) => p.status === 'pending'
       );
-      if (pending.length === 0) return {};
+      if (allPending.length === 0) return {};
+      // Sort: milestones first so tasks can reference them
+      const pending = [...allPending].sort((a, b) => {
+        const aIsMilestone = a.type === 'milestone' ? 0 : 1;
+        const bIsMilestone = b.type === 'milestone' ? 0 : 1;
+        return aIsMilestone - bIsMilestone;
+      });
+      shouldAbortBulk.current = false;
       setBulkActionMessageId(messageId);
+      setBulkActionType('approving');
       try {
         for (const p of pending) {
+          if (shouldAbortBulk.current) break;
           const result = await approveProposal(p.id);
           if (result.error) return { error: result.error };
           if (result.data) {
@@ -170,6 +216,8 @@ export default function ContextCopilotClient({
         return {};
       } finally {
         setBulkActionMessageId(null);
+        setBulkActionType(null);
+        shouldAbortBulk.current = false;
       }
     },
     [proposalsByMessage, invalidateProject]
@@ -181,9 +229,12 @@ export default function ContextCopilotClient({
         (p) => p.status === 'pending'
       );
       if (pending.length === 0) return;
+      shouldAbortBulk.current = false;
       setBulkActionMessageId(messageId);
+      setBulkActionType('rejecting');
       try {
         for (const p of pending) {
+          if (shouldAbortBulk.current) break;
           const success = await rejectProposal(p.id);
           if (!success) break;
           setProposalsByMessage((prev) => {
@@ -200,9 +251,37 @@ export default function ContextCopilotClient({
         }
       } finally {
         setBulkActionMessageId(null);
+        setBulkActionType(null);
+        shouldAbortBulk.current = false;
       }
     },
     [proposalsByMessage]
+  );
+
+  const handleStopBulk = useCallback(() => {
+    shouldAbortBulk.current = true;
+  }, []);
+
+  const handleUndo = useCallback(
+    async (proposalId: string): Promise<{ error?: string }> => {
+      const result = await undoDeleteProposal(proposalId);
+      if (!result.error) {
+        // Revert proposal to pending in local state
+        setProposalsByMessage((prev) => {
+          const next = { ...prev };
+          for (const msgId of Object.keys(next)) {
+            next[msgId] = next[msgId].map((p) =>
+              p.id === proposalId
+                ? { ...p, status: 'pending' as const, created_entity_id: null }
+                : p
+            );
+          }
+          return next;
+        });
+      }
+      return result;
+    },
+    []
   );
 
   /**
@@ -216,15 +295,10 @@ export default function ContextCopilotClient({
       contextScope: 'standard' | 'full' = 'standard'
     ): Promise<string | null> => {
       setIsStreaming(true);
-      setStreamingContent(t('copilot.thinking'));
+      setStreamingContent(t('copilot.reading'));
 
-      // Rotate status every 3s so the user sees progress without raw backend output
-      let statusIndex = 0;
-      streamStatusIntervalRef.current = setInterval(() => {
-        statusIndex = (statusIndex + 1) % STREAM_STATUS_KEYS.length;
-        const key = `copilot.${STREAM_STATUS_KEYS[statusIndex]}`;
-        setStreamingContent(t(key as 'copilot.thinking'));
-      }, 3000);
+      const streamStartTime = Date.now();
+      let lastStatusKey = 'copilot.reading';
 
       try {
         const response = await fetch(`/api/copilot/${projectId}/chat`, {
@@ -249,16 +323,16 @@ export default function ContextCopilotClient({
 
         const reader = response.body!.getReader();
         const decoder = new TextDecoder();
-        let buffer = '';
+        let sseBuffer = '';
         let fullText = '';
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() ?? '';
+          sseBuffer += decoder.decode(value, { stream: true });
+          const lines = sseBuffer.split('\n');
+          sseBuffer = lines.pop() ?? '';
 
           for (const line of lines) {
             const trimmed = line.trim();
@@ -275,7 +349,15 @@ export default function ContextCopilotClient({
                 typeof evt.delta.text === 'string'
               ) {
                 fullText += evt.delta.text;
-                // Do not show raw streamed content; status message is shown instead
+                // Update status label based on buffer analysis
+                const newKey = detectStreamStatus(
+                  fullText,
+                  Date.now() - streamStartTime
+                );
+                if (newKey !== lastStatusKey) {
+                  lastStatusKey = newKey;
+                  setStreamingContent(t(newKey as 'copilot.thinking'));
+                }
               }
             } catch {
               // ignore malformed lines
@@ -563,6 +645,9 @@ export default function ContextCopilotClient({
         onApproveAll={handleApproveAll}
         onRejectAll={handleRejectAll}
         bulkActionMessageId={bulkActionMessageId}
+        bulkActionType={bulkActionType}
+        onStopBulk={handleStopBulk}
+        onUndoProposal={handleUndo}
         sessionId={session.id}
         contextRequestMessageId={contextRequestMessageId}
         onRetryWithFullContext={handleRetryWithFullContext}

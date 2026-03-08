@@ -19,22 +19,27 @@ import type {
   UpdateLinkPayload,
   TodoItemProposalPayload,
   ToggleTodoPayload,
+  BillingProposalPayload,
+  UpdateBillingPayload,
 } from '@/lib/copilot/schema';
 
 interface CopilotProposalCardProps {
   proposal: CopilotProposal;
   onApprove: (proposalId: string) => Promise<{ error?: string }>;
   onReject: (proposalId: string) => Promise<void>;
+  onUndo?: (proposalId: string) => Promise<{ error?: string }>;
 }
 
 export function CopilotProposalCard({
   proposal,
   onApprove,
   onReject,
+  onUndo,
 }: CopilotProposalCardProps) {
   const { t } = useI18n();
   const [isRejecting, setIsRejecting] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  const [isUndoing, setIsUndoing] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
 
   const isRejected = proposal.status === 'rejected';
@@ -62,6 +67,15 @@ export function CopilotProposalCard({
     setIsApproving(true);
     const result = await onApprove(proposal.id);
     setIsApproving(false);
+    if (result?.error) setApproveError(result.error);
+  };
+
+  const handleUndo = async () => {
+    if (isUndoing || !onUndo) return;
+    setApproveError(null);
+    setIsUndoing(true);
+    const result = await onUndo(proposal.id);
+    setIsUndoing(false);
     if (result?.error) setApproveError(result.error);
   };
 
@@ -221,6 +235,41 @@ export function CopilotProposalCard({
       );
     }
 
+    if (pType === 'billing') {
+      const p = payload as unknown as BillingProposalPayload;
+      const parts: string[] = [];
+      if (p.billing_type) parts.push(p.billing_type);
+      if (p.amount != null) parts.push(`$${Number(p.amount).toLocaleString()}`);
+      if (p.status) parts.push(p.status);
+      if (p.due_date) parts.push(`due ${p.due_date}`);
+      if (p.category_name) parts.push(p.category_name);
+      return parts.length > 0 ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {parts.join(' · ')}
+        </p>
+      ) : null;
+    }
+
+    if (pType === 'update_billing') {
+      const p = payload as unknown as UpdateBillingPayload;
+      const parts: string[] = [];
+      if (p.status) parts.push(`status → ${p.status}`);
+      if (p.amount != null)
+        parts.push(`amount → $${Number(p.amount).toLocaleString()}`);
+      if (p.billing_type) parts.push(`type → ${p.billing_type}`);
+      if (p.due_date !== undefined)
+        parts.push(p.due_date ? `due → ${p.due_date}` : 'remove due date');
+      if (p.category_name !== undefined)
+        parts.push(
+          p.category_name ? `category → ${p.category_name}` : 'remove category'
+        );
+      return parts.length > 0 ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {parts.join(' · ')}
+        </p>
+      ) : null;
+    }
+
     return null;
   })();
 
@@ -292,8 +341,27 @@ export function CopilotProposalCard({
       {/* Type-specific details */}
       {details}
 
-      {/* Approved: link */}
-      {isApproved && createdLink && createdLinkLabel && (
+      {/* Approved delete: show "Deleted" + Undo */}
+      {isApproved && isDelete && (
+        <p className="mt-2 flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {t('copilot.deleted')}
+          </span>
+          {onUndo && (
+            <button
+              type="button"
+              disabled={isUndoing}
+              onClick={handleUndo}
+              className="text-xs text-primary hover:underline disabled:opacity-50"
+            >
+              {isUndoing ? '…' : t('copilot.undo')}
+            </button>
+          )}
+        </p>
+      )}
+
+      {/* Approved non-delete: link */}
+      {isApproved && !isDelete && createdLink && createdLinkLabel && (
         <p className="mt-2">
           <Link
             href={createdLink}

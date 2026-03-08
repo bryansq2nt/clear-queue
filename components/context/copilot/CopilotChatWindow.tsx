@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { CopilotMessageBubble } from './CopilotMessageBubble';
 import { CopilotProposalCard } from './CopilotProposalCard';
 import { useI18n } from '@/components/shared/I18nProvider';
-import { Bot, CheckCircle2, RefreshCw, XCircle } from 'lucide-react';
+import { Bot, CheckCircle2, RefreshCw, Square, XCircle } from 'lucide-react';
 import type { CopilotMessage, CopilotProposal } from '@/lib/copilot/schema';
 
 interface CopilotChatWindowProps {
@@ -14,9 +14,12 @@ interface CopilotChatWindowProps {
   proposalsByMessage: Record<string, CopilotProposal[]>;
   onApproveProposal: (proposalId: string) => Promise<{ error?: string }>;
   onRejectProposal: (proposalId: string) => Promise<void>;
+  onUndoProposal?: (proposalId: string) => Promise<{ error?: string }>;
   onApproveAll: (messageId: string) => Promise<{ error?: string }>;
   onRejectAll: (messageId: string) => Promise<void>;
   bulkActionMessageId?: string | null;
+  bulkActionType?: 'approving' | 'rejecting' | null;
+  onStopBulk?: () => void;
   sessionId?: string;
   contextRequestMessageId?: string | null;
   onRetryWithFullContext?: () => void;
@@ -29,9 +32,12 @@ export function CopilotChatWindow({
   proposalsByMessage,
   onApproveProposal,
   onRejectProposal,
+  onUndoProposal,
   onApproveAll,
   onRejectAll,
   bulkActionMessageId,
+  bulkActionType,
+  onStopBulk,
   sessionId,
   contextRequestMessageId,
   onRetryWithFullContext,
@@ -90,34 +96,62 @@ export function CopilotChatWindow({
                 (p) => p.status === 'pending'
               ).length;
               const isBulkActive = bulkActionMessageId === msg.id;
+              const isApproving =
+                isBulkActive && bulkActionType === 'approving';
+              const isRejecting =
+                isBulkActive && bulkActionType === 'rejecting';
               return (
                 <div className="flex flex-col gap-2">
                   {pendingCount >= 2 && (
                     <div className="ml-8 sm:ml-11 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onApproveAll(msg.id)}
-                        disabled={isBulkActive}
-                        aria-label={t('copilot.approve_all')}
-                        className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium border border-primary text-primary hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <CheckCircle2 className="h-3 w-3" aria-hidden />
-                        {isBulkActive
-                          ? t('copilot.approving_all')
-                          : t('copilot.approve_all')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onRejectAll(msg.id)}
-                        disabled={isBulkActive}
-                        aria-label={t('copilot.reject_all')}
-                        className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium border border-destructive text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <XCircle className="h-3 w-3" aria-hidden />
-                        {isBulkActive
-                          ? t('copilot.rejecting_all')
-                          : t('copilot.reject_all')}
-                      </button>
+                      {isRejecting ? (
+                        <button
+                          type="button"
+                          onClick={onStopBulk}
+                          aria-label={t('copilot.stop')}
+                          className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium border border-border text-foreground hover:bg-accent transition-colors"
+                        >
+                          <Square className="h-3 w-3" aria-hidden />
+                          {t('copilot.stop')}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onApproveAll(msg.id)}
+                          disabled={isApproving}
+                          aria-label={t('copilot.approve_all')}
+                          className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium border border-primary text-primary hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <CheckCircle2 className="h-3 w-3" aria-hidden />
+                          {isApproving
+                            ? t('copilot.approving_all')
+                            : t('copilot.approve_all')}
+                        </button>
+                      )}
+                      {isApproving ? (
+                        <button
+                          type="button"
+                          onClick={onStopBulk}
+                          aria-label={t('copilot.stop')}
+                          className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium border border-border text-foreground hover:bg-accent transition-colors"
+                        >
+                          <Square className="h-3 w-3" aria-hidden />
+                          {t('copilot.stop')}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onRejectAll(msg.id)}
+                          disabled={isRejecting}
+                          aria-label={t('copilot.reject_all')}
+                          className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium border border-destructive text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <XCircle className="h-3 w-3" aria-hidden />
+                          {isRejecting
+                            ? t('copilot.rejecting_all')
+                            : t('copilot.reject_all')}
+                        </button>
+                      )}
                     </div>
                   )}
                   {proposals.map((p) => (
@@ -126,6 +160,7 @@ export function CopilotChatWindow({
                       proposal={p}
                       onApprove={onApproveProposal}
                       onReject={onRejectProposal}
+                      onUndo={onUndoProposal}
                     />
                   ))}
                 </div>

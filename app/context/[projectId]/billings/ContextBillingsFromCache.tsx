@@ -1,21 +1,30 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getBillingsByProjectId } from '@/app/actions/billings';
+import {
+  getBillingsByProjectId,
+  getBillingCategories,
+  type BillingWithRelations,
+  type BillingCategory,
+} from '@/app/actions/billings';
+import { getClients } from '@/app/actions/clients';
 import { SkeletonBillings } from '@/components/skeletons/SkeletonBillings';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextBillingsClient from './ContextBillingsClient';
 
-type BillingWithRelations = Awaited<
-  ReturnType<typeof getBillingsByProjectId>
->[number];
+interface Client {
+  id: string;
+  full_name: string;
+}
 
 interface ContextBillingsFromCacheProps {
   projectId: string;
+  projectClientId?: string | null;
 }
 
 export default function ContextBillingsFromCache({
   projectId,
+  projectClientId,
 }: ContextBillingsFromCacheProps) {
   const cache = useContextDataCache();
   const cached = cache.get<BillingWithRelations[]>({
@@ -25,28 +34,46 @@ export default function ContextBillingsFromCache({
   const [billings, setBillings] = useState<BillingWithRelations[] | null>(
     cached ?? null
   );
+  const [clients, setClients] = useState<Client[]>([]);
+  const [categories, setCategories] = useState<BillingCategory[]>([]);
   const [loading, setLoading] = useState(!cached);
 
   const loadData = useCallback(async () => {
     cache.invalidate({ type: 'billings', projectId });
-    const data = await getBillingsByProjectId(projectId);
-    cache.set({ type: 'billings', projectId }, data as BillingWithRelations[]);
-    setBillings(data as BillingWithRelations[]);
+    const [data, cats] = await Promise.all([
+      getBillingsByProjectId(projectId),
+      getBillingCategories(),
+    ]);
+    cache.set({ type: 'billings', projectId }, data);
+    setBillings(data);
+    setCategories(cats);
   }, [projectId, cache]);
 
   useEffect(() => {
     if (cached) {
       setBillings(cached);
       setLoading(false);
+      // Still fetch categories + clients eagerly (fast, cached server-side)
+      Promise.all([getBillingCategories(), getClients()]).then(
+        ([cats, cls]) => {
+          setCategories(cats);
+          setClients(cls as Client[]);
+        }
+      );
       return;
     }
     let cancelled = false;
     setLoading(true);
-    getBillingsByProjectId(projectId).then((data) => {
+    Promise.all([
+      getBillingsByProjectId(projectId),
+      getBillingCategories(),
+      getClients(),
+    ]).then(([data, cats, cls]) => {
       if (cancelled) return;
-      const list = data as BillingWithRelations[];
-      cache.set({ type: 'billings', projectId }, list);
-      setBillings(list);
+      cache.set({ type: 'billings', projectId }, data);
+      setBillings(data);
+      setCategories(cats);
+      setClients(cls as Client[]);
       setLoading(false);
     });
     return () => {
@@ -62,6 +89,9 @@ export default function ContextBillingsFromCache({
     <ContextBillingsClient
       projectId={projectId}
       initialBillings={billings}
+      initialClients={clients}
+      initialCategories={categories}
+      projectClientId={projectClientId ?? null}
       onRefresh={loadData}
     />
   );

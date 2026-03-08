@@ -16,7 +16,15 @@ export type ProposalType =
   | 'update_task'
   | 'delete_note'
   | 'update_note'
-  | 'mind_map';
+  | 'mind_map'
+  | 'billing'
+  | 'update_billing'
+  | 'delete_billing'
+  | 'billing_category'
+  | 'update_billing_category'
+  | 'delete_billing_category'
+  | 'budget'
+  | 'client';
 
 export interface CopilotSession {
   id: string;
@@ -236,6 +244,79 @@ export interface UpdateLinkPayload {
   description?: string | null;
 }
 
+// ─── Billing payloads ─────────────────────────────────────────────────────────
+
+/** Create a new billing entry. billing_type maps to the billings.type column. category_name resolved server-side. */
+export interface BillingProposalPayload {
+  type: 'billing';
+  title: string;
+  amount: number;
+  billing_type?: 'charge' | 'payment' | 'spending';
+  status?: 'pending' | 'paid' | 'overdue' | 'cancelled';
+  client_name?: string | null;
+  due_date?: string | null;
+  issued_at?: string | null;
+  category_name?: string | null;
+  payment_method?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateBillingPayload {
+  type: 'update_billing';
+  entity_id: string;
+  entity_title?: string;
+  title?: string;
+  amount?: number;
+  status?: 'pending' | 'paid' | 'overdue' | 'cancelled';
+  billing_type?: 'charge' | 'payment' | 'spending';
+  due_date?: string | null;
+  issued_at?: string | null;
+  category_name?: string | null;
+  payment_method?: string | null;
+  notes?: string | null;
+}
+
+export interface DeleteBillingPayload {
+  type: 'delete_billing';
+  entity_id: string;
+  entity_title?: string;
+}
+
+/** Create a new billing category (owner-scoped). */
+export interface BillingCategoryProposalPayload {
+  type: 'billing_category';
+  name: string;
+  color?: string | null;
+}
+
+export interface UpdateBillingCategoryPayload {
+  type: 'update_billing_category';
+  entity_id: string;
+  entity_title?: string;
+  name?: string;
+  color?: string | null;
+}
+
+export interface DeleteBillingCategoryPayload {
+  type: 'delete_billing_category';
+  entity_id: string;
+  entity_title?: string;
+}
+
+export interface BudgetProposalPayload {
+  type: 'budget';
+  name: string;
+  description?: string | null;
+}
+
+export interface ClientProposalPayload {
+  type: 'client';
+  full_name: string;
+  email?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+}
+
 // ─── ParsedProposal union ─────────────────────────────────────────────────────
 
 /** Union of all validated proposal payload types returned by the parser. */
@@ -255,7 +336,15 @@ export type ParsedProposal =
   | UpdateLinkPayload
   | TodoItemProposalPayload
   | ToggleTodoPayload
-  | DeleteTodoItemPayload;
+  | DeleteTodoItemPayload
+  | BillingProposalPayload
+  | UpdateBillingPayload
+  | DeleteBillingPayload
+  | BillingCategoryProposalPayload
+  | UpdateBillingCategoryPayload
+  | DeleteBillingCategoryPayload
+  | BudgetProposalPayload
+  | ClientProposalPayload;
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 

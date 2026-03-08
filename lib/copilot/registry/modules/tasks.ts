@@ -142,6 +142,16 @@ async function approveDeleteTask(
   ctx: ApproveContext
 ): Promise<ApproveResult> {
   const p = payload as DeleteTaskPayload;
+
+  // Snapshot the task before deletion so Undo can recreate it
+  const { data: snapshot } = await (ctx.supabase as any)
+    .from('tasks')
+    .select(
+      'id, title, status, priority, notes, tags, due_date, milestone_id, project_id, sort_order'
+    )
+    .eq('id', p.entity_id)
+    .single();
+
   const { error } = await (ctx.supabase as any)
     .from('tasks')
     .delete()
@@ -156,6 +166,15 @@ async function approveDeleteTask(
     });
     return { error: error.message };
   }
+
+  // Persist snapshot into proposal payload for Undo support
+  if (snapshot && ctx.proposalId) {
+    await (ctx.supabase as any)
+      .from('copilot_proposals')
+      .update({ payload: { ...p, _snapshot: snapshot } })
+      .eq('id', ctx.proposalId);
+  }
+
   return { entityId: p.entity_id };
 }
 

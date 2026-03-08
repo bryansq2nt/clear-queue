@@ -17,6 +17,8 @@ import { fetchLinksContext } from '@/lib/copilot/registry/modules/links';
 import { fetchTodosContext } from '@/lib/copilot/registry/modules/todos';
 import { fetchDocumentsContext } from '@/lib/copilot/registry/modules/documents';
 import { fetchBudgetsContext } from '@/lib/copilot/registry/modules/budgets';
+import { fetchBillingsContext } from '@/lib/copilot/registry/modules/billings';
+import { fetchClientsContext } from '@/lib/copilot/registry/modules/clients';
 import { BOARD_STATUSES } from '@/lib/board';
 
 const SYSTEM_PROMPT_BASE = `You are Project Copilot, a structured planning assistant embedded inside ClearQueue — a project management app.
@@ -133,11 +135,20 @@ Rules for the proposals block:
 - If you have no proposals, omit the block entirely — do NOT emit an empty array
 - Propose 3–6 tasks for initial planning; 1–3 tasks for specific follow-up questions
 - Maximum 2 notes per response
+- **Large requests (more than 8 proposals):** Do NOT attempt to emit all proposals in one response — split into batches of up to 8. After the first batch, tell the user "Aquí van los primeros X — apruébalos y te envío el siguiente lote." (or equivalent in their language). This prevents truncated output.
+- **Proposal ordering:** Always emit milestone proposals BEFORE task proposals within the same <<PROPOSALS>> block, so milestones exist before tasks are processed.
 - **Mutation proposals** (delete/update): entity_id must be a UUID from the project context — never invent ids. Include entity_title for display. For update_*, only include fields you want to change. You can only propose mutations for entities whose id appears in the context below.
 - **mind_map proposals**: Use when the user asks for a roadmap, a mind map, a visual plan, or a diagram of connected concepts. Each node requires a unique temp_id (e.g. "n1", "n2") and a title. Edges reference nodes by temp_id (from/to). x/y are optional — if provided, use a spread layout (e.g. root at 0,0; children at ±200 x, ±150 y). Maximum 20 nodes. Emit at most one mind_map per response. board_name must be non-empty.
 - **link proposals**: Use to save URLs in the project link vault. Valid link_type values: environment, tool, resource, social, reference, other. category_name must match an existing category name exactly (case-insensitive) — do not invent categories. If the user does not specify a category, omit category_name. url must start with http:// or https://. For delete_link and update_link, entity_id must be a UUID from the links context — only available in full context mode.
 - **Documents are read-only:** You can reference documents by title when relevant (e.g. "you have a spec uploaded"). You cannot create, upload, or delete documents — do not propose any document mutations.
-- **Budgets are read-only:** Use budget totals (total/acquired/pending) to inform planning and cost-related recommendations. Do not propose budget mutations.
+- **budget proposals**: Use to create a new budget for the project. Required: name (string). Optional: description (string). The budget will be automatically linked to the current project.
+- **client proposals**: Use to create a new client contact. Required: full_name (string). Optional: email, phone, notes. After creating a client, the user can manually link them as project responsible from the Owner tab.
+- **billing proposals**: Use to create a new billing entry. Required: title (string), amount (number >= 0). Optional: billing_type ("charge"|"payment"|"spending", default "charge"), status ("pending"|"paid"|"overdue"|"cancelled"), client_name, due_date (YYYY-MM-DD), issued_at (YYYY-MM-DD, for charges), category_name (use exactly one of the available billing category names listed in the Billings section below — do not invent names), payment_method ("cash"|"transfer"|"card"|"client_card"|"other"), notes. Prefer assigning a category when the charge clearly fits one.
+- **update_billing proposals**: Use entity_id (UUID from full billing context) to update any field. Include entity_title for display. Only include fields you want to change.
+- **delete_billing proposals**: Use entity_id (UUID from full billing context). Billing IDs are only visible in full context mode — do not guess IDs.
+- **billing_category proposals**: Use to create a new billing category. Required: name (string). Optional: color (hex string, e.g. "#3b82f6"). Category names are used when assigning billings to a category.
+- **update_billing_category proposals**: Use entity_id (UUID of the category — listed in Billings section in full scope as "Category ids for update/delete"). Optional: name, color. Include entity_title for display.
+- **delete_billing_category proposals**: Use entity_id (UUID of the category from Billings section in full scope). Include entity_title for display.
 - **todo_item proposals**: Use to add a checklist item to an existing todo list. list_id must be a UUID from the todos context (available in both standard and full mode). content must be non-empty. due_date is optional (ISO 8601 date string). list_title is optional display text.
 - **toggle_todo proposals**: Use to mark a todo item done or not-done. entity_id must be a UUID from the todos context — only available in full context mode. Include entity_title for display. is_done should reflect the current state (before toggling).
 - **delete_todo_item proposals**: Use to remove a todo item. entity_id must be a UUID from the todos context — only available in full context mode.
@@ -173,6 +184,8 @@ export async function buildProjectContext(
     todosContext,
     documentsContext,
     budgetsContext,
+    billingsContext,
+    clientsContext,
   ] = await Promise.all([
     getProjectById(projectId),
     getTasksByProjectId(projectId),
@@ -182,6 +195,8 @@ export async function buildProjectContext(
     fetchTodosContext(projectId, scope, supabase),
     fetchDocumentsContext(projectId, scope, supabase),
     fetchBudgetsContext(projectId, scope, supabase),
+    fetchBillingsContext(projectId, scope, supabase),
+    fetchClientsContext(projectId, scope, supabase),
   ]);
 
   if (!project) {
@@ -278,7 +293,11 @@ ${todosContext}
 
 ${documentsContext}
 
-${budgetsContext}`;
+${budgetsContext}
+
+${billingsContext}
+
+${clientsContext}`;
   } else {
     // Standard context: 10 tasks (titles + status only), 5 notes (titles only), 8 milestones with ids
     const recentTasks = [...tasks]
@@ -353,7 +372,11 @@ ${todosContext}
 
 ${documentsContext}
 
-${budgetsContext}`;
+${budgetsContext}
+
+${billingsContext}
+
+${clientsContext}`;
   }
 
   // Gap hints (standard scope only)

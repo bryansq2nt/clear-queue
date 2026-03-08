@@ -587,3 +587,76 @@ export async function approveProposal(
     },
   };
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Undo delete proposals
+// ─────────────────────────────────────────────────────────────────
+
+export async function undoDeleteProposal(
+  proposalId: string
+): Promise<{ error?: string }> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { data: proposalRow, error: fetchErr } = await (supabase as any)
+    .from('copilot_proposals')
+    .select('id, type, payload, project_id, owner_id')
+    .eq('id', proposalId)
+    .eq('owner_id', user.id)
+    .single();
+
+  if (fetchErr || !proposalRow)
+    return { error: 'Proposal not found or access denied' };
+
+  const payload = proposalRow.payload as Record<string, unknown>;
+  const snapshot = payload._snapshot as
+    | Record<string, unknown>
+    | null
+    | undefined;
+
+  if (!snapshot)
+    return { error: 'No snapshot available — this item cannot be restored' };
+
+  if (proposalRow.type === 'delete_task') {
+    // Recreate the task from snapshot
+    const { error } = await (supabase as any).rpc('create_task_atomic', {
+      in_project_id: snapshot.project_id ?? proposalRow.project_id,
+      in_title: snapshot.title,
+      in_status: snapshot.status ?? 'backlog',
+      in_priority: snapshot.priority ?? null,
+      in_notes: snapshot.notes ?? null,
+      in_tags: snapshot.tags ?? null,
+      in_due_date: snapshot.due_date ?? null,
+      in_milestone_id: snapshot.milestone_id ?? null,
+    } as never);
+
+    if (error) {
+      captureWithContext(error, {
+        module: 'copilot',
+        action: 'undoDeleteProposal',
+        userIntent: 'Undo a copilot delete_task proposal',
+        expected: 'Deleted task recreated from snapshot',
+        extra: { proposalId },
+      });
+      return { error: error.message };
+    }
+
+    // Mark proposal as pending again so it shows up correctly
+    await (supabase as any)
+      .from('copilot_proposals')
+      .update({
+        status: 'pending',
+        created_entity_id: null,
+        reviewed_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', proposalId)
+      .eq('owner_id', user.id);
+
+    revalidatePath(`/context/${proposalRow.project_id}/board`);
+    revalidatePath(`/context/${proposalRow.project_id}/milestones`);
+    return {};
+  }
+
+  return { error: 'Undo is not supported for this proposal type' };
+}

@@ -1,11 +1,16 @@
-// Context-only module — no proposal types.
-// Budget data is read-only; the Copilot uses it for cost-aware planning recommendations.
+import { captureWithContext } from '@/lib/sentry';
+import type { BudgetProposalPayload } from '@/lib/copilot/schema';
+import type {
+  CopilotModuleCapability,
+  ApproveContext,
+  ApproveResult,
+} from '@/lib/copilot/registry/types';
 
 // ─── Context fetcher ──────────────────────────────────────────────────────────
 
 export async function fetchBudgetsContext(
   projectId: string,
-  _scope: 'standard' | 'full',
+  scope: 'standard' | 'full',
   supabase: any
 ): Promise<string> {
   // 1. Fetch budgets for this project
@@ -82,5 +87,92 @@ export async function fetchBudgetsContext(
     return `- ${b.name}: ${fmt(total)} total · ${fmt(acquired)} acquired · ${fmt(pending)} pending`;
   });
 
-  return `## Budgets (${budgets.length} total)\n${lines.join('\n')}`;
+  const idLines =
+    scope === 'full'
+      ? budgets.map((b) => {
+          const { total, acquired } = totals.get(b.id) ?? {
+            total: 0,
+            acquired: 0,
+          };
+          const pending = total - acquired;
+          if (total === 0) return `- [${b.id}] ${b.name}: no items yet`;
+          return `- [${b.id}] ${b.name}: ${fmt(total)} total · ${fmt(acquired)} acquired · ${fmt(pending)} pending`;
+        })
+      : lines;
+
+  return `## Budgets (${budgets.length} total)\n${idLines.join('\n')}`;
 }
+
+// ─── Validators ───────────────────────────────────────────────────────────────
+
+export function validateBudgetShape(
+  item: unknown
+): BudgetProposalPayload | null {
+  if (!item || typeof item !== 'object') return null;
+  const obj = item as Record<string, unknown>;
+  if (typeof obj.name !== 'string' || !obj.name.trim()) return null;
+  return {
+    type: 'budget',
+    name: obj.name.trim(),
+    description:
+      typeof obj.description === 'string'
+        ? obj.description.trim() || null
+        : null,
+  };
+}
+
+// ─── Approve functions ────────────────────────────────────────────────────────
+
+async function approveBudget(
+  payload: unknown,
+  ctx: ApproveContext
+): Promise<ApproveResult> {
+  const p = payload as BudgetProposalPayload;
+  const { data, error } = await (ctx.supabase as any)
+    .from('budgets')
+    .insert({
+      owner_id: ctx.userId,
+      project_id: ctx.projectId,
+      name: p.name,
+      description: p.description ?? null,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'copilot',
+      action: 'approveBudget',
+      userIntent: 'Create a budget via copilot proposal',
+      expected: 'Budget row inserted',
+      extra: { projectId: ctx.projectId },
+    });
+    return { error: error.message };
+  }
+  return { entityId: (data as { id: string }).id };
+}
+
+// ─── Capabilities ─────────────────────────────────────────────────────────────
+
+export const budgetsCapabilities: CopilotModuleCapability[] = [
+  {
+    type: 'budget',
+    module: 'budgets',
+    label: 'copilot.proposal_budget',
+    icon: 'Wallet',
+    cardVariant: 'create',
+    promptDescription: 'Create a new budget for the project',
+    examplePayload: {
+      type: 'budget',
+      name: 'Q2 Marketing',
+      description: 'Budget for Q2 marketing campaigns',
+    },
+    validate: validateBudgetShape,
+    approve: approveBudget,
+    revalidatePaths: (projectId) => [
+      '/budgets',
+      '/context',
+      `/context/${projectId}/budgets`,
+    ],
+  },
+];

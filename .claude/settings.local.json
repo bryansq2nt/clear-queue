@@ -15,7 +15,20 @@
       "Bash(npx tsc --noEmit 2>&1 | tail -20 && npm run lint 2>&1 | tail -5)",
       "Bash(grep -n \"getApprovedProposal\\\\|getRejectedProposal\\\\|approvedTitles\\\\|rejectedTitles\" \"/Users/mutechlabs/development/clear-queue/app/api/copilot/[projectId]/chat/route.ts\" 2>/dev/null || grep -rn \"getApprovedProposal\\\\|getRejectedProposal\" \"/Users/mutechlabs/development/clear-queue/app/\" | head -20)",
       "Bash(npx tsc --noEmit 2>&1 | tail -10 && npm run lint 2>&1 | tail -4 && npm run test -- --run 2>&1 | tail -8)",
-      "Bash(find /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/billings -type f 2>/dev/null | head -20)"
+      "Bash(find /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/billings -type f 2>/dev/null | head -20)",
+      "Bash(npx tsc --noEmit 2>&1 | head -60)",
+      "Bash(npx tsc --noEmit 2>&1 | head -40)",
+      "Bash(grep -n \"\\\\.clients\\\\b\\\\|billing\\\\.clients\\\\|\\\\.clients?\" /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/billings/ContextBillingsClient.tsx | head -20)",
+      "Bash(grep -n \"\\\\.clients\\\\b\\\\|billing\\\\.clients\\\\|\\\\.clients?\" /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/billings/ContextBillingsFromCache.tsx 2>/dev/null | head -10)",
+      "Bash(grep -n \"issued_at\\\\|due_date\\\\|date.*label\\\\|Fecha\" /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/billings/ContextBillingsClient.tsx | head -40)",
+      "Bash(grep -n \"bulkAction\\\\|handleApproveAll\\\\|handleRejectAll\\\\|approving\\\\|rejecting\" /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/copilot/ContextCopilotClient.tsx | head -30)",
+      "Bash(grep -n \"^export async function\\\\|^// ─\" /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/copilot/actions.ts | tail -20)",
+      "Bash(tail -50 /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/copilot/actions.ts)",
+      "Bash(wc -l /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/copilot/actions.ts)",
+      "Bash(grep -n \"import.*actions\\\\|undoDeleteProposal\\\\|approveProposal\\\\|rejectProposal\" /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/copilot/ContextCopilotClient.tsx | head -15)",
+      "Bash(grep -n \"handleStopBulk\\\\|handleUndo\" /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/copilot/ContextCopilotClient.tsx | head -10)",
+      "Bash(grep -n \"max_tokens\\\\|maxTokens\\\\|max_output\" /Users/mutechlabs/development/clear-queue/app/api/copilot/\\\\[projectId\\\\]/chat/route.ts | head -10)",
+      "Bash(grep -n \"STREAM_STATUS_KEYS\\\\|streamStatusInterval\\\\|setStreamingContent\\\\|statusIndex\" /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/copilot/ContextCopilotClient.tsx | head -20)"
     ]
   }
 }
