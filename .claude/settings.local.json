@@ -14,7 +14,8 @@
       "Bash(npx tsc --noEmit 2>&1 | tail -20)",
       "Bash(npx tsc --noEmit 2>&1 | tail -20 && npm run lint 2>&1 | tail -5)",
       "Bash(grep -n \"getApprovedProposal\\\\|getRejectedProposal\\\\|approvedTitles\\\\|rejectedTitles\" \"/Users/mutechlabs/development/clear-queue/app/api/copilot/[projectId]/chat/route.ts\" 2>/dev/null || grep -rn \"getApprovedProposal\\\\|getRejectedProposal\" \"/Users/mutechlabs/development/clear-queue/app/\" | head -20)",
-      "Bash(npx tsc --noEmit 2>&1 | tail -10 && npm run lint 2>&1 | tail -4 && npm run test -- --run 2>&1 | tail -8)"
+      "Bash(npx tsc --noEmit 2>&1 | tail -10 && npm run lint 2>&1 | tail -4 && npm run test -- --run 2>&1 | tail -8)",
+      "Bash(find /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/billings -type f 2>/dev/null | head -20)"
     ]
   }
 }
