@@ -3,6 +3,7 @@ import { notesCapabilities } from './modules/notes';
 import { milestonesCapabilities } from './modules/milestones';
 import { ideasCapabilities } from './modules/ideas';
 import { linksCapabilities } from './modules/links';
+import { todosCapabilities } from './modules/todos';
 import type { CopilotModuleCapability } from './types';
 
 export type {
@@ -26,5 +27,6 @@ export const COPILOT_REGISTRY = new Map<string, CopilotModuleCapability>(
     ...milestonesCapabilities,
     ...ideasCapabilities,
     ...linksCapabilities,
+    ...todosCapabilities,
   ].map((c) => [c.type, c])
 );

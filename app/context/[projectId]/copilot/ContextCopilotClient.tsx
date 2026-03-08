@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { PlusCircle, Pencil } from 'lucide-react';
+import { PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import { CopilotChatWindow } from '@/components/context/copilot/CopilotChatWindow';
 import { CopilotInputBar } from '@/components/context/copilot/CopilotInputBar';
 import {
@@ -43,6 +43,7 @@ interface ContextCopilotClientProps {
   initialProposalsByMessage?: Record<string, CopilotProposal[]>;
   onSelectSession: (sessionId: string) => void;
   onStartFresh: () => void;
+  onDeleteSession?: (sessionId: string) => Promise<void>;
   refetchSessions?: () => void;
 }
 
@@ -57,6 +58,7 @@ export default function ContextCopilotClient({
   initialProposalsByMessage = {},
   onSelectSession,
   onStartFresh,
+  onDeleteSession,
   refetchSessions,
 }: ContextCopilotClientProps) {
   const { t } = useI18n();
@@ -82,6 +84,7 @@ export default function ContextCopilotClient({
   const [bulkActionMessageId, setBulkActionMessageId] = useState<string | null>(
     null
   );
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
 
   // Ref to keep the latest messages value accessible in callbacks without stale closure
   const messagesRef = useRef(messages);
@@ -449,7 +452,7 @@ export default function ContextCopilotClient({
   return (
     <div className="flex flex-col h-full">
       {/* Session bar */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/30 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 border-b border-border bg-muted/30 shrink-0">
         {isEditingTitle ? (
           <>
             <input
@@ -522,6 +525,21 @@ export default function ContextCopilotClient({
             >
               <Pencil className="h-3.5 w-3.5" aria-hidden />
             </button>
+            {session.status === 'archived' && onDeleteSession && (
+              <button
+                type="button"
+                disabled={isDeletingSession}
+                onClick={async () => {
+                  setIsDeletingSession(true);
+                  await onDeleteSession(session.id);
+                  setIsDeletingSession(false);
+                }}
+                className="p-1.5 rounded-md text-destructive/60 hover:text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label={t('copilot.delete_session')}
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            )}
           </>
         )}
         <button
@@ -531,7 +549,7 @@ export default function ContextCopilotClient({
           aria-label={t('copilot.start_fresh')}
         >
           <PlusCircle className="h-4 w-4" aria-hidden />
-          {t('copilot.start_fresh')}
+          <span className="hidden sm:inline">{t('copilot.start_fresh')}</span>
         </button>
       </div>
 

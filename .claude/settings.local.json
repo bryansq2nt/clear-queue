@@ -8,7 +8,13 @@
       "Bash(npm install @radix-ui/react-switch 2>&1 | tail -5)",
       "Bash(npm install @anthropic-ai/sdk)",
       "Bash(ls /Users/mutechlabs/development/clear-queue/tests/ 2>/dev/null || ls /Users/mutechlabs/development/clear-queue/test/ 2>/dev/null || find /Users/mutechlabs/development/clear-queue -name \"*.test.ts\" -not -path \"*/node_modules/*\" | head -10)",
-      "Bash(npx tsc --noEmit 2>&1 | head -30)"
+      "Bash(npx tsc --noEmit 2>&1 | head -30)",
+      "Bash(npx tsc --noEmit 2>&1 | tail -30)",
+      "Bash(node -e \"const l = require\\('lucide-react'\\); const icons = Object.keys\\(l\\).filter\\(k => k.toLowerCase\\(\\).includes\\('check'\\) || k.toLowerCase\\(\\).includes\\('square'\\)\\); console.log\\(icons.join\\(', '\\)\\)\")",
+      "Bash(npx tsc --noEmit 2>&1 | tail -20)",
+      "Bash(npx tsc --noEmit 2>&1 | tail -20 && npm run lint 2>&1 | tail -5)",
+      "Bash(grep -n \"getApprovedProposal\\\\|getRejectedProposal\\\\|approvedTitles\\\\|rejectedTitles\" \"/Users/mutechlabs/development/clear-queue/app/api/copilot/[projectId]/chat/route.ts\" 2>/dev/null || grep -rn \"getApprovedProposal\\\\|getRejectedProposal\" \"/Users/mutechlabs/development/clear-queue/app/\" | head -20)",
+      "Bash(npx tsc --noEmit 2>&1 | tail -10 && npm run lint 2>&1 | tail -4 && npm run test -- --run 2>&1 | tail -8)"
     ]
   }
 }

@@ -93,7 +93,7 @@ export function CopilotChatWindow({
               return (
                 <div className="flex flex-col gap-2">
                   {pendingCount >= 2 && (
-                    <div className="ml-11 flex items-center gap-2">
+                    <div className="ml-8 sm:ml-11 flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => onApproveAll(msg.id)}
@@ -135,7 +135,7 @@ export function CopilotChatWindow({
           {msg.role === 'assistant' &&
             contextRequestMessageId === msg.id &&
             onRetryWithFullContext && (
-              <div className="ml-11 max-w-xl rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 text-sm">
+              <div className="ml-8 sm:ml-11 max-w-xl rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-3 sm:px-4 py-3 text-sm">
                 <p className="text-amber-800 dark:text-amber-300 text-xs mb-2">
                   {t('copilot.context_request_banner')}
                 </p>

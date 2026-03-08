@@ -136,6 +136,34 @@ export async function archiveCopilotSession(
   return true;
 }
 
+/** Hard-deletes an archived session (cascades messages + proposals). Only works on archived sessions scoped to this user. */
+export async function deleteCopilotSession(
+  sessionId: string
+): Promise<boolean> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { error } = await (supabase as any)
+    .from('copilot_sessions')
+    .delete()
+    .eq('id', sessionId)
+    .eq('owner_id', user.id)
+    .eq('status', 'archived');
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'copilot',
+      action: 'deleteCopilotSession',
+      userIntent: 'Delete an archived copilot session',
+      expected: 'Session row deleted with cascaded messages and proposals',
+      extra: { sessionId },
+    });
+    return false;
+  }
+
+  return true;
+}
+
 /** Archives the current active session (if any) and creates a new one. Returns the new session. */
 export async function startFreshCopilotSession(
   projectId: string

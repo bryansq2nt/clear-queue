@@ -917,6 +917,7 @@
     "edit_session_title": "Editar título de sesión",
     "session_title_placeholder": "Título de sesión",
     "archived": "archivada",
+    "delete_session": "Eliminar sesión",
     "start_fresh": "Empezar de nuevo",
     "proposal_milestone": "Hito",
     "created_view_milestones": "Creado — ver en hitos",
@@ -937,7 +938,11 @@
     "proposal_link": "Enlace",
     "proposal_delete_link": "Eliminar enlace",
     "proposal_update_link": "Actualizar enlace",
-    "created_view_links": "Guardado — ver en enlaces"
+    "created_view_links": "Guardado — ver en enlaces",
+    "proposal_todo_item": "Agregar elemento",
+    "proposal_toggle_todo": "Marcar elemento",
+    "proposal_delete_todo_item": "Eliminar elemento",
+    "created_view_todos": "Listo — ver en pendientes"
   },
   "milestones": {
     "timeline": "Línea de tiempo",

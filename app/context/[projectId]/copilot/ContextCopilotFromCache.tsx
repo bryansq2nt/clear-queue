@@ -13,6 +13,7 @@ import {
   getCopilotMessages,
   getProposalsForSession,
   startFreshCopilotSession,
+  deleteCopilotSession,
 } from './actions';
 import ContextCopilotClient from './ContextCopilotClient';
 import type {
@@ -103,6 +104,27 @@ export default function ContextCopilotFromCache({
     setSessions(list);
   }, [projectId]);
 
+  const handleDeleteSession = useCallback(
+    async (sessionId: string) => {
+      const ok = await deleteCopilotSession(sessionId);
+      if (!ok) return;
+      const list = await getCopilotSessions(projectId);
+      setSessions(list);
+      // If the deleted session was selected, switch to the first remaining session
+      if (selectedSessionId === sessionId) {
+        const next = list[0] ?? null;
+        setSelectedSessionId(next?.id ?? null);
+        if (next) {
+          await loadMessagesAndProposals(next.id);
+        } else {
+          setMessages([]);
+          setInitialProposalsByMessage({});
+        }
+      }
+    },
+    [projectId, selectedSessionId, loadMessagesAndProposals]
+  );
+
   const session =
     sessions.find((s) => s.id === selectedSessionId) ?? sessions[0] ?? null;
 
@@ -120,6 +142,7 @@ export default function ContextCopilotFromCache({
       initialProposalsByMessage={initialProposalsByMessage}
       onSelectSession={handleSelectSession}
       onStartFresh={handleStartFresh}
+      onDeleteSession={handleDeleteSession}
       refetchSessions={refetchSessions}
     />
   );

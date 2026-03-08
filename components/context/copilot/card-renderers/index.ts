@@ -9,6 +9,8 @@ import {
   Trash2,
   Pencil,
   Link2,
+  ListTodo,
+  CheckSquare2,
 } from 'lucide-react';
 
 type LucideIcon = React.ComponentType<{
@@ -134,6 +136,31 @@ export const PROPOSAL_TYPE_CONFIG: Record<string, ProposalTypeConfig> = {
     cardVariant: 'update',
     getViewLink: (projectId) => `/context/${projectId}/links`,
     viewLinkLabelKey: 'copilot.created_view_links',
+  },
+  todo_item: {
+    labelKey: 'copilot.proposal_todo_item',
+    Icon: ListTodo,
+    cardVariant: 'create',
+    getTitle: (payload) =>
+      (payload as { content: string; list_title?: string }).list_title
+        ? `${(payload as { content: string; list_title?: string }).list_title}: ${(payload as { content: string }).content}`
+        : (payload as { content: string }).content,
+    getViewLink: (projectId) => `/todo/project/${projectId}`,
+    viewLinkLabelKey: 'copilot.created_view_todos',
+  },
+  toggle_todo: {
+    labelKey: 'copilot.proposal_toggle_todo',
+    Icon: CheckSquare2,
+    cardVariant: 'update',
+    getViewLink: (projectId) => `/todo/project/${projectId}`,
+    viewLinkLabelKey: 'copilot.created_view_todos',
+  },
+  delete_todo_item: {
+    labelKey: 'copilot.proposal_delete_todo_item',
+    Icon: Trash2,
+    cardVariant: 'delete',
+    getViewLink: (projectId) => `/todo/project/${projectId}`,
+    viewLinkLabelKey: 'copilot.created_view_todos',
   },
 };
 

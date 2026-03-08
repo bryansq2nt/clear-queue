@@ -10,10 +10,13 @@
 import { getProjectById } from '@/app/actions/projects';
 import { getTasksByProjectId } from '@/app/actions/tasks';
 import { getNotes } from '@/app/actions/notes';
-import { listMilestones } from '@/app/actions/milestones';
+import { getMilestonesWithProgress } from '@/app/actions/milestones';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { fetchLinksContext } from '@/lib/copilot/registry/modules/links';
+import { fetchTodosContext } from '@/lib/copilot/registry/modules/todos';
+import { fetchDocumentsContext } from '@/lib/copilot/registry/modules/documents';
+import { fetchBudgetsContext } from '@/lib/copilot/registry/modules/budgets';
 import { BOARD_STATUSES } from '@/lib/board';
 
 const SYSTEM_PROMPT_BASE = `You are Project Copilot, a structured planning assistant embedded inside ClearQueue — a project management app.
@@ -133,6 +136,18 @@ Rules for the proposals block:
 - **Mutation proposals** (delete/update): entity_id must be a UUID from the project context — never invent ids. Include entity_title for display. For update_*, only include fields you want to change. You can only propose mutations for entities whose id appears in the context below.
 - **mind_map proposals**: Use when the user asks for a roadmap, a mind map, a visual plan, or a diagram of connected concepts. Each node requires a unique temp_id (e.g. "n1", "n2") and a title. Edges reference nodes by temp_id (from/to). x/y are optional — if provided, use a spread layout (e.g. root at 0,0; children at ±200 x, ±150 y). Maximum 20 nodes. Emit at most one mind_map per response. board_name must be non-empty.
 - **link proposals**: Use to save URLs in the project link vault. Valid link_type values: environment, tool, resource, social, reference, other. category_name must match an existing category name exactly (case-insensitive) — do not invent categories. If the user does not specify a category, omit category_name. url must start with http:// or https://. For delete_link and update_link, entity_id must be a UUID from the links context — only available in full context mode.
+- **Documents are read-only:** You can reference documents by title when relevant (e.g. "you have a spec uploaded"). You cannot create, upload, or delete documents — do not propose any document mutations.
+- **Budgets are read-only:** Use budget totals (total/acquired/pending) to inform planning and cost-related recommendations. Do not propose budget mutations.
+- **todo_item proposals**: Use to add a checklist item to an existing todo list. list_id must be a UUID from the todos context (available in both standard and full mode). content must be non-empty. due_date is optional (ISO 8601 date string). list_title is optional display text.
+- **toggle_todo proposals**: Use to mark a todo item done or not-done. entity_id must be a UUID from the todos context — only available in full context mode. Include entity_title for display. is_done should reflect the current state (before toggling).
+- **delete_todo_item proposals**: Use to remove a todo item. entity_id must be a UUID from the todos context — only available in full context mode.
+
+Example todo proposals:
+\`\`\`json
+{"type":"todo_item","list_id":"<uuid-from-todos-context>","list_title":"Tasks","content":"Review API documentation","due_date":null}
+{"type":"toggle_todo","entity_id":"<uuid-from-todos-context>","entity_title":"Review API documentation","is_done":false}
+{"type":"delete_todo_item","entity_id":"<uuid-from-todos-context>","entity_title":"Outdated item content"}
+\`\`\`
 
 Example link proposals:
 \`\`\`json
@@ -149,12 +164,24 @@ export async function buildProjectContext(
 
   const [supabase] = await Promise.all([createClient(), requireAuth()]);
 
-  const [project, tasks, notes, milestones, linksContext] = await Promise.all([
+  const [
+    project,
+    tasks,
+    notes,
+    milestones,
+    linksContext,
+    todosContext,
+    documentsContext,
+    budgetsContext,
+  ] = await Promise.all([
     getProjectById(projectId),
     getTasksByProjectId(projectId),
     getNotes({ projectId }),
-    listMilestones(projectId),
+    getMilestonesWithProgress(projectId),
     fetchLinksContext(projectId, scope, supabase),
+    fetchTodosContext(projectId, scope, supabase),
+    fetchDocumentsContext(projectId, scope, supabase),
+    fetchBudgetsContext(projectId, scope, supabase),
   ]);
 
   if (!project) {
@@ -206,7 +233,12 @@ export async function buildProjectContext(
 
     const milestoneLines =
       milestones.length > 0
-        ? milestones.map((m) => `- [${m.id}] ${m.title}`).join('\n')
+        ? milestones
+            .map(
+              (m) =>
+                `- [${m.id}] ${m.title} (${m.tasks_done}/${m.tasks_total} tasks done)`
+            )
+            .join('\n')
         : '- No milestones yet.';
 
     // Count tasks by status
@@ -237,10 +269,16 @@ ${noteListLines}
 
 ## Milestones (${milestones.length} total — all shown with ids)
 
-Milestone format: [id] title
+Milestone format: [id] title (tasks_done/tasks_total tasks done)
 ${milestoneLines}
 
-${linksContext}`;
+${linksContext}
+
+${todosContext}
+
+${documentsContext}
+
+${budgetsContext}`;
   } else {
     // Standard context: 10 tasks (titles + status only), 5 notes (titles only), 8 milestones with ids
     const recentTasks = [...tasks]
@@ -275,7 +313,10 @@ ${linksContext}`;
       milestones.length > 0
         ? milestones
             .slice(0, 8)
-            .map((m) => `- [${m.id}] ${m.title}`)
+            .map(
+              (m) =>
+                `- [${m.id}] ${m.title} (${m.tasks_done}/${m.tasks_total} tasks done)`
+            )
             .join('\n')
         : '- No milestones yet.';
 
@@ -303,10 +344,16 @@ ${noteListLines}
 
 ## Project milestones (${milestones.length} total)
 
-Milestone format: [id] title — use the id when proposing delete_milestone or update_milestone.
+Milestone format: [id] title (tasks_done/tasks_total tasks done) — use the id when proposing delete_milestone or update_milestone. The task counts tell you which milestone has 0 tasks or is fully complete.
 ${milestoneLines}
 
-${linksContext}`;
+${linksContext}
+
+${todosContext}
+
+${documentsContext}
+
+${budgetsContext}`;
   }
 
   // Gap hints (standard scope only)

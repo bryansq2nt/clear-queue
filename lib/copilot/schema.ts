@@ -174,6 +174,31 @@ export interface MindMapProposalPayload {
   edges: MindMapEdge[];
 }
 
+// ─── Todo payloads ────────────────────────────────────────────────────────────
+
+/** Create a new todo item in a specific list. list_id must be a UUID from the todos context. */
+export interface TodoItemProposalPayload {
+  type: 'todo_item';
+  list_id: string;
+  list_title?: string;
+  content: string;
+  due_date?: string | null;
+}
+
+export interface ToggleTodoPayload {
+  type: 'toggle_todo';
+  entity_id: string;
+  entity_title?: string;
+  /** Current done state before toggling — used for display only. */
+  is_done?: boolean;
+}
+
+export interface DeleteTodoItemPayload {
+  type: 'delete_todo_item';
+  entity_id: string;
+  entity_title?: string;
+}
+
 // ─── Links payload ────────────────────────────────────────────────────────────
 
 /** Valid values for the link_type field (mirrors project_link_type_enum). */
@@ -227,7 +252,10 @@ export type ParsedProposal =
   | MindMapProposalPayload
   | LinkProposalPayload
   | DeleteLinkPayload
-  | UpdateLinkPayload;
+  | UpdateLinkPayload
+  | TodoItemProposalPayload
+  | ToggleTodoPayload
+  | DeleteTodoItemPayload;
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 

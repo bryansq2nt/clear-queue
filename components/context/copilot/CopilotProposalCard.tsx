@@ -17,6 +17,8 @@ import type {
   UpdateNotePayload,
   LinkProposalPayload,
   UpdateLinkPayload,
+  TodoItemProposalPayload,
+  ToggleTodoPayload,
 } from '@/lib/copilot/schema';
 
 interface CopilotProposalCardProps {
@@ -201,13 +203,31 @@ export function CopilotProposalCard({
       ) : null;
     }
 
+    if (pType === 'todo_item') {
+      const p = payload as unknown as TodoItemProposalPayload;
+      return (
+        <p className="mt-1 text-xs text-muted-foreground truncate">
+          {p.due_date && `Due ${p.due_date}`}
+        </p>
+      );
+    }
+
+    if (pType === 'toggle_todo') {
+      const p = payload as unknown as ToggleTodoPayload;
+      return (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {p.is_done ? 'Mark as not done' : 'Mark as done'}
+        </p>
+      );
+    }
+
     return null;
   })();
 
   return (
     <div
       className={cn(
-        'ml-11 max-w-xl rounded-xl border px-4 py-3 text-sm transition-opacity',
+        'ml-8 sm:ml-11 max-w-xl rounded-xl border px-3 sm:px-4 py-3 text-sm transition-opacity',
         isRejected
           ? 'opacity-40 border-border bg-muted/20'
           : isDelete

@@ -980,6 +980,7 @@
     "edit_session_title": "Edit session title",
     "session_title_placeholder": "Session title",
     "archived": "archived",
+    "delete_session": "Delete session",
     "start_fresh": "Start fresh",
     "proposal_milestone": "Milestone",
     "created_view_milestones": "Created — view in milestones",
@@ -1000,7 +1001,11 @@
     "proposal_link": "Link",
     "proposal_delete_link": "Delete link",
     "proposal_update_link": "Update link",
-    "created_view_links": "Saved — view in links"
+    "created_view_links": "Saved — view in links",
+    "proposal_todo_item": "Add todo item",
+    "proposal_toggle_todo": "Toggle todo item",
+    "proposal_delete_todo_item": "Delete todo item",
+    "created_view_todos": "Done — view in todos"
   },
   "milestones": {
     "timeline": "Timeline",
