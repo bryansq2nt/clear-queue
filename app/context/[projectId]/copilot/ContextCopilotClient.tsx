@@ -384,9 +384,11 @@ export default function ContextCopilotClient({
 
   /**
    * Persist a completed assistant message, parse proposals and context request.
+   * When the model requested more context (REQUEST_CONTEXT), we auto-fulfill by re-requesting with full scope — no UI, no user approval.
+   * @param skipContextAutoFulfill — when true (e.g. we're persisting the auto-fulfill response), do not trigger another auto-fulfill to avoid loops.
    */
   const persistAssistantMessage = useCallback(
-    async (fullText: string) => {
+    async (fullText: string, skipContextAutoFulfill?: boolean) => {
       const assistantResult = await saveCopilotMessage(
         session.id,
         projectId,
@@ -415,13 +417,36 @@ export default function ContextCopilotClient({
         }
       }
 
-      // Check for context request
       const contextReq = parseContextRequest(fullText);
-      if (contextReq) {
-        setContextRequestMessageId(assistantMsg.id);
+      if (skipContextAutoFulfill || !contextReq) return;
+
+      // Model asked for more context: obtain it automatically (no banner, no user approval).
+      setMessages((prev) => prev.slice(0, -1));
+
+      const currentMessages = messagesRef.current;
+      let lastUserIdx = -1;
+      for (let i = currentMessages.length - 1; i >= 0; i--) {
+        if (currentMessages[i].role === 'user') {
+          lastUserIdx = i;
+          break;
+        }
+      }
+      if (lastUserIdx < 0) return;
+
+      const contextMessages = currentMessages
+        .slice(0, lastUserIdx + 1)
+        .map((m) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        }))
+        .slice(-20);
+
+      const fullText2 = await streamChatRequest(contextMessages, 'full');
+      if (fullText2) {
+        await persistAssistantMessage(fullText2, true);
       }
     },
-    [projectId, session.id]
+    [projectId, session.id, streamChatRequest]
   );
 
   const handleSubmit = useCallback(async () => {
@@ -469,7 +494,21 @@ export default function ContextCopilotClient({
       { role: 'user' as const, content },
     ].slice(-20);
 
-    const fullText = await streamChatRequest(contextMessages, 'standard');
+    // If the message is clearly about budgets or billings, send full context up front
+    // so the model receives entity IDs in the first response and doesn't need to request them.
+    const FULL_CONTEXT_TRIGGERS = [
+      'presupuest',
+      'budget',
+      'factura',
+      'billing',
+    ];
+    const initialScope: 'standard' | 'full' = FULL_CONTEXT_TRIGGERS.some((kw) =>
+      content.toLowerCase().includes(kw)
+    )
+      ? 'full'
+      : 'standard';
+
+    const fullText = await streamChatRequest(contextMessages, initialScope);
     if (fullText) {
       await persistAssistantMessage(fullText);
     }

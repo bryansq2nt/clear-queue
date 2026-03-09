@@ -54,7 +54,7 @@ export function parseProposals(content: string): ParsedProposal[] {
  */
 export function parseContextRequest(
   content: string
-): { tasks?: boolean; notes?: boolean } | null {
+): { tasks?: boolean; notes?: boolean; full?: boolean } | null {
   const match = content.match(
     /<<REQUEST_CONTEXT>>([\s\S]*?)<<\/REQUEST_CONTEXT>>/
   );
@@ -66,9 +66,10 @@ export function parseContextRequest(
   try {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') return null;
-    const result: { tasks?: boolean; notes?: boolean } = {};
+    const result: { tasks?: boolean; notes?: boolean; full?: boolean } = {};
     if (parsed.tasks === true) result.tasks = true;
     if (parsed.notes === true) result.notes = true;
+    if (parsed.full === true) result.full = true;
     return Object.keys(result).length > 0 ? result : null;
   } catch {
     return null;

@@ -24,6 +24,14 @@ export type ProposalType =
   | 'update_billing_category'
   | 'delete_billing_category'
   | 'budget'
+  | 'update_budget'
+  | 'delete_budget'
+  | 'budget_category'
+  | 'update_budget_category'
+  | 'delete_budget_category'
+  | 'budget_item'
+  | 'update_budget_item'
+  | 'delete_budget_item'
   | 'client';
 
 export interface CopilotSession {
@@ -309,6 +317,75 @@ export interface BudgetProposalPayload {
   description?: string | null;
 }
 
+export interface UpdateBudgetPayload {
+  type: 'update_budget';
+  entity_id: string;
+  entity_title?: string;
+  name?: string;
+  description?: string | null;
+  project_id?: string | null;
+}
+
+export interface DeleteBudgetPayload {
+  type: 'delete_budget';
+  entity_id: string;
+  entity_title?: string;
+}
+
+/** Create a category inside a budget (budget_categories table). */
+export interface BudgetCategoryProposalPayload {
+  type: 'budget_category';
+  budget_id: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface UpdateBudgetCategoryPayload {
+  type: 'update_budget_category';
+  entity_id: string;
+  entity_title?: string;
+  name?: string;
+  description?: string | null;
+}
+
+export interface DeleteBudgetCategoryPayload {
+  type: 'delete_budget_category';
+  entity_id: string;
+  entity_title?: string;
+}
+
+/** Create an item inside a budget category (budget_items table). */
+export interface BudgetItemProposalPayload {
+  type: 'budget_item';
+  category_id: string;
+  name: string;
+  description?: string | null;
+  quantity?: number;
+  unit_price?: number;
+  link?: string | null;
+  status?: 'pending' | 'quoted' | 'acquired';
+  notes?: string | null;
+}
+
+export interface UpdateBudgetItemPayload {
+  type: 'update_budget_item';
+  entity_id: string;
+  entity_title?: string;
+  name?: string;
+  description?: string | null;
+  quantity?: number;
+  unit_price?: number;
+  link?: string | null;
+  status?: 'pending' | 'quoted' | 'acquired';
+  notes?: string | null;
+}
+
+export interface DeleteBudgetItemPayload {
+  type: 'delete_budget_item';
+  entity_id: string;
+  entity_title?: string;
+}
+
 export interface ClientProposalPayload {
   type: 'client';
   full_name: string;
@@ -344,6 +421,14 @@ export type ParsedProposal =
   | UpdateBillingCategoryPayload
   | DeleteBillingCategoryPayload
   | BudgetProposalPayload
+  | UpdateBudgetPayload
+  | DeleteBudgetPayload
+  | BudgetCategoryProposalPayload
+  | UpdateBudgetCategoryPayload
+  | DeleteBudgetCategoryPayload
+  | BudgetItemProposalPayload
+  | UpdateBudgetItemPayload
+  | DeleteBudgetItemPayload
   | ClientProposalPayload;
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
