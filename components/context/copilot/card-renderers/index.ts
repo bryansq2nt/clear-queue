@@ -6,6 +6,7 @@ import {
   FileText,
   Flag,
   Folder,
+  FolderPlus,
   GitFork,
   Trash2,
   Pencil,
@@ -106,6 +107,34 @@ export const PROPOSAL_TYPE_CONFIG: Record<string, ProposalTypeConfig> = {
     labelKey: 'copilot.proposal_update_note',
     Icon: Pencil,
     cardVariant: 'update',
+    getViewLink: (projectId) => `/context/${projectId}/notes`,
+    viewLinkLabelKey: 'copilot.created_view_notes',
+  },
+  note_folder: {
+    labelKey: 'copilot.proposal_note_folder',
+    Icon: FolderPlus,
+    cardVariant: 'create',
+    getTitle: (payload) => (payload as { name: string }).name,
+    getViewLink: (projectId) => `/context/${projectId}/notes`,
+    viewLinkLabelKey: 'copilot.created_view_notes',
+  },
+  update_note_folder: {
+    labelKey: 'copilot.proposal_update_note_folder',
+    Icon: Pencil,
+    cardVariant: 'update',
+    getTitle: (payload) =>
+      (payload as { entity_title?: string }).entity_title ??
+      (payload as { name?: string }).name ??
+      '',
+    getViewLink: (projectId) => `/context/${projectId}/notes`,
+    viewLinkLabelKey: 'copilot.created_view_notes',
+  },
+  delete_note_folder: {
+    labelKey: 'copilot.proposal_delete_note_folder',
+    Icon: Trash2,
+    cardVariant: 'delete',
+    getTitle: (payload) =>
+      (payload as { entity_title?: string }).entity_title ?? '',
     getViewLink: (projectId) => `/context/${projectId}/notes`,
     viewLinkLabelKey: 'copilot.created_view_notes',
   },

@@ -10,6 +10,7 @@
 import { getProjectById } from '@/app/actions/projects';
 import { getTasksByProjectId } from '@/app/actions/tasks';
 import { getNotes } from '@/app/actions/notes';
+import { listFolders } from '@/app/actions/note-folders';
 import { getMilestonesWithProgress } from '@/app/actions/milestones';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
@@ -150,6 +151,7 @@ Rules for the proposals block:
 - **budget_item proposals**: Use to create an item inside a budget category. Required: category_id (UUID from Budgets section in full scope), name (string). Optional: description, quantity (default 1), unit_price (default 0), link (URL), status ("pending"|"quoted"|"acquired"), notes.
 - **update_budget_item proposals**: Use entity_id (UUID of the item — under each budget in Budgets section in full scope). Optional: name, description, quantity, unit_price, link, status, notes. Include entity_title for display.
 - **delete_budget_item proposals**: Use entity_id (UUID of the item from Budgets section in full scope). Include entity_title for display.
+- **Notes and folders**: In full context you see "Folders: [id] Name, ..." and each note as "[id] title · folder: [folder_id] Name (or none)". Use these IDs for mutations. To move a note to a folder (or unassign), use **update_note** with entity_id (note id) and folder_id (folder UUID or null). **note_folder proposals**: Create a new note folder; required: name (string). **update_note_folder proposals**: Rename a folder; entity_id = folder UUID, name = new name. **delete_note_folder proposals**: Delete a folder by entity_id; notes in it become unassigned (folder: none).
 - **client proposals**: Use to create a new client contact. Required: full_name (string). Optional: email, phone, notes. After creating a client, the user can manually link them as project responsible from the Owner tab.
 - **billing proposals**: Use to create a new billing entry. Required: title (string), amount (number >= 0). Optional: billing_type ("charge"|"payment"|"spending", default "charge"), status ("pending"|"paid"|"overdue"|"cancelled"), client_name, due_date (YYYY-MM-DD), issued_at (YYYY-MM-DD, for charges), category_name (use exactly one of the available billing category names listed in the Billings section below — do not invent names), payment_method ("cash"|"transfer"|"card"|"client_card"|"other"), notes. Prefer assigning a category when the charge clearly fits one.
 - **update_billing proposals**: Use entity_id (UUID from full billing context) to update any field. Include entity_title for display. Only include fields you want to change.
@@ -194,6 +196,7 @@ export async function buildProjectContext(
     budgetsContext,
     billingsContext,
     clientsContext,
+    noteFolders,
   ] = await Promise.all([
     getProjectById(projectId),
     getTasksByProjectId(projectId),
@@ -205,6 +208,7 @@ export async function buildProjectContext(
     fetchBudgetsContext(projectId, scope, supabase),
     fetchBillingsContext(projectId, scope, supabase),
     fetchClientsContext(projectId, scope, supabase),
+    listFolders(projectId),
   ]);
 
   if (!project) {
@@ -249,10 +253,23 @@ export async function buildProjectContext(
             .join('\n')
         : '- No tasks yet.';
 
+    const folderMap = new Map(noteFolders.map((f) => [f.id, f.name]));
     const noteListLines =
       fullNotes.length > 0
-        ? fullNotes.map((n) => `- [${n.id}] ${n.title}`).join('\n')
+        ? fullNotes
+            .map((n) => {
+              const note = n as typeof n & { folder_id?: string | null };
+              const folderLabel = note.folder_id
+                ? `[${note.folder_id}] ${folderMap.get(note.folder_id) ?? note.folder_id}`
+                : 'none';
+              return `- [${n.id}] ${n.title} · folder: ${folderLabel}`;
+            })
+            .join('\n')
         : '- No notes yet.';
+    const folderLine =
+      noteFolders.length > 0
+        ? noteFolders.map((f) => `[${f.id}] ${f.name}`).join(', ')
+        : 'none';
 
     const milestoneLines =
       milestones.length > 0
@@ -287,7 +304,8 @@ ${taskListLines}
 
 ## Notes (${notes.length} total — showing up to 20 with ids)
 
-Note format: [id] title
+Folders: ${folderLine}
+Note format: [id] title · folder: [folder_id] FolderName (or "none")
 ${noteListLines}
 
 ## Milestones (${milestones.length} total — all shown with ids)

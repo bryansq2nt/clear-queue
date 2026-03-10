@@ -32,7 +32,10 @@ export type ProposalType =
   | 'budget_item'
   | 'update_budget_item'
   | 'delete_budget_item'
-  | 'client';
+  | 'client'
+  | 'note_folder'
+  | 'update_note_folder'
+  | 'delete_note_folder';
 
 export interface CopilotSession {
   id: string;
@@ -72,6 +75,9 @@ export interface CopilotProposal {
     | UpdateTaskPayload
     | DeleteNotePayload
     | UpdateNotePayload
+    | NoteFolderProposalPayload
+    | UpdateNoteFolderPayload
+    | DeleteNoteFolderPayload
     | MindMapProposalPayload;
   status: CopilotProposalStatus;
   created_entity_id: string | null;
@@ -156,6 +162,27 @@ export interface UpdateNotePayload {
   entity_title?: string;
   title?: string;
   content?: string;
+  /** Move note to this folder; use null to unassign. */
+  folder_id?: string | null;
+}
+
+// Note folder proposal payloads (project_id and owner_id from context)
+export interface NoteFolderProposalPayload {
+  type: 'note_folder';
+  name: string;
+}
+
+export interface UpdateNoteFolderPayload {
+  type: 'update_note_folder';
+  entity_id: string;
+  entity_title?: string;
+  name: string;
+}
+
+export interface DeleteNoteFolderPayload {
+  type: 'delete_note_folder';
+  entity_id: string;
+  entity_title?: string;
 }
 
 // ─── Mind map payload ─────────────────────────────────────────────────────────
@@ -429,7 +456,10 @@ export type ParsedProposal =
   | BudgetItemProposalPayload
   | UpdateBudgetItemPayload
   | DeleteBudgetItemPayload
-  | ClientProposalPayload;
+  | ClientProposalPayload
+  | NoteFolderProposalPayload
+  | UpdateNoteFolderPayload
+  | DeleteNoteFolderPayload;
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 

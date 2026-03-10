@@ -3,6 +3,9 @@ import type {
   NoteProposalPayload,
   DeleteNotePayload,
   UpdateNotePayload,
+  NoteFolderProposalPayload,
+  UpdateNoteFolderPayload,
+  DeleteNoteFolderPayload,
 } from '@/lib/copilot/schema';
 import type {
   CopilotModuleCapability,
@@ -66,7 +69,56 @@ export function validateUpdateNoteShape(
     result.title = obj.title.trim();
   if (typeof obj.content === 'string' && obj.content.trim())
     result.content = obj.content.trim();
+  if (obj.folder_id === null || obj.folder_id === '') result.folder_id = null;
+  else if (isValidUuid(obj.folder_id))
+    result.folder_id = (obj.folder_id as string).trim();
   return result;
+}
+
+export function validateNoteFolderShape(
+  item: unknown
+): NoteFolderProposalPayload | null {
+  if (!item || typeof item !== 'object') return null;
+  const obj = item as Record<string, unknown>;
+  if (typeof obj.name !== 'string' || !obj.name.trim()) return null;
+  return {
+    type: 'note_folder',
+    name: obj.name.trim(),
+  };
+}
+
+export function validateUpdateNoteFolderShape(
+  item: unknown
+): UpdateNoteFolderPayload | null {
+  if (!item || typeof item !== 'object') return null;
+  const obj = item as Record<string, unknown>;
+  if (!isValidUuid(obj.entity_id)) return null;
+  if (typeof obj.name !== 'string' || !obj.name.trim()) return null;
+  return {
+    type: 'update_note_folder',
+    entity_id: (obj.entity_id as string).trim(),
+    entity_title:
+      typeof obj.entity_title === 'string'
+        ? obj.entity_title.trim()
+        : undefined,
+    name: obj.name.trim(),
+  };
+}
+
+export function validateDeleteNoteFolderShape(
+  item: unknown
+): DeleteNoteFolderPayload | null {
+  if (!item || typeof item !== 'object') return null;
+  const obj = item as Record<string, unknown>;
+  if (!isValidUuid(obj.entity_id)) return null;
+  return {
+    type: 'delete_note_folder',
+    entity_id: (obj.entity_id as string).trim(),
+    entity_title:
+      typeof obj.entity_title === 'string'
+        ? obj.entity_title.trim()
+        : undefined,
+  };
 }
 
 // ─── Approve functions ────────────────────────────────────────────────────────
@@ -117,6 +169,11 @@ async function approveUpdateNote(
     updates.title = p.title.trim();
   if (typeof p.content === 'string' && p.content.trim())
     updates.content = p.content.trim();
+  if (p.folder_id !== undefined)
+    updates.folder_id =
+      p.folder_id === null || p.folder_id === ''
+        ? null
+        : String(p.folder_id).trim();
 
   if (Object.keys(updates).length > 0) {
     const { error } = await (ctx.supabase as any)
@@ -134,6 +191,91 @@ async function approveUpdateNote(
       });
       return { error: error.message };
     }
+  }
+  return { entityId: p.entity_id };
+}
+
+async function approveNoteFolder(
+  payload: unknown,
+  ctx: ApproveContext
+): Promise<ApproveResult> {
+  const p = payload as NoteFolderProposalPayload;
+  const supabase = ctx.supabase as any;
+  const { data: maxRow } = await supabase
+    .from('project_note_folders')
+    .select('sort_order')
+    .eq('project_id', ctx.projectId)
+    .eq('owner_id', ctx.userId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextOrder =
+    ((maxRow as { sort_order?: number } | null)?.sort_order ?? 0) + 1;
+  const { data, error } = await supabase
+    .from('project_note_folders')
+    .insert({
+      project_id: ctx.projectId,
+      owner_id: ctx.userId,
+      name: p.name,
+      sort_order: nextOrder,
+    })
+    .select('id')
+    .single();
+  if (error) {
+    captureWithContext(error, {
+      module: 'copilot',
+      action: 'approveNoteFolder',
+      userIntent: 'Create note folder via copilot proposal',
+      expected: 'Folder created',
+      extra: { projectId: ctx.projectId },
+    });
+    return { error: error.message };
+  }
+  return { entityId: (data as { id: string }).id };
+}
+
+async function approveUpdateNoteFolder(
+  payload: unknown,
+  ctx: ApproveContext
+): Promise<ApproveResult> {
+  const p = payload as UpdateNoteFolderPayload;
+  const { error } = await (ctx.supabase as any)
+    .from('project_note_folders')
+    .update({ name: p.name })
+    .eq('id', p.entity_id)
+    .eq('owner_id', ctx.userId);
+  if (error) {
+    captureWithContext(error, {
+      module: 'copilot',
+      action: 'approveUpdateNoteFolder',
+      userIntent: 'Rename note folder via copilot proposal',
+      expected: 'Folder updated',
+      extra: { entityId: p.entity_id },
+    });
+    return { error: error.message };
+  }
+  return { entityId: p.entity_id };
+}
+
+async function approveDeleteNoteFolder(
+  payload: unknown,
+  ctx: ApproveContext
+): Promise<ApproveResult> {
+  const p = payload as DeleteNoteFolderPayload;
+  const { error } = await (ctx.supabase as any)
+    .from('project_note_folders')
+    .delete()
+    .eq('id', p.entity_id)
+    .eq('owner_id', ctx.userId);
+  if (error) {
+    captureWithContext(error, {
+      module: 'copilot',
+      action: 'approveDeleteNoteFolder',
+      userIntent: 'Delete note folder via copilot proposal',
+      expected: 'Folder deleted (notes unassigned)',
+      extra: { entityId: p.entity_id },
+    });
+    return { error: error.message };
   }
   return { entityId: p.entity_id };
 }
@@ -197,6 +339,68 @@ export const notesCapabilities: CopilotModuleCapability[] = [
     },
     validate: validateUpdateNoteShape,
     approve: approveUpdateNote,
+    revalidatePaths: (projectId) => [
+      '/dashboard',
+      '/context',
+      `/context/${projectId}/notes`,
+    ],
+  },
+  {
+    type: 'note_folder',
+    module: 'notes',
+    label: 'copilot.proposal_note_folder',
+    icon: 'FolderPlus',
+    cardVariant: 'create',
+    promptDescription: 'Create a new note folder in the project',
+    examplePayload: {
+      type: 'note_folder',
+      name: 'Meeting notes',
+    },
+    validate: validateNoteFolderShape,
+    approve: approveNoteFolder,
+    revalidatePaths: (projectId) => [
+      '/dashboard',
+      '/context',
+      `/context/${projectId}/notes`,
+    ],
+  },
+  {
+    type: 'update_note_folder',
+    module: 'notes',
+    label: 'copilot.proposal_update_note_folder',
+    icon: 'Pencil',
+    cardVariant: 'update',
+    promptDescription:
+      'Rename an existing note folder by its entity_id (folder id)',
+    examplePayload: {
+      type: 'update_note_folder',
+      entity_id: '<folder-uuid>',
+      entity_title: 'Folder name',
+      name: 'New folder name',
+    },
+    validate: validateUpdateNoteFolderShape,
+    approve: approveUpdateNoteFolder,
+    revalidatePaths: (projectId) => [
+      '/dashboard',
+      '/context',
+      `/context/${projectId}/notes`,
+    ],
+  },
+  {
+    type: 'delete_note_folder',
+    module: 'notes',
+    label: 'copilot.proposal_delete_note_folder',
+    icon: 'Trash2',
+    cardVariant: 'delete',
+    promptDescription:
+      'Delete a note folder by its entity_id; notes inside become unassigned',
+    examplePayload: {
+      type: 'delete_note_folder',
+      entity_id: '<folder-uuid>',
+      entity_title: 'Folder name',
+    },
+    validate: validateDeleteNoteFolderShape,
+    approve: approveDeleteNoteFolder,
     revalidatePaths: (projectId) => [
       '/dashboard',
       '/context',
