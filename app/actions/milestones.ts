@@ -98,7 +98,10 @@ export async function createMilestone(
   input: CreateMilestoneInput
 ): Promise<{ data?: Milestone; error?: string }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'milestones.create', { type: 'milestone', projectId });
+  await requireCan(user.id, 'milestones.create', {
+    type: 'milestone',
+    projectId,
+  });
   const supabase = await createClient();
 
   const title = input.title?.trim();
@@ -156,7 +159,10 @@ export async function updateMilestone(
     .eq('id', milestoneId)
     .maybeSingle();
   if (milestoneRow?.project_id) {
-    await requireCan(user.id, 'milestones.update', { type: 'milestone', projectId: milestoneRow.project_id });
+    await requireCan(user.id, 'milestones.update', {
+      type: 'milestone',
+      projectId: milestoneRow.project_id,
+    });
   }
 
   const updates: Record<string, unknown> = {};
@@ -229,7 +235,10 @@ export async function completeMilestone(
     .eq('id', milestoneId)
     .maybeSingle();
   if (milestoneRow?.project_id) {
-    await requireCan(user.id, 'milestones.complete', { type: 'milestone', projectId: milestoneRow.project_id });
+    await requireCan(user.id, 'milestones.complete', {
+      type: 'milestone',
+      projectId: milestoneRow.project_id,
+    });
   }
 
   const { data, error } = await (supabase as any).rpc(
@@ -272,7 +281,10 @@ export async function reopenMilestone(
     .eq('id', milestoneId)
     .maybeSingle();
   if (milestoneRow?.project_id) {
-    await requireCan(user.id, 'milestones.reopen', { type: 'milestone', projectId: milestoneRow.project_id });
+    await requireCan(user.id, 'milestones.reopen', {
+      type: 'milestone',
+      projectId: milestoneRow.project_id,
+    });
   }
 
   const { data, error } = await (supabase as any).rpc(
@@ -316,7 +328,10 @@ export async function deleteMilestone(
     .single();
 
   if (row?.project_id) {
-    await requireCan(user.id, 'milestones.delete', { type: 'milestone', projectId: row.project_id });
+    await requireCan(user.id, 'milestones.delete', {
+      type: 'milestone',
+      projectId: row.project_id,
+    });
   }
 
   const { error } = await (supabase as any)

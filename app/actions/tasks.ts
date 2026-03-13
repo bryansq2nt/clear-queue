@@ -81,13 +81,15 @@ export async function updateTask(id: string, formData: FormData) {
   // Resolve projectId for the permission check — prefer formData value, else look it up
   const resolvedProjectId =
     projectId ||
-    ((
-      await (supabase as any)
-        .from('tasks')
-        .select('project_id')
-        .eq('id', id)
-        .maybeSingle()
-    ).data as { project_id?: string } | null)?.project_id;
+    (
+      (
+        await (supabase as any)
+          .from('tasks')
+          .select('project_id')
+          .eq('id', id)
+          .maybeSingle()
+      ).data as { project_id?: string } | null
+    )?.project_id;
 
   if (resolvedProjectId) {
     await requireCan(user.id, 'tasks.update_title', {
@@ -178,7 +180,8 @@ export async function deleteTasksByIds(ids: string[]) {
     .select('project_id')
     .eq('id', ids[0])
     .maybeSingle();
-  const firstTaskProjectId = (firstTask as { project_id?: string } | null)?.project_id;
+  const firstTaskProjectId = (firstTask as { project_id?: string } | null)
+    ?.project_id;
   if (firstTaskProjectId) {
     await requireCan(user.id, 'tasks.bulk_delete', {
       type: 'task',

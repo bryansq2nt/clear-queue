@@ -215,7 +215,10 @@ export async function createBilling(formData: {
   }
 
   if (formData.project_id) {
-    await requireCan(user.id, 'billings.create', { type: 'billing', projectId: formData.project_id });
+    await requireCan(user.id, 'billings.create', {
+      type: 'billing',
+      projectId: formData.project_id,
+    });
   }
 
   const { data, error } = await (supabase as any)
@@ -292,7 +295,10 @@ export async function updateBilling(
   }
 
   if (formData.project_id) {
-    await requireCan(user.id, 'billings.update_description', { type: 'billing', projectId: formData.project_id });
+    await requireCan(user.id, 'billings.update_description', {
+      type: 'billing',
+      projectId: formData.project_id,
+    });
   }
 
   const { error } = await (supabase as any)
@@ -347,7 +353,10 @@ export async function updateBillingStatus(
     .eq('owner_id', user.id)
     .single();
   if ((billingRow as { project_id: string | null } | null)?.project_id) {
-    await requireCan(user.id, 'billings.update_status', { type: 'billing', projectId: (billingRow as unknown as { project_id: string }).project_id });
+    await requireCan(user.id, 'billings.update_status', {
+      type: 'billing',
+      projectId: (billingRow as unknown as { project_id: string }).project_id,
+    });
   }
 
   const { error } = await (supabase as any)
@@ -392,7 +401,10 @@ export async function deleteBilling(
   const supabase = await createClient();
 
   if (projectId) {
-    await requireCan(user.id, 'billings.delete', { type: 'billing', projectId });
+    await requireCan(user.id, 'billings.delete', {
+      type: 'billing',
+      projectId,
+    });
   }
 
   let deleteQuery = (supabase as any)

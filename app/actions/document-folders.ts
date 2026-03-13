@@ -92,7 +92,10 @@ export async function createFolder(
   if (!project)
     return { success: false, error: 'Project not found or access denied' };
 
-  await requireCan(user.id, 'documents.manage_folders', { type: 'document', projectId: pid });
+  await requireCan(user.id, 'documents.manage_folders', {
+    type: 'document',
+    projectId: pid,
+  });
 
   const trimmedName = name?.trim();
   if (!trimmedName) return { success: false, error: 'Folder name is required' };
@@ -155,7 +158,10 @@ export async function updateFolder(
     .eq('owner_id', user.id)
     .maybeSingle();
   if ((folderRow as { project_id?: string } | null)?.project_id) {
-    await requireCan(user.id, 'documents.manage_folders', { type: 'document', projectId: (folderRow as { project_id: string }).project_id });
+    await requireCan(user.id, 'documents.manage_folders', {
+      type: 'document',
+      projectId: (folderRow as { project_id: string }).project_id,
+    });
   }
 
   const updates: Database['public']['Tables']['project_document_folders']['Update'] =
@@ -217,7 +223,10 @@ export async function deleteFolders(
   const pid = projectId?.trim();
   if (!pid) return { success: false, error: 'Project ID is required' };
 
-  await requireCan(user.id, 'documents.manage_folders', { type: 'document', projectId: pid });
+  await requireCan(user.id, 'documents.manage_folders', {
+    type: 'document',
+    projectId: pid,
+  });
 
   const validIds = (folderIds ?? [])
     .map((id) => id?.trim())
@@ -267,7 +276,10 @@ export async function deleteFolder(
     return { success: false, error: 'Folder not found or access denied' };
   }
 
-  await requireCan(user.id, 'documents.manage_folders', { type: 'document', projectId: (existing as unknown as { project_id: string }).project_id });
+  await requireCan(user.id, 'documents.manage_folders', {
+    type: 'document',
+    projectId: (existing as unknown as { project_id: string }).project_id,
+  });
 
   const { error } = await supabase
     .from('project_document_folders')
@@ -286,6 +298,8 @@ export async function deleteFolder(
     return { success: false, error: error.message };
   }
 
-  revalidateDocumentPaths((existing as unknown as { project_id: string }).project_id);
+  revalidateDocumentPaths(
+    (existing as unknown as { project_id: string }).project_id
+  );
   return { success: true };
 }

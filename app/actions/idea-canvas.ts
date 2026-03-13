@@ -35,7 +35,10 @@ export async function updatePositionAction(
       .eq('id', boardItem.board_id)
       .maybeSingle();
     if (boardRow?.project_id) {
-      await requireCan(user.id, 'ideas.update_node', { type: 'idea', projectId: boardRow.project_id });
+      await requireCan(user.id, 'ideas.update_node', {
+        type: 'idea',
+        projectId: boardRow.project_id,
+      });
     }
   }
 

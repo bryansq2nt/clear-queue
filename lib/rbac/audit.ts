@@ -43,17 +43,15 @@ export type AuditEvent = {
 export async function logAuditEvent(event: AuditEvent): Promise<void> {
   try {
     const supabase = await createClient();
-    const { error } = await (supabase as any)
-      .from('rbac_audit_log')
-      .insert({
-        actor_user_id: event.actorUserId,
-        action: event.action,
-        resource_type: event.resourceType,
-        resource_id: event.resourceId ?? null,
-        project_id: event.projectId ?? null,
-        org_id: event.orgId ?? null,
-        metadata: event.metadata ?? {},
-      });
+    const { error } = await (supabase as any).from('rbac_audit_log').insert({
+      actor_user_id: event.actorUserId,
+      action: event.action,
+      resource_type: event.resourceType,
+      resource_id: event.resourceId ?? null,
+      project_id: event.projectId ?? null,
+      org_id: event.orgId ?? null,
+      metadata: event.metadata ?? {},
+    });
 
     if (error) {
       captureWithContext(error, {

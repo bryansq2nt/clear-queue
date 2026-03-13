@@ -56,7 +56,10 @@ export async function createCopilotSession(
   projectId: string
 ): Promise<CopilotSession | null> {
   const user = await requireAuth();
-  await requireCan(user.id, 'copilot.create_session', { type: 'project', projectId });
+  await requireCan(user.id, 'copilot.create_session', {
+    type: 'project',
+    projectId,
+  });
   const supabase = await createClient();
 
   const { data, error } = await (supabase as any)
@@ -125,7 +128,10 @@ export async function archiveCopilotSession(
     .eq('owner_id', user.id)
     .maybeSingle();
   if (sessionRow?.project_id) {
-    await requireCan(user.id, 'copilot.archive_session', { type: 'project', projectId: sessionRow.project_id });
+    await requireCan(user.id, 'copilot.archive_session', {
+      type: 'project',
+      projectId: sessionRow.project_id,
+    });
   }
 
   const { error } = await (supabase as any)
@@ -162,7 +168,10 @@ export async function deleteCopilotSession(
     .eq('owner_id', user.id)
     .maybeSingle();
   if (sessionRow?.project_id) {
-    await requireCan(user.id, 'copilot.delete_session', { type: 'project', projectId: sessionRow.project_id });
+    await requireCan(user.id, 'copilot.delete_session', {
+      type: 'project',
+      projectId: sessionRow.project_id,
+    });
   }
 
   const { error } = await (supabase as any)
@@ -191,7 +200,10 @@ export async function startFreshCopilotSession(
   projectId: string
 ): Promise<CopilotSession | null> {
   const user = await requireAuth();
-  await requireCan(user.id, 'copilot.create_session', { type: 'project', projectId });
+  await requireCan(user.id, 'copilot.create_session', {
+    type: 'project',
+    projectId,
+  });
   const supabase = await createClient();
 
   const { data: active } = await (supabase as any)
@@ -233,7 +245,10 @@ export async function updateSessionTitle(
     .eq('owner_id', user.id)
     .maybeSingle();
   if (sessionRow?.project_id) {
-    await requireCan(user.id, 'copilot.archive_session', { type: 'project', projectId: sessionRow.project_id });
+    await requireCan(user.id, 'copilot.archive_session', {
+      type: 'project',
+      projectId: sessionRow.project_id,
+    });
   }
 
   const { error } = await (supabase as any)
@@ -336,7 +351,10 @@ export async function saveCopilotMessage(
   tokenCount?: number
 ): Promise<SaveCopilotMessageResult> {
   const user = await requireAuth();
-  await requireCan(user.id, 'copilot.send_message', { type: 'project', projectId });
+  await requireCan(user.id, 'copilot.send_message', {
+    type: 'project',
+    projectId,
+  });
   const supabase = await createClient();
 
   let wasFirstMessage = false;

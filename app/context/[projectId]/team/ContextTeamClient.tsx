@@ -71,18 +71,14 @@ export default function ContextTeamClient({
     retry: () => void;
   } | null>(null);
 
-  const baseUrl =
-    typeof window !== 'undefined' ? window.location.origin : '';
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-  const handleCopyLink = useCallback(
-    (link: string) => {
-      void navigator.clipboard.writeText(link).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      });
-    },
-    []
-  );
+  const handleCopyLink = useCallback((link: string) => {
+    void navigator.clipboard.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, []);
 
   const handleInvite = useCallback(async () => {
     if (!inviteEmail.trim() || !inviteRoleId) return;
@@ -212,7 +208,9 @@ export default function ContextTeamClient({
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="user@example.com"
               className="w-full text-sm rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              onKeyDown={(e) => { if (e.key === 'Enter') void handleInvite(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void handleInvite();
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -258,7 +256,9 @@ export default function ContextTeamClient({
           {t('teams.members_title')} ({members.length})
         </h3>
         {members.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('teams.no_members')}</p>
+          <p className="text-sm text-muted-foreground">
+            {t('teams.no_members')}
+          </p>
         ) : (
           <ul className="space-y-2">
             {members.map((m) => (

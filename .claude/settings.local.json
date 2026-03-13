@@ -36,7 +36,8 @@
       "Bash(grep -n \"\\\\.from\\('notes'\\)\\\\|\\\\.from\\('note_links'\\)\\\\|\\\\.from\\('todo_lists'\\)\\\\|\\\\.from\\('todo_items'\\)\\\\|\\\\.from\\('billings'\\)\\\\|\\\\.from\\('calendar_events'\\)\\\\|\\\\.from\\('project_links'\\)\" \\\\\n  /Users/mutechlabs/development/clear-queue/app/actions/notes.ts \\\\\n  /Users/mutechlabs/development/clear-queue/app/actions/calendar.ts \\\\\n  /Users/mutechlabs/development/clear-queue/app/actions/billings.ts \\\\\n  /Users/mutechlabs/development/clear-queue/app/actions/todo.ts \\\\\n  /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/links/actions.ts \\\\\n  2>/dev/null | grep -v \"as any\")",
       "Bash(ls /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/owner/)",
       "Bash(ls /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/)",
-      "Bash(grep -n \"extra\" /Users/mutechlabs/development/clear-queue/lib/sentry.ts 2>/dev/null | head -10 || grep -rn \"captureWithContext\" /Users/mutechlabs/development/clear-queue/lib/sentry* 2>/dev/null | head -5)"
+      "Bash(grep -n \"extra\" /Users/mutechlabs/development/clear-queue/lib/sentry.ts 2>/dev/null | head -10 || grep -rn \"captureWithContext\" /Users/mutechlabs/development/clear-queue/lib/sentry* 2>/dev/null | head -5)",
+      "Bash(grep -r \"inviteOrgMember\\\\|org_member\\\\|organization_members\" /Users/mutechlabs/development/clear-queue/app/actions --include=\"*.ts\" 2>/dev/null | head -30)"
     ]
   }
 }

@@ -1,7 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { listProjectMembers, listPendingInvites, listProjectRoles } from '@/app/actions/teams';
+import {
+  listProjectMembers,
+  listPendingInvites,
+  listProjectRoles,
+} from '@/app/actions/teams';
 import type { ProjectMember, ProjectInvite } from '@/app/actions/teams';
 import { SkeletonTeam } from '@/components/skeletons/SkeletonTeam';
 import { useContextDataCache } from '../../ContextDataCache';
@@ -37,7 +41,9 @@ export default function ContextTeamFromCache({ projectId }: Props) {
       cache.set({ type: 'team', projectId }, next);
       setData(next);
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Failed to load team data');
+      setLoadError(
+        err instanceof Error ? err.message : 'Failed to load team data'
+      );
     }
   }, [projectId, cache]);
 
@@ -63,10 +69,14 @@ export default function ContextTeamFromCache({ projectId }: Props) {
       })
       .catch((err) => {
         if (cancelled) return;
-        setLoadError(err instanceof Error ? err.message : 'Failed to load team data');
+        setLoadError(
+          err instanceof Error ? err.message : 'Failed to load team data'
+        );
         setLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [projectId, cached, cache]);
 
   if (loading) return <SkeletonTeam />;

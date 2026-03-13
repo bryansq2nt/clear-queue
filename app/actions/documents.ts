@@ -121,7 +121,10 @@ export async function uploadDocument(
   if (!project)
     return { success: false, error: 'Project not found or access denied' };
 
-  await requireCan(user.id, 'documents.upload', { type: 'document', projectId: pid });
+  await requireCan(user.id, 'documents.upload', {
+    type: 'document',
+    projectId: pid,
+  });
 
   // Extract and validate file
   const file = formData.get('file');
@@ -272,7 +275,10 @@ export async function uploadDocumentsBulk(
       ],
     };
 
-  await requireCan(user.id, 'documents.upload', { type: 'document', projectId: pid });
+  await requireCan(user.id, 'documents.upload', {
+    type: 'document',
+    projectId: pid,
+  });
 
   const rawCategory = formData.get('document_category');
   const category = typeof rawCategory === 'string' ? rawCategory.trim() : '';
@@ -438,7 +444,10 @@ export async function updateDocument(
   }
 
   const projectId = (existing as unknown as { project_id: string }).project_id;
-  await requireCan(user.id, 'documents.update_metadata', { type: 'document', projectId });
+  await requireCan(user.id, 'documents.update_metadata', {
+    type: 'document',
+    projectId,
+  });
 
   if (
     input.folder_id !== undefined &&
@@ -535,7 +544,10 @@ export async function archiveDocument(
     return { success: false, error: 'Document not found or access denied' };
   }
 
-  await requireCan(user.id, 'documents.archive', { type: 'document', projectId: (existing as unknown as { project_id: string }).project_id });
+  await requireCan(user.id, 'documents.archive', {
+    type: 'document',
+    projectId: (existing as unknown as { project_id: string }).project_id,
+  });
 
   const { error } = await supabase
     .from('project_files')
@@ -554,7 +566,9 @@ export async function archiveDocument(
     return { success: false, error: error.message };
   }
 
-  revalidateDocumentPaths((existing as unknown as { project_id: string }).project_id);
+  revalidateDocumentPaths(
+    (existing as unknown as { project_id: string }).project_id
+  );
   return { success: true };
 }
 
@@ -579,7 +593,10 @@ export async function markDocumentFinal(
     return { success: false, error: 'Document not found or access denied' };
   }
 
-  await requireCan(user.id, 'documents.mark_final', { type: 'document', projectId: (existing as unknown as { project_id: string }).project_id });
+  await requireCan(user.id, 'documents.mark_final', {
+    type: 'document',
+    projectId: (existing as unknown as { project_id: string }).project_id,
+  });
 
   const { error } = await supabase
     .from('project_files')
@@ -598,7 +615,9 @@ export async function markDocumentFinal(
     return { success: false, error: error.message };
   }
 
-  revalidateDocumentPaths((existing as unknown as { project_id: string }).project_id);
+  revalidateDocumentPaths(
+    (existing as unknown as { project_id: string }).project_id
+  );
   return { success: true };
 }
 
@@ -623,7 +642,10 @@ export async function getDocumentSignedUrl(
   }
 
   if ((row as { project_id: string | null }).project_id) {
-    await requireCan(user.id, 'documents.view_signed_url', { type: 'document', projectId: (row as unknown as { project_id: string }).project_id });
+    await requireCan(user.id, 'documents.view_signed_url', {
+      type: 'document',
+      projectId: (row as unknown as { project_id: string }).project_id,
+    });
   }
 
   const { data: signedData, error: signedError } = await supabase.storage
@@ -667,7 +689,10 @@ export async function deleteDocument(
     return { success: false, error: 'Document not found or access denied' };
   }
 
-  await requireCan(user.id, 'documents.delete', { type: 'document', projectId: (existing as unknown as { project_id: string }).project_id });
+  await requireCan(user.id, 'documents.delete', {
+    type: 'document',
+    projectId: (existing as unknown as { project_id: string }).project_id,
+  });
 
   const { error } = await supabase
     .from('project_files')
@@ -686,7 +711,9 @@ export async function deleteDocument(
     return { success: false, error: error.message };
   }
 
-  revalidateDocumentPaths((existing as unknown as { project_id: string }).project_id);
+  revalidateDocumentPaths(
+    (existing as unknown as { project_id: string }).project_id
+  );
   return { success: true };
 }
 
@@ -700,7 +727,10 @@ export async function deleteDocuments(
   const pid = projectId?.trim();
   if (!pid) return { error: 'Project ID is required' };
 
-  await requireCan(user.id, 'documents.bulk_delete', { type: 'document', projectId: pid });
+  await requireCan(user.id, 'documents.bulk_delete', {
+    type: 'document',
+    projectId: pid,
+  });
 
   const validIds = (fileIds ?? [])
     .map((id) => id?.trim())
@@ -750,7 +780,10 @@ export async function getDocumentDownloadUrl(
   }
 
   if ((row as { project_id: string | null }).project_id) {
-    await requireCan(user.id, 'documents.download', { type: 'document', projectId: (row as unknown as { project_id: string }).project_id });
+    await requireCan(user.id, 'documents.download', {
+      type: 'document',
+      projectId: (row as unknown as { project_id: string }).project_id,
+    });
   }
 
   const { title, file_ext, path } = row as {

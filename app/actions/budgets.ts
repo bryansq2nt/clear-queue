@@ -249,7 +249,10 @@ export async function createBudget(formData: {
   const supabase = await createClient();
 
   if (formData.project_id) {
-    await requireCan(user.id, 'budgets.create', { type: 'budget', projectId: formData.project_id });
+    await requireCan(user.id, 'budgets.create', {
+      type: 'budget',
+      projectId: formData.project_id,
+    });
   }
 
   const { data, error } = await supabase
@@ -292,9 +295,13 @@ export async function updateBudget(
     .select('project_id')
     .eq('id', budgetId)
     .maybeSingle();
-  const budgetProjectId = (budgetRow as { project_id?: string } | null)?.project_id;
+  const budgetProjectId = (budgetRow as { project_id?: string } | null)
+    ?.project_id;
   if (budgetProjectId) {
-    await requireCan(user.id, 'budgets.update', { type: 'budget', projectId: budgetProjectId });
+    await requireCan(user.id, 'budgets.update', {
+      type: 'budget',
+      projectId: budgetProjectId,
+    });
   }
 
   const updates: Database['public']['Tables']['budgets']['Update'] = {};
@@ -334,9 +341,13 @@ export async function deleteBudget(budgetId: string) {
     .select('project_id')
     .eq('id', budgetId)
     .maybeSingle();
-  const budgetProjectId = (budgetRow as { project_id?: string } | null)?.project_id;
+  const budgetProjectId = (budgetRow as { project_id?: string } | null)
+    ?.project_id;
   if (budgetProjectId) {
-    await requireCan(user.id, 'budgets.delete', { type: 'budget', projectId: budgetProjectId });
+    await requireCan(user.id, 'budgets.delete', {
+      type: 'budget',
+      projectId: budgetProjectId,
+    });
   }
 
   const { error } = await supabase.from('budgets').delete().eq('id', budgetId);
@@ -363,9 +374,13 @@ export async function duplicateBudget(sourceBudgetId: string) {
     .select('project_id')
     .eq('id', sourceBudgetId)
     .maybeSingle();
-  const budgetProjectId = (budgetRow as { project_id?: string } | null)?.project_id;
+  const budgetProjectId = (budgetRow as { project_id?: string } | null)
+    ?.project_id;
   if (budgetProjectId) {
-    await requireCan(user.id, 'budgets.duplicate', { type: 'budget', projectId: budgetProjectId });
+    await requireCan(user.id, 'budgets.duplicate', {
+      type: 'budget',
+      projectId: budgetProjectId,
+    });
   }
 
   const { data: newBudgetId, error } = await supabase.rpc(

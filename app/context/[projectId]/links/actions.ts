@@ -299,7 +299,10 @@ export async function updateProjectLinkAction(
     .maybeSingle();
   const linkProjectId = (linkRow as { project_id?: string } | null)?.project_id;
   if (linkProjectId) {
-    await requireCan(user.id, 'links.update', { type: 'link', projectId: linkProjectId });
+    await requireCan(user.id, 'links.update', {
+      type: 'link',
+      projectId: linkProjectId,
+    });
   }
 
   const updates: ProjectLinkUpdate = {};
@@ -395,7 +398,10 @@ export async function archiveProjectLinkAction(
     return { error: 'Link not found or access denied' };
   }
 
-  await requireCan(user.id, 'links.archive', { type: 'link', projectId: (link as unknown as { project_id: string }).project_id });
+  await requireCan(user.id, 'links.archive', {
+    type: 'link',
+    projectId: (link as unknown as { project_id: string }).project_id,
+  });
 
   const { data, error } = await supabase
     .from('project_links')

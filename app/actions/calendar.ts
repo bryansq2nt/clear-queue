@@ -185,7 +185,10 @@ export async function createCalendarEvent(
 
   const pid = projectId?.trim() || null;
   if (pid) {
-    await requireCan(user.id, 'calendar.create', { type: 'calendar_event', projectId: pid });
+    await requireCan(user.id, 'calendar.create', {
+      type: 'calendar_event',
+      projectId: pid,
+    });
   }
   const insert: CalendarEventInsert = {
     owner_id: user.id,
@@ -242,9 +245,13 @@ export async function updateCalendarEvent(
     .select('project_id')
     .eq('id', id)
     .maybeSingle();
-  const eventProjectId = (eventRow as { project_id?: string } | null)?.project_id;
+  const eventProjectId = (eventRow as { project_id?: string } | null)
+    ?.project_id;
   if (eventProjectId) {
-    await requireCan(user.id, 'calendar.update', { type: 'calendar_event', projectId: eventProjectId });
+    await requireCan(user.id, 'calendar.update', {
+      type: 'calendar_event',
+      projectId: eventProjectId,
+    });
   }
 
   const updates: CalendarEventUpdate = {};
@@ -349,7 +356,10 @@ export async function deleteCalendarEvent(
   }
 
   if ((existing as { project_id: string | null }).project_id) {
-    await requireCan(user.id, 'calendar.delete', { type: 'calendar_event', projectId: (existing as unknown as { project_id: string }).project_id });
+    await requireCan(user.id, 'calendar.delete', {
+      type: 'calendar_event',
+      projectId: (existing as unknown as { project_id: string }).project_id,
+    });
   }
 
   const { error: deleteError } = await supabase

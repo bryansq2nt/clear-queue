@@ -60,17 +60,23 @@ export async function updateBoardAction(formData: FormData) {
   }
 
   if (projectId) {
-    await requireCan(user.id, 'ideas.update_board', { type: 'idea', projectId });
+    await requireCan(user.id, 'ideas.update_board', {
+      type: 'idea',
+      projectId,
+    });
   } else {
     // Look up project_id from the board
     const supabase = await createClient();
-    const { data: boardRow } = await supabase
+    const { data: boardRow } = (await supabase
       .from('idea_boards')
       .select('project_id')
       .eq('id', id)
-      .maybeSingle() as any;
+      .maybeSingle()) as any;
     if (boardRow?.project_id) {
-      await requireCan(user.id, 'ideas.update_board', { type: 'idea', projectId: boardRow.project_id });
+      await requireCan(user.id, 'ideas.update_board', {
+        type: 'idea',
+        projectId: boardRow.project_id,
+      });
     }
   }
 
@@ -106,13 +112,16 @@ export async function deleteBoardAction(id: string) {
   }
 
   const supabase = await createClient();
-  const { data: boardRow } = await supabase
+  const { data: boardRow } = (await supabase
     .from('idea_boards')
     .select('project_id')
     .eq('id', id)
-    .maybeSingle() as any;
+    .maybeSingle()) as any;
   if (boardRow?.project_id) {
-    await requireCan(user.id, 'ideas.delete_board', { type: 'idea', projectId: boardRow.project_id });
+    await requireCan(user.id, 'ideas.delete_board', {
+      type: 'idea',
+      projectId: boardRow.project_id,
+    });
   }
 
   try {
@@ -159,7 +168,10 @@ export async function createBoardWithProjectAction(
   const trimmedProjectId = projectId?.trim();
   if (!trimmedProjectId) return { error: 'Project ID is required' };
 
-  await requireCan(user.id, 'ideas.create_board', { type: 'idea', projectId: trimmedProjectId });
+  await requireCan(user.id, 'ideas.create_board', {
+    type: 'idea',
+    projectId: trimmedProjectId,
+  });
 
   const supabase = await createClient();
 
@@ -198,13 +210,16 @@ export async function addIdeaToBoardAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data: boardRow } = await supabase
+  const { data: boardRow } = (await supabase
     .from('idea_boards')
     .select('project_id')
     .eq('id', boardId)
-    .maybeSingle() as any;
+    .maybeSingle()) as any;
   if (boardRow?.project_id) {
-    await requireCan(user.id, 'ideas.create_node', { type: 'idea', projectId: boardRow.project_id });
+    await requireCan(user.id, 'ideas.create_node', {
+      type: 'idea',
+      projectId: boardRow.project_id,
+    });
   }
 
   try {

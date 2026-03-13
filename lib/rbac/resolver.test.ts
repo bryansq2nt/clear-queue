@@ -110,8 +110,11 @@ function setupOrgScope(opts: {
   orgRoleIds?: string[];
   actionKeys?: string[];
 }) {
-  const { isMember = true, orgRoleIds = [ROLE_ID_EDITOR], actionKeys = [] } =
-    opts;
+  const {
+    isMember = true,
+    orgRoleIds = [ROLE_ID_EDITOR],
+    actionKeys = [],
+  } = opts;
 
   mockFrom.mockImplementation((table: string) => {
     if (table === 'organization_members') {
@@ -188,23 +191,34 @@ describe('can() — granted path (project scope)', () => {
   });
 
   it('returns true when action is in the granted set', async () => {
-    setupProjectScope({ actionKeys: ['tasks.create', 'tasks.delete', 'notes.read'] });
+    setupProjectScope({
+      actionKeys: ['tasks.create', 'tasks.delete', 'notes.read'],
+    });
     expect(
-      await can(USER_ID, 'tasks.create', { type: 'task', projectId: PROJECT_ID })
+      await can(USER_ID, 'tasks.create', {
+        type: 'task',
+        projectId: PROJECT_ID,
+      })
     ).toBe(true);
   });
 
   it('returns false when action is not in the granted set', async () => {
     setupProjectScope({ actionKeys: ['tasks.read', 'notes.read'] });
     expect(
-      await can(USER_ID, 'tasks.delete', { type: 'task', projectId: PROJECT_ID })
+      await can(USER_ID, 'tasks.delete', {
+        type: 'task',
+        projectId: PROJECT_ID,
+      })
     ).toBe(false);
   });
 
   it('returns false when granted set is empty (no roles)', async () => {
     setupProjectScope({ projectRoleIds: [], orgRoleIds: [], actionKeys: [] });
     expect(
-      await can(USER_ID, 'tasks.create', { type: 'task', projectId: PROJECT_ID })
+      await can(USER_ID, 'tasks.create', {
+        type: 'task',
+        projectId: PROJECT_ID,
+      })
     ).toBe(false);
   });
 
@@ -214,7 +228,10 @@ describe('can() — granted path (project scope)', () => {
       actionKeys: [], // RPC returns nothing for this role
     });
     expect(
-      await can(USER_ID, 'tasks.create', { type: 'task', projectId: PROJECT_ID })
+      await can(USER_ID, 'tasks.create', {
+        type: 'task',
+        projectId: PROJECT_ID,
+      })
     ).toBe(false);
   });
 });
@@ -237,7 +254,10 @@ describe('can() — multi-role union semantics', () => {
       actionKeys: ['tasks.read', 'tasks.bulk_delete'],
     });
     expect(
-      await can(USER_ID, 'tasks.bulk_delete', { type: 'task', projectId: PROJECT_ID })
+      await can(USER_ID, 'tasks.bulk_delete', {
+        type: 'task',
+        projectId: PROJECT_ID,
+      })
     ).toBe(true);
   });
 });
@@ -280,21 +300,30 @@ describe('requireCan()', () => {
   it('resolves without throwing when permission is granted', async () => {
     setupProjectScope({ actionKeys: ['tasks.create'] });
     await expect(
-      requireCan(USER_ID, 'tasks.create', { type: 'task', projectId: PROJECT_ID })
+      requireCan(USER_ID, 'tasks.create', {
+        type: 'task',
+        projectId: PROJECT_ID,
+      })
     ).resolves.toBeUndefined();
   });
 
-  it("throws Forbidden error with the action key when permission is denied", async () => {
+  it('throws Forbidden error with the action key when permission is denied', async () => {
     setupProjectScope({ actionKeys: ['tasks.read'] }); // missing tasks.delete
     await expect(
-      requireCan(USER_ID, 'tasks.delete', { type: 'task', projectId: PROJECT_ID })
+      requireCan(USER_ID, 'tasks.delete', {
+        type: 'task',
+        projectId: PROJECT_ID,
+      })
     ).rejects.toThrow("Forbidden: missing permission 'tasks.delete'");
   });
 
   it('throws when user is not a project member', async () => {
     setupProjectScope({ isMember: false });
     await expect(
-      requireCan(USER_ID, 'tasks.create', { type: 'task', projectId: PROJECT_ID })
+      requireCan(USER_ID, 'tasks.create', {
+        type: 'task',
+        projectId: PROJECT_ID,
+      })
     ).rejects.toThrow('Forbidden');
   });
 
@@ -317,8 +346,17 @@ describe('can() — project-scoped resource type routing', () => {
   });
 
   const projectTypes = [
-    'task', 'note', 'milestone', 'document', 'media',
-    'link', 'idea', 'budget', 'billing', 'todo', 'calendar_event',
+    'task',
+    'note',
+    'milestone',
+    'document',
+    'media',
+    'link',
+    'idea',
+    'budget',
+    'billing',
+    'todo',
+    'calendar_event',
   ] as const;
 
   for (const type of projectTypes) {

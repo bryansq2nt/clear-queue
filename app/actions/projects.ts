@@ -154,7 +154,10 @@ export async function updateProject(
     return { ok: false, error: 'Project ID is required' };
   }
 
-  await requireCan(user.id, 'projects.update', { type: 'project', projectId: id });
+  await requireCan(user.id, 'projects.update', {
+    type: 'project',
+    projectId: id,
+  });
 
   const updates: ProjectUpdate = {};
 
@@ -265,7 +268,10 @@ export async function archiveProject(
 ): Promise<ActionResult<ProjectRow>> {
   const user = await requireAuth();
 
-  await requireCan(user.id, 'projects.archive', { type: 'project', projectId: id });
+  await requireCan(user.id, 'projects.archive', {
+    type: 'project',
+    projectId: id,
+  });
 
   const supabase = await createClient();
 
@@ -303,7 +309,10 @@ export async function unarchiveProject(
 ): Promise<ActionResult<ProjectRow>> {
   const user = await requireAuth();
 
-  await requireCan(user.id, 'projects.unarchive', { type: 'project', projectId: id });
+  await requireCan(user.id, 'projects.unarchive', {
+    type: 'project',
+    projectId: id,
+  });
 
   const supabase = await createClient();
 
@@ -350,7 +359,10 @@ export async function deleteProject(
 ): Promise<ActionResult<{ success: true }>> {
   const user = await requireAuth();
 
-  await requireCan(user.id, 'projects.delete', { type: 'project', projectId: id });
+  await requireCan(user.id, 'projects.delete', {
+    type: 'project',
+    projectId: id,
+  });
 
   const supabase = await createClient();
 

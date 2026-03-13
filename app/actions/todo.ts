@@ -83,7 +83,10 @@ export async function renameTodoListAction(
     .maybeSingle();
   const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
   if (listProjectId) {
-    await requireCan(user.id, 'todos.update_list', { type: 'todo', projectId: listProjectId });
+    await requireCan(user.id, 'todos.update_list', {
+      type: 'todo',
+      projectId: listProjectId,
+    });
   }
 
   const result = await updateTodoList(id, { title });
@@ -113,7 +116,10 @@ export async function updateTodoListAction(
     .maybeSingle();
   const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
   if (listProjectId) {
-    await requireCan(user.id, 'todos.update_list', { type: 'todo', projectId: listProjectId });
+    await requireCan(user.id, 'todos.update_list', {
+      type: 'todo',
+      projectId: listProjectId,
+    });
   }
 
   const result = await updateTodoList(id, updates);
@@ -143,7 +149,10 @@ export async function archiveTodoListAction(
     .maybeSingle();
   const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
   if (listProjectId) {
-    await requireCan(user.id, 'todos.update_list', { type: 'todo', projectId: listProjectId });
+    await requireCan(user.id, 'todos.update_list', {
+      type: 'todo',
+      projectId: listProjectId,
+    });
   }
 
   const result = await archiveTodoList(id, isArchived);
@@ -171,7 +180,10 @@ export async function deleteTodoListAction(
     .maybeSingle();
   const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
   if (listProjectId) {
-    await requireCan(user.id, 'todos.delete_list', { type: 'todo', projectId: listProjectId });
+    await requireCan(user.id, 'todos.delete_list', {
+      type: 'todo',
+      projectId: listProjectId,
+    });
   }
 
   const result = await deleteTodoList(id);
@@ -252,7 +264,10 @@ export async function createTodoItemAction(
     .maybeSingle();
   const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
   if (listProjectId) {
-    await requireCan(user.id, 'todos.create_item', { type: 'todo', projectId: listProjectId });
+    await requireCan(user.id, 'todos.create_item', {
+      type: 'todo',
+      projectId: listProjectId,
+    });
   }
 
   const result = await createTodoItem({
@@ -289,9 +304,13 @@ export async function toggleTodoItemAction(
       .select('project_id')
       .eq('id', itemListId)
       .maybeSingle();
-    const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
+    const listProjectId = (listRow as { project_id?: string } | null)
+      ?.project_id;
     if (listProjectId) {
-      await requireCan(user.id, 'todos.toggle_item', { type: 'todo', projectId: listProjectId });
+      await requireCan(user.id, 'todos.toggle_item', {
+        type: 'todo',
+        projectId: listProjectId,
+      });
     }
   }
 
@@ -329,9 +348,13 @@ export async function updateTodoItemAction(
       .select('project_id')
       .eq('id', itemListId)
       .maybeSingle();
-    const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
+    const listProjectId = (listRow as { project_id?: string } | null)
+      ?.project_id;
     if (listProjectId) {
-      await requireCan(user.id, 'todos.update_item', { type: 'todo', projectId: listProjectId });
+      await requireCan(user.id, 'todos.update_item', {
+        type: 'todo',
+        projectId: listProjectId,
+      });
     }
   }
 
@@ -365,9 +388,13 @@ export async function deleteTodoItemAction(
       .select('project_id')
       .eq('id', itemListId)
       .maybeSingle();
-    const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
+    const listProjectId = (listRow as { project_id?: string } | null)
+      ?.project_id;
     if (listProjectId) {
-      await requireCan(user.id, 'todos.delete_item', { type: 'todo', projectId: listProjectId });
+      await requireCan(user.id, 'todos.delete_item', {
+        type: 'todo',
+        projectId: listProjectId,
+      });
     }
   }
 

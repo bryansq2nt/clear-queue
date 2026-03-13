@@ -252,7 +252,10 @@ export async function updateMedia(
   }
 
   const projectId = (existing as unknown as { project_id: string }).project_id;
-  await requireCan(user.id, 'media.update_metadata', { type: 'media', projectId });
+  await requireCan(user.id, 'media.update_metadata', {
+    type: 'media',
+    projectId,
+  });
 
   const updates: Database['public']['Tables']['project_files']['Update'] = {};
 
@@ -334,7 +337,10 @@ export async function archiveMedia(
     return { success: false, error: 'Media not found or access denied' };
   }
 
-  await requireCan(user.id, 'media.archive', { type: 'media', projectId: (existing as unknown as { project_id: string }).project_id });
+  await requireCan(user.id, 'media.archive', {
+    type: 'media',
+    projectId: (existing as unknown as { project_id: string }).project_id,
+  });
 
   const { error } = await supabase
     .from('project_files')
@@ -353,7 +359,9 @@ export async function archiveMedia(
     return { success: false, error: error.message };
   }
 
-  revalidateMediaPaths((existing as unknown as { project_id: string }).project_id);
+  revalidateMediaPaths(
+    (existing as unknown as { project_id: string }).project_id
+  );
   return { success: true };
 }
 
@@ -378,7 +386,10 @@ export async function unarchiveMedia(
     return { success: false, error: 'Media not found or access denied' };
   }
 
-  await requireCan(user.id, 'media.unarchive', { type: 'media', projectId: (existing as unknown as { project_id: string }).project_id });
+  await requireCan(user.id, 'media.unarchive', {
+    type: 'media',
+    projectId: (existing as unknown as { project_id: string }).project_id,
+  });
 
   const { error } = await supabase
     .from('project_files')
@@ -397,7 +408,9 @@ export async function unarchiveMedia(
     return { success: false, error: error.message };
   }
 
-  revalidateMediaPaths((existing as unknown as { project_id: string }).project_id);
+  revalidateMediaPaths(
+    (existing as unknown as { project_id: string }).project_id
+  );
   return { success: true };
 }
 
@@ -422,7 +435,10 @@ export async function deleteMedia(
     return { success: false, error: 'Media not found or access denied' };
   }
 
-  await requireCan(user.id, 'media.delete', { type: 'media', projectId: (existing as unknown as { project_id: string }).project_id });
+  await requireCan(user.id, 'media.delete', {
+    type: 'media',
+    projectId: (existing as unknown as { project_id: string }).project_id,
+  });
 
   const { error } = await supabase
     .from('project_files')
@@ -457,7 +473,9 @@ export async function deleteMedia(
     });
   }
 
-  revalidateMediaPaths((existing as unknown as { project_id: string }).project_id);
+  revalidateMediaPaths(
+    (existing as unknown as { project_id: string }).project_id
+  );
   return { success: true };
 }
 
@@ -483,7 +501,10 @@ export async function markMediaFinal(
     return { success: false, error: 'Media not found or access denied' };
   }
 
-  await requireCan(user.id, 'media.mark_final', { type: 'media', projectId: (existing as unknown as { project_id: string }).project_id });
+  await requireCan(user.id, 'media.mark_final', {
+    type: 'media',
+    projectId: (existing as unknown as { project_id: string }).project_id,
+  });
 
   const { error } = await supabase
     .from('project_files')
@@ -502,7 +523,9 @@ export async function markMediaFinal(
     return { success: false, error: error.message };
   }
 
-  revalidateMediaPaths((existing as unknown as { project_id: string }).project_id);
+  revalidateMediaPaths(
+    (existing as unknown as { project_id: string }).project_id
+  );
   return { success: true };
 }
 
@@ -528,7 +551,10 @@ export async function getMediaSignedUrl(
   }
 
   if ((row as { project_id: string | null }).project_id) {
-    await requireCan(user.id, 'media.view_signed_url', { type: 'media', projectId: (row as unknown as { project_id: string }).project_id });
+    await requireCan(user.id, 'media.view_signed_url', {
+      type: 'media',
+      projectId: (row as unknown as { project_id: string }).project_id,
+    });
   }
 
   const { data: signedData, error: signedError } = await supabase.storage
@@ -597,7 +623,10 @@ export async function createMediaShareLink(
   }
 
   if ((row as { project_id: string | null }).project_id) {
-    await requireCan(user.id, 'media.share_create', { type: 'media', projectId: (row as unknown as { project_id: string }).project_id });
+    await requireCan(user.id, 'media.share_create', {
+      type: 'media',
+      projectId: (row as unknown as { project_id: string }).project_id,
+    });
   }
 
   const file = row as {
