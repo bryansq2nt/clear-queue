@@ -149,7 +149,13 @@
     "revoke_error_title": "No se pudo revocar la invitación",
     "remove_error_title": "No se pudo quitar al miembro",
     "quota_members_per_project": "Este proyecto alcanzó el límite de miembros de tu plan.",
-    "quota_projects_per_org": "Tu organización alcanzó el límite de proyectos de tu plan."
+    "quota_projects_per_org": "Tu organización alcanzó el límite de proyectos de tu plan.",
+    "invite_next": "Siguiente",
+    "invite_access_title": "Perfil de acceso",
+    "invite_email_summary": "Invitando a",
+    "invite_custom_label": "Acceso personalizado",
+    "invite_custom_hint": "Elige exactamente qué módulos y rol tendrá esta persona.",
+    "invite_modules": "Módulos visibles"
   },
   "sidebar": {
     "navigation": "Navegación",

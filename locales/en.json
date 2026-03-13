@@ -152,7 +152,13 @@
     "revoke_error_title": "Could not revoke invite",
     "remove_error_title": "Could not remove member",
     "quota_members_per_project": "This project has reached its member limit for your plan.",
-    "quota_projects_per_org": "Your organization has reached its project limit for your plan."
+    "quota_projects_per_org": "Your organization has reached its project limit for your plan.",
+    "invite_next": "Next",
+    "invite_access_title": "Access profile",
+    "invite_email_summary": "Inviting",
+    "invite_custom_label": "Custom access",
+    "invite_custom_hint": "Choose exactly which modules and role this person gets.",
+    "invite_modules": "Visible modules"
   },
   "sidebar": {
     "navigation": "Navigation",

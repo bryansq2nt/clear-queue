@@ -22,10 +22,24 @@ export type ProjectInvite = {
   email: string;
   role_id: string;
   role_name: string;
+  profile_id: string | null;
+  profile_name: string | null;
   status: string;
   invited_by_name: string;
   expires_at: string;
   created_at: string;
+};
+
+export type ProjectAccessProfile = {
+  id: string;
+  project_id: string | null;
+  name: string;
+  description: string | null;
+  base_role_id: string;
+  base_role_name: string;
+  module_overrides: Record<string, boolean>;
+  sort_order: number;
+  is_default: boolean;
 };
 
 // ── listProjectMembers ────────────────────────────────────────────────
@@ -54,7 +68,7 @@ export const listPendingInvites = cache(
     const { data, error } = await (supabase as any)
       .from('project_invites')
       .select(
-        'id, email, role_id, status, expires_at, created_at, rbac_roles(name), profiles!project_invites_invited_by_fkey(display_name)'
+        'id, email, role_id, profile_id, status, expires_at, created_at, rbac_roles(name), profiles!project_invites_invited_by_fkey(display_name), project_access_profiles(name)'
       )
       .eq('project_id', projectId)
       .eq('status', 'pending')
@@ -65,10 +79,42 @@ export const listPendingInvites = cache(
       email: row.email as string,
       role_id: row.role_id as string,
       role_name: (row.rbac_roles?.name as string) ?? '',
+      profile_id: (row.profile_id as string | null) ?? null,
+      profile_name:
+        (row.project_access_profiles?.name as string | null) ?? null,
       status: row.status as string,
       invited_by_name: (row.profiles?.display_name as string) ?? '',
       expires_at: row.expires_at as string,
       created_at: row.created_at as string,
+    }));
+  }
+);
+
+// ── listProjectAccessProfiles ─────────────────────────────────────────
+// Returns global defaults + any project-scoped profiles, ordered by sort_order.
+export const listProjectAccessProfiles = cache(
+  async (projectId: string): Promise<ProjectAccessProfile[]> => {
+    await requireAuth();
+    const supabase = await createClient();
+    const { data, error } = await (supabase as any)
+      .from('project_access_profiles')
+      .select(
+        'id, project_id, name, description, base_role_id, module_overrides, sort_order, is_default, rbac_roles(name)'
+      )
+      .or(`project_id.is.null,project_id.eq.${projectId}`)
+      .order('sort_order', { ascending: true });
+
+    if (error) return [];
+    return (data || []).map((row: any) => ({
+      id: row.id as string,
+      project_id: row.project_id as string | null,
+      name: row.name as string,
+      description: row.description as string | null,
+      base_role_id: row.base_role_id as string,
+      base_role_name: (row.rbac_roles?.name as string) ?? '',
+      module_overrides: (row.module_overrides as Record<string, boolean>) ?? {},
+      sort_order: row.sort_order as number,
+      is_default: row.is_default as boolean,
     }));
   }
 );
@@ -93,7 +139,8 @@ export const listProjectRoles = cache(async () => {
 export async function inviteProjectMember(
   projectId: string,
   email: string,
-  roleId: string
+  roleId: string,
+  profileId?: string
 ): Promise<{ token?: string; error?: string }> {
   const user = await requireAuth();
   await requireCan(user.id, 'teams.invite_project_member', {
@@ -108,14 +155,17 @@ export async function inviteProjectMember(
 
   const supabase = await createClient();
 
+  const insertPayload: Record<string, unknown> = {
+    project_id: projectId,
+    invited_by: user.id,
+    email: email.trim().toLowerCase(),
+    role_id: roleId,
+  };
+  if (profileId) insertPayload.profile_id = profileId;
+
   const { data, error } = await (supabase as any)
     .from('project_invites')
-    .insert({
-      project_id: projectId,
-      invited_by: user.id,
-      email: email.trim().toLowerCase(),
-      role_id: roleId,
-    })
+    .insert(insertPayload)
     .select('token')
     .single();
 
@@ -136,7 +186,11 @@ export async function inviteProjectMember(
     resourceType: 'project_invite',
     resourceId: (data as any).token as string,
     projectId,
-    metadata: { email: email.trim().toLowerCase(), role_id: roleId },
+    metadata: {
+      email: email.trim().toLowerCase(),
+      role_id: roleId,
+      profile_id: profileId ?? null,
+    },
   });
 
   revalidatePath(`/context/${projectId}/team`);
@@ -244,7 +298,7 @@ export const getInviteByToken = cache(async (token: string) => {
   const { data } = await (supabase as any)
     .from('project_invites')
     .select(
-      'id, email, status, expires_at, project_id, projects(name), rbac_roles(name)'
+      'id, email, status, expires_at, project_id, projects(name), rbac_roles(name), project_access_profiles(name, module_overrides)'
     )
     .eq('token', token)
     .maybeSingle();
@@ -257,6 +311,13 @@ export const getInviteByToken = cache(async (token: string) => {
     project_id: (data as any).project_id as string,
     project_name: ((data as any).projects?.name as string) ?? '',
     role_name: ((data as any).rbac_roles?.name as string) ?? '',
+    profile_name:
+      ((data as any).project_access_profiles?.name as string | null) ?? null,
+    module_overrides:
+      ((data as any).project_access_profiles?.module_overrides as Record<
+        string,
+        boolean
+      > | null) ?? null,
   };
 });
 
@@ -267,73 +328,38 @@ export async function acceptInvite(
   const user = await requireAuth();
   const supabase = await createClient();
 
-  const { data: invite, error: fetchError } = await (supabase as any)
-    .from('project_invites')
-    .select('id, email, status, expires_at, project_id, role_id')
-    .eq('token', token)
-    .maybeSingle();
+  const { data: projectId, error: rpcError } = await (supabase as any).rpc(
+    'accept_invite_atomic',
+    { p_token: token, p_user_id: user.id }
+  );
 
-  if (fetchError || !invite) return { error: 'Invite not found' };
+  if (rpcError) {
+    const msg: string = rpcError.message ?? '';
+    if (msg.includes('invite_not_found')) return { error: 'Invite not found' };
+    if (msg.includes('invite_not_pending'))
+      return { error: 'This invite has already been used or revoked' };
+    if (msg.includes('invite_expired'))
+      return { error: 'This invite has expired' };
 
-  const inv = invite as {
-    id: string;
-    email: string;
-    status: string;
-    expires_at: string;
-    project_id: string;
-    role_id: string;
-  };
-
-  if (inv.status !== 'pending')
-    return { error: 'This invite has already been used or revoked' };
-  if (new Date(inv.expires_at) < new Date())
-    return { error: 'This invite has expired' };
-
-  // Add to project_members (upsert — idempotent)
-  const { error: memberError } = await (supabase as any)
-    .from('project_members')
-    .upsert(
-      { project_id: inv.project_id, user_id: user.id, invited_by: user.id },
-      { onConflict: 'project_id,user_id', ignoreDuplicates: true }
-    );
-
-  if (memberError) {
-    captureWithContext(memberError, {
+    captureWithContext(rpcError, {
       module: 'teams',
       action: 'acceptInvite',
       userIntent: 'Accept a project invitation',
-      expected: 'User added to project_members',
-      extra: { inviteId: inv.id },
+      expected:
+        'accept_invite_atomic RPC succeeds — member added and invite marked accepted',
     });
-    return { error: memberError.message };
+    return { error: rpcError.message };
   }
 
-  // Assign role (insert; ignore duplicate)
-  await (supabase as any)
-    .from('user_role_assignments')
-    .insert({
-      user_id: user.id,
-      role_id: inv.role_id,
-      project_id: inv.project_id,
-    })
-    .throwOnError()
-    .catch(() => null); // ignore unique constraint violations
-
-  // Mark invite accepted
-  await (supabase as any)
-    .from('project_invites')
-    .update({ status: 'accepted', accepted_at: new Date().toISOString() })
-    .eq('id', inv.id);
+  const pid = projectId as string;
 
   void logAuditEvent({
     actorUserId: user.id,
     action: 'invite.accepted',
     resourceType: 'project_invite',
-    resourceId: inv.id,
-    projectId: inv.project_id,
-    metadata: { role_id: inv.role_id },
+    projectId: pid,
   });
 
-  revalidatePath(`/context/${inv.project_id}/team`);
-  return { projectId: inv.project_id };
+  revalidatePath(`/context/${pid}/team`);
+  return { projectId: pid };
 }

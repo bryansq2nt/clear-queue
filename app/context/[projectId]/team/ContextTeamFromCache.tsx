@@ -5,8 +5,13 @@ import {
   listProjectMembers,
   listPendingInvites,
   listProjectRoles,
+  listProjectAccessProfiles,
 } from '@/app/actions/teams';
-import type { ProjectMember, ProjectInvite } from '@/app/actions/teams';
+import type {
+  ProjectMember,
+  ProjectInvite,
+  ProjectAccessProfile,
+} from '@/app/actions/teams';
 import { SkeletonTeam } from '@/components/skeletons/SkeletonTeam';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextTeamClient from './ContextTeamClient';
@@ -15,6 +20,7 @@ type TeamData = {
   members: ProjectMember[];
   invites: ProjectInvite[];
   roles: Array<{ id: string; name: string; description: string | null }>;
+  profiles: ProjectAccessProfile[];
 };
 
 interface Props {
@@ -32,12 +38,13 @@ export default function ContextTeamFromCache({ projectId }: Props) {
     cache.invalidate({ type: 'team', projectId });
     setLoadError(null);
     try {
-      const [members, invites, roles] = await Promise.all([
+      const [members, invites, roles, profiles] = await Promise.all([
         listProjectMembers(projectId),
         listPendingInvites(projectId),
         listProjectRoles(),
+        listProjectAccessProfiles(projectId),
       ]);
-      const next: TeamData = { members, invites, roles };
+      const next: TeamData = { members, invites, roles, profiles };
       cache.set({ type: 'team', projectId }, next);
       setData(next);
     } catch (err) {
@@ -59,10 +66,11 @@ export default function ContextTeamFromCache({ projectId }: Props) {
       listProjectMembers(projectId),
       listPendingInvites(projectId),
       listProjectRoles(),
+      listProjectAccessProfiles(projectId),
     ])
-      .then(([members, invites, roles]) => {
+      .then(([members, invites, roles, profiles]) => {
         if (cancelled) return;
-        const next: TeamData = { members, invites, roles };
+        const next: TeamData = { members, invites, roles, profiles };
         cache.set({ type: 'team', projectId }, next);
         setData(next);
         setLoading(false);
@@ -103,6 +111,7 @@ export default function ContextTeamFromCache({ projectId }: Props) {
       initialMembers={data.members}
       initialInvites={data.invites}
       roles={data.roles}
+      profiles={data.profiles}
       onRefresh={loadData}
     />
   );

@@ -28,14 +28,15 @@ The critical gaps before the new invite flow can be built are:
 
 The invite form has exactly **two fields**:
 
-| Field | Type | Behaviour |
-|-------|------|-----------|
-| Email | `<input type="email">` | Free text; trimmed and lowercased before save |
-| Role | `<select>` | Populated by `listProjectRoles()` — returns project_owner, project_editor, project_viewer |
+| Field | Type                   | Behaviour                                                                                 |
+| ----- | ---------------------- | ----------------------------------------------------------------------------------------- |
+| Email | `<input type="email">` | Free text; trimmed and lowercased before save                                             |
+| Role  | `<select>`             | Populated by `listProjectRoles()` — returns project_owner, project_editor, project_viewer |
 
 There is no step for module access selection. There is no concept of a team template or reusable profile. The inviter fills in email + role, clicks "Generate invite link", and receives a copyable URL.
 
 **What happens on submit:**
+
 1. `inviteProjectMember(projectId, email, roleId)` is called
 2. Server action checks `teams.invite_project_member` permission
 3. Calls `checkProjectMemberQuota(projectId)` — returns error if plan limit reached
@@ -67,6 +68,7 @@ There is no step for module access selection. There is no concept of a team temp
 ### 2c. Current Team Tab Display
 
 The team tab shows three sections:
+
 - **Active members** — avatar initials, display name, email, role badge(s), remove button
 - **Pending invites** — email, expiry date, role badge, revoke button
 - **Invite form** (toggled) — email + role select + generate button
@@ -83,14 +85,14 @@ No module-access column or group/team column is shown in any of these sections.
 
 ### 3a. System Roles (seeded, always available)
 
-| Role | Scope | Description |
-|------|-------|-------------|
-| `project_owner` | Project | Full control including member management |
+| Role             | Scope   | Description                                                      |
+| ---------------- | ------- | ---------------------------------------------------------------- |
+| `project_owner`  | Project | Full control including member management                         |
 | `project_editor` | Project | Create/edit all content; cannot manage members or delete project |
-| `project_viewer` | Project | Read-only access to all project content |
-| `org_owner` | Org | Full org control including billing, danger zone |
-| `org_admin` | Org | Manage members, projects, org resources |
-| `org_member` | Org | View org resources; access projects they are invited to |
+| `project_viewer` | Project | Read-only access to all project content                          |
+| `org_owner`      | Org     | Full org control including billing, danger zone                  |
+| `org_admin`      | Org     | Manage members, projects, org resources                          |
+| `org_member`     | Org     | View org resources; access projects they are invited to          |
 
 All six are seeded at migration time via `20260310100005_rbac_metadata.sql`. They are `is_system_role = true` and have no `org_id` (globally available).
 
@@ -103,11 +105,13 @@ Default selection in the form: `project_editor` (first match, or first available
 ### 3c. Permission Model (action-key based)
 
 Permissions are resolved through a join chain:
+
 ```
 user_role_assignments → rbac_roles → rbac_role_module_actions → rbac_module_actions (action_key)
 ```
 
 There are **80+ action keys** across 18 modules. Examples:
+
 - `tasks.create`, `tasks.update_status`, `tasks.delete`, `tasks.bulk_delete`
 - `notes.create`, `notes.update_title`, `notes.update_content`, `notes.delete`
 - `teams.invite_project_member`, `teams.remove_project_member`
@@ -128,6 +132,7 @@ The schema supports custom roles scoped to an org (`rbac_roles.org_id IS NOT NUL
 **File:** `lib/rbac/resolver.ts`
 
 The `can(userId, action, resource)` function:
+
 1. For project-scoped resources: checks `projects.owner_id` first — if the caller IS the project owner, returns `true` immediately without hitting `user_role_assignments`. This is the robust fallback that prevents lockout even if role assignment data is missing.
 2. If not the owner: confirms `project_members` membership, then expands roles via `getGrantedActions` (React `cache()` deduplicates within a render).
 3. Org-scoped resources: checks `organization_members` then expands org role assignments.
@@ -138,48 +143,48 @@ The `can(userId, action, resource)` function:
 
 ### 4a. Tables
 
-| Table | Purpose | Key columns |
-|-------|---------|-------------|
-| `project_members` | Who is in the project | project_id, user_id, invited_by, joined_at |
-| `user_role_assignments` | What role a member has | user_id, role_id, project_id (xor org_id), assigned_by |
-| `project_invites` | Pending/past invitations | project_id, email, role_id, token, status, expires_at |
+| Table                   | Purpose                  | Key columns                                            |
+| ----------------------- | ------------------------ | ------------------------------------------------------ |
+| `project_members`       | Who is in the project    | project_id, user_id, invited_by, joined_at             |
+| `user_role_assignments` | What role a member has   | user_id, role_id, project_id (xor org_id), assigned_by |
+| `project_invites`       | Pending/past invitations | project_id, email, role_id, token, status, expires_at  |
 
 ### 4b. Which Modules Are RBAC-Aware (requireCan calls confirmed)
 
-| Module | Registry key | RBAC checks present | Notes |
-|--------|-------------|---------------------|-------|
-| Tasks | `board` | ✅ Yes | create, update_title, update_status, delete, bulk_delete |
-| Notes | `notes` | ✅ Yes | create, update_title, delete, bulk_delete, add_link, delete_link, manage_folders |
-| Documents | `documents` | ✅ Yes | upload, update_metadata, archive, unarchive, mark_final, view_signed_url, download, delete, bulk_delete, manage_folders |
-| Media | `media` | ✅ Yes | upload, update_metadata, archive, unarchive, mark_final, delete, view_signed_url, share_create |
-| Links | `links` | ✅ Yes | create, update, archive, reorder |
-| Milestones | `milestones` | ✅ Yes | create, update, complete, reopen, delete |
-| Budgets | `budgets` | ✅ Yes | create, update, delete, duplicate, manage_categories, manage_items |
-| Billings | `billings` | ✅ Yes | create, update_description, update_status, delete |
-| Ideas | `ideas` | ✅ Yes | create_board, update_board, delete_board, create_node, update_node, batch_update, link_project, manage_connections |
-| Calendar | `calendar` | ✅ Yes | create, update, delete |
-| Todos | todos (no tab yet) | ✅ Yes | create_list, update_list, delete_list, create_item, toggle_item, update_item, delete_item |
-| Copilot | `copilot` | ✅ Yes | create_session, archive_session, delete_session, send_message |
-| Projects | — | ✅ Yes | update, archive, unarchive, delete, toggle_module |
-| Teams | `team` | ✅ Yes | read_project_members, invite_project_member, remove_project_member |
-| Owner tab | `owner` | Partial | projects.update checked; projects.link_client not yet confirmed |
+| Module     | Registry key       | RBAC checks present | Notes                                                                                                                   |
+| ---------- | ------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Tasks      | `board`            | ✅ Yes              | create, update_title, update_status, delete, bulk_delete                                                                |
+| Notes      | `notes`            | ✅ Yes              | create, update_title, delete, bulk_delete, add_link, delete_link, manage_folders                                        |
+| Documents  | `documents`        | ✅ Yes              | upload, update_metadata, archive, unarchive, mark_final, view_signed_url, download, delete, bulk_delete, manage_folders |
+| Media      | `media`            | ✅ Yes              | upload, update_metadata, archive, unarchive, mark_final, delete, view_signed_url, share_create                          |
+| Links      | `links`            | ✅ Yes              | create, update, archive, reorder                                                                                        |
+| Milestones | `milestones`       | ✅ Yes              | create, update, complete, reopen, delete                                                                                |
+| Budgets    | `budgets`          | ✅ Yes              | create, update, delete, duplicate, manage_categories, manage_items                                                      |
+| Billings   | `billings`         | ✅ Yes              | create, update_description, update_status, delete                                                                       |
+| Ideas      | `ideas`            | ✅ Yes              | create_board, update_board, delete_board, create_node, update_node, batch_update, link_project, manage_connections      |
+| Calendar   | `calendar`         | ✅ Yes              | create, update, delete                                                                                                  |
+| Todos      | todos (no tab yet) | ✅ Yes              | create_list, update_list, delete_list, create_item, toggle_item, update_item, delete_item                               |
+| Copilot    | `copilot`          | ✅ Yes              | create_session, archive_session, delete_session, send_message                                                           |
+| Projects   | —                  | ✅ Yes              | update, archive, unarchive, delete, toggle_module                                                                       |
+| Teams      | `team`             | ✅ Yes              | read_project_members, invite_project_member, remove_project_member                                                      |
+| Owner tab  | `owner`            | Partial             | projects.update checked; projects.link_client not yet confirmed                                                         |
 
 ### 4c. Known Permission Gaps
 
 These action keys are seeded in `rbac_module_actions` but the corresponding `requireCan` call is absent or inconsistent in server actions:
 
-| Action key | Where expected | Current state |
-|-----------|----------------|---------------|
-| `notes.update_content` | `app/actions/notes.ts` updateNote | **Missing** — only `notes.update_title` is checked; content saves are not gated |
-| `billings.update_amount` | `app/actions/billings.ts` updateBilling | **Missing** — only `billings.update_description` and `billings.update_status` are checked |
-| `billings.manage_categories` | `app/actions/billings.ts` | **Missing** — billing category CRUD has no RBAC gate |
-| `copilot.read_sessions` | `app/context/[projectId]/copilot/actions.ts` | **Missing** — list/read calls are not gated |
-| `copilot.read_proposals` | same | **Missing** |
-| `copilot.approve_proposal` | same | **Missing** |
-| `copilot.reject_proposal` | same | **Missing** |
-| `copilot.bulk_approve` | same | **Missing** |
-| `copilot.bulk_reject` | same | **Missing** |
-| `copilot.undo_proposal` | same | **Missing** |
+| Action key                   | Where expected                               | Current state                                                                             |
+| ---------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `notes.update_content`       | `app/actions/notes.ts` updateNote            | **Missing** — only `notes.update_title` is checked; content saves are not gated           |
+| `billings.update_amount`     | `app/actions/billings.ts` updateBilling      | **Missing** — only `billings.update_description` and `billings.update_status` are checked |
+| `billings.manage_categories` | `app/actions/billings.ts`                    | **Missing** — billing category CRUD has no RBAC gate                                      |
+| `copilot.read_sessions`      | `app/context/[projectId]/copilot/actions.ts` | **Missing** — list/read calls are not gated                                               |
+| `copilot.read_proposals`     | same                                         | **Missing**                                                                               |
+| `copilot.approve_proposal`   | same                                         | **Missing**                                                                               |
+| `copilot.reject_proposal`    | same                                         | **Missing**                                                                               |
+| `copilot.bulk_approve`       | same                                         | **Missing**                                                                               |
+| `copilot.bulk_reject`        | same                                         | **Missing**                                                                               |
+| `copilot.undo_proposal`      | same                                         | **Missing**                                                                               |
 
 These gaps mean project_viewers can currently perform write operations that should be restricted to editors/owners.
 
@@ -189,24 +194,25 @@ These gaps mean project_viewers can currently perform write operations that shou
 
 The user-facing module list proposed for the new invite flow, mapped to registry and RBAC:
 
-| # | User-facing label | Registry key | RBAC module key | Permission-aware | Safe for invite config now |
-|---|------------------|-------------|-----------------|------------------|---------------------------|
-| 1 | Tasks | `board` | `tasks` | ✅ Yes | ✅ Yes |
-| 2 | Project Owner | — | — | N/A | ⚠️ This is a role, not a module — maps to `project_owner` role assignment |
-| 3 | Document Hub | `documents` | `documents` | ✅ Yes | ✅ Yes |
-| 4 | Notes | `notes` | `notes` | ✅ Yes (1 gap) | ✅ Yes (minor gap: update_content unchecked) |
-| 5 | Links Vault | `links` | `links` | ✅ Yes | ✅ Yes |
-| 6 | Billing | `billings` | `billings` | ✅ Partial | ⚠️ Partial (update_amount, manage_categories unchecked) |
-| 7 | Budgets | `budgets` | `budgets` | ✅ Yes | ✅ Yes |
-| 8 | Ideas | `ideas` | `ideas` | ✅ Yes | ✅ Yes |
-| 9 | Milestones | `milestones` | `milestones` | ✅ Yes | ✅ Yes |
-| 10 | Calendar | `calendar` | `calendar` | ✅ Yes | ✅ Yes |
-| 11 | Media | `media` | `media` | ✅ Yes | ✅ Yes |
-| 12 | Copilot | `copilot` | `copilot` | ✅ Partial | ⚠️ Partial (read/approve/reject not gated) |
+| #   | User-facing label | Registry key | RBAC module key | Permission-aware | Safe for invite config now                                                |
+| --- | ----------------- | ------------ | --------------- | ---------------- | ------------------------------------------------------------------------- |
+| 1   | Tasks             | `board`      | `tasks`         | ✅ Yes           | ✅ Yes                                                                    |
+| 2   | Project Owner     | —            | —               | N/A              | ⚠️ This is a role, not a module — maps to `project_owner` role assignment |
+| 3   | Document Hub      | `documents`  | `documents`     | ✅ Yes           | ✅ Yes                                                                    |
+| 4   | Notes             | `notes`      | `notes`         | ✅ Yes (1 gap)   | ✅ Yes (minor gap: update_content unchecked)                              |
+| 5   | Links Vault       | `links`      | `links`         | ✅ Yes           | ✅ Yes                                                                    |
+| 6   | Billing           | `billings`   | `billings`      | ✅ Partial       | ⚠️ Partial (update_amount, manage_categories unchecked)                   |
+| 7   | Budgets           | `budgets`    | `budgets`       | ✅ Yes           | ✅ Yes                                                                    |
+| 8   | Ideas             | `ideas`      | `ideas`         | ✅ Yes           | ✅ Yes                                                                    |
+| 9   | Milestones        | `milestones` | `milestones`    | ✅ Yes           | ✅ Yes                                                                    |
+| 10  | Calendar          | `calendar`   | `calendar`      | ✅ Yes           | ✅ Yes                                                                    |
+| 11  | Media             | `media`      | `media`         | ✅ Yes           | ✅ Yes                                                                    |
+| 12  | Copilot           | `copilot`    | `copilot`       | ✅ Partial       | ⚠️ Partial (read/approve/reject not gated)                                |
 
 **Note on "Project Owner":** This is not a module — it is a role level. In the new invite flow, selecting "Project Owner" means assigning the `project_owner` system role, not toggling a module. It should be treated separately from the module access picker (either as a top-level role override, or excluded from the module list and handled as a role selector).
 
 **Note on module enable/disable vs. permissions:** The current system has two separate concepts:
+
 - `modules` table in DB (+ `user_project_module_preferences`?) — controls which tabs appear in the project nav
 - `user_role_assignments` — controls what a member can do
 
@@ -229,6 +235,7 @@ There is no table, schema, or code for saving a named permission configuration (
 ### G3 — Non-atomic `acceptInvite`
 
 `acceptInvite` performs three sequential DB writes:
+
 1. Upsert `project_members`
 2. Insert `user_role_assignments`
 3. Update `project_invites` status
@@ -254,6 +261,7 @@ Custom roles can be stored (schema supports `org_id` on `rbac_roles`), but no se
 ### G8 — Bootstrap gap (mitigated)
 
 The bootstrap migration hardcoded role assignment to one admin UUID. Projects created by other users, or projects created after migrations were applied, had no `user_role_assignments` rows. This was partially mitigated by:
+
 1. A SQL backfill (run manually)
 2. A resolver fix (project owners now bypass role checks via `projects.owner_id` check)
 3. `create_project_atomic` RPC (all new projects get role assignment atomically)
@@ -276,13 +284,13 @@ organizations
 
 To support project teams/groups (developer team, UX team, etc.) the following would be needed:
 
-| What | Schema needed | Exists? |
-|------|--------------|---------|
-| Project team definition | `project_teams (id, project_id, name, description, created_by)` | ❌ No |
-| Team membership | `project_team_members (team_id, user_id, joined_at)` | ❌ No |
-| Team role/permission profile | `project_team_role_template (team_id, role_id or module_overrides)` | ❌ No |
-| Invite to a team | Column or join on `project_invites → team_id` | ❌ No |
-| Team display in UI | New team list section in ContextTeamClient | ❌ No |
+| What                         | Schema needed                                                       | Exists? |
+| ---------------------------- | ------------------------------------------------------------------- | ------- |
+| Project team definition      | `project_teams (id, project_id, name, description, created_by)`     | ❌ No   |
+| Team membership              | `project_team_members (team_id, user_id, joined_at)`                | ❌ No   |
+| Team role/permission profile | `project_team_role_template (team_id, role_id or module_overrides)` | ❌ No   |
+| Invite to a team             | Column or join on `project_invites → team_id`                       | ❌ No   |
+| Team display in UI           | New team list section in ContextTeamClient                          | ❌ No   |
 
 None of this infrastructure exists. The architecture is ready to add it (the existing tables are the right foundation), but the tables, actions, and UI all need to be built from scratch.
 
@@ -293,10 +301,13 @@ None of this infrastructure exists. The architecture is ready to add it (the exi
 Based on this audit, the recommended build sequence is:
 
 ### Step 1 — Fix `acceptInvite` atomicity (immediate)
+
 Create `accept_invite_atomic(p_token UUID, p_user_id UUID)` RPC. This eliminates the partial-state risk before any further work.
 
 ### Step 2 — Define the role template model (schema)
+
 Create a `project_role_templates` table:
+
 ```
 project_role_templates (
   id UUID,
@@ -309,16 +320,21 @@ project_role_templates (
   created_at TIMESTAMPTZ
 )
 ```
+
 This allows:
+
 - Named templates saved per-project or per-org
 - A base role (determines default permissions) + module overrides (hide specific modules)
 - The 3 default system templates (Owner, Editor, Viewer) need no overrides — they use the base role only
 
 ### Step 3 — Add template_id to project_invites
+
 Add `template_id UUID REFERENCES project_role_templates(id) ON DELETE SET NULL` to `project_invites`. This replaces the raw `role_id` column (or coexists with it — if template_id is set, the template's base_role and overrides are applied on accept; otherwise the raw role_id is used as today).
 
 ### Step 4 — Redesign the invite form
+
 New invite form steps:
+
 1. Enter invitee email
 2. Choose role template (or create ad hoc):
    - If template selected → show preview of what they can access
@@ -326,6 +342,7 @@ New invite form steps:
 3. Generate link
 
 ### Step 5 — Add project teams/groups (later)
+
 After templates work, add `project_teams` table and team assignment in the invite flow.
 
 ---
@@ -333,39 +350,43 @@ After templates work, add `project_teams` table and team assignment in the invit
 ## 9. Files and Code References
 
 ### Invite flow
-| File | Purpose |
-|------|---------|
-| `app/context/[projectId]/team/page.tsx` | Team tab route; requireAuth guard |
-| `app/context/[projectId]/team/ContextTeamFromCache.tsx` | Cache layer; error handling |
-| `app/context/[projectId]/team/ContextTeamClient.tsx` | Invite form, member list, pending invites UI |
-| `app/invite/[token]/page.tsx` | Accept page for invitees |
-| `app/actions/teams.ts` | All team server actions |
+
+| File                                                    | Purpose                                      |
+| ------------------------------------------------------- | -------------------------------------------- |
+| `app/context/[projectId]/team/page.tsx`                 | Team tab route; requireAuth guard            |
+| `app/context/[projectId]/team/ContextTeamFromCache.tsx` | Cache layer; error handling                  |
+| `app/context/[projectId]/team/ContextTeamClient.tsx`    | Invite form, member list, pending invites UI |
+| `app/invite/[token]/page.tsx`                           | Accept page for invitees                     |
+| `app/actions/teams.ts`                                  | All team server actions                      |
 
 ### Schema
-| File | Purpose |
-|------|---------|
-| `supabase/migrations/20260310100004_project_members.sql` | project_members table + bootstrap |
-| `supabase/migrations/20260310100005_rbac_metadata.sql` | Roles, modules, action keys, role grants |
-| `supabase/migrations/20260310100006_user_role_assignments.sql` | Role assignment table |
-| `supabase/migrations/20260310100007_bootstrap_role_assignments.sql` | Seed for admin user roles |
+
+| File                                                                       | Purpose                                            |
+| -------------------------------------------------------------------------- | -------------------------------------------------- |
+| `supabase/migrations/20260310100004_project_members.sql`                   | project_members table + bootstrap                  |
+| `supabase/migrations/20260310100005_rbac_metadata.sql`                     | Roles, modules, action keys, role grants           |
+| `supabase/migrations/20260310100006_user_role_assignments.sql`             | Role assignment table                              |
+| `supabase/migrations/20260310100007_bootstrap_role_assignments.sql`        | Seed for admin user roles                          |
 | `supabase/migrations/20260310100009_rls_transition_or_project_members.sql` | OR-transition RLS (now partially superseded by 14) |
-| `supabase/migrations/20260310100010_project_invites.sql` | project_invites table + RLS |
-| `supabase/migrations/20260310100011_plan_quotas.sql` | plan_quotas table + quota RPCs |
-| `supabase/migrations/20260310100012_rbac_audit_log.sql` | Audit log table |
-| `supabase/migrations/20260310100013_reorder_links_atomic.sql` | reorder_links_atomic RPC |
-| `supabase/migrations/20260310100014_drop_or_transition_rls.sql` | Clean member-only RLS |
-| `supabase/migrations/20260310100015_create_project_atomic.sql` | create_project_atomic RPC |
+| `supabase/migrations/20260310100010_project_invites.sql`                   | project_invites table + RLS                        |
+| `supabase/migrations/20260310100011_plan_quotas.sql`                       | plan_quotas table + quota RPCs                     |
+| `supabase/migrations/20260310100012_rbac_audit_log.sql`                    | Audit log table                                    |
+| `supabase/migrations/20260310100013_reorder_links_atomic.sql`              | reorder_links_atomic RPC                           |
+| `supabase/migrations/20260310100014_drop_or_transition_rls.sql`            | Clean member-only RLS                              |
+| `supabase/migrations/20260310100015_create_project_atomic.sql`             | create_project_atomic RPC                          |
 
 ### RBAC runtime
-| File | Purpose |
-|------|---------|
-| `lib/rbac/resolver.ts` | can(), requireCan(), getGrantedActions() |
-| `lib/rbac/audit.ts` | logAuditEvent() fire-and-forget |
-| `lib/quotas.ts` | checkProjectMemberQuota(), checkOrgProjectQuota() |
+
+| File                   | Purpose                                           |
+| ---------------------- | ------------------------------------------------- |
+| `lib/rbac/resolver.ts` | can(), requireCan(), getGrantedActions()          |
+| `lib/rbac/audit.ts`    | logAuditEvent() fire-and-forget                   |
+| `lib/quotas.ts`        | checkProjectMemberQuota(), checkOrgProjectQuota() |
 
 ### Module registry
-| File | Purpose |
-|------|---------|
-| `lib/modules/registry.ts` | MODULE_REGISTRY — all 13 module definitions |
-| `app/context/ContextDataCache.tsx` | Cache key types including 'team' |
-| `components/skeletons/SkeletonTeam.tsx` | Loading state for team tab |
+
+| File                                    | Purpose                                     |
+| --------------------------------------- | ------------------------------------------- |
+| `lib/modules/registry.ts`               | MODULE_REGISTRY — all 13 module definitions |
+| `app/context/ContextDataCache.tsx`      | Cache key types including 'team'            |
+| `components/skeletons/SkeletonTeam.tsx` | Loading state for team tab                  |
