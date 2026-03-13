@@ -37,7 +37,8 @@ export type ProjectAccessProfile = {
   description: string | null;
   base_role_id: string;
   base_role_name: string;
-  module_overrides: Record<string, boolean>;
+  /** NULL = unrestricted (all tabs visible). Array = explicit allowlist of module keys. */
+  allowed_modules: string[] | null;
   sort_order: number;
   is_default: boolean;
 };
@@ -99,7 +100,7 @@ export const listProjectAccessProfiles = cache(
     const { data, error } = await (supabase as any)
       .from('project_access_profiles')
       .select(
-        'id, project_id, name, description, base_role_id, module_overrides, sort_order, is_default, rbac_roles(name)'
+        'id, project_id, name, description, base_role_id, allowed_modules, sort_order, is_default, rbac_roles(name)'
       )
       .or(`project_id.is.null,project_id.eq.${projectId}`)
       .order('sort_order', { ascending: true });
@@ -112,7 +113,7 @@ export const listProjectAccessProfiles = cache(
       description: row.description as string | null,
       base_role_id: row.base_role_id as string,
       base_role_name: (row.rbac_roles?.name as string) ?? '',
-      module_overrides: (row.module_overrides as Record<string, boolean>) ?? {},
+      allowed_modules: (row.allowed_modules as string[] | null) ?? null,
       sort_order: row.sort_order as number,
       is_default: row.is_default as boolean,
     }));
@@ -298,7 +299,7 @@ export const getInviteByToken = cache(async (token: string) => {
   const { data } = await (supabase as any)
     .from('project_invites')
     .select(
-      'id, email, status, expires_at, project_id, projects(name), rbac_roles(name), project_access_profiles(name, module_overrides)'
+      'id, email, status, expires_at, project_id, projects(name), rbac_roles(name), project_access_profiles(name, allowed_modules)'
     )
     .eq('token', token)
     .maybeSingle();
@@ -313,11 +314,11 @@ export const getInviteByToken = cache(async (token: string) => {
     role_name: ((data as any).rbac_roles?.name as string) ?? '',
     profile_name:
       ((data as any).project_access_profiles?.name as string | null) ?? null,
-    module_overrides:
-      ((data as any).project_access_profiles?.module_overrides as Record<
-        string,
-        boolean
-      > | null) ?? null,
+    /** NULL = unrestricted; array = explicit allowlist of module keys. */
+    allowed_modules:
+      ((data as any).project_access_profiles?.allowed_modules as
+        | string[]
+        | null) ?? null,
   };
 });
 

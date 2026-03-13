@@ -26,7 +26,9 @@ import {
 } from 'lucide-react';
 import { MutationErrorDialog } from '@/components/board/MutationErrorDialog';
 
-// ── Module catalogue (order matches tab bar) ───────────────────────────────────
+// ── Module catalogue (Phase 1 safe modules only) ──────────────────────────────
+// billings and copilot are excluded until their RBAC gaps are patched (Phase 2).
+// When they are added, append them here and update the seeded profiles.
 
 const ALL_MODULES: Array<{ key: string; label: string }> = [
   { key: 'board', label: 'Tasks' },
@@ -36,11 +38,9 @@ const ALL_MODULES: Array<{ key: string; label: string }> = [
   { key: 'links', label: 'Links' },
   { key: 'milestones', label: 'Milestones' },
   { key: 'budgets', label: 'Budgets' },
-  { key: 'billings', label: 'Billing' },
   { key: 'ideas', label: 'Ideas' },
   { key: 'calendar', label: 'Calendar' },
   { key: 'todos', label: 'Todos' },
-  { key: 'copilot', label: 'Copilot' },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -63,33 +63,32 @@ function roleBadgeClass(name: string): string {
   return map[name] ?? 'bg-muted text-muted-foreground';
 }
 
-/** Returns the set of module keys that are hidden, based on a profile's overrides. */
-function hiddenModules(overrides: Record<string, boolean>): Set<string> {
-  return new Set(
-    Object.entries(overrides)
-      .filter(([, v]) => v === false)
-      .map(([k]) => k)
-  );
-}
-
 // ── Module visibility preview ─────────────────────────────────────────────────
+// allowedModules: null = unrestricted (all shown); array = explicit allowlist.
 
-function ModulePreview({ overrides }: { overrides: Record<string, boolean> }) {
-  const hidden = hiddenModules(overrides);
+function ModulePreview({
+  allowedModules,
+}: {
+  allowedModules: string[] | null;
+}) {
+  const allowed = allowedModules ? new Set(allowedModules) : null;
   return (
     <div className="flex flex-wrap gap-1 pt-1">
-      {ALL_MODULES.map(({ key, label }) => (
-        <span
-          key={key}
-          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-            hidden.has(key)
-              ? 'bg-muted/60 text-muted-foreground line-through'
-              : 'bg-primary/10 text-primary'
-          }`}
-        >
-          {label}
-        </span>
-      ))}
+      {ALL_MODULES.map(({ key, label }) => {
+        const visible = allowed === null || allowed.has(key);
+        return (
+          <span
+            key={key}
+            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              visible
+                ? 'bg-primary/10 text-primary'
+                : 'bg-muted/60 text-muted-foreground line-through'
+            }`}
+          >
+            {label}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -473,7 +472,7 @@ export default function ContextTeamClient({
                     )}
                     {/* Module preview for selected profile */}
                     {!isCustom && selectedProfileId === profile.id && (
-                      <ModulePreview overrides={profile.module_overrides} />
+                      <ModulePreview allowedModules={profile.allowed_modules} />
                     )}
                   </button>
                 ))}
