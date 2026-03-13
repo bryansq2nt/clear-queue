@@ -158,7 +158,8 @@
     "invite_email_summary": "Inviting",
     "invite_custom_label": "Custom access",
     "invite_custom_hint": "Choose exactly which modules and role this person gets.",
-    "invite_modules": "Visible modules"
+    "invite_modules": "Visible modules",
+    "invite_modules_note": "Billing and Copilot are always visible and not configurable in this version."
   },
   "sidebar": {
     "navigation": "Navigation",

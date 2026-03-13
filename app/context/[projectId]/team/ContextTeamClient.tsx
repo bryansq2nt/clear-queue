@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useI18n } from '@/components/shared/I18nProvider';
 import {
   inviteProjectMember,
+  createProjectAccessProfile,
   revokeInvite,
   removeProjectMember,
 } from '@/app/actions/teams';
@@ -105,7 +106,7 @@ function CustomModuleGrid({
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
       {ALL_MODULES.map(({ key, label }) => {
-        const on = enabled[key] !== false;
+        const on = enabled[key] === true;
         return (
           <button
             key={key}
@@ -233,12 +234,36 @@ export default function ContextTeamClient({
     let roleId: string;
 
     if (isCustom) {
-      // Custom: no saved profile, use raw role
-      profileId = undefined;
       roleId = customRoleId;
+      // Build allowlist from toggles; null means all enabled → unrestricted
+      const enabledKeys = ALL_MODULES.filter(
+        ({ key }) => customModuleEnabled[key] === true
+      ).map(({ key }) => key);
+      const allowedModules =
+        enabledKeys.length === ALL_MODULES.length ? null : enabledKeys;
+
+      if (allowedModules !== null) {
+        // Persist as a project-scoped profile so the RPC can apply the allowlist
+        const profileResult = await createProjectAccessProfile(projectId, {
+          name: 'Custom',
+          base_role_id: roleId,
+          allowed_modules: allowedModules,
+        });
+        if (profileResult.error) {
+          setInviteSaving(false);
+          setErrorDialog({
+            open: true,
+            title: t('teams.invite_error_title'),
+            message: profileResult.error,
+            retry: handleInvite,
+          });
+          return;
+        }
+        profileId = profileResult.data?.id;
+      }
+      // If all modules enabled → no profile needed, plain role invite
     } else {
       profileId = selectedProfileId ?? undefined;
-      // Fallback role: use the profile's base role if available, else editor
       roleId =
         activeProfile?.base_role_id ??
         roles.find((r) => r.name === 'project_editor')?.id ??
@@ -273,6 +298,7 @@ export default function ContextTeamClient({
     inviteEmail,
     isCustom,
     customRoleId,
+    customModuleEnabled,
     selectedProfileId,
     activeProfile,
     roles,
@@ -534,6 +560,9 @@ export default function ContextTeamClient({
                         }))
                       }
                     />
+                    <p className="text-xs text-muted-foreground">
+                      {t('teams.invite_modules_note')}
+                    </p>
                   </div>
                 </div>
               )}

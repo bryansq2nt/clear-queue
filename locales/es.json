@@ -155,7 +155,8 @@
     "invite_email_summary": "Invitando a",
     "invite_custom_label": "Acceso personalizado",
     "invite_custom_hint": "Elige exactamente qué módulos y rol tendrá esta persona.",
-    "invite_modules": "Módulos visibles"
+    "invite_modules": "Módulos visibles",
+    "invite_modules_note": "Facturación y Copilot son siempre visibles y no configurables en esta versión."
   },
   "sidebar": {
     "navigation": "Navegación",

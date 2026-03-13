@@ -2,7 +2,20 @@ import { redirect } from 'next/navigation';
 import { getInviteByToken, acceptInvite } from '@/app/actions/teams';
 import { getUser } from '@/lib/auth';
 import Link from 'next/link';
-import { Users, AlertCircle, CheckCircle } from 'lucide-react';
+import { Users, AlertCircle, CheckCircle, Eye } from 'lucide-react';
+
+const MODULE_LABELS: Record<string, string> = {
+  board: 'Tasks',
+  notes: 'Notes',
+  documents: 'Documents',
+  media: 'Media',
+  links: 'Links',
+  milestones: 'Milestones',
+  budgets: 'Budgets',
+  ideas: 'Ideas',
+  calendar: 'Calendar',
+  todos: 'Todos',
+};
 
 function roleLabel(name: string): string {
   const map: Record<string, string> = {
@@ -134,11 +147,30 @@ export default async function InvitePage({
             </span>{' '}
             as{' '}
             <span className="font-medium text-foreground">
-              {roleLabel(invite.role_name)}
+              {invite.profile_name ?? roleLabel(invite.role_name)}
             </span>
             .
           </p>
         </div>
+
+        {invite.allowed_modules && invite.allowed_modules.length > 0 && (
+          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Eye className="w-3.5 h-3.5" />
+              You&apos;ll have access to
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {invite.allowed_modules.map((key) => (
+                <span
+                  key={key}
+                  className="text-xs px-2 py-0.5 rounded-full font-medium bg-primary/10 text-primary"
+                >
+                  {MODULE_LABELS[key] ?? key}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground text-center">
           Joining as{' '}

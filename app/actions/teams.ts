@@ -120,6 +120,51 @@ export const listProjectAccessProfiles = cache(
   }
 );
 
+// ── createProjectAccessProfile ────────────────────────────────────────
+// Creates a project-scoped access profile. Used by the invite form for custom configs.
+export async function createProjectAccessProfile(
+  projectId: string,
+  payload: {
+    name: string;
+    base_role_id: string;
+    allowed_modules: string[] | null;
+    description?: string;
+  }
+): Promise<{ data?: { id: string }; error?: string }> {
+  const user = await requireAuth();
+  await requireCan(user.id, 'teams.invite_project_member', {
+    type: 'project',
+    projectId,
+  });
+
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('project_access_profiles')
+    .insert({
+      project_id: projectId,
+      name: payload.name,
+      base_role_id: payload.base_role_id,
+      allowed_modules: payload.allowed_modules,
+      description: payload.description ?? null,
+      created_by: user.id,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'teams',
+      action: 'createProjectAccessProfile',
+      userIntent: 'Create a custom access profile for a project invite',
+      expected: 'Profile record inserted and id returned',
+      extra: { projectId },
+    });
+    return { error: error.message };
+  }
+
+  return { data: { id: (data as any).id as string } };
+}
+
 // ── listProjectRoles ──────────────────────────────────────────────────
 export const listProjectRoles = cache(async () => {
   await requireAuth();
