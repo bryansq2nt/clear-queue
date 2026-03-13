@@ -1,6 +1,8 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
+import { createClient } from '@/lib/supabase/server';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import {
@@ -12,7 +14,7 @@ export async function createConnectionAction(
   fromIdeaId: string,
   toIdeaId: string
 ) {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!fromIdeaId || fromIdeaId.trim().length === 0) {
     return { error: 'From idea ID is required' };
@@ -24,6 +26,24 @@ export async function createConnectionAction(
 
   if (fromIdeaId === toIdeaId) {
     return { error: 'Cannot create connection from an idea to itself' };
+  }
+
+  const supabase = await createClient();
+  const { data: boardItem } = await (supabase as any)
+    .from('idea_board_items')
+    .select('board_id')
+    .eq('idea_id', fromIdeaId)
+    .limit(1)
+    .maybeSingle();
+  if (boardItem?.board_id) {
+    const { data: boardRow } = await (supabase as any)
+      .from('idea_boards')
+      .select('project_id')
+      .eq('id', boardItem.board_id)
+      .maybeSingle();
+    if (boardRow?.project_id) {
+      await requireCan(user.id, 'ideas.manage_connections', { type: 'idea', projectId: boardRow.project_id });
+    }
   }
 
   try {
@@ -53,10 +73,35 @@ export async function createConnectionAction(
 }
 
 export async function deleteConnectionAction(connectionId: string) {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!connectionId || connectionId.trim().length === 0) {
     return { error: 'Connection ID is required' };
+  }
+
+  const supabase = await createClient();
+  const { data: connRow } = await (supabase as any)
+    .from('idea_connections')
+    .select('from_idea_id')
+    .eq('id', connectionId)
+    .maybeSingle();
+  if (connRow?.from_idea_id) {
+    const { data: boardItem } = await (supabase as any)
+      .from('idea_board_items')
+      .select('board_id')
+      .eq('idea_id', connRow.from_idea_id)
+      .limit(1)
+      .maybeSingle();
+    if (boardItem?.board_id) {
+      const { data: boardRow } = await (supabase as any)
+        .from('idea_boards')
+        .select('project_id')
+        .eq('id', boardItem.board_id)
+        .maybeSingle();
+      if (boardRow?.project_id) {
+        await requireCan(user.id, 'ideas.manage_connections', { type: 'idea', projectId: boardRow.project_id });
+      }
+    }
   }
 
   try {

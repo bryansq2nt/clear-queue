@@ -1,6 +1,8 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
+import { createClient } from '@/lib/supabase/server';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { updateBoardItemPosition } from '@/lib/idea-graph/boards';
@@ -10,7 +12,7 @@ export async function updatePositionAction(
   x: number,
   y: number
 ) {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!boardItemId || boardItemId.trim().length === 0) {
     return { error: 'Board item ID is required' };
@@ -18,6 +20,23 @@ export async function updatePositionAction(
 
   if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
     return { error: 'X and Y coordinates must be valid numbers' };
+  }
+
+  const supabase = await createClient();
+  const { data: boardItem } = await (supabase as any)
+    .from('idea_board_items')
+    .select('board_id')
+    .eq('id', boardItemId)
+    .maybeSingle();
+  if (boardItem?.board_id) {
+    const { data: boardRow } = await (supabase as any)
+      .from('idea_boards')
+      .select('project_id')
+      .eq('id', boardItem.board_id)
+      .maybeSingle();
+    if (boardRow?.project_id) {
+      await requireCan(user.id, 'ideas.update_node', { type: 'idea', projectId: boardRow.project_id });
+    }
   }
 
   try {

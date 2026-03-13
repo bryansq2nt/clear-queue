@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import type {
@@ -97,6 +98,7 @@ export async function createMilestone(
   input: CreateMilestoneInput
 ): Promise<{ data?: Milestone; error?: string }> {
   const user = await requireAuth();
+  await requireCan(user.id, 'milestones.create', { type: 'milestone', projectId });
   const supabase = await createClient();
 
   const title = input.title?.trim();
@@ -147,6 +149,15 @@ export async function updateMilestone(
 ): Promise<{ data?: Milestone; error?: string }> {
   const user = await requireAuth();
   const supabase = await createClient();
+
+  const { data: milestoneRow } = await (supabase as any)
+    .from('milestones')
+    .select('project_id')
+    .eq('id', milestoneId)
+    .maybeSingle();
+  if (milestoneRow?.project_id) {
+    await requireCan(user.id, 'milestones.update', { type: 'milestone', projectId: milestoneRow.project_id });
+  }
 
   const updates: Record<string, unknown> = {};
   if (input.title !== undefined) updates.title = input.title.trim();
@@ -212,6 +223,15 @@ export async function completeMilestone(
   const user = await requireAuth();
   const supabase = await createClient();
 
+  const { data: milestoneRow } = await (supabase as any)
+    .from('milestones')
+    .select('project_id')
+    .eq('id', milestoneId)
+    .maybeSingle();
+  if (milestoneRow?.project_id) {
+    await requireCan(user.id, 'milestones.complete', { type: 'milestone', projectId: milestoneRow.project_id });
+  }
+
   const { data, error } = await (supabase as any).rpc(
     'complete_milestone_atomic',
     {
@@ -245,6 +265,15 @@ export async function reopenMilestone(
 ): Promise<{ data?: Milestone; error?: string }> {
   const user = await requireAuth();
   const supabase = await createClient();
+
+  const { data: milestoneRow } = await (supabase as any)
+    .from('milestones')
+    .select('project_id')
+    .eq('id', milestoneId)
+    .maybeSingle();
+  if (milestoneRow?.project_id) {
+    await requireCan(user.id, 'milestones.reopen', { type: 'milestone', projectId: milestoneRow.project_id });
+  }
 
   const { data, error } = await (supabase as any).rpc(
     'reopen_milestone_atomic',
@@ -285,6 +314,10 @@ export async function deleteMilestone(
     .select('project_id')
     .eq('id', milestoneId)
     .single();
+
+  if (row?.project_id) {
+    await requireCan(user.id, 'milestones.delete', { type: 'milestone', projectId: row.project_id });
+  }
 
   const { error } = await (supabase as any)
     .from('milestones')

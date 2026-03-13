@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { createClient } from '@/lib/supabase/server';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
@@ -47,7 +48,7 @@ export async function createBoardFormAction(formData: FormData) {
 }
 
 export async function updateBoardAction(formData: FormData) {
-  await requireAuth();
+  const user = await requireAuth();
 
   const id = formData.get('id') as string;
   const name = formData.get('name') as string | null;
@@ -56,6 +57,21 @@ export async function updateBoardAction(formData: FormData) {
 
   if (!id) {
     return { error: 'Board ID is required' };
+  }
+
+  if (projectId) {
+    await requireCan(user.id, 'ideas.update_board', { type: 'idea', projectId });
+  } else {
+    // Look up project_id from the board
+    const supabase = await createClient();
+    const { data: boardRow } = await supabase
+      .from('idea_boards')
+      .select('project_id')
+      .eq('id', id)
+      .maybeSingle() as any;
+    if (boardRow?.project_id) {
+      await requireCan(user.id, 'ideas.update_board', { type: 'idea', projectId: boardRow.project_id });
+    }
   }
 
   try {
@@ -83,10 +99,20 @@ export async function updateBoardAction(formData: FormData) {
 }
 
 export async function deleteBoardAction(id: string) {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!id) {
     return { error: 'Board ID is required' };
+  }
+
+  const supabase = await createClient();
+  const { data: boardRow } = await supabase
+    .from('idea_boards')
+    .select('project_id')
+    .eq('id', id)
+    .maybeSingle() as any;
+  if (boardRow?.project_id) {
+    await requireCan(user.id, 'ideas.delete_board', { type: 'idea', projectId: boardRow.project_id });
   }
 
   try {
@@ -133,6 +159,8 @@ export async function createBoardWithProjectAction(
   const trimmedProjectId = projectId?.trim();
   if (!trimmedProjectId) return { error: 'Project ID is required' };
 
+  await requireCan(user.id, 'ideas.create_board', { type: 'idea', projectId: trimmedProjectId });
+
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -158,7 +186,7 @@ export async function createBoardWithProjectAction(
 }
 
 export async function addIdeaToBoardAction(formData: FormData) {
-  await requireAuth();
+  const user = await requireAuth();
 
   const boardId = formData.get('boardId') as string;
   const ideaId = formData.get('ideaId') as string;
@@ -167,6 +195,16 @@ export async function addIdeaToBoardAction(formData: FormData) {
 
   if (!boardId || !ideaId) {
     return { error: 'Board ID and Idea ID are required' };
+  }
+
+  const supabase = await createClient();
+  const { data: boardRow } = await supabase
+    .from('idea_boards')
+    .select('project_id')
+    .eq('id', boardId)
+    .maybeSingle() as any;
+  if (boardRow?.project_id) {
+    await requireCan(user.id, 'ideas.create_node', { type: 'idea', projectId: boardRow.project_id });
   }
 
   try {

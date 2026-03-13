@@ -12,6 +12,7 @@ import {
   Receipt,
   Flag,
   Bot,
+  Users,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────
@@ -30,7 +31,8 @@ export type ModuleKey =
   | 'budgets'
   | 'billings'
   | 'milestones'
-  | 'copilot';
+  | 'copilot'
+  | 'team';
 
 export interface ModuleDefinition {
   key: ModuleKey;
@@ -192,6 +194,15 @@ export const MODULE_REGISTRY: Record<ModuleKey, ModuleDefinition> = {
     defaultEnabled: false,
     lock: false,
     nav: { showInProjectTabs: true, slug: 'copilot', order: 12 },
+  },
+  team: {
+    key: 'team',
+    labelKey: 'context.team',
+    descriptionKey: 'modules.team_description',
+    icon: Users,
+    defaultEnabled: true,
+    lock: false,
+    nav: { showInProjectTabs: true, slug: 'team', order: 13 },
   },
 };
 

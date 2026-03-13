@@ -3,10 +3,13 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth, getUser } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { PROJECT_CATEGORIES, type ProjectCategory } from '@/lib/constants';
 import type { Database } from '@/lib/supabase/types';
+import { checkOrgProjectQuota } from '@/lib/quotas';
+import { logAuditEvent } from '@/lib/rbac/audit';
 import { getNotes } from '@/app/actions/notes';
 import { getBudgets } from '@/app/actions/budgets';
 import { listBoards } from '@/lib/idea-graph/boards';
@@ -17,7 +20,6 @@ export type ActionResult<T> =
   | { ok: false; error: string };
 
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
-type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
 type ProjectUpdate = Database['public']['Tables']['projects']['Update'];
 type ProjectFavoriteInsert =
   Database['public']['Tables']['project_favorites']['Insert'];
@@ -77,22 +79,34 @@ export async function createProject(
   const client_id = (formData.get('client_id') as string)?.trim() || null;
   const business_id = (formData.get('business_id') as string)?.trim() || null;
 
-  const insertData: ProjectInsert = {
-    name: name.trim(),
-    color: color || null,
-    category,
-    owner_id: user.id,
-    client_id,
-    business_id,
-  };
+  // Resolve the user's org (first org membership) for quota enforcement + FK
+  const { data: orgMembership } = await (supabase as any)
+    .from('organization_members')
+    .select('org_id')
+    .eq('user_id', user.id)
+    .order('joined_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  const orgId = (orgMembership as { org_id?: string } | null)?.org_id ?? null;
 
-  const { data, error } = await supabase
-    .from('projects')
-    .insert(insertData as never)
-    .select(
-      'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
-    )
-    .single();
+  // Enforce org project quota when an org is found
+  if (orgId) {
+    const quota = await checkOrgProjectQuota(orgId);
+    if (!quota.allowed) {
+      return { ok: false, error: 'quota_projects_per_org' };
+    }
+  }
+
+  // create_project_atomic: creates the project, adds creator to project_members,
+  // and assigns the project_owner role — all in one transaction.
+  const { data, error } = await (supabase as any).rpc('create_project_atomic', {
+    in_name: name.trim(),
+    in_color: color || null,
+    in_category: category,
+    in_org_id: orgId,
+    in_client_id: client_id || null,
+    in_business_id: business_id || null,
+  });
 
   if (error || !data) {
     if (error) {
@@ -107,9 +121,19 @@ export async function createProject(
     return { ok: false, error: error?.message ?? 'Failed to create project' };
   }
 
+  const createdProject = data as ProjectRow;
+  void logAuditEvent({
+    actorUserId: user.id,
+    action: 'project.created',
+    resourceType: 'project',
+    resourceId: createdProject.id,
+    orgId: orgId ?? undefined,
+    metadata: { name: createdProject.name, category: createdProject.category },
+  });
+
   revalidatePath('/dashboard');
   revalidatePath('/context');
-  return { ok: true, data };
+  return { ok: true, data: createdProject };
 }
 
 export async function updateProject(
@@ -129,6 +153,8 @@ export async function updateProject(
   if (!id) {
     return { ok: false, error: 'Project ID is required' };
   }
+
+  await requireCan(user.id, 'projects.update', { type: 'project', projectId: id });
 
   const updates: ProjectUpdate = {};
 
@@ -238,6 +264,9 @@ export async function archiveProject(
   id: string
 ): Promise<ActionResult<ProjectRow>> {
   const user = await requireAuth();
+
+  await requireCan(user.id, 'projects.archive', { type: 'project', projectId: id });
+
   const supabase = await createClient();
 
   const updates: ProjectUpdate = { category: 'archived' };
@@ -273,6 +302,9 @@ export async function unarchiveProject(
   previousCategory?: string
 ): Promise<ActionResult<ProjectRow>> {
   const user = await requireAuth();
+
+  await requireCan(user.id, 'projects.unarchive', { type: 'project', projectId: id });
+
   const supabase = await createClient();
 
   const category = previousCategory || 'business';
@@ -317,6 +349,9 @@ export async function deleteProject(
   id: string
 ): Promise<ActionResult<{ success: true }>> {
   const user = await requireAuth();
+
+  await requireCan(user.id, 'projects.delete', { type: 'project', projectId: id });
+
   const supabase = await createClient();
 
   const { error } = await supabase

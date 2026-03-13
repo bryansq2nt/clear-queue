@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { revalidatePath } from 'next/cache';
 import { captureWithContext } from '@/lib/sentry';
 
@@ -213,6 +214,10 @@ export async function createBilling(formData: {
     return { error: 'Due date cannot be earlier than the issue date' };
   }
 
+  if (formData.project_id) {
+    await requireCan(user.id, 'billings.create', { type: 'billing', projectId: formData.project_id });
+  }
+
   const { data, error } = await (supabase as any)
     .from('billings')
     .insert({
@@ -286,6 +291,10 @@ export async function updateBilling(
     return { error: 'Due date cannot be earlier than the issue date' };
   }
 
+  if (formData.project_id) {
+    await requireCan(user.id, 'billings.update_description', { type: 'billing', projectId: formData.project_id });
+  }
+
   const { error } = await (supabase as any)
     .from('billings')
     .update({
@@ -331,6 +340,16 @@ export async function updateBillingStatus(
   const user = await requireAuth();
   const supabase = await createClient();
 
+  const { data: billingRow } = await (supabase as any)
+    .from('billings')
+    .select('project_id')
+    .eq('id', id)
+    .eq('owner_id', user.id)
+    .single();
+  if ((billingRow as { project_id: string | null } | null)?.project_id) {
+    await requireCan(user.id, 'billings.update_status', { type: 'billing', projectId: (billingRow as unknown as { project_id: string }).project_id });
+  }
+
   const { error } = await (supabase as any)
     .from('billings')
     .update({
@@ -372,11 +391,21 @@ export async function deleteBilling(
   const user = await requireAuth();
   const supabase = await createClient();
 
-  const { error } = await (supabase as any)
+  if (projectId) {
+    await requireCan(user.id, 'billings.delete', { type: 'billing', projectId });
+  }
+
+  let deleteQuery = (supabase as any)
     .from('billings')
     .delete()
     .eq('id', id)
     .eq('owner_id', user.id);
+
+  if (projectId) {
+    deleteQuery = deleteQuery.eq('project_id', projectId);
+  }
+
+  const { error } = await deleteQuery;
 
   if (error) {
     captureWithContext(error, {

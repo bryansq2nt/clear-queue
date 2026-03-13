@@ -100,6 +100,7 @@
     "calendar": "Calendario",
     "milestones": "Hitos",
     "copilot": "Copilot",
+    "team": "Equipo",
     "settings": "Ajustes",
     "welcome_back_name": "Bienvenido de nuevo, {name}",
     "work_on_something_else": "¿Quieres trabajar en algo diferente?",
@@ -129,6 +130,26 @@
     "ideas_coming_soon": "Las ideas del proyecto aparecerán aquí. (Fase 6)",
     "budgets_coming_soon": "Los presupuestos del proyecto aparecerán aquí. (Fase 4)",
     "todos_coming_soon": "Las tareas del proyecto aparecerán aquí. (Fase 6)"
+  },
+  "teams": {
+    "title": "Equipo del proyecto",
+    "members_title": "Miembros",
+    "pending_invites": "Invitaciones pendientes",
+    "no_members": "Aún no hay miembros.",
+    "invite_member": "Invitar miembro",
+    "invite_email": "Correo electrónico",
+    "invite_role": "Rol",
+    "generate_link": "Generar enlace de invitación",
+    "invite_link_ready": "Enlace de invitación generado",
+    "invite_link_hint": "Comparte este enlace con la persona que quieres invitar. Expira en 7 días.",
+    "remove_member": "Quitar miembro",
+    "revoke_invite": "Revocar invitación",
+    "expires": "Expira",
+    "invite_error_title": "No se pudo enviar la invitación",
+    "revoke_error_title": "No se pudo revocar la invitación",
+    "remove_error_title": "No se pudo quitar al miembro",
+    "quota_members_per_project": "Este proyecto alcanzó el límite de miembros de tu plan.",
+    "quota_projects_per_org": "Tu organización alcanzó el límite de proyectos de tu plan."
   },
   "sidebar": {
     "navigation": "Navegación",
@@ -932,6 +953,7 @@
     "billings_description": "Seguimiento de facturación y cobros",
     "copilot_description": "Asistente de planificación con IA para tu proyecto",
     "milestones_description": "Fases y metas del proyecto; sigue el avance con una línea de tiempo",
+    "team_description": "Invita y gestiona los miembros del equipo del proyecto.",
     "module_disabled_title": "Este módulo está desactivado para este proyecto",
     "module_disabled_description": "Puedes activarlo desde los ajustes del proyecto.",
     "module_disabled_cta": "Abrir ajustes"

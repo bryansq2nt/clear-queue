@@ -3,6 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import type {
@@ -55,6 +56,7 @@ export async function createCopilotSession(
   projectId: string
 ): Promise<CopilotSession | null> {
   const user = await requireAuth();
+  await requireCan(user.id, 'copilot.create_session', { type: 'project', projectId });
   const supabase = await createClient();
 
   const { data, error } = await (supabase as any)
@@ -116,6 +118,16 @@ export async function archiveCopilotSession(
   const user = await requireAuth();
   const supabase = await createClient();
 
+  const { data: sessionRow } = await (supabase as any)
+    .from('copilot_sessions')
+    .select('project_id')
+    .eq('id', sessionId)
+    .eq('owner_id', user.id)
+    .maybeSingle();
+  if (sessionRow?.project_id) {
+    await requireCan(user.id, 'copilot.archive_session', { type: 'project', projectId: sessionRow.project_id });
+  }
+
   const { error } = await (supabase as any)
     .from('copilot_sessions')
     .update({ status: 'archived' })
@@ -143,6 +155,16 @@ export async function deleteCopilotSession(
   const user = await requireAuth();
   const supabase = await createClient();
 
+  const { data: sessionRow } = await (supabase as any)
+    .from('copilot_sessions')
+    .select('project_id')
+    .eq('id', sessionId)
+    .eq('owner_id', user.id)
+    .maybeSingle();
+  if (sessionRow?.project_id) {
+    await requireCan(user.id, 'copilot.delete_session', { type: 'project', projectId: sessionRow.project_id });
+  }
+
   const { error } = await (supabase as any)
     .from('copilot_sessions')
     .delete()
@@ -169,6 +191,7 @@ export async function startFreshCopilotSession(
   projectId: string
 ): Promise<CopilotSession | null> {
   const user = await requireAuth();
+  await requireCan(user.id, 'copilot.create_session', { type: 'project', projectId });
   const supabase = await createClient();
 
   const { data: active } = await (supabase as any)
@@ -202,6 +225,16 @@ export async function updateSessionTitle(
   const supabase = await createClient();
   const trimmed = title.trim().slice(0, SESSION_TITLE_MAX_LENGTH);
   if (!trimmed) return false;
+
+  const { data: sessionRow } = await (supabase as any)
+    .from('copilot_sessions')
+    .select('project_id')
+    .eq('id', sessionId)
+    .eq('owner_id', user.id)
+    .maybeSingle();
+  if (sessionRow?.project_id) {
+    await requireCan(user.id, 'copilot.archive_session', { type: 'project', projectId: sessionRow.project_id });
+  }
 
   const { error } = await (supabase as any)
     .from('copilot_sessions')
@@ -303,6 +336,7 @@ export async function saveCopilotMessage(
   tokenCount?: number
 ): Promise<SaveCopilotMessageResult> {
   const user = await requireAuth();
+  await requireCan(user.id, 'copilot.send_message', { type: 'project', projectId });
   const supabase = await createClient();
 
   let wasFirstMessage = false;

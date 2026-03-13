@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -91,6 +92,8 @@ export async function createFolder(
   if (!project)
     return { success: false, error: 'Project not found or access denied' };
 
+  await requireCan(user.id, 'documents.manage_folders', { type: 'document', projectId: pid });
+
   const trimmedName = name?.trim();
   if (!trimmedName) return { success: false, error: 'Folder name is required' };
 
@@ -144,6 +147,16 @@ export async function updateFolder(
 
   const fid = folderId?.trim();
   if (!fid) return { success: false, error: 'Folder ID is required' };
+
+  const { data: folderRow } = await (supabase as any)
+    .from('project_document_folders')
+    .select('project_id')
+    .eq('id', fid)
+    .eq('owner_id', user.id)
+    .maybeSingle();
+  if ((folderRow as { project_id?: string } | null)?.project_id) {
+    await requireCan(user.id, 'documents.manage_folders', { type: 'document', projectId: (folderRow as { project_id: string }).project_id });
+  }
 
   const updates: Database['public']['Tables']['project_document_folders']['Update'] =
     {};
@@ -204,6 +217,8 @@ export async function deleteFolders(
   const pid = projectId?.trim();
   if (!pid) return { success: false, error: 'Project ID is required' };
 
+  await requireCan(user.id, 'documents.manage_folders', { type: 'document', projectId: pid });
+
   const validIds = (folderIds ?? [])
     .map((id) => id?.trim())
     .filter(Boolean) as string[];
@@ -252,6 +267,8 @@ export async function deleteFolder(
     return { success: false, error: 'Folder not found or access denied' };
   }
 
+  await requireCan(user.id, 'documents.manage_folders', { type: 'document', projectId: (existing as unknown as { project_id: string }).project_id });
+
   const { error } = await supabase
     .from('project_document_folders')
     .delete()
@@ -269,6 +286,6 @@ export async function deleteFolder(
     return { success: false, error: error.message };
   }
 
-  revalidateDocumentPaths((existing as { project_id: string }).project_id);
+  revalidateDocumentPaths((existing as unknown as { project_id: string }).project_id);
   return { success: true };
 }

@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -119,6 +120,8 @@ export async function uploadDocument(
   const project = await getProjectById(pid);
   if (!project)
     return { success: false, error: 'Project not found or access denied' };
+
+  await requireCan(user.id, 'documents.upload', { type: 'document', projectId: pid });
 
   // Extract and validate file
   const file = formData.get('file');
@@ -268,6 +271,8 @@ export async function uploadDocumentsBulk(
         { index: 0, name: '', error: 'Project not found or access denied' },
       ],
     };
+
+  await requireCan(user.id, 'documents.upload', { type: 'document', projectId: pid });
 
   const rawCategory = formData.get('document_category');
   const category = typeof rawCategory === 'string' ? rawCategory.trim() : '';
@@ -432,7 +437,8 @@ export async function updateDocument(
     return { success: false, error: 'Document not found or access denied' };
   }
 
-  const projectId = (existing as { project_id: string }).project_id;
+  const projectId = (existing as unknown as { project_id: string }).project_id;
+  await requireCan(user.id, 'documents.update_metadata', { type: 'document', projectId });
 
   if (
     input.folder_id !== undefined &&
@@ -529,6 +535,8 @@ export async function archiveDocument(
     return { success: false, error: 'Document not found or access denied' };
   }
 
+  await requireCan(user.id, 'documents.archive', { type: 'document', projectId: (existing as unknown as { project_id: string }).project_id });
+
   const { error } = await supabase
     .from('project_files')
     .update({ archived_at: new Date().toISOString() } as never)
@@ -546,7 +554,7 @@ export async function archiveDocument(
     return { success: false, error: error.message };
   }
 
-  revalidateDocumentPaths((existing as { project_id: string }).project_id);
+  revalidateDocumentPaths((existing as unknown as { project_id: string }).project_id);
   return { success: true };
 }
 
@@ -571,6 +579,8 @@ export async function markDocumentFinal(
     return { success: false, error: 'Document not found or access denied' };
   }
 
+  await requireCan(user.id, 'documents.mark_final', { type: 'document', projectId: (existing as unknown as { project_id: string }).project_id });
+
   const { error } = await supabase
     .from('project_files')
     .update({ is_final: isFinal } as never)
@@ -588,7 +598,7 @@ export async function markDocumentFinal(
     return { success: false, error: error.message };
   }
 
-  revalidateDocumentPaths((existing as { project_id: string }).project_id);
+  revalidateDocumentPaths((existing as unknown as { project_id: string }).project_id);
   return { success: true };
 }
 
@@ -603,13 +613,17 @@ export async function getDocumentSignedUrl(
 
   const { data: row, error: fetchError } = await supabase
     .from('project_files')
-    .select('id, owner_id, bucket, path')
+    .select('id, owner_id, bucket, path, project_id')
     .eq('id', id)
     .eq('owner_id', user.id)
     .single();
 
   if (fetchError || !row) {
     return { error: 'Document not found or access denied' };
+  }
+
+  if ((row as { project_id: string | null }).project_id) {
+    await requireCan(user.id, 'documents.view_signed_url', { type: 'document', projectId: (row as unknown as { project_id: string }).project_id });
   }
 
   const { data: signedData, error: signedError } = await supabase.storage
@@ -653,6 +667,8 @@ export async function deleteDocument(
     return { success: false, error: 'Document not found or access denied' };
   }
 
+  await requireCan(user.id, 'documents.delete', { type: 'document', projectId: (existing as unknown as { project_id: string }).project_id });
+
   const { error } = await supabase
     .from('project_files')
     .update({ deleted_at: new Date().toISOString() } as never)
@@ -670,7 +686,7 @@ export async function deleteDocument(
     return { success: false, error: error.message };
   }
 
-  revalidateDocumentPaths((existing as { project_id: string }).project_id);
+  revalidateDocumentPaths((existing as unknown as { project_id: string }).project_id);
   return { success: true };
 }
 
@@ -683,6 +699,8 @@ export async function deleteDocuments(
 
   const pid = projectId?.trim();
   if (!pid) return { error: 'Project ID is required' };
+
+  await requireCan(user.id, 'documents.bulk_delete', { type: 'document', projectId: pid });
 
   const validIds = (fileIds ?? [])
     .map((id) => id?.trim())
@@ -722,13 +740,17 @@ export async function getDocumentDownloadUrl(
 
   const { data: row, error: fetchError } = await supabase
     .from('project_files')
-    .select('id, owner_id, path, title, file_ext')
+    .select('id, owner_id, path, title, file_ext, project_id')
     .eq('id', id)
     .eq('owner_id', user.id)
     .single();
 
   if (fetchError || !row) {
     return { error: 'Document not found or access denied' };
+  }
+
+  if ((row as { project_id: string | null }).project_id) {
+    await requireCan(user.id, 'documents.download', { type: 'document', projectId: (row as unknown as { project_id: string }).project_id });
   }
 
   const { title, file_ext, path } = row as {

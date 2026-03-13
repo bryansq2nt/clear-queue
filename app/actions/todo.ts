@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import {
@@ -36,7 +37,7 @@ export async function getTodoListsAction(options?: {
 export async function createTodoListAction(
   formData: FormData
 ): Promise<ActionResult<TodoList>> {
-  await requireAuth();
+  const user = await requireAuth();
 
   const title = formData.get('title') as string;
   const projectId = formData.get('project_id') as string | null;
@@ -45,6 +46,10 @@ export async function createTodoListAction(
 
   if (!title || title.trim().length === 0) {
     return { ok: false, error: 'List title is required' };
+  }
+
+  if (projectId) {
+    await requireCan(user.id, 'todos.create_list', { type: 'todo', projectId });
   }
 
   const result = await createTodoList({
@@ -64,10 +69,21 @@ export async function renameTodoListAction(
   id: string,
   title: string
 ): Promise<ActionResult<TodoList>> {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!id || !title || title.trim().length === 0) {
     return { ok: false, error: 'List ID and title are required' };
+  }
+
+  const supabase = await createClient();
+  const { data: listRow } = await (supabase as any)
+    .from('todo_lists')
+    .select('project_id')
+    .eq('id', id)
+    .maybeSingle();
+  const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
+  if (listProjectId) {
+    await requireCan(user.id, 'todos.update_list', { type: 'todo', projectId: listProjectId });
   }
 
   const result = await updateTodoList(id, { title });
@@ -83,10 +99,21 @@ export async function updateTodoListAction(
   id: string,
   updates: { title?: string; project_id?: string | null }
 ): Promise<ActionResult<TodoList>> {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!id) {
     return { ok: false, error: 'List ID is required' };
+  }
+
+  const supabase = await createClient();
+  const { data: listRow } = await (supabase as any)
+    .from('todo_lists')
+    .select('project_id')
+    .eq('id', id)
+    .maybeSingle();
+  const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
+  if (listProjectId) {
+    await requireCan(user.id, 'todos.update_list', { type: 'todo', projectId: listProjectId });
   }
 
   const result = await updateTodoList(id, updates);
@@ -102,10 +129,21 @@ export async function archiveTodoListAction(
   id: string,
   isArchived: boolean
 ): Promise<ActionResult<TodoList>> {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!id) {
     return { ok: false, error: 'List ID is required' };
+  }
+
+  const supabase = await createClient();
+  const { data: listRow } = await (supabase as any)
+    .from('todo_lists')
+    .select('project_id')
+    .eq('id', id)
+    .maybeSingle();
+  const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
+  if (listProjectId) {
+    await requireCan(user.id, 'todos.update_list', { type: 'todo', projectId: listProjectId });
   }
 
   const result = await archiveTodoList(id, isArchived);
@@ -119,10 +157,21 @@ export async function archiveTodoListAction(
 export async function deleteTodoListAction(
   id: string
 ): Promise<ActionResult<{ success: true }>> {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!id) {
     return { ok: false, error: 'List ID is required' };
+  }
+
+  const supabase = await createClient();
+  const { data: listRow } = await (supabase as any)
+    .from('todo_lists')
+    .select('project_id')
+    .eq('id', id)
+    .maybeSingle();
+  const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
+  if (listProjectId) {
+    await requireCan(user.id, 'todos.delete_list', { type: 'todo', projectId: listProjectId });
   }
 
   const result = await deleteTodoList(id);
@@ -185,7 +234,7 @@ export async function getTodoListWithItemsAction(
 export async function createTodoItemAction(
   formData: FormData
 ): Promise<ActionResult<TodoItem>> {
-  await requireAuth();
+  const user = await requireAuth();
 
   const listId = formData.get('list_id') as string;
   const content = formData.get('content') as string;
@@ -193,6 +242,17 @@ export async function createTodoItemAction(
 
   if (!listId || !content || content.trim().length === 0) {
     return { ok: false, error: 'List ID and content are required' };
+  }
+
+  const supabase = await createClient();
+  const { data: listRow } = await (supabase as any)
+    .from('todo_lists')
+    .select('project_id')
+    .eq('id', listId)
+    .maybeSingle();
+  const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
+  if (listProjectId) {
+    await requireCan(user.id, 'todos.create_item', { type: 'todo', projectId: listProjectId });
   }
 
   const result = await createTodoItem({
@@ -210,10 +270,29 @@ export async function createTodoItemAction(
 export async function toggleTodoItemAction(
   id: string
 ): Promise<ActionResult<TodoItem>> {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!id) {
     return { ok: false, error: 'Item ID is required' };
+  }
+
+  const supabase = await createClient();
+  const { data: itemRow } = await (supabase as any)
+    .from('todo_items')
+    .select('list_id')
+    .eq('id', id)
+    .maybeSingle();
+  const itemListId = (itemRow as { list_id?: string } | null)?.list_id;
+  if (itemListId) {
+    const { data: listRow } = await (supabase as any)
+      .from('todo_lists')
+      .select('project_id')
+      .eq('id', itemListId)
+      .maybeSingle();
+    const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
+    if (listProjectId) {
+      await requireCan(user.id, 'todos.toggle_item', { type: 'todo', projectId: listProjectId });
+    }
   }
 
   const result = await toggleTodoItem(id);
@@ -231,10 +310,29 @@ export async function updateTodoItemAction(
     due_date?: string | null;
   }
 ): Promise<ActionResult<TodoItem>> {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!id) {
     return { ok: false, error: 'Item ID is required' };
+  }
+
+  const supabase = await createClient();
+  const { data: itemRow } = await (supabase as any)
+    .from('todo_items')
+    .select('list_id')
+    .eq('id', id)
+    .maybeSingle();
+  const itemListId = (itemRow as { list_id?: string } | null)?.list_id;
+  if (itemListId) {
+    const { data: listRow } = await (supabase as any)
+      .from('todo_lists')
+      .select('project_id')
+      .eq('id', itemListId)
+      .maybeSingle();
+    const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
+    if (listProjectId) {
+      await requireCan(user.id, 'todos.update_item', { type: 'todo', projectId: listProjectId });
+    }
   }
 
   const result = await updateTodoItem(id, updates);
@@ -248,10 +346,29 @@ export async function updateTodoItemAction(
 export async function deleteTodoItemAction(
   id: string
 ): Promise<ActionResult<{ success: true }>> {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!id) {
     return { ok: false, error: 'Item ID is required' };
+  }
+
+  const supabase = await createClient();
+  const { data: itemRow } = await (supabase as any)
+    .from('todo_items')
+    .select('list_id')
+    .eq('id', id)
+    .maybeSingle();
+  const itemListId = (itemRow as { list_id?: string } | null)?.list_id;
+  if (itemListId) {
+    const { data: listRow } = await (supabase as any)
+      .from('todo_lists')
+      .select('project_id')
+      .eq('id', itemListId)
+      .maybeSingle();
+    const listProjectId = (listRow as { project_id?: string } | null)?.project_id;
+    if (listProjectId) {
+      await requireCan(user.id, 'todos.delete_item', { type: 'todo', projectId: listProjectId });
+    }
   }
 
   const result = await deleteTodoItem(id);

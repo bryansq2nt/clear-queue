@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 import {
@@ -213,6 +214,8 @@ export async function createProjectLinkAction(
   const pid = projectId?.trim();
   if (!pid) return { error: 'Project is required' };
 
+  await requireCan(user.id, 'links.create', { type: 'link', projectId: pid });
+
   const title = validateProjectLinkTitle(input.title);
   if (!title) return { error: 'Title is required' };
 
@@ -283,11 +286,21 @@ export async function updateProjectLinkAction(
   linkId: string,
   input: UpdateProjectLinkInput
 ): Promise<{ error?: string; data?: ProjectLinkRow }> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const id = linkId?.trim();
   if (!id) return { error: 'Link ID is required' };
+
+  const { data: linkRow } = await (supabase as any)
+    .from('project_links')
+    .select('project_id')
+    .eq('id', id)
+    .maybeSingle();
+  const linkProjectId = (linkRow as { project_id?: string } | null)?.project_id;
+  if (linkProjectId) {
+    await requireCan(user.id, 'links.update', { type: 'link', projectId: linkProjectId });
+  }
 
   const updates: ProjectLinkUpdate = {};
 
@@ -382,6 +395,8 @@ export async function archiveProjectLinkAction(
     return { error: 'Link not found or access denied' };
   }
 
+  await requireCan(user.id, 'links.archive', { type: 'link', projectId: (link as unknown as { project_id: string }).project_id });
+
   const { data, error } = await supabase
     .from('project_links')
     .update({ archived_at: new Date().toISOString() } as never)
@@ -410,17 +425,14 @@ export async function reorderProjectLinksAction(
     return { error: 'Project and ordered link IDs are required' };
   }
 
-  for (let i = 0; i < orderedIds.length; i++) {
-    const id = orderedIds[i]?.trim();
-    if (!id) continue;
-    const { error } = await supabase
-      .from('project_links')
-      .update({ sort_order: i } as never)
-      .eq('id', id)
-      .eq('project_id', pid)
-      .eq('owner_id', user.id);
-    if (error) return { error: error.message };
-  }
+  await requireCan(user.id, 'links.reorder', { type: 'link', projectId: pid });
+
+  const { error } = await (supabase as any).rpc('reorder_links_atomic', {
+    p_project_id: pid,
+    p_ordered_ids: orderedIds,
+  });
+
+  if (error) return { error: error.message };
 
   revalidatePath('/context');
   revalidatePath(`/context/${pid}`);

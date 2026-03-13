@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
@@ -8,13 +9,33 @@ import { createClient } from '@/lib/supabase/server';
 export async function batchUpdatePositionsAction(
   updates: Array<{ id: string; x: number; y: number }>
 ) {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!updates || updates.length === 0) {
     return { success: true };
   }
 
   const supabase = await createClient();
+
+  // Look up the project_id for permission check via first board item's board
+  const firstId = updates[0]?.id;
+  if (firstId) {
+    const { data: boardItem } = await (supabase as any)
+      .from('idea_board_items')
+      .select('board_id')
+      .eq('id', firstId)
+      .maybeSingle();
+    if (boardItem?.board_id) {
+      const { data: boardRow } = await (supabase as any)
+        .from('idea_boards')
+        .select('project_id')
+        .eq('id', boardItem.board_id)
+        .maybeSingle();
+      if (boardRow?.project_id) {
+        await requireCan(user.id, 'ideas.batch_update', { type: 'idea', projectId: boardRow.project_id });
+      }
+    }
+  }
 
   try {
     // Actualizar todos en paralelo con Promise.allSettled para no fallar si uno falla

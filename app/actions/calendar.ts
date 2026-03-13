@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -183,6 +184,9 @@ export async function createCalendarEvent(
   if (!endResult.ok) return { error: endResult.error };
 
   const pid = projectId?.trim() || null;
+  if (pid) {
+    await requireCan(user.id, 'calendar.create', { type: 'calendar_event', projectId: pid });
+  }
   const insert: CalendarEventInsert = {
     owner_id: user.id,
     project_id: pid,
@@ -230,8 +234,18 @@ export async function updateCalendarEvent(
     end_at?: string | null;
   }
 ): Promise<{ data?: CalendarEventRow; error?: string }> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  const { data: eventRow } = await (supabase as any)
+    .from('calendar_events')
+    .select('project_id')
+    .eq('id', id)
+    .maybeSingle();
+  const eventProjectId = (eventRow as { project_id?: string } | null)?.project_id;
+  if (eventProjectId) {
+    await requireCan(user.id, 'calendar.update', { type: 'calendar_event', projectId: eventProjectId });
+  }
 
   const updates: CalendarEventUpdate = {};
 
@@ -312,7 +326,7 @@ export async function updateCalendarEvent(
 export async function deleteCalendarEvent(
   id: string
 ): Promise<{ data?: { project_id: string | null }; error?: string }> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const { data: existing, error: fetchError } = await supabase
@@ -332,6 +346,10 @@ export async function deleteCalendarEvent(
       });
     }
     return { error: fetchError?.message ?? 'Event not found' };
+  }
+
+  if ((existing as { project_id: string | null }).project_id) {
+    await requireCan(user.id, 'calendar.delete', { type: 'calendar_event', projectId: (existing as unknown as { project_id: string }).project_id });
   }
 
   const { error: deleteError } = await supabase

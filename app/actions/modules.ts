@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import {
@@ -51,7 +52,11 @@ export async function setProjectModuleEnabled(
   moduleKey: ModuleKey,
   enabled: boolean
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  await requireAuth();
+  const user = await requireAuth();
+  await requireCan(user.id, 'projects.toggle_module', {
+    type: 'project',
+    projectId,
+  });
 
   // Validate moduleKey is a known key
   if (!(moduleKey in MODULE_REGISTRY)) {

@@ -103,6 +103,7 @@
     "calendar": "Calendar",
     "milestones": "Milestones",
     "copilot": "Copilot",
+    "team": "Team",
     "settings": "Settings",
     "welcome_back_name": "Welcome back, {name}",
     "work_on_something_else": "Want to work on something different?",
@@ -132,6 +133,26 @@
     "ideas_coming_soon": "Project ideas will appear here. (Phase 6)",
     "budgets_coming_soon": "Project budgets will appear here. (Phase 4)",
     "todos_coming_soon": "Project to-dos will appear here. (Phase 6)"
+  },
+  "teams": {
+    "title": "Project team",
+    "members_title": "Members",
+    "pending_invites": "Pending invites",
+    "no_members": "No members yet.",
+    "invite_member": "Invite member",
+    "invite_email": "Email address",
+    "invite_role": "Role",
+    "generate_link": "Generate invite link",
+    "invite_link_ready": "Invite link generated",
+    "invite_link_hint": "Share this link with the person you want to invite. It expires in 7 days.",
+    "remove_member": "Remove member",
+    "revoke_invite": "Revoke invite",
+    "expires": "Expires",
+    "invite_error_title": "Could not send invite",
+    "revoke_error_title": "Could not revoke invite",
+    "remove_error_title": "Could not remove member",
+    "quota_members_per_project": "This project has reached its member limit for your plan.",
+    "quota_projects_per_org": "Your organization has reached its project limit for your plan."
   },
   "sidebar": {
     "navigation": "Navigation",
@@ -995,6 +1016,7 @@
     "billings_description": "Invoicing and billing tracking",
     "copilot_description": "AI planning assistant for your project",
     "milestones_description": "Project phases and goals; track progress with a timeline",
+    "team_description": "Invite and manage project team members.",
     "module_disabled_title": "This module is disabled for this project",
     "module_disabled_description": "You can enable it from the project settings.",
     "module_disabled_cta": "Open settings"

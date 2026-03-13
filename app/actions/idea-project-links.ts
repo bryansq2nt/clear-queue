@@ -1,6 +1,8 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
+import { createClient } from '@/lib/supabase/server';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import {
@@ -13,7 +15,7 @@ export async function linkIdeaToProjectAction(
   projectId: string,
   role?: string | null
 ) {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!ideaId || ideaId.trim().length === 0) {
     return { error: 'Idea ID is required' };
@@ -22,6 +24,8 @@ export async function linkIdeaToProjectAction(
   if (!projectId || projectId.trim().length === 0) {
     return { error: 'Project ID is required' };
   }
+
+  await requireCan(user.id, 'ideas.link_project', { type: 'idea', projectId });
 
   try {
     const data = await linkIdeaToProject({
@@ -52,10 +56,20 @@ export async function linkIdeaToProjectAction(
 }
 
 export async function unlinkIdeaFromProjectAction(linkId: string) {
-  await requireAuth();
+  const user = await requireAuth();
 
   if (!linkId || linkId.trim().length === 0) {
     return { error: 'Link ID is required' };
+  }
+
+  const supabase = await createClient();
+  const { data: linkRow } = await (supabase as any)
+    .from('idea_project_links')
+    .select('project_id')
+    .eq('id', linkId)
+    .maybeSingle();
+  if (linkRow?.project_id) {
+    await requireCan(user.id, 'ideas.link_project', { type: 'idea', projectId: linkRow.project_id });
   }
 
   try {

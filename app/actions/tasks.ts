@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -19,10 +20,11 @@ type TaskWithProject = Database['public']['Tables']['tasks']['Row'] & {
 };
 
 export async function createTask(formData: FormData) {
-  await requireAuth();
-  const supabase = await createClient();
-
+  const user = await requireAuth();
   const projectId = formData.get('project_id') as string;
+  await requireCan(user.id, 'tasks.create', { type: 'task', projectId });
+
+  const supabase = await createClient();
   const title = formData.get('title') as string;
   const status = (formData.get('status') as TaskStatus) || 'next';
   const priority = parseInt(formData.get('priority') as string) || 3;
@@ -62,7 +64,7 @@ export async function createTask(formData: FormData) {
 }
 
 export async function updateTask(id: string, formData: FormData) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   const title = formData.get('title') as string | null;
@@ -75,6 +77,24 @@ export async function updateTask(id: string, formData: FormData) {
   const notes = formData.get('notes') as string | null;
   const tags = formData.get('tags') as string | null | undefined;
   const milestoneId = formData.get('milestone_id') as string | null | undefined;
+
+  // Resolve projectId for the permission check — prefer formData value, else look it up
+  const resolvedProjectId =
+    projectId ||
+    ((
+      await (supabase as any)
+        .from('tasks')
+        .select('project_id')
+        .eq('id', id)
+        .maybeSingle()
+    ).data as { project_id?: string } | null)?.project_id;
+
+  if (resolvedProjectId) {
+    await requireCan(user.id, 'tasks.update_title', {
+      type: 'task',
+      projectId: resolvedProjectId,
+    });
+  }
 
   const updates: TaskUpdate & { milestone_id?: string | null } = {};
   if (title) updates.title = title;
@@ -110,8 +130,21 @@ export async function updateTask(id: string, formData: FormData) {
 }
 
 export async function deleteTask(id: string) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  const { data: task } = await (supabase as any)
+    .from('tasks')
+    .select('project_id')
+    .eq('id', id)
+    .maybeSingle();
+  const taskProjectId = (task as { project_id?: string } | null)?.project_id;
+  if (taskProjectId) {
+    await requireCan(user.id, 'tasks.delete', {
+      type: 'task',
+      projectId: taskProjectId,
+    });
+  }
 
   const { error } = await supabase.from('tasks').delete().eq('id', id);
 
@@ -132,11 +165,25 @@ export async function deleteTask(id: string) {
 }
 
 export async function deleteTasksByIds(ids: string[]) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   if (!ids || ids.length === 0) {
     return { error: 'No task IDs provided' };
+  }
+
+  // Resolve projectId from the first task for the permission check
+  const { data: firstTask } = await (supabase as any)
+    .from('tasks')
+    .select('project_id')
+    .eq('id', ids[0])
+    .maybeSingle();
+  const firstTaskProjectId = (firstTask as { project_id?: string } | null)?.project_id;
+  if (firstTaskProjectId) {
+    await requireCan(user.id, 'tasks.bulk_delete', {
+      type: 'task',
+      projectId: firstTaskProjectId,
+    });
   }
 
   const { error } = await supabase.from('tasks').delete().in('id', ids);
@@ -371,8 +418,21 @@ export async function updateTaskOrder(
   _oldStatus?: TaskStatus,
   options?: { revalidate?: boolean }
 ) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  const { data: task } = await (supabase as any)
+    .from('tasks')
+    .select('project_id')
+    .eq('id', taskId)
+    .maybeSingle();
+  const taskProjectId2 = (task as { project_id?: string } | null)?.project_id;
+  if (taskProjectId2) {
+    await requireCan(user.id, 'tasks.update_status', {
+      type: 'task',
+      projectId: taskProjectId2,
+    });
+  }
 
   const { error } = await supabase.rpc(
     'move_task_atomic' as never,

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { requireCan } from '@/lib/rbac/resolver';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 
@@ -114,8 +115,17 @@ export async function createCategory(formData: {
   name: string;
   description?: string;
 }) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  const { data: budgetRow } = await supabase
+    .from('budgets')
+    .select('project_id')
+    .eq('id', formData.budget_id)
+    .maybeSingle();
+  if ((budgetRow as { project_id: string | null } | null)?.project_id) {
+    await requireCan(user.id, 'budgets.manage_categories', { type: 'budget', projectId: (budgetRow as unknown as { project_id: string }).project_id });
+  }
 
   // Get max sort_order
   const { data: maxOrder } = await supabase
@@ -161,8 +171,17 @@ export async function updateCategory(
     description?: string;
   }
 ) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  const { data: budgetRow } = await supabase
+    .from('budgets')
+    .select('project_id')
+    .eq('id', budgetId)
+    .maybeSingle();
+  if ((budgetRow as { project_id: string | null } | null)?.project_id) {
+    await requireCan(user.id, 'budgets.manage_categories', { type: 'budget', projectId: (budgetRow as unknown as { project_id: string }).project_id });
+  }
 
   const updates: any = {};
   if (formData.name !== undefined) updates.name = formData.name;
@@ -191,8 +210,17 @@ export async function updateCategory(
 // DELETE CATEGORY
 // ============================================
 export async function deleteCategory(categoryId: string, budgetId: string) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  const { data: budgetRow } = await supabase
+    .from('budgets')
+    .select('project_id')
+    .eq('id', budgetId)
+    .maybeSingle();
+  if ((budgetRow as { project_id: string | null } | null)?.project_id) {
+    await requireCan(user.id, 'budgets.manage_categories', { type: 'budget', projectId: (budgetRow as unknown as { project_id: string }).project_id });
+  }
 
   const { error } = await supabase
     .from('budget_categories')
@@ -216,8 +244,17 @@ export async function reorderCategories(
   budgetId: string,
   categoryIds: string[]
 ) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  const { data: budgetRow } = await supabase
+    .from('budgets')
+    .select('project_id')
+    .eq('id', budgetId)
+    .maybeSingle();
+  if ((budgetRow as { project_id: string | null } | null)?.project_id) {
+    await requireCan(user.id, 'budgets.manage_categories', { type: 'budget', projectId: (budgetRow as unknown as { project_id: string }).project_id });
+  }
 
   // Update sort_order for each category
   const updates = categoryIds.map((id, index) => {
@@ -248,7 +285,7 @@ export async function createItem(formData: {
   is_recurrent?: boolean;
   notes?: string;
 }) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   // Get budget_id from category
@@ -264,6 +301,15 @@ export async function createItem(formData: {
   }
 
   const budgetId = categoryData.budget_id;
+
+  const { data: budgetRow } = await supabase
+    .from('budgets')
+    .select('project_id')
+    .eq('id', budgetId)
+    .maybeSingle();
+  if ((budgetRow as { project_id: string | null } | null)?.project_id) {
+    await requireCan(user.id, 'budgets.manage_items', { type: 'budget', projectId: (budgetRow as unknown as { project_id: string }).project_id });
+  }
 
   // Get max sort_order within category
   const { data: maxOrder } = await supabase
@@ -321,8 +367,17 @@ export async function updateItem(
     notes?: string;
   }
 ) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  const { data: budgetRow } = await supabase
+    .from('budgets')
+    .select('project_id')
+    .eq('id', budgetId)
+    .maybeSingle();
+  if ((budgetRow as { project_id: string | null } | null)?.project_id) {
+    await requireCan(user.id, 'budgets.manage_items', { type: 'budget', projectId: (budgetRow as unknown as { project_id: string }).project_id });
+  }
 
   const updates: any = {};
   if (formData.name !== undefined) updates.name = formData.name;
@@ -359,8 +414,17 @@ export async function updateItem(
 // DELETE ITEM
 // ============================================
 export async function deleteItem(itemId: string, budgetId: string) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  const { data: budgetRow } = await supabase
+    .from('budgets')
+    .select('project_id')
+    .eq('id', budgetId)
+    .maybeSingle();
+  if ((budgetRow as { project_id: string | null } | null)?.project_id) {
+    await requireCan(user.id, 'budgets.manage_items', { type: 'budget', projectId: (budgetRow as unknown as { project_id: string }).project_id });
+  }
 
   const { error } = await supabase
     .from('budget_items')
@@ -381,11 +445,20 @@ export async function deleteItem(itemId: string, budgetId: string) {
 // DELETE MULTIPLE ITEMS (within a budget)
 // ============================================
 export async function deleteItems(itemIds: string[], budgetId: string) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
 
   if (!itemIds || itemIds.length === 0) {
     return { success: true };
+  }
+
+  const { data: budgetRow } = await supabase
+    .from('budgets')
+    .select('project_id')
+    .eq('id', budgetId)
+    .maybeSingle();
+  if ((budgetRow as { project_id: string | null } | null)?.project_id) {
+    await requireCan(user.id, 'budgets.manage_items', { type: 'budget', projectId: (budgetRow as unknown as { project_id: string }).project_id });
   }
 
   // Safety: ensure we only delete items that belong to this budget (via categories)
@@ -431,8 +504,17 @@ export async function reorderItems(
   categoryId: string,
   itemIds: string[]
 ) {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
+
+  const { data: budgetRow } = await supabase
+    .from('budgets')
+    .select('project_id')
+    .eq('id', budgetId)
+    .maybeSingle();
+  if ((budgetRow as { project_id: string | null } | null)?.project_id) {
+    await requireCan(user.id, 'budgets.manage_items', { type: 'budget', projectId: (budgetRow as unknown as { project_id: string }).project_id });
+  }
 
   // Verify category belongs to budget
   const { data: category, error: categoryError } = await supabase
