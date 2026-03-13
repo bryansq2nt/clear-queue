@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProjectById } from '@/app/actions/projects';
-import { getProjectModules } from '@/app/actions/modules';
+import {
+  getProjectModules,
+  getMyProjectAccessGrant,
+} from '@/app/actions/modules';
 import {
   getEnabledModuleKeys,
   DEFAULT_MODULES,
@@ -54,11 +57,19 @@ export default function ContextLayoutWrapper({
     type: 'modules',
     projectId,
   });
+  // cachedGrant: undefined = not yet fetched; null = unrestricted; string[] = allowlist
+  const cachedGrant = cache.get<string[] | null>({
+    type: 'accessGrant',
+    projectId,
+  });
   // Initialize with DEFAULT_MODULES so tabs are visible immediately while
   // the real DB state loads asynchronously in the background.
   const [modules, setModules] = useState<SerializableResolvedModule[]>(
     cachedModules ?? DEFAULT_MODULES
   );
+  const [myAllowedModules, setMyAllowedModules] = useState<
+    string[] | null | undefined
+  >(cachedGrant);
   const [modulesLoaded, setModulesLoaded] = useState(!!cachedModules);
 
   // ── Drawer state ───────────────────────────────────────────────
@@ -102,24 +113,31 @@ export default function ContextLayoutWrapper({
     };
   }, [projectId, cached, cache, router]);
 
-  // ── Module load effect ─────────────────────────────────────────
+  // ── Module + access grant load effect ─────────────────────────
+  // Load both together so tab visibility is computed in one pass.
   useEffect(() => {
-    if (cachedModules) {
+    if (cachedModules && cachedGrant !== undefined) {
       setModules(cachedModules);
+      setMyAllowedModules(cachedGrant);
       setModulesLoaded(true);
       return;
     }
     let cancelled = false;
-    getProjectModules(projectId).then((resolved) => {
+    Promise.all([
+      getProjectModules(projectId),
+      getMyProjectAccessGrant(projectId),
+    ]).then(([resolved, grant]) => {
       if (cancelled) return;
       cache.set({ type: 'modules', projectId }, resolved);
+      cache.set({ type: 'accessGrant', projectId }, grant);
       setModules(resolved);
+      setMyAllowedModules(grant);
       setModulesLoaded(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [projectId, cachedModules, cache]);
+  }, [projectId, cachedModules, cachedGrant, cache]);
 
   // ── Module update handler (called after toggle in drawer) ──────
   const handleModulesChange = useCallback(
@@ -134,7 +152,17 @@ export default function ContextLayoutWrapper({
     return null;
   }
 
-  const enabledModuleKeys: Set<ModuleKey> = getEnabledModuleKeys(modules);
+  const projectEnabledKeys = getEnabledModuleKeys(modules);
+  // Apply per-member access grant: intersect project-enabled keys with user's allowlist.
+  // null/undefined = unrestricted (show all project-enabled modules).
+  const enabledModuleKeys: Set<ModuleKey> =
+    myAllowedModules != null
+      ? new Set(
+          myAllowedModules.filter((k) =>
+            projectEnabledKeys.has(k as ModuleKey)
+          ) as ModuleKey[]
+        )
+      : projectEnabledKeys;
 
   return (
     <ContextLayoutClient

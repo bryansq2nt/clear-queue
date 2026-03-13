@@ -17,6 +17,22 @@ import {
 // Read
 // ─────────────────────────────────────────────────────────────────
 
+// Returns the current user's allowed_modules for a project.
+// null = no row (or row with null) → unrestricted; string[] → explicit allowlist.
+export const getMyProjectAccessGrant = cache(
+  async (projectId: string): Promise<string[] | null> => {
+    const user = await requireAuth();
+    const supabase = await createClient();
+    const { data } = await (supabase as any)
+      .from('user_project_access_grants')
+      .select('allowed_modules')
+      .eq('project_id', projectId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    return data ? ((data.allowed_modules as string[] | null) ?? null) : null;
+  }
+);
+
 export const getProjectModules = cache(
   async (projectId: string): Promise<SerializableResolvedModule[]> => {
     await requireAuth();

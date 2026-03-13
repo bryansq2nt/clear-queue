@@ -27,6 +27,7 @@ export type CacheKey =
   | { type: 'calendar'; projectId: string }
   | { type: 'media'; projectId: string }
   | { type: 'modules'; projectId: string }
+  | { type: 'accessGrant'; projectId: string }
   | { type: 'milestones'; projectId: string }
   | { type: 'copilot'; projectId: string }
   | { type: 'team'; projectId: string };
