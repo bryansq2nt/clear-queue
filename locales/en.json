@@ -158,8 +158,14 @@
     "invite_email_summary": "Inviting",
     "invite_custom_label": "Custom access",
     "invite_custom_hint": "Choose exactly which modules and role this person gets.",
-    "invite_modules": "Visible modules",
-    "invite_modules_note": "Billing and Copilot are always visible and not configurable in this version."
+    "invite_modules_title": "Configure access",
+    "invite_modules_hint": "Select the modules this person can access, then choose their specific permissions.",
+    "invite_modules_missing_permissions": "Select at least one permission per module before continuing.",
+    "invite_review": "Review",
+    "invite_review_title": "Review access",
+    "invite_review_access": "Modules and permissions",
+    "invite_save_role": "Save as a reusable role for this project",
+    "invite_save_role_placeholder": "Role name (e.g. Finance reviewer)"
   },
   "sidebar": {
     "navigation": "Navigation",

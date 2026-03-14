@@ -155,8 +155,14 @@
     "invite_email_summary": "Invitando a",
     "invite_custom_label": "Acceso personalizado",
     "invite_custom_hint": "Elige exactamente qué módulos y rol tendrá esta persona.",
-    "invite_modules": "Módulos visibles",
-    "invite_modules_note": "Facturación y Copilot son siempre visibles y no configurables en esta versión."
+    "invite_modules_title": "Configurar acceso",
+    "invite_modules_hint": "Selecciona los módulos a los que tendrá acceso esta persona y elige sus permisos específicos.",
+    "invite_modules_missing_permissions": "Selecciona al menos un permiso por módulo antes de continuar.",
+    "invite_review": "Revisar",
+    "invite_review_title": "Revisar acceso",
+    "invite_review_access": "Módulos y permisos",
+    "invite_save_role": "Guardar como rol reutilizable para este proyecto",
+    "invite_save_role_placeholder": "Nombre del rol (ej. Revisor financiero)"
   },
   "sidebar": {
     "navigation": "Navegación",

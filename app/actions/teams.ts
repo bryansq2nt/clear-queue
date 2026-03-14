@@ -24,9 +24,21 @@ export type ProjectInvite = {
   role_name: string;
   profile_id: string | null;
   profile_name: string | null;
+  invite_role_id: string | null;
+  invite_role_name: string | null;
   status: string;
   invited_by_name: string;
   expires_at: string;
+  created_at: string;
+};
+
+export type InviteRole = {
+  id: string;
+  project_id: string;
+  name: string | null;
+  granted_actions: string[];
+  allowed_modules: string[];
+  effective_role_name: string;
   created_at: string;
 };
 
@@ -69,7 +81,7 @@ export const listPendingInvites = cache(
     const { data, error } = await (supabase as any)
       .from('project_invites')
       .select(
-        'id, email, role_id, profile_id, status, expires_at, created_at, rbac_roles(name), profiles!project_invites_invited_by_fkey(display_name), project_access_profiles(name)'
+        'id, email, role_id, profile_id, invite_role_id, status, expires_at, created_at, rbac_roles(name), profiles!project_invites_invited_by_fkey(display_name), project_access_profiles(name), project_invite_roles(name)'
       )
       .eq('project_id', projectId)
       .eq('status', 'pending')
@@ -83,6 +95,9 @@ export const listPendingInvites = cache(
       profile_id: (row.profile_id as string | null) ?? null,
       profile_name:
         (row.project_access_profiles?.name as string | null) ?? null,
+      invite_role_id: (row.invite_role_id as string | null) ?? null,
+      invite_role_name:
+        (row.project_invite_roles?.name as string | null) ?? null,
       status: row.status as string,
       invited_by_name: (row.profiles?.display_name as string) ?? '',
       expires_at: row.expires_at as string,
@@ -165,6 +180,158 @@ export async function createProjectAccessProfile(
   return { data: { id: (data as any).id as string } };
 }
 
+// ── Permission derivation helpers ─────────────────────────────────────
+// Used by createInviteRole to compute allowed_modules and effective_role_name.
+
+const OWNER_ONLY_ACTIONS = new Set([
+  'tasks.bulk_delete',
+  'notes.bulk_delete',
+  'documents.bulk_delete',
+  'documents.mark_final',
+  'media.share_create',
+  'copilot.bulk_approve',
+  'copilot.bulk_reject',
+  'projects.update',
+  'projects.archive',
+  'projects.unarchive',
+  'projects.delete',
+  'projects.link_client',
+  'projects.toggle_module',
+  'teams.invite_project_member',
+  'teams.remove_project_member',
+  'teams.update_project_member_roles',
+]);
+
+const VIEWER_ONLY_ACTIONS = new Set([
+  'tasks.read',
+  'milestones.read',
+  'notes.read',
+  'documents.read',
+  'media.read',
+  'calendar.read',
+  'links.read',
+  'ideas.read',
+  'budgets.read',
+  'billings.read',
+  'todos.read',
+  'copilot.read_sessions',
+  'copilot.read_proposals',
+  'projects.read',
+  'profile.read',
+  'workspace.read',
+  'teams.read_project_members',
+]);
+
+// Maps module key → action key prefix for allowed_modules derivation.
+const MODULE_ACTION_PREFIXES: Record<string, string> = {
+  board: 'tasks.',
+  notes: 'notes.',
+  documents: 'documents.',
+  media: 'media.',
+  links: 'links.',
+  milestones: 'milestones.',
+  budgets: 'budgets.',
+  billings: 'billings.',
+  ideas: 'ideas.',
+  calendar: 'calendar.',
+  todos: 'todos.',
+  copilot: 'copilot.',
+};
+
+const ALL_MODULE_KEYS = Object.keys(MODULE_ACTION_PREFIXES);
+
+function deriveEffectiveRoleName(
+  grantedActions: string[]
+): 'project_viewer' | 'project_editor' | 'project_owner' {
+  if (grantedActions.some((a) => OWNER_ONLY_ACTIONS.has(a)))
+    return 'project_owner';
+  if (grantedActions.some((a) => !VIEWER_ONLY_ACTIONS.has(a)))
+    return 'project_editor';
+  return 'project_viewer';
+}
+
+function deriveAllowedModules(grantedActions: string[]): string[] {
+  return ALL_MODULE_KEYS.filter((moduleKey) =>
+    grantedActions.some((a) => a.startsWith(MODULE_ACTION_PREFIXES[moduleKey]))
+  );
+}
+
+// ── createInviteRole ──────────────────────────────────────────────────
+// Creates a project_invite_roles row with derived allowed_modules and effective_role_name.
+// If name is provided, the role is saved as reusable; otherwise it is ephemeral.
+export async function createInviteRole(
+  projectId: string,
+  payload: { grantedActions: string[]; name?: string }
+): Promise<{ data?: { id: string }; error?: string }> {
+  const user = await requireAuth();
+  await requireCan(user.id, 'teams.invite_project_member', {
+    type: 'project',
+    projectId,
+  });
+
+  if (!payload.grantedActions.length) {
+    return { error: 'At least one permission must be granted' };
+  }
+
+  const allowedModules = deriveAllowedModules(payload.grantedActions);
+  const effectiveRoleName = deriveEffectiveRoleName(payload.grantedActions);
+
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('project_invite_roles')
+    .insert({
+      project_id: projectId,
+      name: payload.name ?? null,
+      granted_actions: payload.grantedActions,
+      allowed_modules: allowedModules,
+      effective_role_name: effectiveRoleName,
+      created_by: user.id,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'teams',
+      action: 'createInviteRole',
+      userIntent: 'Create a granular invite permission role',
+      expected: 'project_invite_roles row inserted and id returned',
+      extra: { projectId },
+    });
+    return { error: error.message };
+  }
+
+  return { data: { id: (data as any).id as string } };
+}
+
+// ── listReusableInviteRoles ───────────────────────────────────────────
+// Returns named (reusable) invite roles for this project, newest first.
+export const listReusableInviteRoles = cache(
+  async (projectId: string): Promise<InviteRole[]> => {
+    await requireAuth();
+    const supabase = await createClient();
+    const { data, error } = await (supabase as any)
+      .from('project_invite_roles')
+      .select(
+        'id, project_id, name, granted_actions, allowed_modules, effective_role_name, created_at'
+      )
+      .eq('project_id', projectId)
+      .not('name', 'is', null)
+      .order('created_at', { ascending: false });
+
+    if (error) return [];
+    return (data || []).map((row: any) => ({
+      id: row.id as string,
+      project_id: row.project_id as string,
+      name: row.name as string | null,
+      granted_actions: (row.granted_actions as string[]) ?? [],
+      allowed_modules: (row.allowed_modules as string[]) ?? [],
+      effective_role_name: row.effective_role_name as string,
+      created_at: row.created_at as string,
+    }));
+  }
+);
+
 // ── listProjectRoles ──────────────────────────────────────────────────
 export const listProjectRoles = cache(async () => {
   await requireAuth();
@@ -186,7 +353,8 @@ export async function inviteProjectMember(
   projectId: string,
   email: string,
   roleId: string,
-  profileId?: string
+  profileId?: string,
+  inviteRoleId?: string
 ): Promise<{ token?: string; error?: string }> {
   const user = await requireAuth();
   await requireCan(user.id, 'teams.invite_project_member', {
@@ -201,13 +369,32 @@ export async function inviteProjectMember(
 
   const supabase = await createClient();
 
+  // When inviteRoleId is set, roleId contains the effective role name (not UUID).
+  // Resolve it to a UUID so the role_id FK is satisfied.
+  let resolvedRoleId = roleId;
+  if (
+    inviteRoleId &&
+    (roleId === 'project_viewer' ||
+      roleId === 'project_editor' ||
+      roleId === 'project_owner')
+  ) {
+    const { data: roleRow } = await (supabase as any)
+      .from('rbac_roles')
+      .select('id')
+      .eq('name', roleId)
+      .eq('is_system_role', true)
+      .single();
+    if (roleRow) resolvedRoleId = (roleRow as any).id as string;
+  }
+
   const insertPayload: Record<string, unknown> = {
     project_id: projectId,
     invited_by: user.id,
     email: email.trim().toLowerCase(),
-    role_id: roleId,
+    role_id: resolvedRoleId,
   };
   if (profileId) insertPayload.profile_id = profileId;
+  if (inviteRoleId) insertPayload.invite_role_id = inviteRoleId;
 
   const { data, error } = await (supabase as any)
     .from('project_invites')
@@ -236,6 +423,7 @@ export async function inviteProjectMember(
       email: email.trim().toLowerCase(),
       role_id: roleId,
       profile_id: profileId ?? null,
+      invite_role_id: inviteRoleId ?? null,
     },
   });
 

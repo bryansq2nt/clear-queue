@@ -30,7 +30,8 @@ export type CacheKey =
   | { type: 'accessGrant'; projectId: string }
   | { type: 'milestones'; projectId: string }
   | { type: 'copilot'; projectId: string }
-  | { type: 'team'; projectId: string };
+  | { type: 'team'; projectId: string }
+  | { type: 'inviteRoles'; projectId: string };
 
 function cacheKeyToString(k: CacheKey): string {
   if (k.type === 'noteDetail') return `${k.type}:${k.noteId}`;
