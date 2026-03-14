@@ -369,22 +369,24 @@ export async function inviteProjectMember(
 
   const supabase = await createClient();
 
-  // When inviteRoleId is set, roleId contains the effective role name (not UUID).
-  // Resolve it to a UUID so the role_id FK is satisfied.
+  // roleId may be a role name (e.g. "project_editor") rather than a UUID when
+  // the caller derives it from granted actions. Always resolve to UUID if needed.
   let resolvedRoleId = roleId;
   if (
-    inviteRoleId &&
-    (roleId === 'project_viewer' ||
-      roleId === 'project_editor' ||
-      roleId === 'project_owner')
+    roleId === 'project_viewer' ||
+    roleId === 'project_editor' ||
+    roleId === 'project_owner'
   ) {
-    const { data: roleRow } = await (supabase as any)
+    const { data: roleRow, error: roleErr } = await (supabase as any)
       .from('rbac_roles')
       .select('id')
       .eq('name', roleId)
       .eq('is_system_role', true)
       .single();
-    if (roleRow) resolvedRoleId = (roleRow as any).id as string;
+    if (roleErr || !roleRow) {
+      return { error: `Could not resolve system role "${roleId}"` };
+    }
+    resolvedRoleId = (roleRow as any).id as string;
   }
 
   const insertPayload: Record<string, unknown> = {
