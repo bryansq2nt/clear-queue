@@ -369,32 +369,18 @@ export async function inviteProjectMember(
 
   const supabase = await createClient();
 
-  // roleId may be a role name (e.g. "project_editor") rather than a UUID when
-  // the caller derives it from granted actions. Always resolve to UUID if needed.
-  let resolvedRoleId = roleId;
-  if (
-    roleId === 'project_viewer' ||
-    roleId === 'project_editor' ||
-    roleId === 'project_owner'
-  ) {
-    const { data: roleRow, error: roleErr } = await (supabase as any)
-      .from('rbac_roles')
-      .select('id')
-      .eq('name', roleId)
-      .eq('is_system_role', true)
-      .single();
-    if (roleErr || !roleRow) {
-      return { error: `Could not resolve system role "${roleId}"` };
-    }
-    resolvedRoleId = (roleRow as any).id as string;
-  }
-
+  // When inviteRoleId is set, role_id is redundant — accept_invite_atomic
+  // resolves the system role from project_invite_roles.effective_role_name.
+  // role_id is nullable (migration 20260313210000) so we omit it in that path.
   const insertPayload: Record<string, unknown> = {
     project_id: projectId,
     invited_by: user.id,
     email: email.trim().toLowerCase(),
-    role_id: resolvedRoleId,
   };
+  if (!inviteRoleId) {
+    // Legacy path: role_id must be a valid UUID.
+    insertPayload.role_id = roleId;
+  }
   if (profileId) insertPayload.profile_id = profileId;
   if (inviteRoleId) insertPayload.invite_role_id = inviteRoleId;
 
