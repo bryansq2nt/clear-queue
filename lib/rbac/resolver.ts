@@ -56,6 +56,22 @@ export const getGrantedActions = cache(
     isProjectScope: boolean
   ): Promise<Set<string>> => {
     const supabase = await createClient();
+
+    if (isProjectScope) {
+      // Per-member custom action grants override role-based permissions
+      const { data: customRow } = await (supabase as any)
+        .from('user_project_action_grants')
+        .select('granted_actions')
+        .eq('project_id', contextId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      const actions = customRow?.granted_actions as string[] | undefined;
+      if (actions && Array.isArray(actions) && actions.length > 0) {
+        return new Set(actions);
+      }
+    }
+
     const roleIds: string[] = [];
 
     if (isProjectScope) {

@@ -19,7 +19,8 @@
     "select": "Seleccionar",
     "copy": "Copiar",
     "share": "Compartir",
-    "optional": "Opcional"
+    "optional": "Opcional",
+    "saving": "Guardando…"
   },
   "mutation_error": {
     "try_again": "Reintentar",
@@ -197,7 +198,27 @@
     "invite_go_home": "Ir al inicio",
     "rejected_invites": "Invitaciones rechazadas",
     "rejected_at": "Rechazada",
-    "rejection_reason_label": "Motivo"
+    "rejection_reason_label": "Motivo",
+    "edit_permissions": "Ver o editar módulos y permisos",
+    "edit_permissions_title": "Permisos de {name}",
+    "edit_permissions_title_fallback": "Permisos del miembro",
+    "edit_permissions_description": "Consulta su acceso actual y asígnale otro perfil para cambiar qué módulos y acciones tiene.",
+    "current_roles": "Roles actuales",
+    "current_modules": "Módulos visibles",
+    "all_modules": "Todos los módulos",
+    "assign_profile": "Cambiar a perfil",
+    "select_profile": "Seleccionar un perfil…",
+    "modules": "módulos",
+    "save_permissions": "Guardar permisos",
+    "edit_permissions_error_title": "No se pudieron actualizar los permisos",
+    "edit_permissions_load_error": "No se pudieron cargar los permisos",
+    "apply_role_or_profile": "Aplicar rol o perfil",
+    "select_role_or_profile": "Seleccionar un rol o perfil…",
+    "profiles_group": "Perfiles",
+    "saved_roles_group": "Roles guardados",
+    "visible_modules": "Módulos visibles",
+    "permissions_in_module": "Permisos en este módulo",
+    "determined_by_role": "Determinado por su rol"
   },
   "sidebar": {
     "navigation": "Navegación",

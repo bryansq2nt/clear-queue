@@ -171,9 +171,9 @@ export async function listRejectedInvites(
     projectId,
   });
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc(
-    'get_rejected_invites_for_project' as never,
-    { p_project_id: projectId } as never
+  const { data, error } = await (supabase as any).rpc(
+    'get_rejected_invites_for_project',
+    { p_project_id: projectId }
   );
   if (error) {
     captureWithContext(error, {
@@ -766,13 +766,227 @@ export async function removeProjectMember(
   return { success: true };
 }
 
+// ── getMemberAccess ───────────────────────────────────────────────────
+// Returns current roles, allowed_modules, and granted_actions for a project member.
+// Used by the Teams UI to show and edit a member's permissions.
+export type MemberAccess = {
+  roleIds: string[];
+  roleNames: string[];
+  allowedModules: string[] | null;
+  grantedActions: string[];
+};
+
+export async function getMemberAccess(
+  projectId: string,
+  userId: string
+): Promise<{ data?: MemberAccess; error?: string }> {
+  const user = await requireAuth();
+  await requireCan(user.id, 'teams.read_project_members', {
+    type: 'project',
+    projectId,
+  });
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any).rpc(
+    'get_member_access_for_project',
+    { p_project_id: projectId, p_user_id: userId }
+  );
+  if (error) {
+    captureWithContext(error, {
+      module: 'teams',
+      action: 'getMemberAccess',
+      userIntent: 'View member access',
+      expected: 'RPC returns roles and granted actions',
+      extra: { projectId, userId },
+    });
+    return { error: error.message };
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row !== 'object') return { error: 'No data' };
+  const roleIds = row.role_ids;
+  const roleNames = row.role_names;
+  const allowedModules = row.allowed_modules;
+  const grantedActions = row.granted_actions;
+  return {
+    data: {
+      roleIds: Array.isArray(roleIds) ? roleIds : [],
+      roleNames: Array.isArray(roleNames) ? roleNames : [],
+      allowedModules:
+        allowedModules == null || !Array.isArray(allowedModules)
+          ? null
+          : allowedModules,
+      grantedActions: Array.isArray(grantedActions) ? grantedActions : [],
+    },
+  };
+}
+
+// ── updateMemberAccess ──────────────────────────────────────────────────
+// Assigns an access profile to an existing project member (role + module allowlist).
+export async function updateMemberAccess(
+  projectId: string,
+  userId: string,
+  profileId: string
+): Promise<{ success?: boolean; error?: string }> {
+  const user = await requireAuth();
+  await requireCan(user.id, 'teams.update_project_member_roles', {
+    type: 'project',
+    projectId,
+  });
+  const supabase = await createClient();
+  const { error } = await (supabase as any).rpc('update_member_access_atomic', {
+    p_project_id: projectId,
+    p_user_id: userId,
+    p_profile_id: profileId,
+    p_assigned_by: user.id,
+  });
+  if (error) {
+    const msg: string = error.message ?? '';
+    if (msg.includes('cannot_demote_last_owner'))
+      return {
+        error:
+          'Cannot change the last project owner. Assign another owner first.',
+      };
+    if (msg.includes('profile_not_found'))
+      return { error: 'Profile not found' };
+    captureWithContext(error, {
+      module: 'teams',
+      action: 'updateMemberAccess',
+      userIntent: 'Update member permissions',
+      expected: 'update_member_access_atomic RPC succeeds',
+      extra: { projectId, userId, profileId },
+    });
+    return { error: error.message };
+  }
+  revalidatePath(`/context/${projectId}/team`);
+  return { success: true };
+}
+
+// ── updateMemberAccessByInviteRole ──────────────────────────────────────
+// Applies a saved invite role (e.g. Developer) to an existing member.
+export async function updateMemberAccessByInviteRole(
+  projectId: string,
+  userId: string,
+  inviteRoleId: string
+): Promise<{ success?: boolean; error?: string }> {
+  const user = await requireAuth();
+  await requireCan(user.id, 'teams.update_project_member_roles', {
+    type: 'project',
+    projectId,
+  });
+  const supabase = await createClient();
+  const { error } = await (supabase as any).rpc(
+    'update_member_access_by_invite_role_atomic',
+    {
+      p_project_id: projectId,
+      p_user_id: userId,
+      p_invite_role_id: inviteRoleId,
+      p_assigned_by: user.id,
+    }
+  );
+  if (error) {
+    const msg: string = error.message ?? '';
+    if (msg.includes('cannot_demote_last_owner'))
+      return {
+        error:
+          'Cannot change the last project owner. Assign another owner first.',
+      };
+    if (msg.includes('invite_role_not_found'))
+      return { error: 'Role not found' };
+    captureWithContext(error, {
+      module: 'teams',
+      action: 'updateMemberAccessByInviteRole',
+      userIntent: 'Apply saved role to member',
+      expected: 'update_member_access_by_invite_role_atomic RPC succeeds',
+      extra: { projectId, userId, inviteRoleId },
+    });
+    return { error: error.message };
+  }
+  revalidatePath(`/context/${projectId}/team`);
+  return { success: true };
+}
+
+// ── updateMemberModules ─────────────────────────────────────────────────
+// Updates only the visible modules (allowed_modules) for a member.
+export async function updateMemberModules(
+  projectId: string,
+  userId: string,
+  allowedModules: string[] | null
+): Promise<{ success?: boolean; error?: string }> {
+  const user = await requireAuth();
+  await requireCan(user.id, 'teams.update_project_member_roles', {
+    type: 'project',
+    projectId,
+  });
+  const supabase = await createClient();
+  const { error } = await (supabase as any).rpc(
+    'update_member_modules_atomic',
+    {
+      p_project_id: projectId,
+      p_user_id: userId,
+      p_allowed_modules:
+        allowedModules && allowedModules.length > 0 ? allowedModules : null,
+    }
+  );
+  if (error) {
+    captureWithContext(error, {
+      module: 'teams',
+      action: 'updateMemberModules',
+      userIntent: 'Update member visible modules',
+      expected: 'update_member_modules_atomic RPC succeeds',
+      extra: { projectId, userId },
+    });
+    return { error: error.message };
+  }
+  revalidatePath(`/context/${projectId}/team`);
+  return { success: true };
+}
+
+// ── updateMemberAccessFull ─────────────────────────────────────────────
+// Updates both visible modules and granted actions (custom permissions).
+// Use this when the editor has made granular changes; avoids per-toggle reload.
+export async function updateMemberAccessFull(
+  projectId: string,
+  userId: string,
+  allowedModules: string[] | null,
+  grantedActions: string[]
+): Promise<{ success?: boolean; error?: string }> {
+  const user = await requireAuth();
+  await requireCan(user.id, 'teams.update_project_member_roles', {
+    type: 'project',
+    projectId,
+  });
+  const supabase = await createClient();
+  const { error } = await (supabase as any).rpc(
+    'update_member_access_full_atomic',
+    {
+      p_project_id: projectId,
+      p_user_id: userId,
+      p_allowed_modules:
+        allowedModules && allowedModules.length > 0 ? allowedModules : null,
+      p_granted_actions:
+        grantedActions && grantedActions.length > 0 ? grantedActions : null,
+    }
+  );
+  if (error) {
+    captureWithContext(error, {
+      module: 'teams',
+      action: 'updateMemberAccessFull',
+      userIntent: 'Update member modules and permissions',
+      expected: 'update_member_access_full_atomic RPC succeeds',
+      extra: { projectId, userId },
+    });
+    return { error: error.message };
+  }
+  revalidatePath(`/context/${projectId}/team`);
+  return { success: true };
+}
+
 // ── getInviteByToken ──────────────────────────────────────────────────
 // Used by the accept page. No auth required — RPC get_invite_by_token is
 // SECURITY DEFINER so anyone with the link can read invite metadata (RLS
 // would otherwise block non–project-members from seeing the row).
 export const getInviteByToken = cache(async (token: string) => {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc('get_invite_by_token', {
+  const { data, error } = await (supabase as any).rpc('get_invite_by_token', {
     p_token: token,
   });
   if (error || !data || (Array.isArray(data) && data.length === 0)) {

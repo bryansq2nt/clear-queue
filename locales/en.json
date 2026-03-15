@@ -19,7 +19,8 @@
     "select": "Select",
     "copy": "Copy",
     "share": "Share",
-    "optional": "Optional"
+    "optional": "Optional",
+    "saving": "Saving…"
   },
   "mutation_error": {
     "try_again": "Try again",
@@ -200,7 +201,27 @@
     "invite_go_home": "Go home",
     "rejected_invites": "Rejected invites",
     "rejected_at": "Declined",
-    "rejection_reason_label": "Reason"
+    "rejection_reason_label": "Reason",
+    "edit_permissions": "View or edit modules and permissions",
+    "edit_permissions_title": "Permissions for {name}",
+    "edit_permissions_title_fallback": "Member permissions",
+    "edit_permissions_description": "View their current access and assign a different profile to change which modules and actions they have.",
+    "current_roles": "Current roles",
+    "current_modules": "Visible modules",
+    "all_modules": "All modules",
+    "assign_profile": "Change to profile",
+    "select_profile": "Select a profile…",
+    "modules": "modules",
+    "save_permissions": "Save permissions",
+    "edit_permissions_error_title": "Could not update permissions",
+    "edit_permissions_load_error": "Could not load permissions",
+    "apply_role_or_profile": "Apply role or profile",
+    "select_role_or_profile": "Select a role or profile…",
+    "profiles_group": "Profiles",
+    "saved_roles_group": "Saved roles",
+    "visible_modules": "Visible modules",
+    "permissions_in_module": "Permissions in this module",
+    "determined_by_role": "Determined by their role"
   },
   "sidebar": {
     "navigation": "Navigation",
