@@ -26,7 +26,14 @@ export async function signIn(formData: FormData) {
   }
 
   if (data.user) {
-    redirect('/');
+    const returnUrl = formData.get('returnUrl');
+    const url =
+      typeof returnUrl === 'string' &&
+      returnUrl.trim().startsWith('/') &&
+      !returnUrl.trim().startsWith('//')
+        ? returnUrl.trim()
+        : '/';
+    redirect(url);
   }
 
   return { error: 'Sign in failed' };
@@ -87,7 +94,7 @@ export async function requestPasswordReset(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/reset-password`;
+  const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/api/auth/callback`;
 
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
     redirectTo,

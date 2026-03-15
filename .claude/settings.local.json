@@ -37,7 +37,10 @@
       "Bash(ls /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/owner/)",
       "Bash(ls /Users/mutechlabs/development/clear-queue/app/context/\\\\[projectId\\\\]/)",
       "Bash(grep -n \"extra\" /Users/mutechlabs/development/clear-queue/lib/sentry.ts 2>/dev/null | head -10 || grep -rn \"captureWithContext\" /Users/mutechlabs/development/clear-queue/lib/sentry* 2>/dev/null | head -5)",
-      "Bash(grep -r \"inviteOrgMember\\\\|org_member\\\\|organization_members\" /Users/mutechlabs/development/clear-queue/app/actions --include=\"*.ts\" 2>/dev/null | head -30)"
+      "Bash(grep -r \"inviteOrgMember\\\\|org_member\\\\|organization_members\" /Users/mutechlabs/development/clear-queue/app/actions --include=\"*.ts\" 2>/dev/null | head -30)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(grep -n \"is_system_role\\\\|rbac_roles\" /Users/mutechlabs/development/clear-queue/supabase/migrations/*.sql | head -40)"
     ]
   }
 }

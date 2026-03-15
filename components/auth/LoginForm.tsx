@@ -7,9 +7,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export default function LoginForm() {
+export default function LoginForm({
+  returnUrl,
+}: {
+  returnUrl?: string | string[];
+}) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const returnUrlStr =
+    typeof returnUrl === 'string'
+      ? returnUrl
+      : Array.isArray(returnUrl)
+        ? returnUrl[0]
+        : undefined;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -18,6 +28,7 @@ export default function LoginForm() {
 
     const form = e.currentTarget;
     const formData = new FormData(form);
+    if (returnUrlStr) formData.set('returnUrl', returnUrlStr);
     const result = await signIn(formData);
 
     if (result?.error) {
@@ -31,6 +42,9 @@ export default function LoginForm() {
       onSubmit={handleSubmit}
       className="space-y-4 bg-white p-6 rounded-lg shadow-lg"
     >
+      {returnUrlStr && (
+        <input type="hidden" name="returnUrl" value={returnUrlStr} />
+      )}
       {error && (
         <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
           {error}

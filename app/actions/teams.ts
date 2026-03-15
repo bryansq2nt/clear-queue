@@ -8,6 +8,7 @@ import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { checkProjectMemberQuota } from '@/lib/quotas';
 import { logAuditEvent } from '@/lib/rbac/audit';
+import { sendEmail } from '@/lib/email/send';
 
 export type ProjectMember = {
   user_id: string;
@@ -30,6 +31,19 @@ export type ProjectInvite = {
   invited_by_name: string;
   expires_at: string;
   created_at: string;
+  /** Present so the inviter can copy/share the link from the pending list. */
+  token: string;
+};
+
+export type RejectedInvite = {
+  id: string;
+  email: string;
+  role_name: string;
+  profile_name: string | null;
+  invite_role_name: string | null;
+  invited_by_name: string;
+  rejected_at: string;
+  rejection_reason: string | null;
 };
 
 export type InviteRole = {
@@ -69,8 +83,44 @@ export const listProjectMembers = cache(
   }
 );
 
+// ── checkCanInviteEmail ───────────────────────────────────────────────
+// Used to validate before advancing from email step; avoids duplicate invites.
+export async function checkCanInviteEmail(
+  projectId: string,
+  email: string
+): Promise<{ allowed: true } | { allowed: false; error: string }> {
+  const user = await requireAuth();
+  await requireCan(user.id, 'teams.invite_project_member', {
+    type: 'project',
+    projectId,
+  });
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return { allowed: false, error: 'invalid_email' };
+  }
+  const supabase = await createClient();
+  const { data: existingPending } = await (supabase as any)
+    .from('project_invites')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('email', normalizedEmail)
+    .eq('status', 'pending')
+    .maybeSingle();
+  if (existingPending)
+    return { allowed: false, error: 'invite_already_pending' };
+  const { data: isMember } = await (supabase as any).rpc(
+    'project_has_member_with_email' as never,
+    { p_project_id: projectId, p_email: normalizedEmail } as never
+  );
+  if (isMember === true)
+    return { allowed: false, error: 'user_already_member' };
+  return { allowed: true };
+}
+
 // ── listPendingInvites ────────────────────────────────────────────────
 // Not wrapped in cache() — must reflect newly created/revoked invites immediately.
+// Uses RPC because project_invites has no direct FK to profiles (invited_by → auth.users);
+// a PostgREST embed for inviter display_name would fail, so we use get_pending_invites_for_project.
 export async function listPendingInvites(
   projectId: string
 ): Promise<ProjectInvite[]> {
@@ -80,28 +130,70 @@ export async function listPendingInvites(
     projectId,
   });
   const supabase = await createClient();
-  const { data, error } = await (supabase as any)
-    .from('project_invites')
-    .select(
-      'id, email, role_id, profile_id, invite_role_id, status, expires_at, created_at, rbac_roles(name), profiles!project_invites_invited_by_fkey(display_name), project_access_profiles(name), project_invite_roles(name)'
-    )
-    .eq('project_id', projectId)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false });
-  if (error) return [];
+  const { data, error } = await (supabase as any).rpc(
+    'get_pending_invites_for_project' as never,
+    { p_project_id: projectId } as never
+  );
+  if (error) {
+    captureWithContext(error, {
+      module: 'teams',
+      action: 'listPendingInvites',
+      userIntent: 'List pending project invites',
+      expected: 'RPC returns pending invites with inviter name',
+      extra: { projectId },
+    });
+    return [];
+  }
   return (data || []).map((row: any) => ({
     id: row.id as string,
     email: row.email as string,
-    role_id: row.role_id as string,
-    role_name: (row.rbac_roles?.name as string) ?? '',
+    role_id: (row.role_id as string | null) ?? '',
+    role_name: (row.role_name as string) ?? '',
     profile_id: (row.profile_id as string | null) ?? null,
-    profile_name: (row.project_access_profiles?.name as string | null) ?? null,
+    profile_name: (row.profile_name as string | null) ?? null,
     invite_role_id: (row.invite_role_id as string | null) ?? null,
-    invite_role_name: (row.project_invite_roles?.name as string | null) ?? null,
+    invite_role_name: (row.invite_role_name as string | null) ?? null,
     status: row.status as string,
-    invited_by_name: (row.profiles?.display_name as string) ?? '',
+    invited_by_name: (row.invited_by_name as string) ?? '',
     expires_at: row.expires_at as string,
     created_at: row.created_at as string,
+    token: (row.token as string) ?? '',
+  }));
+}
+
+// ── listRejectedInvites ─────────────────────────────────────────────────
+export async function listRejectedInvites(
+  projectId: string
+): Promise<RejectedInvite[]> {
+  const user = await requireAuth();
+  await requireCan(user.id, 'teams.read_project_members', {
+    type: 'project',
+    projectId,
+  });
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc(
+    'get_rejected_invites_for_project' as never,
+    { p_project_id: projectId } as never
+  );
+  if (error) {
+    captureWithContext(error, {
+      module: 'teams',
+      action: 'listRejectedInvites',
+      userIntent: 'List rejected project invites',
+      expected: 'RPC returns rejected invites with reason',
+      extra: { projectId },
+    });
+    return [];
+  }
+  return (data || []).map((row: any) => ({
+    id: row.id as string,
+    email: row.email as string,
+    role_name: (row.role_name as string) ?? '',
+    profile_name: (row.profile_name as string | null) ?? null,
+    invite_role_name: (row.invite_role_name as string | null) ?? null,
+    invited_by_name: (row.invited_by_name as string) ?? '',
+    rejected_at: row.rejected_at as string,
+    rejection_reason: (row.rejection_reason as string | null) ?? null,
   }));
 }
 
@@ -348,13 +440,21 @@ export const listProjectRoles = cache(async () => {
 });
 
 // ── inviteProjectMember ───────────────────────────────────────────────
+// When invite_role_id is set, role_id and profile_id are intentionally not set
+// (nullable); accept_invite_atomic uses invite_role_id first.
 export async function inviteProjectMember(
   projectId: string,
   email: string,
   roleId: string,
   profileId?: string,
-  inviteRoleId?: string
-): Promise<{ token?: string; error?: string }> {
+  inviteRoleId?: string,
+  projectName?: string
+): Promise<{
+  token?: string;
+  error?: string;
+  emailSent?: boolean;
+  emailError?: string;
+}> {
   const user = await requireAuth();
   await requireCan(user.id, 'teams.invite_project_member', {
     type: 'project',
@@ -366,7 +466,30 @@ export async function inviteProjectMember(
     return { error: 'quota_members_per_project' };
   }
 
+  const normalizedEmail = email.trim().toLowerCase();
   const supabase = await createClient();
+
+  // Block duplicate invites: already pending or already a member
+  const { data: existingPending } = await (supabase as any)
+    .from('project_invites')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('email', normalizedEmail)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (existingPending) {
+    return { error: 'invite_already_pending' };
+  }
+
+  const { data: isMember } = await (supabase as any).rpc(
+    'project_has_member_with_email' as never,
+    { p_project_id: projectId, p_email: normalizedEmail } as never
+  );
+
+  if (isMember === true) {
+    return { error: 'user_already_member' };
+  }
 
   // When inviteRoleId is set, role_id is redundant — accept_invite_atomic
   // resolves the system role from project_invite_roles.effective_role_name.
@@ -374,7 +497,7 @@ export async function inviteProjectMember(
   const insertPayload: Record<string, unknown> = {
     project_id: projectId,
     invited_by: user.id,
-    email: email.trim().toLowerCase(),
+    email: normalizedEmail,
   };
   if (!inviteRoleId) {
     // Legacy path: role_id must be a valid UUID.
@@ -400,11 +523,12 @@ export async function inviteProjectMember(
     return { error: error.message };
   }
 
+  const token = (data as any).token as string;
   void logAuditEvent({
     actorUserId: user.id,
     action: 'invite.created',
     resourceType: 'project_invite',
-    resourceId: (data as any).token as string,
+    resourceId: token,
     projectId,
     metadata: {
       email: email.trim().toLowerCase(),
@@ -415,7 +539,137 @@ export async function inviteProjectMember(
   });
 
   revalidatePath(`/context/${projectId}/team`);
-  return { token: (data as any).token as string };
+
+  // Auto-send invite email when Resend is configured and we have a base URL
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
+  if (baseUrl && process.env.RESEND_API_KEY?.trim()) {
+    const inviteLink = `${baseUrl}/invite/${token}`;
+    const sendResult = await sendInviteEmail(
+      email.trim().toLowerCase(),
+      inviteLink,
+      projectName?.trim() || undefined
+    );
+    if (sendResult.success) {
+      return { token, emailSent: true };
+    }
+    return {
+      token,
+      emailSent: false,
+      emailError: sendResult.error ?? 'Failed to send email',
+    };
+  }
+
+  return { token };
+}
+
+// ── sendInviteEmail ────────────────────────────────────────────────────
+// Sends the invite link to the given email. Prefers your SMTP server (SMTP_* env)
+// when set; otherwise uses Resend (RESEND_API_KEY). If neither is configured,
+// returns an error so the UI can tell the user to copy the link and share manually.
+export async function sendInviteEmail(
+  toEmail: string,
+  inviteLink: string,
+  projectName?: string
+): Promise<{ success?: boolean; error?: string }> {
+  await requireAuth();
+
+  const projectLabel = projectName?.trim() || 'A project';
+  const subject = `You're invited to ${projectLabel}`;
+  const html = `
+    <p>You've been invited to join <strong>${escapeHtml(projectLabel)}</strong>.</p>
+    <p>Use the link below to accept the invitation (it expires in 7 days):</p>
+    <p><a href="${escapeHtml(inviteLink)}">${escapeHtml(inviteLink)}</a></p>
+    <p>If you don't have an account yet, you can sign up when you open the link.</p>
+  `.trim();
+
+  // Prefer your own SMTP server when configured
+  if (process.env.SMTP_HOST?.trim()) {
+    const from =
+      process.env.SMTP_FROM_EMAIL?.trim() || 'ClearQueue <noreply@localhost>';
+    const result = await sendEmail({
+      to: toEmail,
+      subject,
+      html,
+      from,
+    });
+    if (result.error) {
+      captureWithContext(new Error(result.error), {
+        module: 'teams',
+        action: 'sendInviteEmail',
+        userIntent: 'Send invite link by email (SMTP)',
+        expected: 'SMTP accepts the email',
+        extra: { toEmail },
+      });
+    }
+    return result;
+  }
+
+  // Fallback to Resend when RESEND_API_KEY is set
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey?.trim()) {
+    return {
+      error:
+        'Email sending is not configured. Set SMTP_HOST (your server) or RESEND_API_KEY, or copy the invite link and share it manually.',
+    };
+  }
+
+  const from =
+    process.env.RESEND_FROM_EMAIL?.trim() ||
+    'ClearQueue <onboarding@resend.dev>';
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        from,
+        to: [toEmail.trim().toLowerCase()],
+        subject,
+        html,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      captureWithContext(new Error(`Resend API error: ${res.status} ${body}`), {
+        module: 'teams',
+        action: 'sendInviteEmail',
+        userIntent: 'Send invite link by email',
+        expected: 'Resend accepts the email',
+        extra: { toEmail, status: res.status },
+      });
+      return {
+        error:
+          'Failed to send email. Try copying the link and sharing it manually.',
+      };
+    }
+    return { success: true };
+  } catch (err) {
+    captureWithContext(err, {
+      module: 'teams',
+      action: 'sendInviteEmail',
+      userIntent: 'Send invite link by email',
+      expected: 'Resend request succeeds',
+      extra: { toEmail },
+    });
+    return {
+      error:
+        'Failed to send email. Try copying the link and sharing it manually.',
+    };
+  }
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // ── revokeInvite ──────────────────────────────────────────────────────
@@ -513,32 +767,28 @@ export async function removeProjectMember(
 }
 
 // ── getInviteByToken ──────────────────────────────────────────────────
-// Used by the accept page — no auth required to read invite metadata
+// Used by the accept page. No auth required — RPC get_invite_by_token is
+// SECURITY DEFINER so anyone with the link can read invite metadata (RLS
+// would otherwise block non–project-members from seeing the row).
 export const getInviteByToken = cache(async (token: string) => {
   const supabase = await createClient();
-  const { data } = await (supabase as any)
-    .from('project_invites')
-    .select(
-      'id, email, status, expires_at, project_id, projects(name), rbac_roles(name), project_access_profiles(name, allowed_modules)'
-    )
-    .eq('token', token)
-    .maybeSingle();
-  if (!data) return null;
+  const { data, error } = await supabase.rpc('get_invite_by_token', {
+    p_token: token,
+  });
+  if (error || !data || (Array.isArray(data) && data.length === 0)) {
+    return null;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
   return {
-    id: (data as any).id as string,
-    email: (data as any).email as string,
-    status: (data as any).status as string,
-    expires_at: (data as any).expires_at as string,
-    project_id: (data as any).project_id as string,
-    project_name: ((data as any).projects?.name as string) ?? '',
-    role_name: ((data as any).rbac_roles?.name as string) ?? '',
-    profile_name:
-      ((data as any).project_access_profiles?.name as string | null) ?? null,
-    /** NULL = unrestricted; array = explicit allowlist of module keys. */
-    allowed_modules:
-      ((data as any).project_access_profiles?.allowed_modules as
-        | string[]
-        | null) ?? null,
+    id: row.id as string,
+    email: row.email as string,
+    status: row.status as string,
+    expires_at: row.expires_at as string,
+    project_id: row.project_id as string,
+    project_name: (row.project_name as string) ?? '',
+    role_name: (row.role_name as string) ?? '',
+    profile_name: (row.profile_name as string | null) ?? null,
+    allowed_modules: (row.allowed_modules as string[] | null) ?? null,
   };
 });
 
@@ -561,6 +811,11 @@ export async function acceptInvite(
       return { error: 'This invite has already been used or revoked' };
     if (msg.includes('invite_expired'))
       return { error: 'This invite has expired' };
+    if (msg.includes('invite_email_mismatch'))
+      return {
+        error:
+          'This invite was sent to another email address. Sign in with the account that received the invite to accept.',
+      };
 
     captureWithContext(rpcError, {
       module: 'teams',
@@ -583,4 +838,41 @@ export async function acceptInvite(
 
   revalidatePath(`/context/${pid}/team`);
   return { projectId: pid };
+}
+
+// ── rejectInvite ───────────────────────────────────────────────────────
+export async function rejectInvite(
+  token: string,
+  reason?: string | null
+): Promise<{ success?: boolean; error?: string }> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { error: rpcError } = await (supabase as any).rpc(
+    'reject_invite_atomic',
+    { p_token: token, p_user_id: user.id, p_reason: reason ?? null }
+  );
+
+  if (rpcError) {
+    const msg: string = rpcError.message ?? '';
+    if (msg.includes('invite_not_found')) return { error: 'Invite not found' };
+    if (msg.includes('invite_not_pending'))
+      return { error: 'This invite has already been used or revoked' };
+    if (msg.includes('invite_expired'))
+      return { error: 'This invite has expired' };
+    if (msg.includes('invite_email_mismatch'))
+      return {
+        error:
+          'This invite was sent to another email address. Only that account can decline.',
+      };
+    captureWithContext(rpcError, {
+      module: 'teams',
+      action: 'rejectInvite',
+      userIntent: 'Decline a project invitation',
+      expected: 'reject_invite_atomic RPC succeeds',
+    });
+    return { error: rpcError.message };
+  }
+
+  return { success: true };
 }

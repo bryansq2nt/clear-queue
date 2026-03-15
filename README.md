@@ -67,6 +67,32 @@ ADMIN_EMAIL=your-admin-email@example.com
 
 **Important**: Replace `your_supabase_project_url`, `your_supabase_anon_key`, and `your-admin-email@example.com` with your actual values.
 
+**Optional — Invite emails (Team tab):** To send project invites by email, use either **your own SMTP server** or **Resend**. Set `NEXT_PUBLIC_SITE_URL` in both cases (base URL for invite links, e.g. `http://localhost:3000` or your production URL).
+
+**Option A — Your own SMTP server (recommended if you have one):**
+
+```env
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+SMTP_HOST=smtp.yourdomain.com
+SMTP_PORT=587
+SMTP_USER=your-smtp-user
+SMTP_PASSWORD=your-smtp-password
+SMTP_FROM_EMAIL=ClearQueue <noreply@yourdomain.com>
+```
+
+- `SMTP_HOST` is required; the rest are optional. Use `SMTP_PORT=465` for SSL or `587` for STARTTLS; set `SMTP_SECURE=true` for port 465.
+- If your server doesn’t use auth, omit `SMTP_USER` and `SMTP_PASSWORD`.
+
+**Option B — Resend (no SMTP):**
+
+```env
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+RESEND_API_KEY=re_xxxxxxxxxxxx
+RESEND_FROM_EMAIL=Your App <invites@yourdomain.com>
+```
+
+- Get an API key at [resend.com](https://resend.com). Optional: `RESEND_FROM_EMAIL` (defaults to Resend’s test sender).
+
 ### 4. Create Your Admin User
 
 1. In Supabase Dashboard, go to **Authentication** > **Users**

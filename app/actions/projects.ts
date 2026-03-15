@@ -29,12 +29,12 @@ type ProjectAccessInsert =
 export const getProjectsForSidebar = cache(async (): Promise<ProjectRow[]> => {
   const user = await requireAuth();
   const supabase = await createClient();
+  // RLS: only rows where is_project_member(id) are visible (owner or project_members)
   const { data, error } = await supabase
     .from('projects')
     .select(
       'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
     )
-    .eq('owner_id', user.id)
     .order('created_at', { ascending: true });
   if (error) return [];
   return data || [];
@@ -44,13 +44,13 @@ export const getProjectById = cache(
   async (projectId: string): Promise<ProjectRow | null> => {
     const user = await requireAuth();
     const supabase = await createClient();
+    // RLS: single row returned only if is_project_member(projectId)
     const { data, error } = await supabase
       .from('projects')
       .select(
         'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at'
       )
       .eq('id', projectId)
-      .eq('owner_id', user.id)
       .single();
     if (error || !data) return null;
     return data;
@@ -401,11 +401,11 @@ export const getProjectsList = cache(async (): Promise<ProjectListItem[]> => {
   const user = await requireAuth();
   const supabase = await createClient();
 
+  // RLS on projects: only rows where is_project_member(id) are visible (owner or invited member)
   const [projectsResult, accessResult] = await Promise.all([
     supabase
       .from('projects')
-      .select('id, name, category, client_id, clients(full_name)')
-      .eq('owner_id', user.id),
+      .select('id, name, category, client_id, clients(full_name)'),
     supabase
       .from('project_access')
       .select('project_id, last_accessed_at')

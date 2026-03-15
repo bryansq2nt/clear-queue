@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
-import { getInviteByToken, acceptInvite } from '@/app/actions/teams';
+import { getInviteByToken } from '@/app/actions/teams';
 import { getUser } from '@/lib/auth';
 import Link from 'next/link';
 import { Users, AlertCircle, CheckCircle, Eye } from 'lucide-react';
+import InvitePageActions from '@/components/invite/InvitePageActions';
 
 const MODULE_LABELS: Record<string, string> = {
   board: 'Tasks',
@@ -97,6 +98,28 @@ export default async function InvitePage({
     );
   }
 
+  if (invite.status === 'rejected') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full rounded-xl border border-border bg-card p-8 text-center space-y-4">
+          <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
+          <h1 className="text-xl font-semibold text-foreground">
+            You declined
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            You previously declined this invitation.
+          </p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            Go home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const expired = new Date(invite.expires_at) < new Date();
   if (expired) {
     return (
@@ -116,18 +139,46 @@ export default async function InvitePage({
   }
 
   if (!user) {
-    // Not logged in — redirect to sign up/login with return URL
+    // Not logged in — redirect to home (sign-in is on /) with return URL
     const returnUrl = encodeURIComponent(`/invite/${token}`);
-    redirect(`/login?returnUrl=${returnUrl}`);
+    redirect(`/?returnUrl=${returnUrl}`);
   }
 
-  // Server action for the form
-  async function handleAccept() {
-    'use server';
-    const result = await acceptInvite(token);
-    if (result.projectId) {
-      redirect(`/context/${result.projectId}/board`);
-    }
+  // Only the invited email can accept; server enforces this too
+  const emailMatches =
+    user.email?.toLowerCase().trim() === invite.email.toLowerCase().trim();
+
+  // Logged in as a different email — show message, no Accept button
+  if (!emailMatches) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full rounded-xl border border-border bg-card p-8 text-center space-y-4">
+          <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
+          <h1 className="text-xl font-semibold text-foreground">
+            Wrong account
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            This invite was sent to{' '}
+            <span className="font-medium text-foreground">{invite.email}</span>.
+            You&apos;re signed in as{' '}
+            <span className="font-medium text-foreground">{user.email}</span>.
+            Sign in with the invited account to accept.
+          </p>
+          <Link
+            href={`/?returnUrl=${encodeURIComponent(`/invite/${token}`)}`}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            Sign in with invited account
+          </Link>
+          <Link
+            href="/"
+            className="block text-sm text-muted-foreground hover:text-foreground"
+          >
+            Go home
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -177,14 +228,7 @@ export default async function InvitePage({
           <span className="font-medium text-foreground">{user.email}</span>
         </div>
 
-        <form action={handleAccept}>
-          <button
-            type="submit"
-            className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
-          >
-            Accept invitation
-          </button>
-        </form>
+        <InvitePageActions token={token} />
 
         <p className="text-center text-xs text-muted-foreground">
           Invite expires on {new Date(invite.expires_at).toLocaleDateString()}.

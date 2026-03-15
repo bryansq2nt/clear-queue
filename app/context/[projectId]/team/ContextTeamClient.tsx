@@ -7,10 +7,13 @@ import {
   createInviteRole,
   revokeInvite,
   removeProjectMember,
+  sendInviteEmail,
+  checkCanInviteEmail,
 } from '@/app/actions/teams';
 import type {
   ProjectMember,
   ProjectInvite,
+  RejectedInvite,
   ProjectAccessProfile,
   InviteRole,
 } from '@/app/actions/teams';
@@ -29,6 +32,15 @@ import {
   Shield,
 } from 'lucide-react';
 import { MutationErrorDialog } from '@/components/board/MutationErrorDialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 // ── Module catalogue (all 12 modules) ────────────────────────────────────────
 
@@ -328,8 +340,10 @@ type InviteStep = 'email' | 'mode' | 'modules' | 'review';
 
 interface Props {
   projectId: string;
+  projectName: string;
   initialMembers: ProjectMember[];
   initialInvites: ProjectInvite[];
+  initialRejectedInvites: RejectedInvite[];
   roles: Array<{ id: string; name: string; description: string | null }>;
   profiles: ProjectAccessProfile[];
   reusableRoles: InviteRole[];
@@ -338,14 +352,17 @@ interface Props {
 
 export default function ContextTeamClient({
   projectId,
+  projectName,
   initialMembers,
   initialInvites,
+  initialRejectedInvites,
   reusableRoles,
   onRefresh,
 }: Props) {
   const { t } = useI18n();
   const members = initialMembers;
   const invites = initialInvites;
+  const rejectedInvites = initialRejectedInvites;
 
   // ── Invite form state ─────────────────────────────────────────────
   const [showInviteForm, setShowInviteForm] = useState(false);
@@ -371,6 +388,9 @@ export default function ContextTeamClient({
   // UI feedback
   const [inviteSaving, setInviteSaving] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [errorDialog, setErrorDialog] = useState<{
     open: boolean;
@@ -378,6 +398,18 @@ export default function ContextTeamClient({
     message: string;
     retry: () => void;
   } | null>(null);
+  const [revokeConfirmInvite, setRevokeConfirmInvite] =
+    useState<ProjectInvite | null>(null);
+  const [inviteSuccessDialog, setInviteSuccessDialog] = useState<{
+    link: string;
+    email: string;
+    emailSent?: boolean;
+    emailError?: string;
+  } | null>(null);
+  const [sendingEmailInDialog, setSendingEmailInDialog] = useState(false);
+  const [sendingEmailForEmail, setSendingEmailForEmail] = useState<
+    string | null
+  >(null);
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -399,6 +431,30 @@ export default function ContextTeamClient({
     });
   }, []);
 
+  const handleShareLink = useCallback(
+    async (link: string, label?: string) => {
+      const title = label
+        ? t('teams.invite_share_title_with_email', { email: label })
+        : t('teams.invite_share_title');
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({
+            title,
+            text: t('teams.invite_share_text'),
+            url: link,
+          });
+        } catch (err) {
+          if ((err as Error).name !== 'AbortError') {
+            handleCopyLink(link);
+          }
+        }
+      } else {
+        handleCopyLink(link);
+      }
+    },
+    [t, handleCopyLink]
+  );
+
   const resetForm = useCallback(() => {
     setStep('email');
     setInviteEmail('');
@@ -415,7 +471,109 @@ export default function ContextTeamClient({
     if (showInviteForm) resetForm();
     setShowInviteForm((v) => !v);
     setGeneratedLink(null);
+    setLastInvitedEmail(null);
+    setEmailSent(false);
   }, [showInviteForm, resetForm]);
+
+  const closeInviteSuccessDialog = useCallback(() => {
+    setInviteSuccessDialog(null);
+    setCopied(false);
+    resetForm();
+    setShowInviteForm(false);
+    setGeneratedLink(null);
+    setLastInvitedEmail(null);
+    setEmailSent(false);
+    onRefresh();
+  }, [resetForm, onRefresh]);
+
+  const handleEmailStepNext = useCallback(async () => {
+    if (!inviteEmail.trim()) return;
+    const check = await checkCanInviteEmail(projectId, inviteEmail.trim());
+    if (!check.allowed) {
+      const message =
+        check.error === 'invite_already_pending'
+          ? t('teams.invite_already_pending')
+          : check.error === 'user_already_member'
+            ? t('teams.user_already_member')
+            : check.error;
+      setErrorDialog({
+        open: true,
+        title: t('teams.invite_error_title'),
+        message,
+        retry: () => setErrorDialog(null),
+      });
+      return;
+    }
+    setStep(reusableRoles.length > 0 ? 'mode' : 'modules');
+  }, [projectId, inviteEmail, reusableRoles.length, t]);
+
+  const handleSendEmail = useCallback(async () => {
+    if (!generatedLink || !lastInvitedEmail) return;
+    setSendingEmail(true);
+    setEmailSent(false);
+    const result = await sendInviteEmail(
+      lastInvitedEmail,
+      generatedLink,
+      projectName || undefined
+    );
+    setSendingEmail(false);
+    if (result.error) {
+      setErrorDialog({
+        open: true,
+        title: t('teams.invite_error_title'),
+        message: result.error,
+        retry: () => void handleSendEmail(),
+      });
+      return;
+    }
+    setEmailSent(true);
+  }, [generatedLink, lastInvitedEmail, projectName, t]);
+
+  const handleSendEmailFromDialog = useCallback(async () => {
+    if (!inviteSuccessDialog) return;
+    setSendingEmailInDialog(true);
+    const result = await sendInviteEmail(
+      inviteSuccessDialog.email,
+      inviteSuccessDialog.link,
+      projectName || undefined
+    );
+    setSendingEmailInDialog(false);
+    if (result.error) {
+      setErrorDialog({
+        open: true,
+        title: t('teams.invite_error_title'),
+        message: result.error,
+        retry: () => setErrorDialog(null),
+      });
+      return;
+    }
+    setInviteSuccessDialog((prev) =>
+      prev ? { ...prev, emailSent: true, emailError: undefined } : null
+    );
+  }, [inviteSuccessDialog, projectName, t]);
+
+  const handleSendEmailForPending = useCallback(
+    async (inv: ProjectInvite) => {
+      if (!inv.token) return;
+      const link = `${baseUrl}/invite/${inv.token}`;
+      setSendingEmailForEmail(inv.email);
+      const result = await sendInviteEmail(
+        inv.email,
+        link,
+        projectName || undefined
+      );
+      setSendingEmailForEmail(null);
+      if (result.error) {
+        setErrorDialog({
+          open: true,
+          title: t('teams.invite_error_title'),
+          message: result.error,
+          retry: () => setErrorDialog(null),
+        });
+      }
+    },
+    [baseUrl, projectName, t]
+  );
 
   const handleToggleModule = useCallback((moduleKey: string) => {
     setSelectedModules((prev) => {
@@ -506,24 +664,36 @@ export default function ContextTeamClient({
       inviteEmail.trim(),
       roleId, // effective role name; action resolves to UUID
       undefined, // profileId (old path)
-      inviteRoleId
+      inviteRoleId,
+      projectName || undefined
     );
     setInviteSaving(false);
 
     if (result.error) {
+      const message =
+        result.error === 'invite_already_pending'
+          ? t('teams.invite_already_pending')
+          : result.error === 'user_already_member'
+            ? t('teams.user_already_member')
+            : result.error;
       setErrorDialog({
         open: true,
         title: t('teams.invite_error_title'),
-        message: result.error,
+        message,
         retry: handleInvite,
       });
       return;
     }
     if (result.token) {
-      setGeneratedLink(`${baseUrl}/invite/${result.token}`);
-      resetForm();
-      setShowInviteForm(false);
-      onRefresh();
+      const link = `${baseUrl}/invite/${result.token}`;
+      const email = inviteEmail.trim();
+      setInviteSuccessDialog({
+        link,
+        email,
+        emailSent: result.emailSent,
+        emailError: result.emailError,
+      });
+      // No refresh or form close here — dialog is shown; list updates when they close the dialog
     }
   }, [
     mode,
@@ -534,15 +704,15 @@ export default function ContextTeamClient({
     roleName,
     effectiveRole,
     projectId,
+    projectName,
     inviteEmail,
     baseUrl,
-    onRefresh,
     t,
-    resetForm,
   ]);
 
   const handleRevoke = useCallback(
     async (inviteId: string) => {
+      setRevokeConfirmInvite(null);
       const result = await revokeInvite(inviteId, projectId);
       if (result.error) {
         setErrorDialog({
@@ -620,6 +790,7 @@ export default function ContextTeamClient({
               onClick={() => handleCopyLink(generatedLink)}
               className="shrink-0 p-2 rounded-md hover:bg-accent transition-colors"
               aria-label={t('common.copy')}
+              title={t('common.copy')}
             >
               {copied ? (
                 <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
@@ -627,7 +798,43 @@ export default function ContextTeamClient({
                 <Copy className="w-4 h-4 text-muted-foreground" />
               )}
             </button>
+            <button
+              type="button"
+              onClick={() => void handleSendEmail()}
+              disabled={sendingEmail}
+              className="shrink-0 p-2 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
+              aria-label={t('teams.invite_send_email')}
+              title={t('teams.invite_send_email')}
+            >
+              {sendingEmail ? (
+                <Clock className="w-4 h-4 text-muted-foreground animate-pulse" />
+              ) : (
+                <Mail className="w-4 h-4 text-muted-foreground" />
+              )}
+            </button>
           </div>
+          {lastInvitedEmail && (
+            <div className="flex items-center gap-2 pt-1 border-t border-border">
+              <button
+                type="button"
+                onClick={() => void handleSendEmail()}
+                disabled={sendingEmail}
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                <Mail className="w-4 h-4" />
+                {sendingEmail
+                  ? t('teams.invite_email_sending')
+                  : emailSent
+                    ? t('teams.invite_email_sent')
+                    : t('teams.invite_send_email')}
+              </button>
+              {emailSent && (
+                <span className="text-xs text-muted-foreground">
+                  {t('teams.invite_email_sent_hint')}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -652,7 +859,7 @@ export default function ContextTeamClient({
                   className="w-full text-sm rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && inviteEmail.trim()) {
-                      setStep(reusableRoles.length > 0 ? 'mode' : 'modules');
+                      void handleEmailStepNext();
                     }
                   }}
                   autoFocus
@@ -671,9 +878,7 @@ export default function ContextTeamClient({
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    setStep(reusableRoles.length > 0 ? 'mode' : 'modules')
-                  }
+                  onClick={() => void handleEmailStepNext()}
                   disabled={!inviteEmail.trim()}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
@@ -1131,21 +1336,221 @@ export default function ContextTeamClient({
                   >
                     {displayLabel}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => void handleRevoke(inv.id)}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    aria-label={t('teams.revoke_invite')}
-                    title={t('teams.revoke_invite')}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {inv.token && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopyLink(`${baseUrl}/invite/${inv.token}`)
+                          }
+                          className="p-1.5 rounded-md text-muted-foreground hover:bg-accent transition-colors"
+                          aria-label={t('common.copy')}
+                          title={t('common.copy')}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleSendEmailForPending(inv)}
+                          disabled={sendingEmailForEmail === inv.email}
+                          className="p-1.5 rounded-md text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                          aria-label={t('teams.invite_send_email')}
+                          title={t('teams.invite_send_email')}
+                        >
+                          {sendingEmailForEmail === inv.email ? (
+                            <Clock className="w-4 h-4 animate-pulse" />
+                          ) : (
+                            <Mail className="w-4 h-4" />
+                          )}
+                        </button>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setRevokeConfirmInvite(inv)}
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      aria-label={t('teams.revoke_invite')}
+                      title={t('teams.revoke_invite')}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </li>
               );
             })}
           </ul>
         </section>
       )}
+
+      {/* Rejected invites */}
+      {rejectedInvites.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="text-sm font-semibold text-foreground">
+            {t('teams.rejected_invites')} ({rejectedInvites.length})
+          </h3>
+          <ul className="space-y-2">
+            {rejectedInvites.map((rej) => {
+              const displayLabel =
+                rej.invite_role_name ??
+                rej.profile_name ??
+                roleLabel(rej.role_name);
+              return (
+                <li
+                  key={rej.id}
+                  className="flex flex-col gap-1.5 p-3 rounded-lg border border-border bg-muted/30"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <X className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {rej.email}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t('teams.rejected_at')}{' '}
+                        {new Date(rej.rejected_at).toLocaleString()}
+                        {' · '}
+                        {displayLabel}
+                      </p>
+                    </div>
+                  </div>
+                  {rej.rejection_reason && (
+                    <p className="text-xs text-muted-foreground pl-12">
+                      {t('teams.rejection_reason_label')}:{' '}
+                      {rej.rejection_reason}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {/* Invite sent success dialog */}
+      <Dialog
+        open={!!inviteSuccessDialog}
+        onOpenChange={(open) => {
+          if (!open) closeInviteSuccessDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Check className="w-5 h-5 shrink-0 text-green-600 dark:text-green-400" />
+              {t('teams.invite_sent_dialog_title')}
+            </DialogTitle>
+            <DialogDescription>
+              {inviteSuccessDialog
+                ? t('teams.invite_sent_dialog_message', {
+                    email: inviteSuccessDialog.email,
+                  })
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {inviteSuccessDialog && (
+            <div className="space-y-4">
+              {/* Link in a wrapping block so it doesn't overflow */}
+              <div className="rounded-lg border border-border bg-muted/50 p-3">
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">
+                  {t('teams.invite_link_label')}
+                </p>
+                <code className="block text-xs text-foreground break-all">
+                  {inviteSuccessDialog.link}
+                </code>
+              </div>
+              {/* Copy and Share as clear, labeled buttons */}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopyLink(inviteSuccessDialog.link)}
+                  className="inline-flex items-center gap-2"
+                >
+                  {copied ? (
+                    <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                  {copied ? t('teams.invite_copied') : t('common.copy')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleSendEmailFromDialog()}
+                  disabled={sendingEmailInDialog}
+                  className="inline-flex items-center gap-2"
+                >
+                  <Mail className="w-4 h-4" />
+                  {sendingEmailInDialog
+                    ? t('teams.invite_email_sending')
+                    : t('teams.invite_send_email')}
+                </Button>
+              </div>
+              {inviteSuccessDialog.emailSent && (
+                <p className="text-xs text-muted-foreground">
+                  {t('teams.invite_email_sent_hint')}
+                </p>
+              )}
+              {inviteSuccessDialog.emailError && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  {inviteSuccessDialog.emailError}
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={closeInviteSuccessDialog}
+              className="bg-primary text-primary-foreground"
+            >
+              {t('teams.invite_sent_dialog_done')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revoke invite confirmation */}
+      <Dialog
+        open={!!revokeConfirmInvite}
+        onOpenChange={(open) => !open && setRevokeConfirmInvite(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('teams.revoke_confirm_title')}</DialogTitle>
+            <DialogDescription>
+              {revokeConfirmInvite
+                ? t('teams.revoke_confirm_message', {
+                    email: revokeConfirmInvite.email,
+                  })
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRevokeConfirmInvite(null)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() =>
+                revokeConfirmInvite && void handleRevoke(revokeConfirmInvite.id)
+              }
+            >
+              {t('teams.revoke_confirm_btn')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Error dialog */}
       {errorDialog && (

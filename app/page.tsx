@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 import { getUser } from '@/lib/auth';
 import { getProjectsList } from '@/app/actions/projects';
 import { getProfileOptional } from '@/app/profile/actions';
@@ -6,6 +7,12 @@ import LoginForm from '@/components/auth/LoginForm';
 import AuthCallbackHandler from '@/components/auth/AuthCallbackHandler';
 import ContextProjectPicker from '@/app/context/ContextProjectPicker';
 import { SkeletonProjectPicker } from '@/components/skeletons/SkeletonProjectPicker';
+
+/** Allow redirect only to same-origin paths (no protocol, no //). */
+function isSafeReturnUrl(url: string): boolean {
+  const s = url?.trim() ?? '';
+  return s.startsWith('/') && !s.startsWith('//');
+}
 
 async function HomeProjectsContent({
   user,
@@ -34,11 +41,18 @@ async function HomeProjectsContent({
 export default async function Home({
   searchParams,
 }: {
-  searchParams: { error?: string; from?: string };
+  searchParams: { error?: string; from?: string; returnUrl?: string };
 }) {
   const user = await getUser();
 
   if (user) {
+    const returnUrl =
+      typeof searchParams.returnUrl === 'string'
+        ? decodeURIComponent(searchParams.returnUrl)
+        : '';
+    if (returnUrl && isSafeReturnUrl(returnUrl)) {
+      redirect(returnUrl);
+    }
     return (
       <Suspense fallback={<SkeletonProjectPicker />}>
         <HomeProjectsContent user={user} searchParams={searchParams} />
@@ -66,7 +80,7 @@ export default async function Home({
               Please sign in to continue.
             </div>
           )}
-          <LoginForm />
+          <LoginForm returnUrl={searchParams.returnUrl} />
         </div>
       </div>
     </>

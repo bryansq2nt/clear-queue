@@ -4,13 +4,16 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   listProjectMembers,
   listPendingInvites,
+  listRejectedInvites,
   listProjectRoles,
   listProjectAccessProfiles,
   listReusableInviteRoles,
 } from '@/app/actions/teams';
+import { getProjectById } from '@/app/actions/projects';
 import type {
   ProjectMember,
   ProjectInvite,
+  RejectedInvite,
   ProjectAccessProfile,
   InviteRole,
 } from '@/app/actions/teams';
@@ -21,9 +24,11 @@ import ContextTeamClient from './ContextTeamClient';
 type TeamData = {
   members: ProjectMember[];
   invites: ProjectInvite[];
+  rejectedInvites: RejectedInvite[];
   roles: Array<{ id: string; name: string; description: string | null }>;
   profiles: ProjectAccessProfile[];
   reusableRoles: InviteRole[];
+  projectName: string;
 };
 
 interface Props {
@@ -41,20 +46,31 @@ export default function ContextTeamFromCache({ projectId }: Props) {
     cache.invalidate({ type: 'team', projectId });
     setLoadError(null);
     try {
-      const [members, invites, roles, profiles, reusableRoles] =
-        await Promise.all([
-          listProjectMembers(projectId),
-          listPendingInvites(projectId),
-          listProjectRoles(),
-          listProjectAccessProfiles(projectId),
-          listReusableInviteRoles(projectId),
-        ]);
-      const next: TeamData = {
+      const [
         members,
         invites,
+        rejectedInvites,
         roles,
         profiles,
         reusableRoles,
+        project,
+      ] = await Promise.all([
+        listProjectMembers(projectId),
+        listPendingInvites(projectId),
+        listRejectedInvites(projectId),
+        listProjectRoles(),
+        listProjectAccessProfiles(projectId),
+        listReusableInviteRoles(projectId),
+        getProjectById(projectId),
+      ]);
+      const next: TeamData = {
+        members,
+        invites,
+        rejectedInvites,
+        roles,
+        profiles,
+        reusableRoles,
+        projectName: project?.name ?? '',
       };
       cache.set({ type: 'team', projectId }, next);
       setData(next);
@@ -76,23 +92,37 @@ export default function ContextTeamFromCache({ projectId }: Props) {
     Promise.all([
       listProjectMembers(projectId),
       listPendingInvites(projectId),
+      listRejectedInvites(projectId),
       listProjectRoles(),
       listProjectAccessProfiles(projectId),
       listReusableInviteRoles(projectId),
+      getProjectById(projectId),
     ])
-      .then(([members, invites, roles, profiles, reusableRoles]) => {
-        if (cancelled) return;
-        const next: TeamData = {
+      .then(
+        ([
           members,
           invites,
+          rejectedInvites,
           roles,
           profiles,
           reusableRoles,
-        };
-        cache.set({ type: 'team', projectId }, next);
-        setData(next);
-        setLoading(false);
-      })
+          project,
+        ]) => {
+          if (cancelled) return;
+          const next: TeamData = {
+            members,
+            invites,
+            rejectedInvites,
+            roles,
+            profiles,
+            reusableRoles,
+            projectName: project?.name ?? '',
+          };
+          cache.set({ type: 'team', projectId }, next);
+          setData(next);
+          setLoading(false);
+        }
+      )
       .catch((err) => {
         if (cancelled) return;
         setLoadError(
@@ -126,8 +156,10 @@ export default function ContextTeamFromCache({ projectId }: Props) {
   return (
     <ContextTeamClient
       projectId={projectId}
+      projectName={data.projectName}
       initialMembers={data.members}
       initialInvites={data.invites}
+      initialRejectedInvites={data.rejectedInvites}
       roles={data.roles}
       profiles={data.profiles}
       reusableRoles={data.reusableRoles}
