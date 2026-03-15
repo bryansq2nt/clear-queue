@@ -344,8 +344,8 @@ export default function ContextTeamClient({
   onRefresh,
 }: Props) {
   const { t } = useI18n();
-  const [members] = useState<ProjectMember[]>(initialMembers);
-  const [invites] = useState<ProjectInvite[]>(initialInvites);
+  const members = initialMembers;
+  const invites = initialInvites;
 
   // ── Invite form state ─────────────────────────────────────────────
   const [showInviteForm, setShowInviteForm] = useState(false);
