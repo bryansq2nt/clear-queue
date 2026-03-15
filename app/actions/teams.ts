@@ -70,41 +70,40 @@ export const listProjectMembers = cache(
 );
 
 // ── listPendingInvites ────────────────────────────────────────────────
-export const listPendingInvites = cache(
-  async (projectId: string): Promise<ProjectInvite[]> => {
-    const user = await requireAuth();
-    await requireCan(user.id, 'teams.read_project_members', {
-      type: 'project',
-      projectId,
-    });
-    const supabase = await createClient();
-    const { data, error } = await (supabase as any)
-      .from('project_invites')
-      .select(
-        'id, email, role_id, profile_id, invite_role_id, status, expires_at, created_at, rbac_roles(name), profiles!project_invites_invited_by_fkey(display_name), project_access_profiles(name), project_invite_roles(name)'
-      )
-      .eq('project_id', projectId)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-    if (error) return [];
-    return (data || []).map((row: any) => ({
-      id: row.id as string,
-      email: row.email as string,
-      role_id: row.role_id as string,
-      role_name: (row.rbac_roles?.name as string) ?? '',
-      profile_id: (row.profile_id as string | null) ?? null,
-      profile_name:
-        (row.project_access_profiles?.name as string | null) ?? null,
-      invite_role_id: (row.invite_role_id as string | null) ?? null,
-      invite_role_name:
-        (row.project_invite_roles?.name as string | null) ?? null,
-      status: row.status as string,
-      invited_by_name: (row.profiles?.display_name as string) ?? '',
-      expires_at: row.expires_at as string,
-      created_at: row.created_at as string,
-    }));
-  }
-);
+// Not wrapped in cache() — must reflect newly created/revoked invites immediately.
+export async function listPendingInvites(
+  projectId: string
+): Promise<ProjectInvite[]> {
+  const user = await requireAuth();
+  await requireCan(user.id, 'teams.read_project_members', {
+    type: 'project',
+    projectId,
+  });
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('project_invites')
+    .select(
+      'id, email, role_id, profile_id, invite_role_id, status, expires_at, created_at, rbac_roles(name), profiles!project_invites_invited_by_fkey(display_name), project_access_profiles(name), project_invite_roles(name)'
+    )
+    .eq('project_id', projectId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  return (data || []).map((row: any) => ({
+    id: row.id as string,
+    email: row.email as string,
+    role_id: row.role_id as string,
+    role_name: (row.rbac_roles?.name as string) ?? '',
+    profile_id: (row.profile_id as string | null) ?? null,
+    profile_name: (row.project_access_profiles?.name as string | null) ?? null,
+    invite_role_id: (row.invite_role_id as string | null) ?? null,
+    invite_role_name: (row.project_invite_roles?.name as string | null) ?? null,
+    status: row.status as string,
+    invited_by_name: (row.profiles?.display_name as string) ?? '',
+    expires_at: row.expires_at as string,
+    created_at: row.created_at as string,
+  }));
+}
 
 // ── listProjectAccessProfiles ─────────────────────────────────────────
 // Returns global defaults + any project-scoped profiles, ordered by sort_order.
