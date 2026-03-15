@@ -8,6 +8,7 @@ import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import {
   resolveModules,
+  getEnabledModuleKeys,
   MODULE_REGISTRY,
   type ModuleKey,
   type SerializableResolvedModule,
@@ -29,7 +30,56 @@ export const getMyProjectAccessGrant = cache(
       .eq('project_id', projectId)
       .eq('user_id', user.id)
       .maybeSingle();
-    return data ? ((data.allowed_modules as string[] | null) ?? null) : null;
+    if (!data) return null;
+    const raw = data.allowed_modules;
+    if (raw == null) return null;
+    const arr = Array.isArray(raw) ? raw : [];
+    return arr.filter((x): x is string => typeof x === 'string');
+  }
+);
+
+// Returns whether the current user can toggle project modules (enable/disable for the project).
+export const getCanToggleModules = cache(
+  async (projectId: string): Promise<boolean> => {
+    try {
+      const user = await requireAuth();
+      await requireCan(user.id, 'projects.toggle_module', {
+        type: 'project',
+        projectId,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+);
+
+// Whether the current user can view this module (project enabled AND user has access).
+export const getCanViewModule = cache(
+  async (
+    projectId: string,
+    moduleKey: ModuleKey
+  ): Promise<{
+    canView: boolean;
+    reason?: 'no_access' | 'project_disabled';
+  }> => {
+    const [modules, grant] = await Promise.all([
+      getProjectModules(projectId),
+      getMyProjectAccessGrant(projectId),
+    ]);
+    const projectEnabledKeys = getEnabledModuleKeys(modules);
+    const projectEnabled = projectEnabledKeys.has(moduleKey);
+    // null = no row → unrestricted; non-empty array = allowlist (must include moduleKey)
+    const userAllowed =
+      grant === null ||
+      (Array.isArray(grant) && grant.length > 0 && grant.includes(moduleKey));
+    const canView = projectEnabled && userAllowed;
+    const reason = !canView
+      ? !projectEnabled
+        ? 'project_disabled'
+        : 'no_access'
+      : undefined;
+    return { canView, reason };
   }
 );
 
@@ -105,7 +155,7 @@ export async function setProjectModuleEnabled(
     return { ok: false, error: 'No se pudo guardar el cambio' };
   }
 
-  revalidatePath(`/context/${projectId}`);
+  revalidatePath(`/context/${projectId}`, 'layout');
 
   return { ok: true };
 }

@@ -28,6 +28,7 @@ export type CacheKey =
   | { type: 'media'; projectId: string }
   | { type: 'modules'; projectId: string }
   | { type: 'accessGrant'; projectId: string }
+  | { type: 'canToggleModules'; projectId: string }
   | { type: 'milestones'; projectId: string }
   | { type: 'copilot'; projectId: string }
   | { type: 'team'; projectId: string }

@@ -14,12 +14,14 @@ import {
 interface ProjectModulesSettingsViewProps {
   projectId: string;
   modules: SerializableResolvedModule[];
+  canToggleModules: boolean;
   onModulesChange: (updated: SerializableResolvedModule[]) => void;
 }
 
 export function ProjectModulesSettingsView({
   projectId,
   modules,
+  canToggleModules,
   onModulesChange,
 }: ProjectModulesSettingsViewProps) {
   const { t } = useI18n();
@@ -96,18 +98,28 @@ export function ProjectModulesSettingsView({
                 </p>
               </div>
               <div
-                title={mod.lock ? t('modules.essential_tooltip') : undefined}
+                title={
+                  mod.lock
+                    ? t('modules.essential_tooltip')
+                    : !canToggleModules
+                      ? t('modules.no_toggle_permission_tooltip')
+                      : undefined
+                }
               >
                 <Switch
                   checked={mod.enabled}
                   onCheckedChange={(checked) => {
-                    if (!isLoading) {
+                    if (!isLoading && canToggleModules) {
                       void handleToggle(mod.key, checked);
                     }
                   }}
-                  disabled={mod.lock || isLoading}
+                  disabled={!canToggleModules || mod.lock || isLoading}
                   aria-label={
-                    mod.lock ? t('modules.essential_tooltip') : t(mod.labelKey)
+                    mod.lock
+                      ? t('modules.essential_tooltip')
+                      : !canToggleModules
+                        ? t('modules.no_toggle_permission_tooltip')
+                        : t(mod.labelKey)
                   }
                 />
               </div>

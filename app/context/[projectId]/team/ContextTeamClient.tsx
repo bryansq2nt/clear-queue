@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useI18n } from '@/components/shared/I18nProvider';
 import {
   inviteProjectMember,
@@ -36,6 +36,7 @@ import {
   ChevronRight,
   Shield,
 } from 'lucide-react';
+import { toastSuccess } from '@/lib/ui/toast';
 import { MutationErrorDialog } from '@/components/board/MutationErrorDialog';
 import {
   Dialog,
@@ -436,6 +437,10 @@ export default function ContextTeamClient({
     null
   );
 
+  // Refs hold latest draft so Save uses current UI state even if React hasn't committed yet
+  const latestDraftModulesRef = useRef<string[] | null>(null);
+  const latestDraftActionsRef = useRef<string[]>([]);
+
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
   // Load member access when edit-permissions dialog opens
@@ -447,6 +452,8 @@ export default function ContextTeamClient({
       setEditMemberDraftActions([]);
       setEditMemberExpandedModule(null);
       setEditMemberLoadError(null);
+      latestDraftModulesRef.current = null;
+      latestDraftActionsRef.current = [];
       return;
     }
     let cancelled = false;
@@ -463,17 +470,18 @@ export default function ContextTeamClient({
         }
         if (res.data) {
           setMemberAccess(res.data);
-          setEditMemberDraftModules(
+          const modules =
             res.data.allowedModules === null ||
-              res.data.allowedModules.length === 0
+            res.data.allowedModules.length === 0
               ? null
-              : [...res.data.allowedModules]
-          );
-          setEditMemberDraftActions(
-            Array.isArray(res.data.grantedActions)
-              ? [...res.data.grantedActions]
-              : []
-          );
+              : [...res.data.allowedModules];
+          const actions = Array.isArray(res.data.grantedActions)
+            ? [...res.data.grantedActions]
+            : [];
+          setEditMemberDraftModules(modules);
+          setEditMemberDraftActions(actions);
+          latestDraftModulesRef.current = modules;
+          latestDraftActionsRef.current = actions;
         }
       })
       .catch((err) => {
@@ -843,13 +851,16 @@ export default function ContextTeamClient({
       const next = await getMemberAccess(projectId, userId);
       if (next.data) {
         setMemberAccess(next.data);
-        setEditMemberDraftModules(
+        const modules =
           next.data.allowedModules === null ||
-            next.data.allowedModules.length === 0
+          next.data.allowedModules.length === 0
             ? null
-            : [...next.data.allowedModules]
-        );
-        setEditMemberDraftActions([...next.data.grantedActions]);
+            : [...next.data.allowedModules];
+        const actions = [...next.data.grantedActions];
+        setEditMemberDraftModules(modules);
+        setEditMemberDraftActions(actions);
+        latestDraftModulesRef.current = modules;
+        latestDraftActionsRef.current = actions;
       }
       onRefresh();
     },
@@ -865,9 +876,12 @@ export default function ContextTeamClient({
             : currentlyHasAccess
               ? prev.filter((k) => k !== moduleKey)
               : [...prev, moduleKey];
-        if (nextList.length === 0 || nextList.length === ALL_MODULES.length)
-          return null;
-        return nextList;
+        const next =
+          nextList.length === 0 || nextList.length === ALL_MODULES.length
+            ? null
+            : nextList;
+        latestDraftModulesRef.current = next;
+        return next;
       });
     },
     []
@@ -875,11 +889,13 @@ export default function ContextTeamClient({
 
   const handleToggleEditMemberPermissionDraft = useCallback(
     (actionKey: string) => {
-      setEditMemberDraftActions((prev) =>
-        prev.includes(actionKey)
+      setEditMemberDraftActions((prev) => {
+        const next = prev.includes(actionKey)
           ? prev.filter((k) => k !== actionKey)
-          : [...prev, actionKey]
-      );
+          : [...prev, actionKey];
+        latestDraftActionsRef.current = next;
+        return next;
+      });
     },
     []
   );
@@ -887,11 +903,15 @@ export default function ContextTeamClient({
   const handleSaveEditMember = useCallback(
     async (userId: string) => {
       setEditMemberSaving(true);
+      const modulesToSave =
+        latestDraftModulesRef.current ?? editMemberDraftModules;
+      const actionsToSave =
+        latestDraftActionsRef.current ?? editMemberDraftActions;
       const result = await updateMemberAccessFull(
         projectId,
         userId,
-        editMemberDraftModules,
-        editMemberDraftActions
+        modulesToSave,
+        actionsToSave
       );
       setEditMemberSaving(false);
       if (result.error) {
@@ -903,6 +923,7 @@ export default function ContextTeamClient({
         });
         return;
       }
+      toastSuccess(t('teams.permissions_saved_toast'));
       setEditMember(null);
       onRefresh();
     },

@@ -40,7 +40,11 @@
       "Bash(grep -r \"inviteOrgMember\\\\|org_member\\\\|organization_members\" /Users/mutechlabs/development/clear-queue/app/actions --include=\"*.ts\" 2>/dev/null | head -30)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(grep -n \"is_system_role\\\\|rbac_roles\" /Users/mutechlabs/development/clear-queue/supabase/migrations/*.sql | head -40)"
+      "Bash(grep -n \"is_system_role\\\\|rbac_roles\" /Users/mutechlabs/development/clear-queue/supabase/migrations/*.sql | head -40)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)"
     ]
   }
 }

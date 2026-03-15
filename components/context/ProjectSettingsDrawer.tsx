@@ -11,6 +11,7 @@ interface ProjectSettingsDrawerProps {
   onClose: () => void;
   projectId: string;
   modules: SerializableResolvedModule[];
+  canToggleModules: boolean;
   onModulesChange: (updated: SerializableResolvedModule[]) => void;
 }
 
@@ -19,6 +20,7 @@ export function ProjectSettingsDrawer({
   onClose,
   projectId,
   modules,
+  canToggleModules,
   onModulesChange,
 }: ProjectSettingsDrawerProps) {
   const { t } = useI18n();
@@ -120,6 +122,7 @@ export function ProjectSettingsDrawer({
             <ProjectModulesSettingsView
               projectId={projectId}
               modules={modules}
+              canToggleModules={canToggleModules}
               onModulesChange={onModulesChange}
             />
           </div>

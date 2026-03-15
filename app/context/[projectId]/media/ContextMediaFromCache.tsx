@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getMedia } from '@/app/actions/media';
+import { getMedia, type MediaPermissions } from '@/app/actions/media';
 import { MEDIA_PAGE_SIZE } from '@/lib/validation/project-media';
 import type { Database } from '@/lib/supabase/types';
 import { SkeletonMedia } from '@/components/skeletons/SkeletonMedia';
@@ -18,10 +18,12 @@ type PaginatedMediaCache = {
 
 interface ContextMediaFromCacheProps {
   projectId: string;
+  permissions: MediaPermissions;
 }
 
 export default function ContextMediaFromCache({
   projectId,
+  permissions,
 }: ContextMediaFromCacheProps) {
   const cache = useContextDataCache();
   const cached = cache.get<PaginatedMediaCache>({ type: 'media', projectId });
@@ -77,7 +79,7 @@ export default function ContextMediaFromCache({
     return () => {
       cancelled = true;
     };
-  }, [projectId, cached, cache]);
+  }, [projectId, cached, cache, loadData]);
 
   if (loading || media === null) {
     return <SkeletonMedia />;
@@ -89,6 +91,7 @@ export default function ContextMediaFromCache({
       initialMedia={media}
       initialHasMore={hasMore}
       initialLoadedCount={loadedCount}
+      permissions={permissions}
     />
   );
 }

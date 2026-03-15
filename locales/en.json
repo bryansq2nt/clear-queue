@@ -221,7 +221,8 @@
     "saved_roles_group": "Saved roles",
     "visible_modules": "Visible modules",
     "permissions_in_module": "Permissions in this module",
-    "determined_by_role": "Determined by their role"
+    "determined_by_role": "Determined by their role",
+    "permissions_saved_toast": "Permissions saved. The member may need to refresh the page to see new modules in the tab bar."
   },
   "sidebar": {
     "navigation": "Navigation",
@@ -1071,6 +1072,7 @@
     "title": "Project modules",
     "subtitle": "Enable only what you really use. Less noise, more focus.",
     "essential_tooltip": "Essential module — cannot be disabled",
+    "no_toggle_permission_tooltip": "You don't have permission to enable or disable modules",
     "toggle_enabled_toast": "Module enabled",
     "toggle_disabled_toast": "Module disabled",
     "board_description": "Kanban board to manage project tasks",
@@ -1088,7 +1090,9 @@
     "team_description": "Invite and manage project team members.",
     "module_disabled_title": "This module is disabled for this project",
     "module_disabled_description": "You can enable it from the project settings.",
-    "module_disabled_cta": "Open settings"
+    "module_disabled_cta": "Open settings",
+    "module_no_access_title": "You don't have access to this module",
+    "module_no_access_description": "Ask a project owner to grant you access to this module."
   },
   "copilot": {
     "input_placeholder": "Ask about this project…",

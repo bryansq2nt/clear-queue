@@ -218,7 +218,8 @@
     "saved_roles_group": "Roles guardados",
     "visible_modules": "Módulos visibles",
     "permissions_in_module": "Permisos en este módulo",
-    "determined_by_role": "Determinado por su rol"
+    "determined_by_role": "Determinado por su rol",
+    "permissions_saved_toast": "Permisos guardados. El miembro puede necesitar actualizar la página para ver los nuevos módulos en la barra de pestañas."
   },
   "sidebar": {
     "navigation": "Navegación",
@@ -1008,6 +1009,7 @@
     "title": "Módulos del proyecto",
     "subtitle": "Active solo lo que realmente usa. Menos ruido, más enfoque.",
     "essential_tooltip": "Módulo esencial — no se puede desactivar",
+    "no_toggle_permission_tooltip": "No tienes permiso para activar o desactivar módulos",
     "toggle_enabled_toast": "Módulo activado",
     "toggle_disabled_toast": "Módulo desactivado",
     "board_description": "Tablero kanban para gestionar las tareas del proyecto",
@@ -1025,7 +1027,9 @@
     "team_description": "Invita y gestiona los miembros del equipo del proyecto.",
     "module_disabled_title": "Este módulo está desactivado para este proyecto",
     "module_disabled_description": "Puedes activarlo desde los ajustes del proyecto.",
-    "module_disabled_cta": "Abrir ajustes"
+    "module_disabled_cta": "Abrir ajustes",
+    "module_no_access_title": "No tienes acceso a este módulo",
+    "module_no_access_description": "Pide a un administrador del proyecto que te conceda acceso a este módulo."
   },
   "copilot": {
     "input_placeholder": "Pregunta sobre este proyecto…",

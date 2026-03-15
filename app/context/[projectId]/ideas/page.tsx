@@ -1,5 +1,5 @@
 import { requireAuth } from '@/lib/auth';
-import { getProjectModules } from '@/app/actions/modules';
+import { getCanViewModule } from '@/app/actions/modules';
 import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
 import ContextIdeasFromCache from './ContextIdeasFromCache';
 
@@ -11,10 +11,15 @@ export default async function ContextIdeasPage({
   await requireAuth();
   const { projectId } = params;
 
-  const modules = await getProjectModules(projectId);
-  const mod = modules.find((m) => m.key === 'ideas');
-  if (!mod?.enabled) {
-    return <ModuleDisabledView moduleKey="ideas" projectId={projectId} />;
+  const { canView, reason } = await getCanViewModule(projectId, 'ideas');
+  if (!canView && reason) {
+    return (
+      <ModuleDisabledView
+        moduleKey="ideas"
+        projectId={projectId}
+        reason={reason}
+      />
+    );
   }
 
   return <ContextIdeasFromCache projectId={projectId} />;

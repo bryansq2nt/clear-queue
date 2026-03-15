@@ -954,16 +954,28 @@ export async function updateMemberAccessFull(
     type: 'project',
     projectId,
   });
+  // Normalize: ensure we send a plain string[] or null so the RPC persists correctly
+  const normalizedModules: string[] | null = Array.isArray(allowedModules)
+    ? allowedModules.filter((m): m is string => typeof m === 'string')
+    : null;
+  const pAllowed =
+    normalizedModules && normalizedModules.length > 0
+      ? normalizedModules
+      : null;
+
+  const normalizedActions: string[] = Array.isArray(grantedActions)
+    ? grantedActions.filter((a): a is string => typeof a === 'string')
+    : [];
+  const pActions = normalizedActions.length > 0 ? normalizedActions : null;
+
   const supabase = await createClient();
   const { error } = await (supabase as any).rpc(
     'update_member_access_full_atomic',
     {
       p_project_id: projectId,
       p_user_id: userId,
-      p_allowed_modules:
-        allowedModules && allowedModules.length > 0 ? allowedModules : null,
-      p_granted_actions:
-        grantedActions && grantedActions.length > 0 ? grantedActions : null,
+      p_allowed_modules: pAllowed,
+      p_granted_actions: pActions,
     }
   );
   if (error) {
@@ -977,6 +989,8 @@ export async function updateMemberAccessFull(
     return { error: error.message };
   }
   revalidatePath(`/context/${projectId}/team`);
+  revalidatePath(`/context/${projectId}`);
+  revalidatePath(`/context/${projectId}/media`);
   return { success: true };
 }
 

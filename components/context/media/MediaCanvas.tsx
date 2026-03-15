@@ -34,12 +34,18 @@ interface MediaCanvasProps {
   url: string | null;
   open: boolean;
   onClose: () => void;
-  onMarkFinal: (isFinal: boolean) => void;
-  onEdit: () => void;
-  onArchive: () => void;
+  /** undefined = user lacks media.mark_final permission → heart button hidden */
+  onMarkFinal?: (isFinal: boolean) => void;
+  /** undefined = user lacks media.update_metadata permission → Edit item hidden */
+  onEdit?: () => void;
+  /** undefined = user lacks media.archive permission → Archive/Unarchive item hidden */
+  onArchive?: () => void;
   onUnarchive?: () => void;
-  onDelete: () => void;
+  /** undefined = user lacks media.delete permission → Delete item hidden */
+  onDelete?: () => void;
+  /** undefined = user lacks media.share_create permission → Share item hidden */
   onShare?: () => void;
+  /** Download is available to all viewers */
   onDownload?: () => void;
 }
 
@@ -111,7 +117,7 @@ export function MediaCanvas({
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  // Tap content area → hide overlay UI (or show it again) so user can view image without interruptions
+  // Tap content area → hide overlay UI (or show it again)
   const handleContentClick = () => {
     setMenuOpen(false);
     setOverlayVisible((prev) => !prev);
@@ -123,11 +129,19 @@ export function MediaCanvas({
       deleteTimerRef.current = setTimeout(() => setDeleteConfirm(false), 3000);
     } else {
       if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
-      onDelete();
+      onDelete?.();
     }
   };
 
   if (!open) return null;
+
+  // Whether there is at least one action menu item besides Download
+  const hasMenuActions =
+    onShare !== undefined ||
+    onEdit !== undefined ||
+    onArchive !== undefined ||
+    onDelete !== undefined ||
+    onDownload !== undefined;
 
   return (
     <div
@@ -136,7 +150,7 @@ export function MediaCanvas({
         mounted ? 'opacity-100' : 'opacity-0'
       )}
     >
-      {/* Content area — Facebook-style margins so image doesn’t fill edge-to-edge */}
+      {/* Content area — Facebook-style margins so image doesn't fill edge-to-edge */}
       <div
         className="absolute inset-0 cursor-pointer flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-10"
         onClick={handleContentClick}
@@ -206,88 +220,98 @@ export function MediaCanvas({
         <X className="h-6 w-6" />
       </button>
 
-      {/* 3-dots actions menu — top-right; menu closed on open; tap content to hide/show overlay */}
-      <div
-        className={cn(
-          'fixed right-4 top-4 z-20 transition-opacity duration-200',
-          !overlayVisible && 'pointer-events-none opacity-0'
-        )}
-      >
-        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="fixed right-4 top-4 z-20 flex min-h-[48px] min-w-[48px] items-center justify-center rounded-md text-white/70 transition-colors hover:text-white"
-              aria-label="Actions"
-              title="Actions"
+      {/* 3-dots actions menu — top-right; only shown when there are actions */}
+      {hasMenuActions && (
+        <div
+          className={cn(
+            'fixed right-4 top-4 z-20 transition-opacity duration-200',
+            !overlayVisible && 'pointer-events-none opacity-0'
+          )}
+        >
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="fixed right-4 top-4 z-20 flex min-h-[48px] min-w-[48px] items-center justify-center rounded-md text-white/70 transition-colors hover:text-white"
+                aria-label="Actions"
+                title="Actions"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-6 w-6" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              side="bottom"
+              sideOffset={8}
+              className="z-30 min-w-[10rem]"
               onClick={(e) => e.stopPropagation()}
             >
-              <MoreVertical className="h-6 w-6" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            side="bottom"
-            sideOffset={8}
-            className="z-30 min-w-[10rem]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <DropdownMenuItem
-              onClick={() => {
-                onShare?.();
-                setMenuOpen(false);
-              }}
-              disabled={!onShare}
-            >
-              <Share2 className="mr-2 h-4 w-4" />
-              Share
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                onDownload?.();
-                setMenuOpen(false);
-              }}
-              disabled={!onDownload}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Download
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                onEdit();
-                setMenuOpen(false);
-              }}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                if (isArchived) {
-                  onUnarchive?.();
-                } else {
-                  onArchive();
-                }
-                setMenuOpen(false);
-              }}
-            >
-              <Archive className="mr-2 h-4 w-4" />
-              {isArchived ? t('media.unarchive') : t('media.archive')}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={handleDeleteFromMenu}
-              className={cn(
-                deleteConfirm && 'text-destructive focus:text-destructive'
+              {onShare !== undefined && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    onShare();
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share
+                </DropdownMenuItem>
               )}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {deleteConfirm ? 'Confirm delete?' : 'Delete'}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+              {onDownload !== undefined && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    onDownload();
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </DropdownMenuItem>
+              )}
+              {onEdit !== undefined && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    onEdit();
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {(onArchive !== undefined || onUnarchive !== undefined) && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (isArchived) {
+                      onUnarchive?.();
+                    } else {
+                      onArchive?.();
+                    }
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Archive className="mr-2 h-4 w-4" />
+                  {isArchived ? t('media.unarchive') : t('media.archive')}
+                </DropdownMenuItem>
+              )}
+              {onDelete !== undefined && (
+                <DropdownMenuItem
+                  onClick={handleDeleteFromMenu}
+                  className={cn(
+                    deleteConfirm && 'text-destructive focus:text-destructive'
+                  )}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {deleteConfirm ? 'Confirm delete?' : 'Delete'}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
 
-      {/* Bottom widget: title, tags, collapsed description, expandable full description, Favorite; hidden when overlay dismissed */}
+      {/* Bottom widget: title, tags, collapsed description, favorite heart; hidden when overlay dismissed */}
       <div
         className={cn(
           'fixed bottom-0 left-0 right-0 z-10 max-h-[40vh] overflow-y-auto bg-black/70 px-4 py-3 backdrop-blur-sm transition-opacity duration-200',
@@ -332,25 +356,39 @@ export function MediaCanvas({
               </div>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => onMarkFinal(!file.is_final)}
-            className={cn(
-              'flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-md px-2 transition-colors',
-              file.is_final
-                ? 'text-red-400 hover:text-red-300'
-                : 'text-white/70 hover:text-white'
-            )}
-            aria-label={
-              file.is_final ? 'Remove from favorites' : 'Add to favorites'
-            }
-            title={file.is_final ? 'Remove from favorites' : 'Add to favorites'}
-          >
-            <Heart
-              className="h-5 w-5"
-              fill={file.is_final ? 'currentColor' : 'none'}
-            />
-          </button>
+
+          {/* Favorite heart — only shown when user has media.mark_final permission */}
+          {onMarkFinal !== undefined ? (
+            <button
+              type="button"
+              onClick={() => onMarkFinal(!file.is_final)}
+              className={cn(
+                'flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-md px-2 transition-colors',
+                file.is_final
+                  ? 'text-red-400 hover:text-red-300'
+                  : 'text-white/70 hover:text-white'
+              )}
+              aria-label={
+                file.is_final ? 'Remove from favorites' : 'Add to favorites'
+              }
+              title={
+                file.is_final ? 'Remove from favorites' : 'Add to favorites'
+              }
+            >
+              <Heart
+                className="h-5 w-5"
+                fill={file.is_final ? 'currentColor' : 'none'}
+              />
+            </button>
+          ) : file.is_final ? (
+            // Read-only favorite indicator for users without mark_final permission
+            <span
+              className="flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-md px-2 text-red-400"
+              aria-label="Favorite"
+            >
+              <Heart className="h-5 w-5 fill-current" />
+            </span>
+          ) : null}
         </div>
       </div>
     </div>

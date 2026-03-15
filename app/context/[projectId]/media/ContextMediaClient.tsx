@@ -15,6 +15,7 @@ import {
   deleteMedia,
   markMediaFinal,
   createMediaShareLink,
+  type MediaPermissions,
 } from '@/app/actions/media';
 import {
   MEDIA_PAGE_SIZE,
@@ -58,6 +59,7 @@ interface ContextMediaClientProps {
   initialMedia: ProjectFile[];
   initialHasMore: boolean;
   initialLoadedCount: number;
+  permissions: MediaPermissions;
 }
 
 export default function ContextMediaClient({
@@ -65,6 +67,7 @@ export default function ContextMediaClient({
   initialMedia,
   initialHasMore,
   initialLoadedCount,
+  permissions,
 }: ContextMediaClientProps) {
   const { t } = useI18n();
   const cache = useContextDataCache();
@@ -387,13 +390,15 @@ export default function ContextMediaClient({
           <p className="mb-4 text-muted-foreground">
             {t('media.no_media_yet')}
           </p>
-          <button
-            type="button"
-            onClick={() => setUploadOpen(true)}
-            className="text-sm font-medium text-primary hover:underline"
-          >
-            {t('media.upload')}
-          </button>
+          {permissions.canUpload && (
+            <button
+              type="button"
+              onClick={() => setUploadOpen(true)}
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              {t('media.upload')}
+            </button>
+          )}
         </div>
       )}
 
@@ -405,8 +410,10 @@ export default function ContextMediaClient({
               key={file.id}
               file={file}
               onClick={() => void handleCardClick(file)}
-              onToggleFavorite={(isFinal) =>
-                void handleCardToggleFavorite(file, isFinal)
+              onToggleFavorite={
+                permissions.canMarkFinal
+                  ? (isFinal) => void handleCardToggleFavorite(file, isFinal)
+                  : undefined
               }
             />
           ))}
@@ -427,15 +434,17 @@ export default function ContextMediaClient({
         </div>
       )}
 
-      {/* FAB */}
-      <button
-        type="button"
-        onClick={() => setUploadOpen(true)}
-        aria-label={t('media.upload')}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
+      {/* Upload FAB — only shown when user has upload permission */}
+      {permissions.canUpload && (
+        <button
+          type="button"
+          onClick={() => setUploadOpen(true)}
+          aria-label={t('media.upload')}
+          className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
 
       {/* Canvas */}
       {canvasFile && (
@@ -444,42 +453,64 @@ export default function ContextMediaClient({
           url={canvasUrl}
           open
           onClose={handleCanvasClose}
-          onMarkFinal={(isFinal) => void handleCanvasMarkFinal(isFinal)}
-          onEdit={() => setEditTarget(canvasFile)}
-          onArchive={() => setArchiveConfirmFile(canvasFile)}
-          onUnarchive={handleCanvasUnarchive}
-          onDelete={() => void handleCanvasDelete()}
+          onMarkFinal={
+            permissions.canMarkFinal
+              ? (isFinal) => void handleCanvasMarkFinal(isFinal)
+              : undefined
+          }
+          onEdit={
+            permissions.canEdit ? () => setEditTarget(canvasFile) : undefined
+          }
+          onArchive={
+            permissions.canArchive
+              ? () => setArchiveConfirmFile(canvasFile)
+              : undefined
+          }
+          onUnarchive={
+            permissions.canArchive ? handleCanvasUnarchive : undefined
+          }
+          onDelete={
+            permissions.canDelete ? () => void handleCanvasDelete() : undefined
+          }
           onDownload={() => setDownloadConfirmFile(canvasFile)}
-          onShare={async () => {
-            const result = await createMediaShareLink(canvasFile.id);
-            if (result.error) {
-              toastError(t('media.share_error'));
-              return;
-            }
-            const fullUrl =
-              typeof window !== 'undefined' && result.url
-                ? `${window.location.origin}${result.url}`
-                : (result.url ?? '');
-            setShareLink(fullUrl);
-          }}
+          onShare={
+            permissions.canShare
+              ? async () => {
+                  const result = await createMediaShareLink(canvasFile.id);
+                  if (result.error) {
+                    toastError(t('media.share_error'));
+                    return;
+                  }
+                  const fullUrl =
+                    typeof window !== 'undefined' && result.url
+                      ? `${window.location.origin}${result.url}`
+                      : (result.url ?? '');
+                  setShareLink(fullUrl);
+                }
+              : undefined
+          }
         />
       )}
 
       {/* Dialogs */}
-      <UploadMediaDialog
-        open={uploadOpen}
-        projectId={projectId}
-        onClose={() => setUploadOpen(false)}
-        onSuccess={handleUploadSuccess}
-      />
-      <EditMediaDialog
-        open={editTarget !== null}
-        file={editTarget}
-        onClose={() => setEditTarget(null)}
-        onSuccess={handleEditSuccess}
-      />
+      {permissions.canUpload && (
+        <UploadMediaDialog
+          open={uploadOpen}
+          projectId={projectId}
+          onClose={() => setUploadOpen(false)}
+          onSuccess={handleUploadSuccess}
+        />
+      )}
+      {permissions.canEdit && (
+        <EditMediaDialog
+          open={editTarget !== null}
+          file={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSuccess={handleEditSuccess}
+        />
+      )}
 
-      {/* Download confirm — no new tab; fetch and trigger download */}
+      {/* Download confirm — available to all viewers */}
       <Dialog
         open={downloadConfirmFile !== null}
         onOpenChange={(open) => !open && setDownloadConfirmFile(null)}
@@ -539,62 +570,66 @@ export default function ContextMediaClient({
       </Dialog>
 
       {/* Archive confirm */}
-      <Dialog
-        open={archiveConfirmFile !== null}
-        onOpenChange={(open) => !open && setArchiveConfirmFile(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('media.archive_confirm_title')}</DialogTitle>
-            <DialogDescription>
-              {t('media.archive_confirm_message')}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setArchiveConfirmFile(null)}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button onClick={() => void handleArchiveConfirm()}>
-              {t('media.archive_confirm_btn')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {permissions.canArchive && (
+        <Dialog
+          open={archiveConfirmFile !== null}
+          onOpenChange={(open) => !open && setArchiveConfirmFile(null)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('media.archive_confirm_title')}</DialogTitle>
+              <DialogDescription>
+                {t('media.archive_confirm_message')}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setArchiveConfirmFile(null)}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button onClick={() => void handleArchiveConfirm()}>
+                {t('media.archive_confirm_btn')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Share link dialog */}
-      <Dialog
-        open={shareLink !== null}
-        onOpenChange={(open) => !open && setShareLink(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('media.share_dialog_title')}</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-2">
-            <Input
-              readOnly
-              value={shareLink ?? ''}
-              className="font-mono text-sm"
-            />
-            <Button
-              onClick={async () => {
-                if (!shareLink) return;
-                try {
-                  await navigator.clipboard.writeText(shareLink);
-                  toastSuccess(t('media.share_link_copied'));
-                } catch {
-                  toastError(t('media.share_error'));
-                }
-              }}
-            >
-              {t('media.share_dialog_copy')}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {permissions.canShare && (
+        <Dialog
+          open={shareLink !== null}
+          onOpenChange={(open) => !open && setShareLink(null)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('media.share_dialog_title')}</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-2">
+              <Input
+                readOnly
+                value={shareLink ?? ''}
+                className="font-mono text-sm"
+              />
+              <Button
+                onClick={async () => {
+                  if (!shareLink) return;
+                  try {
+                    await navigator.clipboard.writeText(shareLink);
+                    toastSuccess(t('media.share_link_copied'));
+                  } catch {
+                    toastError(t('media.share_error'));
+                  }
+                }}
+              >
+                {t('media.share_dialog_copy')}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

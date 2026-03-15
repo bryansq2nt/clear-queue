@@ -22,6 +22,7 @@ export interface ContextShellProps {
   children: React.ReactNode;
   enabledModuleKeys: Set<ModuleKey>;
   modules: SerializableResolvedModule[];
+  canToggleModules: boolean;
   drawerOpen: boolean;
   onOpenSettings: () => void;
   onCloseSettings: () => void;
@@ -39,6 +40,7 @@ export function ContextShell({
   children,
   enabledModuleKeys,
   modules,
+  canToggleModules,
   drawerOpen,
   onOpenSettings,
   onCloseSettings,
@@ -165,6 +167,7 @@ export function ContextShell({
         onClose={onCloseSettings}
         projectId={projectId}
         modules={modules}
+        canToggleModules={canToggleModules}
         onModulesChange={onModulesChange}
       />
 

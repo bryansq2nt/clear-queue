@@ -14,6 +14,7 @@ interface ContextLayoutClientProps {
   children: React.ReactNode;
   enabledModuleKeys: Set<ModuleKey>;
   modules: SerializableResolvedModule[];
+  canToggleModules: boolean;
   drawerOpen: boolean;
   onOpenSettings: () => void;
   onCloseSettings: () => void;
@@ -26,6 +27,7 @@ export default function ContextLayoutClient({
   children,
   enabledModuleKeys,
   modules,
+  canToggleModules,
   drawerOpen,
   onOpenSettings,
   onCloseSettings,
@@ -41,6 +43,7 @@ export default function ContextLayoutClient({
       projectName={projectName}
       enabledModuleKeys={enabledModuleKeys}
       modules={modules}
+      canToggleModules={canToggleModules}
       drawerOpen={drawerOpen}
       onOpenSettings={onOpenSettings}
       onCloseSettings={onCloseSettings}

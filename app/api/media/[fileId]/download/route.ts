@@ -19,25 +19,27 @@ export async function GET(
     return new NextResponse('Bad request', { status: 400 });
   }
 
+  // Fetch row without owner_id filter — RBAC check below handles authorization
   const { data: rawRow, error } = await supabase
     .from('project_files')
-    .select('id, owner_id, path, title, file_ext, mime_type')
+    .select('id, path, title, file_ext, mime_type, project_id')
     .eq('id', fileId)
-    .eq('owner_id', user.id)
     .eq('kind', 'media')
     .is('deleted_at', null)
     .single();
 
   const row = rawRow as {
     id: string;
-    owner_id: string;
     path: string;
     title: string;
     file_ext: string | null;
     mime_type: string;
+    project_id: string;
   } | null;
 
   if (error || !row) {
+    // 'Not found' also covers 403: RLS on project_files returns no row if user
+    // is not a project member, so there is no information leak.
     return new NextResponse('Not found', { status: 404 });
   }
 

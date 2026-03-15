@@ -6,6 +6,7 @@ import { getProjectById } from '@/app/actions/projects';
 import {
   getProjectModules,
   getMyProjectAccessGrant,
+  getCanToggleModules,
 } from '@/app/actions/modules';
 import {
   getEnabledModuleKeys,
@@ -62,6 +63,10 @@ export default function ContextLayoutWrapper({
     type: 'accessGrant',
     projectId,
   });
+  const cachedCanToggle = cache.get<boolean>({
+    type: 'canToggleModules',
+    projectId,
+  });
   // Initialize with DEFAULT_MODULES so tabs are visible immediately while
   // the real DB state loads asynchronously in the background.
   const [modules, setModules] = useState<SerializableResolvedModule[]>(
@@ -70,6 +75,9 @@ export default function ContextLayoutWrapper({
   const [myAllowedModules, setMyAllowedModules] = useState<
     string[] | null | undefined
   >(cachedGrant);
+  const [canToggleModules, setCanToggleModules] = useState<boolean>(
+    cachedCanToggle ?? false
+  );
   const [modulesLoaded, setModulesLoaded] = useState(!!cachedModules);
 
   // ── Drawer state ───────────────────────────────────────────────
@@ -113,12 +121,17 @@ export default function ContextLayoutWrapper({
     };
   }, [projectId, cached, cache, router]);
 
-  // ── Module + access grant load effect ─────────────────────────
-  // Load both together so tab visibility is computed in one pass.
+  // ── Module + access grant + canToggle load effect ───────────────
+  // Load together so tab visibility and settings toggles are correct.
   useEffect(() => {
-    if (cachedModules && cachedGrant !== undefined) {
+    if (
+      cachedModules &&
+      cachedGrant !== undefined &&
+      cachedCanToggle !== undefined
+    ) {
       setModules(cachedModules);
       setMyAllowedModules(cachedGrant);
+      setCanToggleModules(cachedCanToggle);
       setModulesLoaded(true);
       return;
     }
@@ -126,18 +139,21 @@ export default function ContextLayoutWrapper({
     Promise.all([
       getProjectModules(projectId),
       getMyProjectAccessGrant(projectId),
-    ]).then(([resolved, grant]) => {
+      getCanToggleModules(projectId),
+    ]).then(([resolved, grant, canToggle]) => {
       if (cancelled) return;
       cache.set({ type: 'modules', projectId }, resolved);
       cache.set({ type: 'accessGrant', projectId }, grant);
+      cache.set({ type: 'canToggleModules', projectId }, canToggle);
       setModules(resolved);
       setMyAllowedModules(grant);
+      setCanToggleModules(canToggle);
       setModulesLoaded(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [projectId, cachedModules, cachedGrant, cache]);
+  }, [projectId, cachedModules, cachedGrant, cachedCanToggle, cache]);
 
   // ── Module update handler (called after toggle in drawer) ──────
   const handleModulesChange = useCallback(
@@ -170,6 +186,7 @@ export default function ContextLayoutWrapper({
       projectName={displayName}
       enabledModuleKeys={enabledModuleKeys}
       modules={modules}
+      canToggleModules={canToggleModules}
       drawerOpen={drawerOpen}
       onOpenSettings={() => setDrawerOpen(true)}
       onCloseSettings={() => setDrawerOpen(false)}
