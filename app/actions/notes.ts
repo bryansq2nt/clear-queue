@@ -3,7 +3,8 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
-import { requireCan } from '@/lib/rbac/resolver';
+import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
+import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -21,11 +22,23 @@ export const getNotes = cache(
     let query = supabase
       .from('notes')
       .select(noteCols)
-      .eq('owner_id', user.id)
       .order('updated_at', { ascending: false });
 
     if (options?.projectId?.trim()) {
-      query = query.eq('project_id', options.projectId.trim());
+      const pid = options.projectId.trim();
+      query = query.eq('project_id', pid);
+
+      const scope = await getReadScope(user.id, pid, 'notes');
+      if (scope === 'own') {
+        query = query.eq('owner_id', user.id);
+      } else if (scope === 'team') {
+        const teamIds = await getTeamMemberIds(user.id, pid);
+        query = query.in('owner_id', teamIds);
+      }
+      // scope === 'project': no owner filter
+    } else {
+      // No project context — show only own notes
+      query = query.eq('owner_id', user.id);
     }
 
     const { data, error } = await query;
@@ -415,4 +428,45 @@ export async function deleteNoteLink(
   revalidatePath('/notes/[id]');
   revalidatePath('/context');
   return {};
+}
+
+// ---------------------------------------------------------------------------
+// Notes UI permissions
+// ---------------------------------------------------------------------------
+
+export type NotesPermissions = {
+  canCreate: boolean;
+  canDelete: boolean;
+  canManageFolders: boolean;
+};
+
+export async function getNotesPermissions(
+  projectId: string
+): Promise<NotesPermissions> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const allFalse: NotesPermissions = {
+    canCreate: false,
+    canDelete: false,
+    canManageFolders: false,
+  };
+  if (!projectId?.trim()) return allFalse;
+
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (project?.owner_id === user.id) {
+    return { canCreate: true, canDelete: true, canManageFolders: true };
+  }
+
+  const granted = await getGrantedActions(user.id, projectId, true);
+  return {
+    canCreate: granted.has('notes.create'),
+    canDelete: granted.has('notes.delete'),
+    canManageFolders: granted.has('notes.manage_folders'),
+  };
 }

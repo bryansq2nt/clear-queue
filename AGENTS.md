@@ -285,6 +285,99 @@ After writing any implementation, ask each question out loud and answer it:
 
 ---
 
+## 4c. Migration RLS self-audit — required before marking any migration done
+
+Every SQL migration that creates or modifies tables, policies, or functions **must**
+pass this checklist before being committed. The pre-commit hook (`scripts/check-migrations.sh`)
+catches items 1 and 2 automatically. Items 3–6 require human/AI judgement.
+
+---
+
+### The three patterns that silently break Supabase apps
+
+**Pattern A — Recursive RLS policy**
+
+A policy on `public.X` that contains a subquery against `public.X`:
+
+```sql
+-- ❌ WRONG — infinite recursion at runtime
+CREATE POLICY "team_select" ON public.project_members
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.project_members pm2   -- ← same table!
+            WHERE pm2.project_id = project_members.project_id
+              AND pm2.user_id = auth.uid())
+  );
+```
+
+```sql
+-- ✅ CORRECT — use a SECURITY DEFINER helper that bypasses RLS
+CREATE POLICY "team_select" ON public.project_members
+  FOR SELECT USING (public.is_project_member(project_id));
+```
+
+**Pattern B — SECURITY INVOKER function with INSERT … RETURNING \* INTO**
+
+If a function is `SECURITY INVOKER` (the default) and does:
+
+```sql
+INSERT INTO public.projects (...) VALUES (...) RETURNING * INTO v_project;
+INSERT INTO public.project_members (project_id, ...) VALUES (v_project.id, ...);
+```
+
+The `RETURNING *` is filtered by the SELECT RLS policy on `projects`.
+If that policy is `is_project_member(id)`, and the `project_members` row
+hasn't been inserted yet (it comes next), `is_project_member` returns false,
+`v_project` is NULL, and the second INSERT fails with a confusing RLS error
+on `projects`.
+
+```sql
+-- ✅ CORRECT — bootstrap functions that create their own membership must be SECURITY DEFINER
+CREATE OR REPLACE FUNCTION public.create_project_atomic(...)
+RETURNS public.projects
+LANGUAGE plpgsql
+SECURITY DEFINER          -- ← bypasses RLS; safe because we validate auth.uid() below
+SET search_path = public
+AS $$
+DECLARE v_user_id UUID;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+  -- now insert freely; ownership is enforced explicitly, not via RLS
+  ...
+END;
+$$;
+```
+
+**Pattern C — Table with RLS enabled but no INSERT/UPDATE/DELETE policy**
+
+If `ENABLE ROW LEVEL SECURITY` is on a table but no write policies exist,
+all writes from the `authenticated` role are silently blocked.
+This is intentional only if writes go through `SECURITY DEFINER` RPCs.
+Document it explicitly in the migration with a comment.
+
+---
+
+### Migration RLS checklist (run on every migration)
+
+- [ ] **Recursive policy check:** Every `CREATE POLICY … ON public.X` — does the policy body query `public.X`? If yes → use a `SECURITY DEFINER` helper function.
+- [ ] **RETURNING safety check:** Every `SECURITY INVOKER` (or default) function that uses `INSERT … RETURNING * INTO v` — does the SELECT policy on the target table depend on a row that doesn't exist yet at RETURNING time? If yes → switch to `SECURITY DEFINER`.
+- [ ] **Write policy completeness:** Every table with `ENABLE ROW LEVEL SECURITY` — are INSERT, UPDATE, and DELETE policies present? If missing, is there a `SECURITY DEFINER` RPC that handles those writes? Document the intent.
+- [ ] **SECURITY DEFINER functions have explicit auth check:** Every `SECURITY DEFINER` function must call `auth.uid()` at the top and raise an exception if NULL. Never trust that the caller is authenticated.
+- [ ] **`GRANT EXECUTE` present:** Every new RPC that should be callable by users must have `GRANT EXECUTE ON FUNCTION … TO authenticated`.
+- [ ] **Pre-commit script passes:** Run `python3 scripts/check-migrations.py <file.sql>` manually before staging. The pre-commit hook runs it automatically, but running it early avoids a blocked commit.
+
+---
+
+### Real examples from this codebase
+
+| Bug                                                           | File             | Root cause                                                                                     | Fix                                             |
+| ------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Infinite recursion on `organization_members`                  | `20260310100003` | `org_members_team_select` queried itself                                                       | `20260320100000` — use `is_org_member()`        |
+| Infinite recursion on `project_members`                       | `20260310100004` | `project_members_team_select` queried itself                                                   | `20260320100001` — use `is_project_member()`    |
+| "new row violates RLS for table projects" on project creation | `20260310100015` | `create_project_atomic` was SECURITY INVOKER; `RETURNING *` filtered before membership existed | `20260320100001` — switched to SECURITY DEFINER |
+
+---
+
 ## 5. When unsure, write an audit note
 
 - If you are unsure whether a pattern is allowed, or you find a deviation from these rules, **do not guess**. Add a short audit note so the team can decide.

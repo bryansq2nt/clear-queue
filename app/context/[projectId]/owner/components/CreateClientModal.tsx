@@ -21,6 +21,7 @@ import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 
 interface CreateClientModalProps {
+  projectId: string;
   isOpen: boolean;
   onClose: () => void;
   /** Called after successful create; receives the new client (e.g. to link to project). */
@@ -28,6 +29,7 @@ interface CreateClientModalProps {
 }
 
 export function CreateClientModal({
+  projectId,
   isOpen,
   onClose,
   onCreated,
@@ -52,7 +54,7 @@ export function CreateClientModal({
     formData.set('gender', gender === 'not_specified' ? '' : gender);
     formData.set('phone', phone?.trim() || '');
     setIsSubmitting(true);
-    const result = await createClientAction(formData);
+    const result = await createClientAction(projectId, formData);
     setIsSubmitting(false);
     if (result.error) {
       setError(result.error);

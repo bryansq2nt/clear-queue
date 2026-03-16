@@ -56,6 +56,7 @@ import {
   listLinkCategoriesAction,
   updateLinkCategoryAction,
   deleteLinkCategoryAction,
+  type LinksPermissions,
 } from './actions';
 import LinkEditDialog from './LinkEditDialog';
 import { SkeletonLinks } from '@/components/skeletons/SkeletonLinks';
@@ -152,6 +153,7 @@ interface ContextLinksClientProps {
   projectId: string;
   initialLinks: ProjectLinkRow[];
   initialCategories?: LinkCategoryRow[];
+  permissions: LinksPermissions;
   onRefresh?: () => void | Promise<void>;
   onCategoriesCacheUpdate?: (categories: LinkCategoryRow[]) => void;
 }
@@ -167,6 +169,7 @@ function SortableSectionHeader({
   onOpenAll,
   onEditCategory,
   onDeleteCategory,
+  canManageCategories,
   t,
 }: {
   id: string;
@@ -179,6 +182,7 @@ function SortableSectionHeader({
   onOpenAll: () => void;
   onEditCategory: (cat: LinkCategoryRow) => void;
   onDeleteCategory: (cat: LinkCategoryRow) => void;
+  canManageCategories: boolean;
   t: (key: string) => string;
 }) {
   const {
@@ -249,7 +253,7 @@ function SortableSectionHeader({
             {t('links.open_all_in_section')}
           </Button>
         )}
-        {category && (
+        {category && canManageCategories && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -295,12 +299,16 @@ function SortableLinkRow({
   onEdit,
   onArchive,
   onTogglePin,
+  canUpdate,
+  canDelete,
   t,
 }: {
   link: ProjectLinkRow;
   onEdit: (link: ProjectLinkRow) => void;
   onArchive: (link: ProjectLinkRow) => void;
   onTogglePin: (link: ProjectLinkRow) => void;
+  canUpdate: boolean;
+  canDelete: boolean;
   t: (key: string) => string;
 }) {
   const {
@@ -386,43 +394,49 @@ function SortableLinkRow({
               <ExternalLink className="w-4 h-4 mr-2" />
               {t('links.open_in_new_tab')}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.preventDefault();
-                onEdit(link);
-              }}
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              {t('links.edit_link')}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.preventDefault();
-                onTogglePin(link);
-              }}
-            >
-              {link.pinned ? (
-                <>
-                  <PinOff className="w-4 h-4 mr-2" />
-                  {t('links.unpin')}
-                </>
-              ) : (
-                <>
-                  <Pin className="w-4 h-4 mr-2" />
-                  {t('links.pinned')}
-                </>
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.preventDefault();
-                onArchive(link);
-              }}
-              className="text-destructive focus:text-destructive"
-            >
-              <Archive className="w-4 h-4 mr-2" />
-              {t('links.archive_link')}
-            </DropdownMenuItem>
+            {canUpdate && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  onEdit(link);
+                }}
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                {t('links.edit_link')}
+              </DropdownMenuItem>
+            )}
+            {canUpdate && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  onTogglePin(link);
+                }}
+              >
+                {link.pinned ? (
+                  <>
+                    <PinOff className="w-4 h-4 mr-2" />
+                    {t('links.unpin')}
+                  </>
+                ) : (
+                  <>
+                    <Pin className="w-4 h-4 mr-2" />
+                    {t('links.pinned')}
+                  </>
+                )}
+              </DropdownMenuItem>
+            )}
+            {canDelete && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  onArchive(link);
+                }}
+                className="text-destructive focus:text-destructive"
+              >
+                <Archive className="w-4 h-4 mr-2" />
+                {t('links.archive_link')}
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -444,6 +458,7 @@ export default function ContextLinksClient({
   projectId,
   initialLinks,
   initialCategories,
+  permissions,
   onRefresh,
   onCategoriesCacheUpdate,
 }: ContextLinksClientProps) {
@@ -708,10 +723,12 @@ export default function ContextLinksClient({
           <p className="text-sm text-muted-foreground text-center mb-4">
             {t('links.no_links_hint')}
           </p>
-          <Button onClick={handleAddNew} size="sm" className="min-h-[44px]">
-            <Plus className="w-4 h-4 mr-2" />
-            {t('links.add_link')}
-          </Button>
+          {permissions.canCreate && (
+            <Button onClick={handleAddNew} size="sm" className="min-h-[44px]">
+              <Plus className="w-4 h-4 mr-2" />
+              {t('links.add_link')}
+            </Button>
+          )}
         </div>
       ) : !showList ? (
         <SkeletonLinks />
@@ -755,6 +772,7 @@ export default function ContextLinksClient({
                       onOpenAll={() => handleOpenAllInSection(sectionLinks)}
                       onEditCategory={handleEditCategory}
                       onDeleteCategory={handleDeleteCategoryClick}
+                      canManageCategories={permissions.canManageCategories}
                       t={t}
                     />
                     {!isCollapsed && (
@@ -775,6 +793,8 @@ export default function ContextLinksClient({
                                 onEdit={handleEdit}
                                 onArchive={handleArchive}
                                 onTogglePin={handleTogglePin}
+                                canUpdate={permissions.canUpdate}
+                                canDelete={permissions.canDelete}
                                 t={t}
                               />
                             ))}
@@ -790,7 +810,7 @@ export default function ContextLinksClient({
         </DndContext>
       )}
 
-      {links.length > 0 && (
+      {links.length > 0 && permissions.canCreate && (
         <Button
           type="button"
           aria-label={t('links.add_link')}

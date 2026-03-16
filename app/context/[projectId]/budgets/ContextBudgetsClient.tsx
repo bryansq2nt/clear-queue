@@ -3,7 +3,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { Plus } from 'lucide-react';
-import { getBudgetsByProjectId } from '@/app/actions/budgets';
+import {
+  getBudgetsByProjectId,
+  type BudgetsPermissions,
+} from '@/app/actions/budgets';
 import { BudgetCard } from './components/BudgetCard';
 import { CreateBudgetModal } from './components/CreateBudgetModal';
 import { EmptyState } from './components/EmptyState';
@@ -15,6 +18,7 @@ type BudgetWithProject = Awaited<
 interface ContextBudgetsClientProps {
   projectId: string;
   initialBudgets: BudgetWithProject[];
+  permissions: BudgetsPermissions;
   /** When provided (context cache), used instead of local fetch for refresh */
   onRefresh?: () => void | Promise<void>;
 }
@@ -26,6 +30,7 @@ interface ContextBudgetsClientProps {
 export default function ContextBudgetsClient({
   projectId,
   initialBudgets,
+  permissions,
   onRefresh,
 }: ContextBudgetsClientProps) {
   const { t } = useI18n();
@@ -81,14 +86,16 @@ export default function ContextBudgetsClient({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => setIsModalOpen(true)}
-        aria-label={t('budgets.new_budget')}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
+      {permissions.canCreate && (
+        <button
+          type="button"
+          onClick={() => setIsModalOpen(true)}
+          aria-label={t('budgets.new_budget')}
+          className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
 
       <CreateBudgetModal
         isOpen={isModalOpen}

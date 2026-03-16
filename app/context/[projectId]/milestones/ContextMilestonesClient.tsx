@@ -7,6 +7,7 @@ import {
   deleteMilestone,
   completeMilestone,
   reopenMilestone,
+  type MilestonesPermissions,
 } from '@/app/actions/milestones';
 import type { MilestoneWithProgress } from '@/lib/milestones/schema';
 import { useContextDataCache } from '@/app/context/ContextDataCache';
@@ -28,12 +29,14 @@ import { cn } from '@/lib/utils';
 interface ContextMilestonesClientProps {
   projectId: string;
   initialMilestones: MilestoneWithProgress[];
+  permissions: MilestonesPermissions;
   onRefresh: () => void | Promise<void>;
 }
 
 export default function ContextMilestonesClient({
   projectId,
   initialMilestones,
+  permissions,
   onRefresh,
 }: ContextMilestonesClientProps) {
   const { t } = useI18n();
@@ -224,16 +227,18 @@ export default function ContextMilestonesClient({
         <h2 className="text-lg font-semibold truncate">
           {t('milestones.timeline')}
         </h2>
-        <Button
-          type="button"
-          variant="default"
-          size="sm"
-          onClick={() => setCreateOpen(true)}
-          disabled={busy}
-        >
-          <Plus className="h-4 w-4 mr-1.5" aria-hidden />
-          {t('milestones.add')}
-        </Button>
+        {permissions.canCreate && (
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={() => setCreateOpen(true)}
+            disabled={busy}
+          >
+            <Plus className="h-4 w-4 mr-1.5" aria-hidden />
+            {t('milestones.add')}
+          </Button>
+        )}
       </div>
 
       {error && (
@@ -247,16 +252,18 @@ export default function ContextMilestonesClient({
           <Flag className="h-12 w-12 mb-3 opacity-50" aria-hidden />
           <p className="font-medium">{t('milestones.empty')}</p>
           <p className="text-sm mt-1">{t('milestones.empty_hint')}</p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-1.5" aria-hidden />
-            {t('milestones.add')}
-          </Button>
+          {permissions.canCreate && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-1.5" aria-hidden />
+              {t('milestones.add')}
+            </Button>
+          )}
         </div>
       ) : (
         <ul className="space-y-0" role="list">
@@ -319,53 +326,58 @@ export default function ContextMilestonesClient({
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  {!isCompleted ? (
+                  {permissions.canComplete &&
+                    (!isCompleted ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setCompleteConfirmMilestone(m)}
+                        disabled={busy}
+                        aria-label={t('milestones.mark_complete')}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setReopenConfirmMilestone(m)}
+                        disabled={busy}
+                        aria-label={t('milestones.mark_incomplete')}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    ))}
+                  {permissions.canUpdate && (
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => setCompleteConfirmMilestone(m)}
+                      onClick={() => openEdit(m)}
                       disabled={busy}
-                      aria-label={t('milestones.mark_complete')}
+                      aria-label={t('common.edit')}
                     >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setReopenConfirmMilestone(m)}
-                      disabled={busy}
-                      aria-label={t('milestones.mark_incomplete')}
-                    >
-                      <RotateCcw className="h-4 w-4" />
+                      <Pencil className="h-4 w-4" />
                     </Button>
                   )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => openEdit(m)}
-                    disabled={busy}
-                    aria-label={t('common.edit')}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => setDeleteConfirmMilestoneId(m.id)}
-                    disabled={busy}
-                    aria-label={t('common.delete')}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {permissions.canDelete && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteConfirmMilestoneId(m.id)}
+                      disabled={busy}
+                      aria-label={t('common.delete')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </li>
             );

@@ -14,6 +14,8 @@ export const BOARD_STATUSES: TaskStatus[] = [
 export const INITIAL_TASKS_PER_COLUMN = 5;
 export const LOAD_MORE_TASKS_PER_COLUMN = 5;
 
+export type TaskReadScope = 'own' | 'team' | 'project';
+
 export type BoardInitialData = {
   project: Database['public']['Tables']['projects']['Row'];
   counts: Record<TaskStatus, number>;
@@ -21,6 +23,10 @@ export type BoardInitialData = {
     TaskStatus,
     Database['public']['Tables']['tasks']['Row'][]
   >;
+  /** The read scope used when fetching this data. Used by ContextBoardFromCache
+   *  to detect when cached data was fetched under a different permission level
+   *  and must be re-fetched. */
+  readScope: TaskReadScope;
 };
 
 const MAX_TAGS = 3;

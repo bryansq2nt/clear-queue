@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -103,9 +104,14 @@ export async function getProjectsWithoutClient() {
 }
 
 export async function createClientAction(
+  projectId: string,
   formData: FormData
 ): Promise<{ error?: string; data?: Client }> {
   const user = await requireAuth();
+  await requireCan(user.id, 'owner.create_client', {
+    type: 'project',
+    projectId,
+  });
   const supabase = await createClient();
 
   const full_name = (formData.get('full_name') as string)?.trim();
@@ -147,9 +153,14 @@ export async function createClientAction(
 
 export async function updateClientAction(
   id: string,
+  projectId: string,
   formData: FormData
 ): Promise<{ error?: string; data?: Client }> {
-  await requireAuth();
+  const user = await requireAuth();
+  await requireCan(user.id, 'owner.update_client', {
+    type: 'project',
+    projectId,
+  });
   const supabase = await createClient();
 
   const full_name = (formData.get('full_name') as string)?.trim();
@@ -314,9 +325,14 @@ function parseSocialLinks(formData: FormData): Record<string, string> {
 
 export async function createBusinessAction(
   clientId: string,
+  projectId: string,
   formData: FormData
 ): Promise<{ error?: string; data?: Business }> {
   const user = await requireAuth();
+  await requireCan(user.id, 'owner.create_business', {
+    type: 'project',
+    projectId,
+  });
   const supabase = await createClient();
 
   const name = (formData.get('name') as string)?.trim();
@@ -616,4 +632,53 @@ export async function deleteClientLinkAction(
   revalidatePath('/clients');
   revalidatePath('/clients/[id]');
   return {};
+}
+
+// ---------------------------------------------------------------------------
+// Owner module UI permissions
+// ---------------------------------------------------------------------------
+
+export type OwnerPermissions = {
+  canCreateClient: boolean;
+  canUpdateClient: boolean;
+  canCreateBusiness: boolean;
+  canUpdateBusiness: boolean;
+};
+
+export async function getOwnerPermissions(
+  projectId: string
+): Promise<OwnerPermissions> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const allFalse: OwnerPermissions = {
+    canCreateClient: false,
+    canUpdateClient: false,
+    canCreateBusiness: false,
+    canUpdateBusiness: false,
+  };
+  if (!projectId?.trim()) return allFalse;
+
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (project?.owner_id === user.id) {
+    return {
+      canCreateClient: true,
+      canUpdateClient: true,
+      canCreateBusiness: true,
+      canUpdateBusiness: true,
+    };
+  }
+
+  const granted = await getGrantedActions(user.id, projectId, true);
+  return {
+    canCreateClient: granted.has('owner.create_client'),
+    canUpdateClient: granted.has('owner.update_client'),
+    canCreateBusiness: granted.has('owner.create_business'),
+    canUpdateBusiness: granted.has('owner.update_business'),
+  };
 }

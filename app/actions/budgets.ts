@@ -3,7 +3,8 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
-import { requireCan } from '@/lib/rbac/resolver';
+import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
+import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 
@@ -77,16 +78,28 @@ export const getBudgetsByProjectId = cache(
   ): Promise<
     (Budget & { projects: { id: string; name: string } | null })[]
   > => {
-    await requireAuth();
+    const user = await requireAuth();
     const supabase = await createClient();
 
-    const { data: budgets, error } = await supabase
+    const scope = await getReadScope(user.id, projectId, 'budgets');
+
+    let budgetsQuery = supabase
       .from('budgets')
       .select(
         'id, project_id, name, description, owner_id, created_at, updated_at'
       )
       .eq('project_id', projectId)
       .order('created_at', { ascending: false });
+
+    if (scope === 'own') {
+      budgetsQuery = budgetsQuery.eq('owner_id', user.id);
+    } else if (scope === 'team') {
+      const teamIds = await getTeamMemberIds(user.id, projectId);
+      budgetsQuery = budgetsQuery.in('owner_id', teamIds);
+    }
+    // scope === 'project': no owner filter
+
+    const { data: budgets, error } = await budgetsQuery;
 
     if (error || !budgets?.length) return [];
 
@@ -400,6 +413,41 @@ export async function duplicateBudget(sourceBudgetId: string) {
   revalidatePath(`/budgets/${newBudgetId}`);
   revalidatePath('/context');
   return { budgetId: newBudgetId };
+}
+
+// ---------------------------------------------------------------------------
+// Budgets UI permissions
+// ---------------------------------------------------------------------------
+
+export type BudgetsPermissions = {
+  canCreate: boolean;
+  canDelete: boolean;
+};
+
+export async function getBudgetsPermissions(
+  projectId: string
+): Promise<BudgetsPermissions> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const allFalse: BudgetsPermissions = { canCreate: false, canDelete: false };
+  if (!projectId?.trim()) return allFalse;
+
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (project?.owner_id === user.id) {
+    return { canCreate: true, canDelete: true };
+  }
+
+  const granted = await getGrantedActions(user.id, projectId, true);
+  return {
+    canCreate: granted.has('budgets.create'),
+    canDelete: granted.has('budgets.delete'),
+  };
 }
 
 // ============================================

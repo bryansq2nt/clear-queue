@@ -67,9 +67,9 @@ interface DocumentRowProps {
   isRecentlyOpened?: boolean;
   /** Called when user opens the document (so UI can reorder optimistically). */
   onDocumentOpened?: (file: ProjectFile) => void;
-  onEdit: (file: ProjectFile) => void;
-  onArchive: (file: ProjectFile) => void;
-  onDelete: (file: ProjectFile) => void;
+  onEdit?: (file: ProjectFile) => void;
+  onArchive?: (file: ProjectFile) => void;
+  onDelete?: (file: ProjectFile) => void;
   onFinalToggle: (file: ProjectFile, isFinal: boolean) => void;
 }
 
@@ -208,10 +208,12 @@ export function DocumentRow({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenuItem onClick={() => onEdit(file)}>
-            <Edit className="w-4 h-4 mr-2" />
-            {t('documents.edit_info')}
-          </DropdownMenuItem>
+          {onEdit && (
+            <DropdownMenuItem onClick={() => onEdit(file)}>
+              <Edit className="w-4 h-4 mr-2" />
+              {t('documents.edit_info')}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={handleDownload} disabled={isDownloading}>
             {isDownloading ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -220,27 +222,33 @@ export function DocumentRow({
             )}
             {t('documents.download')}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              if (
-                confirm(t('documents.archive_confirm', { title: file.title }))
-              )
-                onArchive(file);
-            }}
-          >
-            <Archive className="w-4 h-4 mr-2" />
-            {t('documents.archive')}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              if (confirm(t('documents.delete_confirm', { title: file.title })))
-                onDelete(file);
-            }}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            {t('documents.delete')}
-          </DropdownMenuItem>
+          {onArchive && (
+            <DropdownMenuItem
+              onClick={() => {
+                if (
+                  confirm(t('documents.archive_confirm', { title: file.title }))
+                )
+                  onArchive(file);
+              }}
+            >
+              <Archive className="w-4 h-4 mr-2" />
+              {t('documents.archive')}
+            </DropdownMenuItem>
+          )}
+          {onDelete && (
+            <DropdownMenuItem
+              onClick={() => {
+                if (
+                  confirm(t('documents.delete_confirm', { title: file.title }))
+                )
+                  onDelete(file);
+              }}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {t('documents.delete')}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

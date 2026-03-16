@@ -41,6 +41,9 @@ export async function GET(request: NextRequest) {
     const mediaActions = Array.from(grantedActions).filter((a) =>
       a.startsWith('media.')
     );
+    const taskActions = Array.from(grantedActions).filter((a) =>
+      a.startsWith('tasks.')
+    );
 
     return NextResponse.json({
       currentUser: { id: user.id, email: user.email ?? undefined },
@@ -55,22 +58,28 @@ export async function GET(request: NextRequest) {
         raw: grant,
         hasMedia:
           grant === null ? 'unrestricted (null)' : grant.includes('media'),
+        hasBoard:
+          grant === null ? 'unrestricted (null)' : grant.includes('board'),
       },
       getCanViewModule_media: mediaAccess,
       rbacActionGrants: {
+        hasTasksCreate: grantedActions.has('tasks.create'),
+        hasTasksUpdateTitle: grantedActions.has('tasks.update_title'),
+        hasTasksRead: taskActions.filter((a) => a.includes('read')),
+        taskActions,
         hasMediaRead: grantedActions.has('media.read'),
         hasMediaViewSignedUrl: grantedActions.has('media.view_signed_url'),
         mediaActions,
+        allGrantedActions: Array.from(grantedActions).sort(),
         totalGrantedActions: grantedActions.size,
       },
-      hint:
-        grant === null
-          ? 'No row in user_project_access_grants → unrestricted; should see Media if project has it enabled.'
-          : Array.isArray(grant) && !grant.includes('media')
-            ? "allowed_modules does not include 'media' → add it and save again."
-            : !grantedActions.has('media.read')
-              ? 'media.read missing from granted_actions — check user_project_action_grants and user_role_assignments.'
-              : 'Check project_modules: is media enabled for this project?',
+      hint: !grantedActions.has('tasks.create')
+        ? 'tasks.create missing → go to Team tab → edit member access → enable "Create tasks" and save.'
+        : grant === null
+          ? 'No row in user_project_access_grants → unrestricted module access.'
+          : Array.isArray(grant) && !grant.includes('board')
+            ? "allowed_modules does not include 'board' → add it and save again."
+            : 'Permissions look correct.',
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

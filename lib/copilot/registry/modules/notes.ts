@@ -289,6 +289,7 @@ export const notesCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_note',
     icon: 'FileText',
     cardVariant: 'create',
+    requiredAction: 'notes.create',
     promptDescription: 'Create a new note in the project',
     examplePayload: {
       type: 'note',
@@ -309,6 +310,7 @@ export const notesCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_delete_note',
     icon: 'Trash2',
     cardVariant: 'delete',
+    requiredAction: 'notes.delete',
     promptDescription: 'Delete an existing note by its entity_id',
     examplePayload: {
       type: 'delete_note',
@@ -329,6 +331,7 @@ export const notesCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_update_note',
     icon: 'Pencil',
     cardVariant: 'update',
+    requiredAction: 'notes.update_title',
     promptDescription:
       'Update title or content of an existing note by its entity_id',
     examplePayload: {
@@ -351,6 +354,7 @@ export const notesCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_note_folder',
     icon: 'FolderPlus',
     cardVariant: 'create',
+    requiredAction: 'notes.manage_folders',
     promptDescription: 'Create a new note folder in the project',
     examplePayload: {
       type: 'note_folder',
@@ -370,6 +374,7 @@ export const notesCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_update_note_folder',
     icon: 'Pencil',
     cardVariant: 'update',
+    requiredAction: 'notes.manage_folders',
     promptDescription:
       'Rename an existing note folder by its entity_id (folder id)',
     examplePayload: {
@@ -392,6 +397,7 @@ export const notesCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_delete_note_folder',
     icon: 'Trash2',
     cardVariant: 'delete',
+    requiredAction: 'notes.manage_folders',
     promptDescription:
       'Delete a note folder by its entity_id; notes inside become unassigned',
     examplePayload: {

@@ -9,6 +9,7 @@ import {
   deleteNote,
   updateNote,
   deleteNotes,
+  type NotesPermissions,
 } from '@/app/actions/notes';
 import { deleteFolders } from '@/app/actions/note-folders';
 import {
@@ -86,6 +87,7 @@ interface ContextNotesClientProps {
   projectId: string;
   initialNotes: Note[];
   initialFolders: NoteFolder[];
+  permissions: NotesPermissions;
   /** When opening with ?folderId=xxx or ?folderId=root */
   initialFolderId?: string;
   onRefresh?: () => void | Promise<void>;
@@ -98,6 +100,7 @@ export default function ContextNotesClient({
   projectId,
   initialNotes,
   initialFolders,
+  permissions,
   initialFolderId,
   onRefresh,
 }: ContextNotesClientProps) {
@@ -559,13 +562,15 @@ export default function ContextNotesClient({
                 <Edit className="w-4 h-4 mr-2" />
                 {t('notes.edit')}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => handleDelete(e, note)}
-                className="text-red-600 focus:text-red-600"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {t('common.delete')}
-              </DropdownMenuItem>
+              {permissions.canDelete && (
+                <DropdownMenuItem
+                  onClick={(e) => handleDelete(e, note)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {t('common.delete')}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -627,7 +632,7 @@ export default function ContextNotesClient({
                 {t('notes.folders_section')}
               </h2>
               <div className="flex items-center gap-2">
-                {folders.length > 0 && (
+                {permissions.canManageFolders && folders.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setFolderSelectionMode(true)}
@@ -637,14 +642,16 @@ export default function ContextNotesClient({
                     {t('notes.folder_select_mode')}
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setIsCreateFolderOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
-                >
-                  <FolderPlus className="w-4 h-4" />
-                  {t('notes.new_folder')}
-                </button>
+                {permissions.canManageFolders && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateFolderOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
+                  >
+                    <FolderPlus className="w-4 h-4" />
+                    {t('notes.new_folder')}
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -915,7 +922,7 @@ export default function ContextNotesClient({
                 >
                   {t('notes.clear_filters')}
                 </Button>
-              ) : (
+              ) : permissions.canCreate ? (
                 <button
                   type="button"
                   onClick={() => router.push(newNoteHref)}
@@ -923,7 +930,7 @@ export default function ContextNotesClient({
                 >
                   {t('notes.new_note')}
                 </button>
-              )}
+              ) : null}
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -962,16 +969,18 @@ export default function ContextNotesClient({
               <FolderOpen className="w-4 h-4 mr-2" />
               {t('notes.move_to_folder')} ({selectedNoteIds.size})
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setIsDeleteNotesOpen(true)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              {t('notes.bulk_delete')} ({selectedNoteIds.size})
-            </DropdownMenuItem>
+            {permissions.canDelete && (
+              <DropdownMenuItem
+                onClick={() => setIsDeleteNotesOpen(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                {t('notes.bulk_delete')} ({selectedNoteIds.size})
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
-      ) : (
+      ) : permissions.canCreate ? (
         <button
           type="button"
           onClick={handleNewNoteClick}
@@ -980,7 +989,7 @@ export default function ContextNotesClient({
         >
           <Plus className="h-6 w-6" />
         </button>
-      )}
+      ) : null}
 
       <ChooseFolderForNewNoteDialog
         open={isChooseFolderOpen}

@@ -3,12 +3,18 @@
 
 // ─── Context fetcher ──────────────────────────────────────────────────────────
 
+/**
+ * @param ownerFilter  null = project scope (no owner filter);
+ *                     string[] = restrict to these owner IDs (own or team scope).
+ *                     Resolved by buildProjectContext before this call.
+ */
 export async function fetchDocumentsContext(
   projectId: string,
   scope: 'standard' | 'full',
-  supabase: any
+  supabase: any,
+  ownerFilter: string[] | null
 ): Promise<string> {
-  const { data } = await supabase
+  let query = supabase
     .from('project_files')
     .select('title, document_category, file_ext')
     .eq('project_id', projectId)
@@ -16,6 +22,15 @@ export async function fetchDocumentsContext(
     .is('archived_at', null)
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
+
+  if (ownerFilter !== null) {
+    query =
+      ownerFilter.length === 1
+        ? query.eq('owner_id', ownerFilter[0])
+        : query.in('owner_id', ownerFilter);
+  }
+
+  const { data } = await query;
 
   const docs = (data ?? []) as {
     title: string;

@@ -1,7 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getMilestonesWithProgress } from '@/app/actions/milestones';
+import {
+  getMilestonesWithProgress,
+  type MilestonesPermissions,
+} from '@/app/actions/milestones';
 import type { MilestoneWithProgress } from '@/lib/milestones/schema';
 import { SkeletonMilestones } from '@/components/skeletons/SkeletonMilestones';
 import { useContextDataCache } from '../../ContextDataCache';
@@ -9,10 +12,12 @@ import ContextMilestonesClient from './ContextMilestonesClient';
 
 interface ContextMilestonesFromCacheProps {
   projectId: string;
+  permissions: MilestonesPermissions;
 }
 
 export default function ContextMilestonesFromCache({
   projectId,
+  permissions,
 }: ContextMilestonesFromCacheProps) {
   const cache = useContextDataCache();
   const cacheKey = useMemo(
@@ -59,6 +64,7 @@ export default function ContextMilestonesFromCache({
     <ContextMilestonesClient
       projectId={projectId}
       initialMilestones={data}
+      permissions={permissions}
       onRefresh={loadData}
     />
   );

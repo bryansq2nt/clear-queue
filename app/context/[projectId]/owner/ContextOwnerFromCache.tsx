@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { getProjectById } from '@/app/actions/projects';
-import { getClientById, getBusinessById } from '@/app/actions/clients';
+import {
+  getClientById,
+  getBusinessById,
+  type OwnerPermissions,
+} from '@/app/actions/clients';
 import type { Database } from '@/lib/supabase/types';
 import { SkeletonOwner } from '@/components/skeletons/SkeletonOwner';
 import { useContextDataCache } from '../../ContextDataCache';
@@ -20,10 +24,12 @@ type OwnerData = {
 
 interface ContextOwnerFromCacheProps {
   projectId: string;
+  permissions: OwnerPermissions;
 }
 
 export default function ContextOwnerFromCache({
   projectId,
+  permissions,
 }: ContextOwnerFromCacheProps) {
   const cache = useContextDataCache();
   const cached = cache.get<OwnerData>({ type: 'owner', projectId });
@@ -89,6 +95,7 @@ export default function ContextOwnerFromCache({
       project={data.project}
       client={data.client}
       business={data.business}
+      permissions={permissions}
       onOwnerUpdated={loadData}
     />
   );

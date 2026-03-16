@@ -1,4 +1,5 @@
 import { requireAuth } from '@/lib/auth';
+import { getSubTeamsPermissions } from '@/app/actions/sub-teams';
 import ContextTeamFromCache from './ContextTeamFromCache';
 
 export default async function ContextTeamPage({
@@ -8,5 +9,11 @@ export default async function ContextTeamPage({
 }) {
   await requireAuth();
   const { projectId } = await params;
-  return <ContextTeamFromCache projectId={projectId} />;
+  const subTeamsPermissions = await getSubTeamsPermissions(projectId);
+  return (
+    <ContextTeamFromCache
+      projectId={projectId}
+      subTeamsPermissions={subTeamsPermissions}
+    />
+  );
 }

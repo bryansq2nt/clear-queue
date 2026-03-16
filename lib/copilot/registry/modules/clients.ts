@@ -11,7 +11,8 @@ import type {
 export async function fetchClientsContext(
   projectId: string,
   scope: 'standard' | 'full',
-  supabase: any
+  supabase: any,
+  _ownerFilter: string[] | null
 ): Promise<string> {
   // Fetch project's linked client and business
   const { data: project } = await supabase
@@ -114,6 +115,7 @@ export const clientsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_client',
     icon: 'User',
     cardVariant: 'create',
+    requiredAction: 'owner.create_client',
     promptDescription: 'Create a new client contact',
     examplePayload: {
       type: 'client',

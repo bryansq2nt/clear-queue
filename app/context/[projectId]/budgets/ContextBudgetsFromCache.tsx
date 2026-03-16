@@ -1,7 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getBudgetsByProjectId } from '@/app/actions/budgets';
+import {
+  getBudgetsByProjectId,
+  type BudgetsPermissions,
+} from '@/app/actions/budgets';
 import { SkeletonBudgets } from '@/components/skeletons/SkeletonBudgets';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextBudgetsClient from './ContextBudgetsClient';
@@ -12,10 +15,12 @@ type BudgetWithProject = Awaited<
 
 interface ContextBudgetsFromCacheProps {
   projectId: string;
+  permissions: BudgetsPermissions;
 }
 
 export default function ContextBudgetsFromCache({
   projectId,
+  permissions,
 }: ContextBudgetsFromCacheProps) {
   const cache = useContextDataCache();
   const cached = cache.get<BudgetWithProject[]>({ type: 'budgets', projectId });
@@ -59,6 +64,7 @@ export default function ContextBudgetsFromCache({
     <ContextBudgetsClient
       projectId={projectId}
       initialBudgets={budgets}
+      permissions={permissions}
       onRefresh={loadData}
     />
   );

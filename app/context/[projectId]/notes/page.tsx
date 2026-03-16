@@ -1,5 +1,6 @@
 import { requireAuth } from '@/lib/auth';
 import { getCanViewModule } from '@/app/actions/modules';
+import { getNotesPermissions } from '@/app/actions/notes';
 import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
 import ContextNotesFromCache from './ContextNotesFromCache';
 
@@ -24,8 +25,15 @@ export default async function ContextNotesPage({
     );
   }
 
-  const folderId = searchParams.folderId ?? undefined;
+  const [folderId, permissions] = await Promise.all([
+    Promise.resolve(searchParams.folderId ?? undefined),
+    getNotesPermissions(projectId),
+  ]);
   return (
-    <ContextNotesFromCache projectId={projectId} initialFolderId={folderId} />
+    <ContextNotesFromCache
+      projectId={projectId}
+      initialFolderId={folderId}
+      permissions={permissions}
+    />
   );
 }

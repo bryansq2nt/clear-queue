@@ -14,6 +14,7 @@ import { listFolders } from '@/app/actions/note-folders';
 import { getMilestonesWithProgress } from '@/app/actions/milestones';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
 import { fetchLinksContext } from '@/lib/copilot/registry/modules/links';
 import { fetchTodosContext } from '@/lib/copilot/registry/modules/todos';
 import { fetchDocumentsContext } from '@/lib/copilot/registry/modules/documents';
@@ -177,38 +178,69 @@ Example link proposals:
 {"type":"update_link","entity_id":"<uuid-from-context>","entity_title":"Current title","category_name":"Tools"}
 \`\`\``;
 
+/**
+ * Resolves the owner filter for a module:
+ *   null       → project scope (no owner restriction)
+ *   string[]   → restrict to these owner IDs (own or team scope)
+ */
+async function resolveOwnerFilter(
+  userId: string,
+  projectId: string,
+  module: string
+): Promise<string[] | null> {
+  const scope = await getReadScope(userId, projectId, module);
+  if (scope === 'project') return null;
+  if (scope === 'team') return getTeamMemberIds(userId, projectId);
+  return [userId]; // 'own'
+}
+
 export async function buildProjectContext(
   projectId: string,
   options?: { scope?: 'standard' | 'full' }
 ): Promise<string> {
   const scope = options?.scope ?? 'standard';
 
-  const [supabase] = await Promise.all([createClient(), requireAuth()]);
+  const [supabase, user] = await Promise.all([createClient(), requireAuth()]);
+  const userId = user.id;
 
+  // Phase 1: scope-independent queries + owner filter resolution run in parallel
   const [
     project,
     tasks,
     notes,
     milestones,
+    noteFolders,
+    linksFilter,
+    documentsFilter,
+    budgetsFilter,
+    billingsFilter,
+  ] = await Promise.all([
+    getProjectById(projectId),
+    getTasksByProjectId(projectId),
+    getNotes({ projectId }),
+    getMilestonesWithProgress(projectId),
+    listFolders(projectId),
+    resolveOwnerFilter(userId, projectId, 'links'),
+    resolveOwnerFilter(userId, projectId, 'documents'),
+    resolveOwnerFilter(userId, projectId, 'budgets'),
+    resolveOwnerFilter(userId, projectId, 'billings'),
+  ]);
+
+  // Phase 2: context fetchers that require pre-resolved owner filters
+  const [
     linksContext,
     todosContext,
     documentsContext,
     budgetsContext,
     billingsContext,
     clientsContext,
-    noteFolders,
   ] = await Promise.all([
-    getProjectById(projectId),
-    getTasksByProjectId(projectId),
-    getNotes({ projectId }),
-    getMilestonesWithProgress(projectId),
-    fetchLinksContext(projectId, scope, supabase),
-    fetchTodosContext(projectId, scope, supabase),
-    fetchDocumentsContext(projectId, scope, supabase),
-    fetchBudgetsContext(projectId, scope, supabase),
-    fetchBillingsContext(projectId, scope, supabase),
-    fetchClientsContext(projectId, scope, supabase),
-    listFolders(projectId),
+    fetchLinksContext(projectId, scope, supabase, linksFilter),
+    fetchTodosContext(projectId, scope, supabase, null),
+    fetchDocumentsContext(projectId, scope, supabase, documentsFilter),
+    fetchBudgetsContext(projectId, scope, supabase, budgetsFilter),
+    fetchBillingsContext(projectId, scope, supabase, billingsFilter),
+    fetchClientsContext(projectId, scope, supabase, null),
   ]);
 
   if (!project) {

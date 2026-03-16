@@ -3,7 +3,8 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
-import { requireCan } from '@/lib/rbac/resolver';
+import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
+import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -49,14 +50,23 @@ export const getDocuments = cache(
     const pid = projectId?.trim();
     if (!pid) return [];
 
+    const scope = await getReadScope(user.id, pid, 'documents');
+
     let query = supabase
       .from('project_files')
       .select(PROJECT_FILE_COLS)
       .eq('project_id', pid)
-      .eq('owner_id', user.id)
       .eq('kind', 'document')
       .is('archived_at', null)
       .is('deleted_at', null);
+
+    if (scope === 'own') {
+      query = query.eq('owner_id', user.id);
+    } else if (scope === 'team') {
+      const teamIds = await getTeamMemberIds(user.id, pid);
+      query = query.in('owner_id', teamIds);
+    }
+    // scope === 'project': no owner filter
 
     if (folderId === null) {
       query = query.is('folder_id', null);
@@ -814,6 +824,55 @@ export async function getDocumentDownloadUrl(
   }
 
   return { url: signedData.signedUrl };
+}
+
+// ---------------------------------------------------------------------------
+// Documents UI permissions
+// ---------------------------------------------------------------------------
+
+export type DocumentsPermissions = {
+  canUpload: boolean;
+  canUpdateMetadata: boolean;
+  canDelete: boolean;
+  canManageFolders: boolean;
+};
+
+export async function getDocumentsPermissions(
+  projectId: string
+): Promise<DocumentsPermissions> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const allFalse: DocumentsPermissions = {
+    canUpload: false,
+    canUpdateMetadata: false,
+    canDelete: false,
+    canManageFolders: false,
+  };
+  if (!projectId?.trim()) return allFalse;
+
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (project?.owner_id === user.id) {
+    return {
+      canUpload: true,
+      canUpdateMetadata: true,
+      canDelete: true,
+      canManageFolders: true,
+    };
+  }
+
+  const granted = await getGrantedActions(user.id, projectId, true);
+  return {
+    canUpload: granted.has('documents.upload'),
+    canUpdateMetadata: granted.has('documents.update_metadata'),
+    canDelete: granted.has('documents.delete'),
+    canManageFolders: granted.has('documents.manage_folders'),
+  };
 }
 
 export async function touchDocument(fileId: string): Promise<void> {

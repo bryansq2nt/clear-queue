@@ -3,7 +3,8 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
-import { requireCan } from '@/lib/rbac/resolver';
+import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
+import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 import {
@@ -53,10 +54,18 @@ export const listProjectLinksAction = cache(
       .from('project_links')
       .select(PROJECT_LINKS_SELECT)
       .eq('project_id', pid)
-      .eq('owner_id', user.id)
       .order('pinned', { ascending: false })
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
+
+    const scope = await getReadScope(user.id, pid, 'links');
+    if (scope === 'own') {
+      query = query.eq('owner_id', user.id);
+    } else if (scope === 'team') {
+      const teamIds = await getTeamMemberIds(user.id, pid);
+      query = query.in('owner_id', teamIds);
+    }
+    // scope === 'project': no owner filter
 
     if (params?.category_id) {
       query = query.eq('category_id', params.category_id);
@@ -444,4 +453,53 @@ export async function reorderProjectLinksAction(
   revalidatePath(`/context/${pid}`);
   revalidatePath(`/context/${pid}/links`);
   return {};
+}
+
+// ---------------------------------------------------------------------------
+// Links UI permissions
+// ---------------------------------------------------------------------------
+
+export type LinksPermissions = {
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  canManageCategories: boolean;
+};
+
+export async function getLinksPermissions(
+  projectId: string
+): Promise<LinksPermissions> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const allFalse: LinksPermissions = {
+    canCreate: false,
+    canUpdate: false,
+    canDelete: false,
+    canManageCategories: false,
+  };
+  if (!projectId?.trim()) return allFalse;
+
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (project?.owner_id === user.id) {
+    return {
+      canCreate: true,
+      canUpdate: true,
+      canDelete: true,
+      canManageCategories: true,
+    };
+  }
+
+  const granted = await getGrantedActions(user.id, projectId, true);
+  return {
+    canCreate: granted.has('links.create'),
+    canUpdate: granted.has('links.update'),
+    canDelete: granted.has('links.delete'),
+    canManageCategories: granted.has('links.manage_categories'),
+  };
 }

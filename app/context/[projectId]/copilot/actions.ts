@@ -3,7 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
-import { requireCan } from '@/lib/rbac/resolver';
+import { requireCan, can } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import type {
@@ -588,6 +588,17 @@ export async function approveProposal(
 
   if (!capability) {
     return { error: `Unknown proposal type: ${type}` };
+  }
+
+  // RBAC gate: verify the user still holds the required action key at approval time.
+  const allowed = await can(user.id, capability.requiredAction, {
+    type: 'project',
+    projectId: proposalRow.project_id,
+  });
+  if (!allowed) {
+    return {
+      error: `Permission denied: you do not have '${capability.requiredAction}' in this project`,
+    };
   }
 
   const { entityId, error: actionError } = await capability.approve(

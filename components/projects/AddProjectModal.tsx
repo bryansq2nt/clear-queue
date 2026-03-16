@@ -3,7 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { createProject } from '@/app/actions/projects';
+import { setProjectModuleEnabled } from '@/app/actions/modules';
 import { getClients, getBusinessesByClientId } from '@/app/actions/clients';
+import {
+  ORDERED_MODULES,
+  MODULE_REGISTRY,
+  type ModuleKey,
+  type ModuleDefinition,
+} from '@/lib/modules/registry';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -69,12 +77,16 @@ export function AddProjectModal({
 }: AddProjectModalProps) {
   const { t } = useI18n();
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [category, setCategory] = useState<string>('business');
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string>('');
   const [businessId, setBusinessId] = useState<string>('');
   const [clients, setClients] = useState<Client[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [moduleOverrides, setModuleOverrides] = useState<
+    Map<ModuleKey, boolean>
+  >(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,6 +113,19 @@ export function AddProjectModal({
     });
   }, [clientId]);
 
+  function getModuleEnabled(mod: ModuleDefinition): boolean {
+    if (moduleOverrides.has(mod.key)) return moduleOverrides.get(mod.key)!;
+    return mod.defaultEnabled;
+  }
+
+  function toggleModule(key: ModuleKey, newValue: boolean) {
+    setModuleOverrides((prev) => {
+      const next = new Map(prev);
+      next.set(key, newValue);
+      return next;
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
@@ -109,6 +134,7 @@ export function AddProjectModal({
     const formData = new FormData();
     formData.append('name', name);
     formData.append('category', category);
+    if (description.trim()) formData.append('notes', description.trim());
     if (selectedColor) formData.append('color', selectedColor);
     if (clientId) formData.append('client_id', clientId);
     if (businessId) formData.append('business_id', businessId);
@@ -118,26 +144,49 @@ export function AddProjectModal({
     if (!result.ok) {
       setError(result.error);
       setIsLoading(false);
-    } else {
-      setName('');
-      setCategory('business');
-      setSelectedColor(null);
-      setClientId('');
-      setBusinessId('');
-      onProjectAdded();
-      onClose();
+      return;
     }
+
+    // Apply module overrides that differ from registry defaults
+    const projectId = result.data.id;
+    const overridesToApply = ORDERED_MODULES.filter((mod) => {
+      if (mod.lock) return false;
+      const override = moduleOverrides.get(mod.key);
+      return override !== undefined && override !== mod.defaultEnabled;
+    });
+
+    if (overridesToApply.length > 0) {
+      await Promise.all(
+        overridesToApply.map((mod) =>
+          setProjectModuleEnabled(
+            projectId,
+            mod.key,
+            moduleOverrides.get(mod.key)!
+          )
+        )
+      );
+    }
+
+    setName('');
+    setDescription('');
+    setCategory('business');
+    setSelectedColor(null);
+    setClientId('');
+    setBusinessId('');
+    setModuleOverrides(new Map());
+    onProjectAdded();
+    onClose();
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('projects.add_title')}</DialogTitle>
           <DialogDescription>{t('projects.add_description')}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
+          <div className="max-h-[60vh] overflow-y-auto space-y-4 py-4 pr-1">
             <div className="space-y-2">
               <Label htmlFor="name">{t('projects.project_name')}</Label>
               <Input
@@ -146,6 +195,19 @@ export function AddProjectModal({
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t('projects.project_name_placeholder')}
                 required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">
+                {t('projects.description_optional')}
+              </Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t('projects.description_placeholder')}
+                rows={3}
+                className="resize-none"
               />
             </div>
             <div className="space-y-2">
@@ -231,13 +293,54 @@ export function AddProjectModal({
                 ))}
               </div>
             </div>
+            <div className="space-y-3">
+              <div>
+                <Label>{t('projects.modules_label')}</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('projects.modules_hint')}
+                </p>
+              </div>
+              <div className="space-y-2">
+                {ORDERED_MODULES.map((mod) => {
+                  const Icon = MODULE_REGISTRY[mod.key].icon;
+                  const enabled = getModuleEnabled(mod);
+                  return (
+                    <label
+                      key={mod.key}
+                      className={`flex items-center gap-3 rounded-md border px-3 py-2 transition-colors ${
+                        mod.lock
+                          ? 'bg-muted/40 cursor-not-allowed opacity-60'
+                          : 'cursor-pointer hover:bg-muted/30'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={enabled}
+                        disabled={mod.lock}
+                        onChange={(e) =>
+                          toggleModule(mod.key, e.target.checked)
+                        }
+                        className="h-4 w-4 rounded border-gray-300 text-primary"
+                      />
+                      <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm flex-1">{t(mod.labelKey)}</span>
+                      {mod.lock && (
+                        <span className="text-xs text-muted-foreground">
+                          Always on
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
                 {error}
               </div>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               {t('common.cancel')}
             </Button>

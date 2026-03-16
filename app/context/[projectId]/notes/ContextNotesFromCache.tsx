@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getNotes } from '@/app/actions/notes';
+import { getNotes, type NotesPermissions } from '@/app/actions/notes';
 import { listFolders } from '@/app/actions/note-folders';
 import type { Database } from '@/lib/supabase/types';
 import { SkeletonNotes } from '@/components/skeletons/SkeletonNotes';
@@ -13,12 +13,14 @@ type NoteFolder = Database['public']['Tables']['project_note_folders']['Row'];
 
 interface ContextNotesFromCacheProps {
   projectId: string;
+  permissions: NotesPermissions;
   /** When opening with ?folderId=xxx or ?folderId=root, preselect that folder */
   initialFolderId?: string;
 }
 
 export default function ContextNotesFromCache({
   projectId,
+  permissions,
   initialFolderId,
 }: ContextNotesFromCacheProps) {
   const cache = useContextDataCache();
@@ -82,6 +84,7 @@ export default function ContextNotesFromCache({
       initialNotes={notes}
       initialFolders={folders}
       initialFolderId={initialFolderId}
+      permissions={permissions}
       onRefresh={loadData}
     />
   );

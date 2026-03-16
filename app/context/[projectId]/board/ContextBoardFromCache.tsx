@@ -1,14 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getBoardInitialData } from '@/app/actions/tasks';
+import {
+  getBoardInitialData,
+  type BoardPermissions,
+} from '@/app/actions/tasks';
 import type { BoardInitialData } from '@/lib/board';
+import type { TaskAssignee } from '@/components/board/AddTaskModal';
 import { SkeletonBoard } from '@/components/skeletons/SkeletonBoard';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextBoardClient from './ContextBoardClient';
 
 interface ContextBoardFromCacheProps {
   projectId: string;
+  permissions: BoardPermissions;
+  projectMembers?: TaskAssignee[];
+  currentUserId?: string;
 }
 
 /**
@@ -17,11 +24,23 @@ interface ContextBoardFromCacheProps {
  */
 export default function ContextBoardFromCache({
   projectId,
+  permissions,
+  projectMembers,
+  currentUserId,
 }: ContextBoardFromCacheProps) {
   const cache = useContextDataCache();
   const cached = cache.get<BoardInitialData>({ type: 'board', projectId });
-  const [data, setData] = useState<BoardInitialData | null>(cached ?? null);
-  const [loading, setLoading] = useState(!cached);
+
+  // If the cached data was fetched under a different read scope (e.g. the
+  // member's permissions were tightened since the last visit), discard it so
+  // we re-fetch with the current scope.
+  const cachedValid =
+    cached && cached.readScope === permissions.readScope ? cached : null;
+
+  const [data, setData] = useState<BoardInitialData | null>(
+    cachedValid ?? null
+  );
+  const [loading, setLoading] = useState(!cachedValid);
 
   const loadData = useCallback(async () => {
     cache.invalidate({ type: 'board', projectId });
@@ -32,11 +51,14 @@ export default function ContextBoardFromCache({
   }, [projectId, cache]);
 
   useEffect(() => {
-    if (cached) {
-      setData(cached);
+    if (cachedValid) {
+      setData(cachedValid);
       setLoading(false);
       return;
     }
+    // Cache miss or stale scope — always invalidate before re-fetching so we
+    // don't serve the old (wrong-scope) entry to the next navigation.
+    cache.invalidate({ type: 'board', projectId });
     let cancelled = false;
     setLoading(true);
     getBoardInitialData(projectId).then((next) => {
@@ -49,7 +71,8 @@ export default function ContextBoardFromCache({
     return () => {
       cancelled = true;
     };
-  }, [projectId, cached, cache]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   if (loading || !data) {
     return <SkeletonBoard />;
@@ -61,7 +84,10 @@ export default function ContextBoardFromCache({
       initialProject={data.project}
       initialCounts={data.counts}
       initialTasksByStatus={data.tasksByStatus}
+      permissions={permissions}
       onRefresh={loadData}
+      projectMembers={projectMembers}
+      currentUserId={currentUserId}
     />
   );
 }

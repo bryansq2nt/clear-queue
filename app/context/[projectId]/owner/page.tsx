@@ -1,5 +1,6 @@
 import { requireAuth } from '@/lib/auth';
 import { getCanViewModule } from '@/app/actions/modules';
+import { getOwnerPermissions } from '@/app/actions/clients';
 import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
 import ContextOwnerFromCache from './ContextOwnerFromCache';
 
@@ -11,7 +12,11 @@ export default async function ContextOwnerPage({
   await requireAuth();
   const { projectId } = params;
 
-  const { canView, reason } = await getCanViewModule(projectId, 'owner');
+  const [{ canView, reason }, permissions] = await Promise.all([
+    getCanViewModule(projectId, 'owner'),
+    getOwnerPermissions(projectId),
+  ]);
+
   if (!canView && reason) {
     return (
       <ModuleDisabledView
@@ -22,5 +27,7 @@ export default async function ContextOwnerPage({
     );
   }
 
-  return <ContextOwnerFromCache projectId={projectId} />;
+  return (
+    <ContextOwnerFromCache projectId={projectId} permissions={permissions} />
+  );
 }

@@ -61,6 +61,8 @@ interface KanbanBoardProps {
   onMoveError?: (params: MoveErrorParams) => void;
   /** When provided, edit success updates list without refresh */
   onTaskUpdated?: (updatedTask: Task) => void;
+  /** When provided, delete removes the task from parent state without refresh */
+  onTaskDeleted?: (taskId: string) => void;
   /** When provided, edit errors are reported here for parent to show MutationErrorDialog */
   onEditError?: (params: {
     message: string;
@@ -83,6 +85,12 @@ interface KanbanBoardProps {
     retry: () => Promise<{ data?: Task; error?: string }>;
     optimisticId?: string;
   }) => void;
+  /** Whether the current user can create tasks (controls per-column add buttons). */
+  canAdd?: boolean;
+  /** Project members available for task assignment. */
+  projectMembers?: Array<{ user_id: string; display_name: string }>;
+  /** Current user's ID — passed to modals for "Me" label. */
+  currentUserId?: string;
 }
 
 function TaskListForStatus({
@@ -95,8 +103,11 @@ function TaskListForStatus({
   selectedTaskIds,
   onToggleSelection,
   onTaskUpdated,
+  onTaskDeleted,
   onEditError,
   footer,
+  projectMembers,
+  currentUserId,
 }: {
   status: Task['status'];
   tasks: Task[];
@@ -107,12 +118,15 @@ function TaskListForStatus({
   selectedTaskIds: Set<string>;
   onToggleSelection?: (taskId: string) => void;
   onTaskUpdated?: (updatedTask: Task) => void;
+  onTaskDeleted?: (taskId: string) => void;
   onEditError?: (params: {
     message: string;
     previousTask: Task;
     retry: () => Promise<{ data?: Task; error?: string }>;
   }) => void;
   footer?: React.ReactNode;
+  projectMembers?: Array<{ user_id: string; display_name: string }>;
+  currentUserId?: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const taskIds = tasks.map((t) => t.id);
@@ -137,7 +151,10 @@ function TaskListForStatus({
                   project={projects.find((p) => p.id === task.project_id)}
                   onTaskUpdate={onTaskUpdate}
                   onTaskUpdated={onTaskUpdated}
+                  onTaskDeleted={onTaskDeleted}
                   onEditError={onEditError}
+                  projectMembers={projectMembers}
+                  currentUserId={currentUserId}
                   {...selectionProps}
                 />
               );
@@ -166,6 +183,7 @@ export default function KanbanBoard({
   onTasksChange,
   onMoveError,
   onTaskUpdated,
+  onTaskDeleted,
   onEditError,
   skipRevalidateOnMove,
   counts,
@@ -174,6 +192,9 @@ export default function KanbanBoard({
   onTaskAdded,
   onTaskConfirmed,
   onAddTaskError,
+  canAdd = true,
+  projectMembers,
+  currentUserId,
 }: KanbanBoardProps) {
   const { t } = useI18n();
   const [selectedTabState, setSelectedTabState] =
@@ -187,7 +208,11 @@ export default function KanbanBoard({
   const projectId =
     currentProjectId || (tasks.length > 0 ? tasks[0].project_id : '');
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks);
+  // Use dragOverride only during active drag operations so that non-drag
+  // task updates (e.g. assignment changes) are reflected immediately without
+  // a one-render stale lag.
+  const [dragOverride, setDragOverride] = useState<Task[] | null>(null);
+  const optimisticTasks = dragOverride ?? tasks;
   const [mobileListReady, setMobileListReady] = useState(false);
 
   useEffect(() => {
@@ -208,10 +233,6 @@ export default function KanbanBoard({
       },
     })
   );
-
-  useEffect(() => {
-    setOptimisticTasks(tasks);
-  }, [tasks]);
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(event.active.id as string);
@@ -257,7 +278,7 @@ export default function KanbanBoard({
       newStatus,
       newOrderIndex
     );
-    setOptimisticTasks(updated);
+    setDragOverride(updated);
     onTasksChange?.(updated);
 
     const revalidate = skipRevalidateOnMove !== true;
@@ -277,16 +298,19 @@ export default function KanbanBoard({
               revalidate,
             }),
           performRevert: () => {
-            setOptimisticTasks(tasks);
+            setDragOverride(null);
             onTasksChange?.(tasks);
           },
         });
       } else {
-        setOptimisticTasks(tasks);
+        setDragOverride(null);
         toastError('Failed to update task: ' + result.error);
       }
-    } else if (!onTasksChange) {
-      onTaskUpdate();
+    } else {
+      setDragOverride(null);
+      if (!onTasksChange) {
+        onTaskUpdate();
+      }
     }
   }
 
@@ -374,7 +398,10 @@ export default function KanbanBoard({
                       selectedTaskIds={selectedTaskIds}
                       onToggleSelection={onToggleSelection}
                       onTaskUpdated={onTaskUpdated}
+                      onTaskDeleted={onTaskDeleted}
                       onEditError={onEditError}
+                      projectMembers={projectMembers}
+                      currentUserId={currentUserId}
                       footer={
                         onLoadMore && hasMore ? (
                           isLoadingMore ? (
@@ -424,6 +451,7 @@ export default function KanbanBoard({
                 accordion={false}
                 onToggle={() => {}}
                 onTaskUpdated={onTaskUpdated}
+                onTaskDeleted={onTaskDeleted}
                 onEditError={onEditError}
                 totalCount={counts?.[status]}
                 onLoadMore={onLoadMore ? () => onLoadMore(status) : undefined}
@@ -431,6 +459,9 @@ export default function KanbanBoard({
                 onTaskAdded={onTaskAdded}
                 onTaskConfirmed={onTaskConfirmed}
                 onAddTaskError={onAddTaskError}
+                canAdd={canAdd}
+                projectMembers={projectMembers}
+                currentUserId={currentUserId}
               />
             );
           })}

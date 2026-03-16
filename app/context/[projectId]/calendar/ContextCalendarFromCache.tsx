@@ -1,14 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getProjectCalendarFeed } from '@/app/actions/calendar';
-import type { CalendarFeedItem } from '@/app/actions/calendar';
+import {
+  getProjectCalendarFeed,
+  type CalendarFeedItem,
+  type CalendarPermissions,
+} from '@/app/actions/calendar';
 import { SkeletonCalendar } from '@/components/skeletons/SkeletonCalendar';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextCalendarClient from './ContextCalendarClient';
 
 interface ContextCalendarFromCacheProps {
   projectId: string;
+  permissions: CalendarPermissions;
 }
 
 /** Range for a given month (year, month 0-11). */
@@ -30,6 +34,7 @@ function getMonthRangeFor(
 
 export default function ContextCalendarFromCache({
   projectId,
+  permissions,
 }: ContextCalendarFromCacheProps) {
   const cache = useContextDataCache();
   const cacheKey = useMemo(
@@ -104,6 +109,7 @@ export default function ContextCalendarFromCache({
       initialItems={items}
       start={range.start}
       end={range.end}
+      permissions={permissions}
       onRefresh={loadData}
       onLoadMonth={loadDataForMonth}
     />

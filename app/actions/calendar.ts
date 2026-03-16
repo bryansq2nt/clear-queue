@@ -3,7 +3,8 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
-import { requireCan } from '@/lib/rbac/resolver';
+import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
+import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -57,7 +58,7 @@ export const getProjectCalendarFeed = cache(
     start: string;
     end: string;
   }): Promise<CalendarFeedItem[]> => {
-    await requireAuth();
+    const user = await requireAuth();
     const supabase = await createClient();
 
     const projectId = input.projectId?.trim();
@@ -66,12 +67,24 @@ export const getProjectCalendarFeed = cache(
     const range = validateFeedRange(input.start, input.end);
     if (!range.ok) return [];
 
+    // Resolve read scope for the calendar module and build owner filter
+    const scope = await getReadScope(user.id, projectId, 'calendar');
+    let ownerIds: string[] | null;
+    if (scope === 'project') {
+      ownerIds = null; // no owner filter
+    } else if (scope === 'team') {
+      ownerIds = await getTeamMemberIds(user.id, projectId);
+    } else {
+      ownerIds = [user.id]; // 'own'
+    }
+
     const { data, error } = await supabase.rpc(
       'get_project_calendar_feed' as never,
       {
         p_project_id: projectId,
         p_start_date: range.start,
         p_end_date: range.end,
+        p_owner_ids: ownerIds,
       } as never
     );
 
@@ -381,4 +394,45 @@ export async function deleteCalendarEvent(
   const projectId = (existing as { project_id: string | null }).project_id;
   if (projectId) revalidateCalendarPaths(projectId);
   return { data: { project_id: projectId } };
+}
+
+// ---------------------------------------------------------------------------
+// Calendar UI permissions
+// ---------------------------------------------------------------------------
+
+export type CalendarPermissions = {
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+};
+
+export async function getCalendarPermissions(
+  projectId: string
+): Promise<CalendarPermissions> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const allFalse: CalendarPermissions = {
+    canCreate: false,
+    canUpdate: false,
+    canDelete: false,
+  };
+  if (!projectId?.trim()) return allFalse;
+
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (project?.owner_id === user.id) {
+    return { canCreate: true, canUpdate: true, canDelete: true };
+  }
+
+  const granted = await getGrantedActions(user.id, projectId, true);
+  return {
+    canCreate: granted.has('calendar.create'),
+    canUpdate: granted.has('calendar.update'),
+    canDelete: granted.has('calendar.delete'),
+  };
 }

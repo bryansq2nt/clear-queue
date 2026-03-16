@@ -29,6 +29,8 @@ import {
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
+export type TaskAssignee = { user_id: string; display_name: string };
+
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -44,6 +46,10 @@ interface AddTaskModalProps {
     retry: () => Promise<{ data?: Task; error?: string }>;
     optimisticId?: string;
   }) => void;
+  /** Project members available for assignment. */
+  projectMembers?: TaskAssignee[];
+  /** Current user's ID — shown as "Me" and sorted first in the assignee dropdown. */
+  currentUserId?: string;
 }
 
 export function AddTaskModal({
@@ -54,6 +60,8 @@ export function AddTaskModal({
   defaultProjectId,
   defaultStatus = 'next',
   onAddError,
+  projectMembers,
+  currentUserId,
 }: AddTaskModalProps) {
   const { t } = useI18n();
   const [title, setTitle] = useState('');
@@ -67,6 +75,7 @@ export function AddTaskModal({
   const [tags, setTags] = useState('');
   const [milestoneId, setMilestoneId] = useState<string>('');
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [assignedTo, setAssignedTo] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   /** Only used when onTaskConfirmed is not provided (legacy path: wait for server). */
   const [isLoading, setIsLoading] = useState(false);
@@ -103,6 +112,7 @@ export function AddTaskModal({
     const tagsNormalized = normalizeTagsForSave(tags);
     if (tagsNormalized) formData.append('tags', tagsNormalized);
     if (milestoneId) formData.append('milestone_id', milestoneId);
+    if (assignedTo) formData.append('assigned_to', assignedTo);
 
     const optimisticMode = !!onTaskConfirmed;
 
@@ -122,7 +132,8 @@ export function AddTaskModal({
         created_at: now,
         updated_at: now,
         milestone_id: milestoneId || null,
-      };
+        assigned_to: assignedTo || null,
+      } as any;
       onTaskAdded(optimisticTask);
       setTitle('');
       setStatus(defaultStatus);
@@ -131,6 +142,7 @@ export function AddTaskModal({
       setNotes('');
       setTags('');
       setMilestoneId('');
+      setAssignedTo('');
       onClose();
 
       createTask(formData).then((result) => {
@@ -172,6 +184,7 @@ export function AddTaskModal({
       setNotes('');
       setTags('');
       setMilestoneId('');
+      setAssignedTo('');
       const task = result.data as Task | undefined;
       if (task) onTaskAdded(task);
       onClose();
@@ -287,6 +300,39 @@ export function AddTaskModal({
                 </SelectContent>
               </Select>
             </div>
+            {projectMembers && projectMembers.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="assignee">{t('tasks.assignee_label')}</Label>
+                <Select
+                  value={assignedTo || 'none'}
+                  onValueChange={(v) => setAssignedTo(v === 'none' ? '' : v)}
+                >
+                  <SelectTrigger id="assignee">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      {t('tasks.unassigned')}
+                    </SelectItem>
+                    {currentUserId &&
+                      projectMembers.find(
+                        (m) => m.user_id === currentUserId
+                      ) && (
+                        <SelectItem key={currentUserId} value={currentUserId}>
+                          {t('tasks.me')}
+                        </SelectItem>
+                      )}
+                    {projectMembers
+                      .filter((m) => m.user_id !== currentUserId)
+                      .map((m) => (
+                        <SelectItem key={m.user_id} value={m.user_id}>
+                          {m.display_name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
                 {error}

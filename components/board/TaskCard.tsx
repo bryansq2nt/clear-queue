@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Database } from '@/lib/supabase/types';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { EditTaskModal, type EditTaskErrorParams } from './EditTaskModal';
+import type { TaskAssignee } from './AddTaskModal';
 import { useState } from 'react';
 import { Calendar, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,7 +23,10 @@ interface TaskCardProps {
   isSelected?: boolean;
   onToggleSelection?: (taskId: string) => void;
   onTaskUpdated?: (updatedTask: Task) => void;
+  onTaskDeleted?: (taskId: string) => void;
   onEditError?: (params: EditTaskErrorParams) => void;
+  projectMembers?: TaskAssignee[];
+  currentUserId?: string;
 }
 
 export default function TaskCard({
@@ -34,7 +38,10 @@ export default function TaskCard({
   isSelected = false,
   onToggleSelection,
   onTaskUpdated,
+  onTaskDeleted,
   onEditError,
+  projectMembers,
+  currentUserId,
 }: TaskCardProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
@@ -220,7 +227,10 @@ export default function TaskCard({
         onClose={() => setIsOpen(false)}
         onTaskUpdate={onTaskUpdate}
         onTaskUpdated={onTaskUpdated}
+        onTaskDeleted={onTaskDeleted}
         onEditError={onEditError}
+        projectMembers={projectMembers}
+        currentUserId={currentUserId}
       />
     </>
   );

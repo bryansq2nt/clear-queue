@@ -239,6 +239,7 @@ export const ideasCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_mind_map',
     icon: 'GitFork',
     cardVariant: 'graph',
+    requiredAction: 'ideas.create_board',
     promptDescription:
       'Create an idea board (mind map) with nodes and connections',
     examplePayload: {

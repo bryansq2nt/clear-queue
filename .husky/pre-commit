@@ -9,3 +9,6 @@ npm run typecheck
 
 # 3. Prettier format check (fails if any file is not formatted)
 npm run format:check
+
+# 4. SQL migration RLS audit (fails on recursive policies / INVOKER+RETURNING)
+bash scripts/check-migrations.sh

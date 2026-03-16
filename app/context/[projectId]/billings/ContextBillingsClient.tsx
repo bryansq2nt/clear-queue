@@ -12,6 +12,7 @@ import {
   type BillingWithRelations,
   type BillingCategory,
   type Billing,
+  type BillingsPermissions,
 } from '@/app/actions/billings';
 import { MutationErrorDialog } from '@/components/board/MutationErrorDialog';
 import {
@@ -36,6 +37,7 @@ interface ContextBillingsClientProps {
   initialClients: Client[];
   initialCategories: BillingCategory[];
   projectClientId?: string | null;
+  permissions: BillingsPermissions;
   onRefresh?: () => void | Promise<void>;
 }
 
@@ -91,6 +93,7 @@ export default function ContextBillingsClient({
   initialClients,
   initialCategories,
   projectClientId,
+  permissions,
   onRefresh,
 }: ContextBillingsClientProps) {
   const { t, formatCurrency } = useI18n();
@@ -332,7 +335,7 @@ export default function ContextBillingsClient({
   async function handleAddCategory() {
     if (!newCatName.trim()) return;
     setCatSaving(true);
-    const result = await createBillingCategory(newCatName.trim());
+    const result = await createBillingCategory(newCatName.trim(), projectId);
     setCatSaving(false);
     if (result.data) {
       setCategories((prev) => [...prev, result.data!]);
@@ -342,7 +345,7 @@ export default function ContextBillingsClient({
 
   async function handleDeleteCategory(categoryId: string) {
     setDeletingCatId(categoryId);
-    await deleteBillingCategory(categoryId);
+    await deleteBillingCategory(categoryId, projectId);
     setCategories((prev) => prev.filter((c) => c.id !== categoryId));
     setDeletingCatId(null);
   }
@@ -442,15 +445,17 @@ export default function ContextBillingsClient({
           </button>
         )}
 
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setCatModalOpen(true)}
-            className="text-xs border border-border rounded px-3 py-1.5 bg-background text-muted-foreground hover:text-foreground hover:bg-accent"
-          >
-            {t('billings.manage_categories')}
-          </button>
-        </div>
+        {permissions.canManageCategories && (
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCatModalOpen(true)}
+              className="text-xs border border-border rounded px-3 py-1.5 bg-background text-muted-foreground hover:text-foreground hover:bg-accent"
+            >
+              {t('billings.manage_categories')}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Billing table */}
@@ -528,49 +533,66 @@ export default function ContextBillingsClient({
                     {formatCurrency(Number(billing.amount))}
                   </td>
                   <td className="p-3">
-                    <select
-                      value={billing.status}
-                      onChange={(e) =>
-                        handleStatusChange(
-                          billing.id,
-                          e.target.value as Billing['status']
-                        )
-                      }
-                      className={cn(
-                        'px-2 py-1 rounded border border-border text-xs',
-                        STATUS_COLORS[billing.status]
-                      )}
-                    >
-                      <option value="pending">
-                        {t('billings.pending_status')}
-                      </option>
-                      <option value="paid">{t('billings.paid_status')}</option>
-                      <option value="overdue">
-                        {t('billings.overdue_status')}
-                      </option>
-                      <option value="cancelled">
-                        {t('billings.cancelled_status')}
-                      </option>
-                    </select>
+                    {permissions.canEdit ? (
+                      <select
+                        value={billing.status}
+                        onChange={(e) =>
+                          handleStatusChange(
+                            billing.id,
+                            e.target.value as Billing['status']
+                          )
+                        }
+                        className={cn(
+                          'px-2 py-1 rounded border border-border text-xs',
+                          STATUS_COLORS[billing.status]
+                        )}
+                      >
+                        <option value="pending">
+                          {t('billings.pending_status')}
+                        </option>
+                        <option value="paid">
+                          {t('billings.paid_status')}
+                        </option>
+                        <option value="overdue">
+                          {t('billings.overdue_status')}
+                        </option>
+                        <option value="cancelled">
+                          {t('billings.cancelled_status')}
+                        </option>
+                      </select>
+                    ) : (
+                      <span
+                        className={cn(
+                          'px-2 py-1 rounded border border-border text-xs',
+                          STATUS_COLORS[billing.status]
+                        )}
+                      >
+                        {t(`billings.${billing.status}_status`)}
+                      </span>
+                    )}
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(billing)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
-                        aria-label={t('common.edit')}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(billing)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        aria-label={t('common.delete')}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {permissions.canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => openEdit(billing)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
+                          aria-label={t('common.edit')}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {permissions.canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(billing)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label={t('common.delete')}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -581,14 +603,16 @@ export default function ContextBillingsClient({
       )}
 
       {/* FAB */}
-      <button
-        type="button"
-        onClick={openCreate}
-        aria-label={t('billings.new_charge')}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
+      {permissions.canCreate && (
+        <button
+          type="button"
+          onClick={openCreate}
+          aria-label={t('billings.new_charge')}
+          className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
 
       {/* ─── Create / Edit modal ─────────────────────────────────────────────── */}
       <Dialog

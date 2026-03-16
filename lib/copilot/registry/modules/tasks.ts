@@ -228,6 +228,7 @@ export const tasksCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_task',
     icon: 'CheckSquare',
     cardVariant: 'create',
+    requiredAction: 'tasks.create',
     promptDescription: 'Create a new task in the project board',
     examplePayload: {
       type: 'task',
@@ -250,6 +251,7 @@ export const tasksCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_delete_task',
     icon: 'Trash2',
     cardVariant: 'delete',
+    requiredAction: 'tasks.delete',
     promptDescription: 'Delete an existing task by its entity_id',
     examplePayload: {
       type: 'delete_task',
@@ -270,6 +272,7 @@ export const tasksCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_update_task',
     icon: 'Pencil',
     cardVariant: 'update',
+    requiredAction: 'tasks.create',
     promptDescription: 'Update fields of an existing task by its entity_id',
     examplePayload: {
       type: 'update_task',

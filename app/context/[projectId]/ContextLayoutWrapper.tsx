@@ -4,13 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProjectById } from '@/app/actions/projects';
 import {
-  getProjectModules,
-  getMyProjectAccessGrant,
-  getCanToggleModules,
-} from '@/app/actions/modules';
-import {
   getEnabledModuleKeys,
-  DEFAULT_MODULES,
   type ModuleKey,
   type SerializableResolvedModule,
 } from '@/lib/modules/registry';
@@ -25,6 +19,12 @@ type Project = Database['public']['Tables']['projects']['Row'];
 interface ContextLayoutWrapperProps {
   projectId: string;
   children: React.ReactNode;
+  // Server-fetched initial values — already correct for this user on first render,
+  // preventing the flash of all-modules-visible that occurs when the client falls
+  // back to DEFAULT_MODULES before the async fetch resolves.
+  initialModules: SerializableResolvedModule[];
+  initialAccessGrant: string[] | null;
+  initialCanToggle: boolean;
 }
 
 /**
@@ -35,6 +35,9 @@ interface ContextLayoutWrapperProps {
 export default function ContextLayoutWrapper({
   projectId,
   children,
+  initialModules,
+  initialAccessGrant,
+  initialCanToggle,
 }: ContextLayoutWrapperProps) {
   const cache = useContextDataCache();
   const router = useRouter();
@@ -67,18 +70,17 @@ export default function ContextLayoutWrapper({
     type: 'canToggleModules',
     projectId,
   });
-  // Initialize with DEFAULT_MODULES so tabs are visible immediately while
-  // the real DB state loads asynchronously in the background.
+  // Prefer cache (same session navigation), then fall back to server-provided
+  // initial props (correct for this user on first render — no flash).
   const [modules, setModules] = useState<SerializableResolvedModule[]>(
-    cachedModules ?? DEFAULT_MODULES
+    cachedModules ?? initialModules
   );
   const [myAllowedModules, setMyAllowedModules] = useState<
     string[] | null | undefined
-  >(cachedGrant);
+  >(cachedGrant !== undefined ? cachedGrant : initialAccessGrant);
   const [canToggleModules, setCanToggleModules] = useState<boolean>(
-    cachedCanToggle ?? false
+    cachedCanToggle ?? initialCanToggle
   );
-  const [modulesLoaded, setModulesLoaded] = useState(!!cachedModules);
 
   // ── Drawer state ───────────────────────────────────────────────
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -122,7 +124,9 @@ export default function ContextLayoutWrapper({
   }, [projectId, cached, cache, router]);
 
   // ── Module + access grant + canToggle load effect ───────────────
-  // Load together so tab visibility and settings toggles are correct.
+  // If the cache is already populated (same-session navigation), sync state
+  // from it. Otherwise populate the cache from server props we already have —
+  // no extra fetch needed on first visit.
   useEffect(() => {
     if (
       cachedModules &&
@@ -132,28 +136,15 @@ export default function ContextLayoutWrapper({
       setModules(cachedModules);
       setMyAllowedModules(cachedGrant);
       setCanToggleModules(cachedCanToggle);
-      setModulesLoaded(true);
-      return;
+    } else {
+      // Populate cache from server-provided initial props so subsequent
+      // same-session navigation hits the cache instead of re-fetching.
+      cache.set({ type: 'modules', projectId }, initialModules);
+      cache.set({ type: 'accessGrant', projectId }, initialAccessGrant);
+      cache.set({ type: 'canToggleModules', projectId }, initialCanToggle);
     }
-    let cancelled = false;
-    Promise.all([
-      getProjectModules(projectId),
-      getMyProjectAccessGrant(projectId),
-      getCanToggleModules(projectId),
-    ]).then(([resolved, grant, canToggle]) => {
-      if (cancelled) return;
-      cache.set({ type: 'modules', projectId }, resolved);
-      cache.set({ type: 'accessGrant', projectId }, grant);
-      cache.set({ type: 'canToggleModules', projectId }, canToggle);
-      setModules(resolved);
-      setMyAllowedModules(grant);
-      setCanToggleModules(canToggle);
-      setModulesLoaded(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId, cachedModules, cachedGrant, cachedCanToggle, cache]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   // ── Module update handler (called after toggle in drawer) ──────
   const handleModulesChange = useCallback(

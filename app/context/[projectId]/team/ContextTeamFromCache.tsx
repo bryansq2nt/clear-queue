@@ -10,6 +10,7 @@ import {
   listReusableInviteRoles,
 } from '@/app/actions/teams';
 import { getProjectById } from '@/app/actions/projects';
+import { listProjectTeams } from '@/app/actions/sub-teams';
 import type {
   ProjectMember,
   ProjectInvite,
@@ -17,6 +18,7 @@ import type {
   ProjectAccessProfile,
   InviteRole,
 } from '@/app/actions/teams';
+import type { ProjectTeam, SubTeamsPermissions } from '@/app/actions/sub-teams';
 import { SkeletonTeam } from '@/components/skeletons/SkeletonTeam';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextTeamClient from './ContextTeamClient';
@@ -29,13 +31,18 @@ type TeamData = {
   profiles: ProjectAccessProfile[];
   reusableRoles: InviteRole[];
   projectName: string;
+  teams: ProjectTeam[];
 };
 
 interface Props {
   projectId: string;
+  subTeamsPermissions: SubTeamsPermissions;
 }
 
-export default function ContextTeamFromCache({ projectId }: Props) {
+export default function ContextTeamFromCache({
+  projectId,
+  subTeamsPermissions,
+}: Props) {
   const cache = useContextDataCache();
   const cached = cache.get<TeamData>({ type: 'team', projectId });
   const [data, setData] = useState<TeamData | null>(cached ?? null);
@@ -54,6 +61,7 @@ export default function ContextTeamFromCache({ projectId }: Props) {
         profiles,
         reusableRoles,
         project,
+        teams,
       ] = await Promise.all([
         listProjectMembers(projectId),
         listPendingInvites(projectId),
@@ -62,6 +70,7 @@ export default function ContextTeamFromCache({ projectId }: Props) {
         listProjectAccessProfiles(projectId),
         listReusableInviteRoles(projectId),
         getProjectById(projectId),
+        listProjectTeams(projectId),
       ]);
       const next: TeamData = {
         members,
@@ -71,6 +80,7 @@ export default function ContextTeamFromCache({ projectId }: Props) {
         profiles,
         reusableRoles,
         projectName: project?.name ?? '',
+        teams,
       };
       cache.set({ type: 'team', projectId }, next);
       setData(next);
@@ -97,6 +107,7 @@ export default function ContextTeamFromCache({ projectId }: Props) {
       listProjectAccessProfiles(projectId),
       listReusableInviteRoles(projectId),
       getProjectById(projectId),
+      listProjectTeams(projectId),
     ])
       .then(
         ([
@@ -107,6 +118,7 @@ export default function ContextTeamFromCache({ projectId }: Props) {
           profiles,
           reusableRoles,
           project,
+          teams,
         ]) => {
           if (cancelled) return;
           const next: TeamData = {
@@ -117,6 +129,7 @@ export default function ContextTeamFromCache({ projectId }: Props) {
             profiles,
             reusableRoles,
             projectName: project?.name ?? '',
+            teams,
           };
           cache.set({ type: 'team', projectId }, next);
           setData(next);
@@ -163,6 +176,8 @@ export default function ContextTeamFromCache({ projectId }: Props) {
       roles={data.roles}
       profiles={data.profiles}
       reusableRoles={data.reusableRoles}
+      initialTeams={data.teams}
+      subTeamsPermissions={subTeamsPermissions}
       onRefresh={loadData}
     />
   );

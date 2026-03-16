@@ -1,4 +1,4 @@
-import { getBoardInitialData } from '@/app/actions/tasks';
+import { getBoardInitialData, getBoardPermissions } from '@/app/actions/tasks';
 import ContextBoardClient from './ContextBoardClient';
 
 /**
@@ -10,7 +10,10 @@ export default async function BoardContent({
 }: {
   projectId: string;
 }) {
-  const data = await getBoardInitialData(projectId);
+  const [data, permissions] = await Promise.all([
+    getBoardInitialData(projectId),
+    getBoardPermissions(projectId),
+  ]);
 
   if (!data) {
     return null;
@@ -22,6 +25,7 @@ export default async function BoardContent({
       initialProject={data.project}
       initialCounts={data.counts}
       initialTasksByStatus={data.tasksByStatus}
+      permissions={permissions}
     />
   );
 }

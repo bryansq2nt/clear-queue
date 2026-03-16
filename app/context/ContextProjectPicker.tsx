@@ -147,14 +147,6 @@ export default function ContextProjectPicker({
               <Plus className="w-4 h-4" />
               {t('sidebar.add_project')}
             </Button>
-            <AddProjectModal
-              isOpen={addProjectOpen}
-              onClose={() => setAddProjectOpen(false)}
-              onProjectAdded={() => {
-                setAddProjectOpen(false);
-                router.refresh();
-              }}
-            />
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl mx-auto">
@@ -222,6 +214,24 @@ export default function ContextProjectPicker({
           </div>
         )}
       </main>
+      {initialProjects.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setAddProjectOpen(true)}
+          aria-label={t('sidebar.add_project')}
+          className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
+      <AddProjectModal
+        isOpen={addProjectOpen}
+        onClose={() => setAddProjectOpen(false)}
+        onProjectAdded={() => {
+          setAddProjectOpen(false);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

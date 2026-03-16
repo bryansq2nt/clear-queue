@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
-import { requireCan } from '@/lib/rbac/resolver';
+import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import type {
@@ -357,4 +357,53 @@ export async function deleteMilestone(
     revalidatePath(`/context/${row.project_id}/milestones`);
   }
   return {};
+}
+
+// ---------------------------------------------------------------------------
+// Milestones UI permissions
+// ---------------------------------------------------------------------------
+
+export type MilestonesPermissions = {
+  canCreate: boolean;
+  canUpdate: boolean;
+  canComplete: boolean;
+  canDelete: boolean;
+};
+
+export async function getMilestonesPermissions(
+  projectId: string
+): Promise<MilestonesPermissions> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const allFalse: MilestonesPermissions = {
+    canCreate: false,
+    canUpdate: false,
+    canComplete: false,
+    canDelete: false,
+  };
+  if (!projectId?.trim()) return allFalse;
+
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (project?.owner_id === user.id) {
+    return {
+      canCreate: true,
+      canUpdate: true,
+      canComplete: true,
+      canDelete: true,
+    };
+  }
+
+  const granted = await getGrantedActions(user.id, projectId, true);
+  return {
+    canCreate: granted.has('milestones.create'),
+    canUpdate: granted.has('milestones.update'),
+    canComplete: granted.has('milestones.complete'),
+    canDelete: granted.has('milestones.delete'),
+  };
 }

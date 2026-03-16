@@ -160,7 +160,8 @@ async function approveDeleteTodoItem(
 export async function fetchTodosContext(
   projectId: string,
   scope: 'standard' | 'full',
-  supabase: any
+  supabase: any,
+  _ownerFilter: string[] | null
 ): Promise<string> {
   const { data: lists } = await supabase
     .from('todo_lists')
@@ -228,6 +229,7 @@ export const todosCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_todo_item',
     icon: 'ListTodo',
     cardVariant: 'create',
+    requiredAction: 'todos.create_item',
     promptDescription: 'Add a todo item to a project todo list',
     examplePayload: {
       type: 'todo_item',
@@ -250,6 +252,7 @@ export const todosCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_toggle_todo',
     icon: 'SquareCheck',
     cardVariant: 'update',
+    requiredAction: 'todos.toggle_item',
     promptDescription:
       'Toggle a todo item done/not-done by its entity_id — only available in full context mode',
     examplePayload: {
@@ -272,6 +275,7 @@ export const todosCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_delete_todo_item',
     icon: 'Trash2',
     cardVariant: 'delete',
+    requiredAction: 'todos.delete_item',
     promptDescription:
       'Delete a todo item by its entity_id — only available in full context mode',
     examplePayload: {

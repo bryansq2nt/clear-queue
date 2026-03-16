@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { updateTask, deleteTask } from '@/app/actions/tasks';
 import { listMilestones } from '@/app/actions/milestones';
 import type { Milestone } from '@/lib/milestones/schema';
+import type { TaskAssignee } from './AddTaskModal';
 import { Database } from '@/lib/supabase/types';
 import { normalizeTagsForSave } from '@/lib/board';
 import {
@@ -44,6 +45,12 @@ interface EditTaskModalProps {
   onTaskUpdated?: (updatedTask: Task) => void;
   /** When provided, save errors are reported here for parent to show MutationErrorDialog */
   onEditError?: (params: EditTaskErrorParams) => void;
+  /** When provided, delete success removes the task from parent state without a refresh */
+  onTaskDeleted?: (taskId: string) => void;
+  /** Project members available for assignment. */
+  projectMembers?: TaskAssignee[];
+  /** Current user's ID — shown as "Me" and sorted first in the assignee dropdown. */
+  currentUserId?: string;
 }
 
 export function EditTaskModal({
@@ -53,6 +60,9 @@ export function EditTaskModal({
   onTaskUpdate,
   onTaskUpdated,
   onEditError,
+  onTaskDeleted,
+  projectMembers,
+  currentUserId,
 }: EditTaskModalProps) {
   const { t } = useI18n();
   const [title, setTitle] = useState(task.title);
@@ -63,14 +73,21 @@ export function EditTaskModal({
   const [tags, setTags] = useState(task.tags || '');
   const [milestoneId, setMilestoneId] = useState<string>('');
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [assignedTo, setAssignedTo] = useState<string>(
+    (task as any).assigned_to ?? ''
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const taskWithMilestone = task as Task & { milestone_id?: string | null };
 
-  useEffect(() => {
-    if (isOpen && task) {
+  // Sync form fields from task before paint so there is no visible flash when opening.
+  // Deps use task.id (not the object reference) to avoid resetting mid-edit on re-renders.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    if (isOpen) {
       setTitle(task.title);
       setStatus(task.status);
       setPriority(task.priority.toString());
@@ -78,8 +95,11 @@ export function EditTaskModal({
       setNotes(task.notes || '');
       setTags(task.tags || '');
       setMilestoneId(taskWithMilestone.milestone_id ?? '');
+      setAssignedTo((task as any).assigned_to ?? '');
+      setDeleteConfirmPending(false);
     }
-  }, [isOpen, task, taskWithMilestone.milestone_id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, task.id, (task as any).assigned_to]);
 
   useEffect(() => {
     if (isOpen && task?.project_id) {
@@ -97,6 +117,7 @@ export function EditTaskModal({
     formData.append('notes', notes || '');
     formData.append('tags', normalizeTagsForSave(tags));
     if (milestoneId) formData.append('milestone_id', milestoneId);
+    formData.append('assigned_to', assignedTo || '');
     return formData;
   }
 
@@ -117,7 +138,8 @@ export function EditTaskModal({
         notes: notes || '',
         tags: normalizeTagsForSave(tags) || null,
         milestone_id: milestoneId || null,
-      };
+        assigned_to: assignedTo || null,
+      } as any;
       onTaskUpdated(optimisticTask);
       onClose();
     }
@@ -147,16 +169,19 @@ export function EditTaskModal({
   }
 
   async function handleDelete() {
-    if (!confirm(t('tasks.delete_confirm'))) return;
-
     setIsDeleting(true);
     const result = await deleteTask(task.id);
 
     if (result.error) {
       setError(result.error);
       setIsDeleting(false);
+      setDeleteConfirmPending(false);
     } else {
-      onTaskUpdate();
+      if (onTaskDeleted) {
+        onTaskDeleted(task.id);
+      } else {
+        onTaskUpdate();
+      }
       onClose();
     }
   }
@@ -285,6 +310,39 @@ export function EditTaskModal({
                 </SelectContent>
               </Select>
             </div>
+            {projectMembers && projectMembers.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="assignee">{t('tasks.assignee_label')}</Label>
+                <Select
+                  value={assignedTo || 'none'}
+                  onValueChange={(v) => setAssignedTo(v === 'none' ? '' : v)}
+                >
+                  <SelectTrigger id="assignee">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      {t('tasks.unassigned')}
+                    </SelectItem>
+                    {currentUserId &&
+                      projectMembers.find(
+                        (m) => m.user_id === currentUserId
+                      ) && (
+                        <SelectItem key={currentUserId} value={currentUserId}>
+                          {t('tasks.me')}
+                        </SelectItem>
+                      )}
+                    {projectMembers
+                      .filter((m) => m.user_id !== currentUserId)
+                      .map((m) => (
+                        <SelectItem key={m.user_id} value={m.user_id}>
+                          {m.display_name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
                 {error}
@@ -292,22 +350,50 @@ export function EditTaskModal({
             )}
           </div>
           <DialogFooter className="flex justify-between">
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? t('tasks.deleting') : t('tasks.delete_task')}
-            </Button>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
-                {t('common.cancel')}
+            {deleteConfirmPending ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-destructive font-medium">
+                  {t('tasks.delete_confirm')}
+                </span>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? t('tasks.deleting') : t('common.confirm')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDeleteConfirmPending(false)}
+                  disabled={isDeleting}
+                >
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => setDeleteConfirmPending(true)}
+                disabled={isLoading}
+              >
+                {t('tasks.delete_task')}
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? t('tasks.saving') : t('tasks.save_changes')}
-              </Button>
-            </div>
+            )}
+            {!deleteConfirmPending && (
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={onClose}>
+                  {t('common.cancel')}
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? t('tasks.saving') : t('tasks.save_changes')}
+                </Button>
+              </div>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>

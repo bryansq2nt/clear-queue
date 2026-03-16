@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
-import { requireCan } from '@/lib/rbac/resolver';
+import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -11,6 +11,7 @@ import {
   BOARD_STATUSES,
   INITIAL_TASKS_PER_COLUMN,
   type TaskStatus,
+  type TaskReadScope,
   type BoardInitialData,
 } from '@/lib/board';
 
@@ -22,7 +23,26 @@ type TaskWithProject = Database['public']['Tables']['tasks']['Row'] & {
 export async function createTask(formData: FormData) {
   const user = await requireAuth();
   const projectId = formData.get('project_id') as string;
-  await requireCan(user.id, 'tasks.create', { type: 'task', projectId });
+  const supabaseForPerm = await createClient();
+
+  // Use the same permission logic as getBoardPermissions (owner bypass → direct
+  // grant check) so the button and the action are always consistent.
+  // We intentionally skip the project_members gate here because the DB-level
+  // checks in create_task_atomic (is_project_member) and the tasks INSERT RLS
+  // provide defence-in-depth.
+  const { data: perm } = await (supabaseForPerm as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle();
+  if (perm?.owner_id !== user.id) {
+    const granted = await getGrantedActions(user.id, projectId, true);
+    if (!granted.has('tasks.create')) {
+      return {
+        error: "You don't have permission to create tasks in this project.",
+      };
+    }
+  }
 
   const supabase = await createClient();
   const title = formData.get('title') as string;
@@ -32,6 +52,9 @@ export async function createTask(formData: FormData) {
   const notes = formData.get('notes') as string | null;
   const tags = formData.get('tags') as string | null;
   const milestoneId = (formData.get('milestone_id') as string) || null;
+  // Default to creator when no assignee is chosen so the task always appears
+  // in the creator's own-scope view.
+  const assignedTo = (formData.get('assigned_to') as string) || user.id;
 
   const { data, error } = await supabase.rpc(
     'create_task_atomic' as never,
@@ -44,6 +67,7 @@ export async function createTask(formData: FormData) {
       in_notes: notes || null,
       in_tags: tags || null,
       in_milestone_id: milestoneId || null,
+      in_assigned_to: assignedTo,
     } as never
   );
 
@@ -77,25 +101,50 @@ export async function updateTask(id: string, formData: FormData) {
   const notes = formData.get('notes') as string | null;
   const tags = formData.get('tags') as string | null | undefined;
   const milestoneId = formData.get('milestone_id') as string | null | undefined;
+  const assignedTo = formData.get('assigned_to') as string | null | undefined;
 
-  // Resolve projectId for the permission check — prefer formData value, else look it up
-  const resolvedProjectId =
-    projectId ||
-    (
-      (
-        await (supabase as any)
-          .from('tasks')
-          .select('project_id')
-          .eq('id', id)
-          .maybeSingle()
-      ).data as { project_id?: string } | null
-    )?.project_id;
+  // Resolve projectId + created_by + assigned_to for the permission check in one query
+  const taskMeta = (
+    await (supabase as any)
+      .from('tasks')
+      .select('project_id, created_by, assigned_to')
+      .eq('id', id)
+      .maybeSingle()
+  ).data as {
+    project_id?: string;
+    created_by?: string | null;
+    assigned_to?: string | null;
+  } | null;
+
+  const resolvedProjectId = projectId || taskMeta?.project_id;
 
   if (resolvedProjectId) {
-    await requireCan(user.id, 'tasks.update_title', {
-      type: 'task',
-      projectId: resolvedProjectId,
-    });
+    const { data: proj } = await (supabase as any)
+      .from('projects')
+      .select('owner_id')
+      .eq('id', resolvedProjectId)
+      .maybeSingle();
+
+    if (proj?.owner_id !== user.id) {
+      const granted = await getGrantedActions(user.id, resolvedProjectId, true);
+      const isCreator = taskMeta?.created_by === user.id;
+      const isAssignee = taskMeta?.assigned_to === user.id;
+
+      // Permission rules (in priority order):
+      // 1. Has tasks.create + tasks.read.project  → manage all project tasks
+      // 2. Has tasks.create + tasks.read.team     → manage team tasks
+      // 3. Has tasks.create + (creator|assignee)  → manage own tasks
+      // 4. Has tasks.assign                       → can update assignment
+      const canEdit =
+        (granted.has('tasks.create') && granted.has('tasks.read.project')) ||
+        (granted.has('tasks.create') && granted.has('tasks.read.team')) ||
+        (granted.has('tasks.create') && (isCreator || isAssignee)) ||
+        granted.has('tasks.assign');
+
+      if (!canEdit) {
+        return { error: "You don't have permission to edit this task." };
+      }
+    }
   }
 
   const updates: TaskUpdate & { milestone_id?: string | null } = {};
@@ -107,6 +156,8 @@ export async function updateTask(id: string, formData: FormData) {
   if (notes !== undefined) updates.notes = notes || null;
   if (tags !== undefined) updates.tags = tags || null;
   if (milestoneId !== undefined) updates.milestone_id = milestoneId || null;
+  if (assignedTo !== undefined)
+    (updates as any).assigned_to = assignedTo || null;
 
   const { data, error } = await supabase
     .from('tasks')
@@ -137,15 +188,37 @@ export async function deleteTask(id: string) {
 
   const { data: task } = await (supabase as any)
     .from('tasks')
-    .select('project_id')
+    .select('project_id, created_by, assigned_to')
     .eq('id', id)
     .maybeSingle();
-  const taskProjectId = (task as { project_id?: string } | null)?.project_id;
+  const taskMeta = task as {
+    project_id?: string;
+    created_by?: string | null;
+    assigned_to?: string | null;
+  } | null;
+  const taskProjectId = taskMeta?.project_id;
   if (taskProjectId) {
-    await requireCan(user.id, 'tasks.delete', {
-      type: 'task',
-      projectId: taskProjectId,
-    });
+    const { data: proj } = await (supabase as any)
+      .from('projects')
+      .select('owner_id')
+      .eq('id', taskProjectId)
+      .maybeSingle();
+
+    if (proj?.owner_id !== user.id) {
+      const granted = await getGrantedActions(user.id, taskProjectId, true);
+      const isCreator = taskMeta?.created_by === user.id;
+      const isAssignee = taskMeta?.assigned_to === user.id;
+
+      const canDelete =
+        (granted.has('tasks.create') && granted.has('tasks.read.project')) ||
+        (granted.has('tasks.create') && granted.has('tasks.read.team')) ||
+        (granted.has('tasks.create') && (isCreator || isAssignee)) ||
+        granted.has('tasks.delete');
+
+      if (!canDelete) {
+        return { error: "You don't have permission to delete this task." };
+      }
+    }
   }
 
   const { error } = await supabase.from('tasks').delete().eq('id', id);
@@ -208,7 +281,7 @@ export async function deleteTasksByIds(ids: string[]) {
 }
 
 const TASK_COLS =
-  'id, project_id, title, status, priority, due_date, notes, tags, order_index, milestone_id, created_at, updated_at';
+  'id, project_id, title, status, priority, due_date, notes, tags, order_index, milestone_id, assigned_to, created_by, created_at, updated_at';
 const PROJECT_COLS =
   'id, name, color, category, notes, owner_id, client_id, business_id, created_at, updated_at';
 
@@ -255,18 +328,31 @@ export const getTasksByProjectId = cache(async (projectId: string) => {
   return (data || []) as Database['public']['Tables']['tasks']['Row'][];
 });
 
-/** Count of tasks per status for a project (scoped by project_id; RLS enforces ownership). */
+/** Count of tasks per status for a project, respecting the user's read scope. */
 export const getBoardCountsByStatus = cache(
   async (projectId: string): Promise<Record<TaskStatus, number>> => {
-    await requireAuth();
+    const user = await requireAuth();
     const supabase = await createClient();
+    const { readScope } = await getBoardPermissions(projectId);
+
+    let colleagueIds: string[] = [];
+    if (readScope === 'team') {
+      colleagueIds = await getTeamColleagueIds(projectId, user.id);
+    }
+
     const counts = await Promise.all(
       BOARD_STATUSES.map(async (status) => {
-        const { count, error } = await supabase
+        let q = supabase
           .from('tasks')
           .select('id', { count: 'exact', head: true })
           .eq('project_id', projectId)
           .eq('status', status);
+        if (readScope === 'own') {
+          q = (q as any).eq('assigned_to', user.id);
+        } else if (readScope === 'team') {
+          q = (q as any).in('assigned_to', colleagueIds);
+        }
+        const { count, error } = await q;
         if (error) return { status, count: 0 };
         return { status, count: count ?? 0 };
       })
@@ -279,24 +365,33 @@ export const getBoardCountsByStatus = cache(
   }
 );
 
-/** Paginated tasks for one column (status). Order by order_index. */
+/** Paginated tasks for one column (status), respecting the user's read scope. */
 export async function getTasksByProjectIdPaginated(
   projectId: string,
   status: TaskStatus,
   offset: number,
   limit: number
 ): Promise<Database['public']['Tables']['tasks']['Row'][]> {
-  await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
-  const from = offset;
-  const to = offset + limit - 1;
-  const { data, error } = await supabase
+  const { readScope } = await getBoardPermissions(projectId);
+
+  let q = supabase
     .from('tasks')
     .select(TASK_COLS)
     .eq('project_id', projectId)
-    .eq('status', status)
+    .eq('status', status);
+
+  if (readScope === 'own') {
+    q = (q as any).eq('assigned_to', user.id);
+  } else if (readScope === 'team') {
+    const colleagueIds = await getTeamColleagueIds(projectId, user.id);
+    q = (q as any).in('assigned_to', colleagueIds);
+  }
+
+  const { data, error } = await q
     .order('order_index', { ascending: true })
-    .range(from, to);
+    .range(offset, offset + limit - 1);
   if (error) return [];
   return (data || []) as Database['public']['Tables']['tasks']['Row'][];
 }
@@ -307,6 +402,8 @@ export const getBoardInitialData = cache(
     const { getProjectById } = await import('@/app/actions/projects');
     const project = await getProjectById(projectId);
     if (!project) return null;
+
+    const { readScope } = await getBoardPermissions(projectId);
 
     const [counts, ...tasksPerStatus] = await Promise.all([
       getBoardCountsByStatus(projectId),
@@ -328,7 +425,7 @@ export const getBoardInitialData = cache(
       tasksByStatus[status] = tasksPerStatus[i] ?? [];
     });
 
-    return { project, counts, tasksByStatus };
+    return { project, counts, tasksByStatus, readScope };
   }
 );
 
@@ -463,3 +560,89 @@ export async function updateTaskOrder(
   }
   return { success: true };
 }
+
+// ---------------------------------------------------------------------------
+// Board UI permissions
+// ---------------------------------------------------------------------------
+
+export type BoardPermissions = {
+  canCreate: boolean;
+  /** Whether the user can assign tasks to other members. */
+  canAssign: boolean;
+  /** Determines which tasks the user can see. */
+  readScope: TaskReadScope;
+};
+
+function resolveTaskReadScope(granted: Set<string>): TaskReadScope {
+  if (granted.has('tasks.read.project') || granted.has('tasks.read'))
+    return 'project';
+  if (granted.has('tasks.read.team')) return 'team';
+  if (granted.has('tasks.read.own')) return 'own';
+  return 'project'; // safe default (project owners bypass this path)
+}
+
+/**
+ * Returns the user IDs of all members who share a sub-team with the given user
+ * in the project (includes the user themselves). Returns [userId] if the user
+ * is not in any sub-team.
+ */
+const getTeamColleagueIds = cache(
+  async (projectId: string, userId: string): Promise<string[]> => {
+    const supabase = await createClient();
+
+    const { data: myTeams } = await (supabase as any)
+      .from('project_team_members')
+      .select('team_id, project_teams!inner(project_id)')
+      .eq('user_id', userId)
+      .eq('project_teams.project_id', projectId);
+
+    if (!myTeams?.length) return [userId];
+
+    const teamIds = myTeams.map((m: any) => m.team_id as string);
+
+    const { data: colleagues } = await (supabase as any)
+      .from('project_team_members')
+      .select('user_id')
+      .in('team_id', teamIds);
+
+    const ids = new Set<string>([userId]);
+    for (const c of colleagues ?? []) ids.add(c.user_id as string);
+    return [...ids];
+  }
+);
+
+/**
+ * Returns RBAC-gated board permissions for the current user.
+ * Project owners always get all permissions at project scope.
+ * Cached per projectId within a request.
+ */
+export const getBoardPermissions = cache(
+  async (projectId: string): Promise<BoardPermissions> => {
+    const user = await requireAuth();
+    const supabase = await createClient();
+
+    const allFalse: BoardPermissions = {
+      canCreate: false,
+      canAssign: false,
+      readScope: 'own',
+    };
+    if (!projectId?.trim()) return allFalse;
+
+    const { data: project } = await (supabase as any)
+      .from('projects')
+      .select('owner_id')
+      .eq('id', projectId)
+      .maybeSingle();
+
+    if (project?.owner_id === user.id) {
+      return { canCreate: true, canAssign: true, readScope: 'project' };
+    }
+
+    const granted = await getGrantedActions(user.id, projectId, true);
+    return {
+      canCreate: granted.has('tasks.create'),
+      canAssign: granted.has('tasks.assign'),
+      readScope: resolveTaskReadScope(granted),
+    };
+  }
+);

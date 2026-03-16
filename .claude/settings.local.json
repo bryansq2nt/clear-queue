@@ -44,7 +44,15 @@
       "Bash(ls:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(for m:*)",
+      "Bash(do echo:*)",
+      "Read(//Users/mutechlabs/development/clear-queue/app/context/[projectId]/$m/**)",
+      "Bash(done)",
+      "Bash(tail:*)",
+      "Bash(chmod:*)",
+      "Bash(python3:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

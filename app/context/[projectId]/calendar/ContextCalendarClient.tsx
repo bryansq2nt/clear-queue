@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { CalendarFeedItem } from '@/app/actions/calendar';
+import type {
+  CalendarFeedItem,
+  CalendarPermissions,
+} from '@/app/actions/calendar';
 import { deleteCalendarEvent } from '@/app/actions/calendar';
 import { CalendarMonthGrid } from '@/components/context/calendar/CalendarMonthGrid';
 import { CalendarDayDialog } from '@/components/context/calendar/CalendarDayDialog';
@@ -16,6 +19,7 @@ interface ContextCalendarClientProps {
   initialItems: CalendarFeedItem[];
   start: string;
   end: string;
+  permissions: CalendarPermissions;
   onRefresh?: () => void | Promise<void>;
   onLoadMonth?: (year: number, month: number) => void | Promise<void>;
 }
@@ -25,6 +29,7 @@ export default function ContextCalendarClient({
   initialItems,
   start,
   end,
+  permissions,
   onRefresh,
   onLoadMonth,
 }: ContextCalendarClientProps) {
@@ -159,28 +164,32 @@ export default function ContextCalendarClient({
         onOpenChange={setDayDialogOpen}
         dateKey={selectedDateKey ?? ''}
         items={itemsForSelectedDay}
-        onAddEvent={handleAddEventForDay}
-        onEditEvent={handleEditEvent}
-        onDeleteEvent={handleDeleteEvent}
+        onAddEvent={permissions.canCreate ? handleAddEventForDay : undefined}
+        onEditEvent={permissions.canUpdate ? handleEditEvent : undefined}
+        onDeleteEvent={permissions.canDelete ? handleDeleteEvent : undefined}
       />
 
-      <CreateEventDialog
-        open={createOpen}
-        onOpenChange={handleCreateOpenChange}
-        projectId={projectId}
-        defaultDateKey={defaultDateKeyForCreate}
-        onSuccess={handleCreateSuccess}
-        onError={setMutationError}
-      />
+      {permissions.canCreate && (
+        <CreateEventDialog
+          open={createOpen}
+          onOpenChange={handleCreateOpenChange}
+          projectId={projectId}
+          defaultDateKey={defaultDateKeyForCreate}
+          onSuccess={handleCreateSuccess}
+          onError={setMutationError}
+        />
+      )}
 
-      <CreateEventDialog
-        open={editingEventId !== null}
-        onOpenChange={(open) => !open && setEditingEventId(null)}
-        projectId={projectId}
-        eventId={editingEventId}
-        onSuccess={handleEditSuccess}
-        onError={setMutationError}
-      />
+      {permissions.canUpdate && (
+        <CreateEventDialog
+          open={editingEventId !== null}
+          onOpenChange={(open) => !open && setEditingEventId(null)}
+          projectId={projectId}
+          eventId={editingEventId}
+          onSuccess={handleEditSuccess}
+          onError={setMutationError}
+        />
+      )}
     </div>
   );
 }

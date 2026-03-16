@@ -22,6 +22,7 @@ type Client = Database['public']['Tables']['clients']['Row'];
 
 interface EditClientModalProps {
   client: Client | null;
+  projectId: string;
   isOpen: boolean;
   onClose: () => void;
   onUpdated?: () => void;
@@ -29,6 +30,7 @@ interface EditClientModalProps {
 
 export function EditClientModal({
   client,
+  projectId,
   isOpen,
   onClose,
   onUpdated,
@@ -70,7 +72,7 @@ export function EditClientModal({
     formData.set('gender', gender === 'not_specified' ? '' : gender);
     formData.set('phone', phone?.trim() || '');
     setIsSubmitting(true);
-    const result = await updateClientAction(client.id, formData);
+    const result = await updateClientAction(client.id, projectId, formData);
     setIsSubmitting(false);
     if (result.error) {
       setError(result.error);

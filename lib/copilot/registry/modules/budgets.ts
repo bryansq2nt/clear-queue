@@ -26,17 +26,32 @@ const BUDGET_ITEM_STATUSES = new Set(['pending', 'quoted', 'acquired']);
 
 // ─── Context fetcher ──────────────────────────────────────────────────────────
 
+/**
+ * @param ownerFilter  null = project scope (no owner filter);
+ *                     string[] = restrict to these owner IDs (own or team scope).
+ *                     Resolved by buildProjectContext before this call.
+ */
 export async function fetchBudgetsContext(
   projectId: string,
   scope: 'standard' | 'full',
-  supabase: any
+  supabase: any,
+  ownerFilter: string[] | null
 ): Promise<string> {
   // 1. Fetch budgets for this project
-  const { data: budgetsData } = await supabase
+  let budgetsQuery = supabase
     .from('budgets')
     .select('id, name')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false });
+
+  if (ownerFilter !== null) {
+    budgetsQuery =
+      ownerFilter.length === 1
+        ? budgetsQuery.eq('owner_id', ownerFilter[0])
+        : budgetsQuery.in('owner_id', ownerFilter);
+  }
+
+  const { data: budgetsData } = await budgetsQuery;
 
   const budgets = (budgetsData ?? []) as { id: string; name: string }[];
   if (budgets.length === 0) return '## Budgets\n- No budgets yet.';
@@ -694,6 +709,7 @@ export const budgetsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_budget',
     icon: 'Wallet',
     cardVariant: 'create',
+    requiredAction: 'budgets.create',
     promptDescription: 'Create a new budget for the project',
     examplePayload: {
       type: 'budget',
@@ -710,6 +726,7 @@ export const budgetsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_update_budget',
     icon: 'Pencil',
     cardVariant: 'update',
+    requiredAction: 'budgets.update',
     promptDescription:
       'Update name, description or project of a budget by entity_id',
     examplePayload: {
@@ -728,6 +745,7 @@ export const budgetsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_delete_budget',
     icon: 'Trash2',
     cardVariant: 'delete',
+    requiredAction: 'budgets.delete',
     promptDescription: 'Delete a budget by entity_id',
     examplePayload: {
       type: 'delete_budget',
@@ -744,6 +762,7 @@ export const budgetsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_budget_category',
     icon: 'Folder',
     cardVariant: 'create',
+    requiredAction: 'budgets.manage_categories',
     promptDescription:
       'Create a category inside a budget (budget_id from Budgets section in full scope)',
     examplePayload: {
@@ -762,6 +781,7 @@ export const budgetsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_update_budget_category',
     icon: 'Pencil',
     cardVariant: 'update',
+    requiredAction: 'budgets.manage_categories',
     promptDescription: 'Update a budget category by entity_id',
     examplePayload: {
       type: 'update_budget_category',
@@ -779,6 +799,7 @@ export const budgetsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_delete_budget_category',
     icon: 'Trash2',
     cardVariant: 'delete',
+    requiredAction: 'budgets.manage_categories',
     promptDescription: 'Delete a budget category by entity_id',
     examplePayload: {
       type: 'delete_budget_category',
@@ -795,6 +816,7 @@ export const budgetsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_budget_item',
     icon: 'ListTodo',
     cardVariant: 'create',
+    requiredAction: 'budgets.manage_items',
     promptDescription:
       'Create an item inside a budget category (category_id from Budgets section in full scope)',
     examplePayload: {
@@ -815,6 +837,7 @@ export const budgetsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_update_budget_item',
     icon: 'Pencil',
     cardVariant: 'update',
+    requiredAction: 'budgets.manage_items',
     promptDescription: 'Update a budget item by entity_id',
     examplePayload: {
       type: 'update_budget_item',
@@ -832,6 +855,7 @@ export const budgetsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_delete_budget_item',
     icon: 'Trash2',
     cardVariant: 'delete',
+    requiredAction: 'budgets.manage_items',
     promptDescription: 'Delete a budget item by entity_id',
     examplePayload: {
       type: 'delete_budget_item',

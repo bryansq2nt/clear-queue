@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
+import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -122,7 +123,8 @@ export async function getMedia(
   const limit = options.limit ?? MEDIA_PAGE_SIZE;
   const ascending = options.sortOrder === 'asc';
 
-  // Scope by project only — access is gated by getCanViewModule + RLS on project_files.
+  const scope = await getReadScope(user.id, pid, 'media');
+
   let query = supabase
     .from('project_files')
     .select(MEDIA_FILE_COLS)
@@ -131,6 +133,14 @@ export async function getMedia(
     .is('deleted_at', null)
     .order('created_at', { ascending })
     .range(offset, offset + limit);
+
+  if (scope === 'own') {
+    query = query.eq('owner_id', user.id);
+  } else if (scope === 'team') {
+    const teamIds = await getTeamMemberIds(user.id, pid);
+    query = query.in('owner_id', teamIds);
+  }
+  // scope === 'project': no owner filter
 
   if (!options.includeArchived) {
     query = query.is('archived_at', null);

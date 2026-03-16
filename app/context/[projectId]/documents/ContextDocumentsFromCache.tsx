@@ -1,7 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getDocuments } from '@/app/actions/documents';
+import {
+  getDocuments,
+  type DocumentsPermissions,
+} from '@/app/actions/documents';
 import { listFolders } from '@/app/actions/document-folders';
 import type { Database } from '@/lib/supabase/types';
 import { SkeletonDocuments } from '@/components/skeletons/SkeletonDocuments';
@@ -14,10 +17,12 @@ type DocumentFolder =
 
 interface ContextDocumentsFromCacheProps {
   projectId: string;
+  permissions: DocumentsPermissions;
 }
 
 export default function ContextDocumentsFromCache({
   projectId,
+  permissions,
 }: ContextDocumentsFromCacheProps) {
   const cache = useContextDataCache();
   const cachedDocs = cache.get<ProjectFile[]>({ type: 'documents', projectId });
@@ -80,6 +85,7 @@ export default function ContextDocumentsFromCache({
       projectId={projectId}
       initialDocuments={documents}
       initialFolders={folders}
+      permissions={permissions}
       onRefresh={loadData}
     />
   );

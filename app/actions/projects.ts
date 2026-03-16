@@ -76,6 +76,7 @@ export async function createProject(
     return { ok: false, error: 'Project name is required' };
   }
 
+  const notes = (formData.get('notes') as string)?.trim() || null;
   const client_id = (formData.get('client_id') as string)?.trim() || null;
   const business_id = (formData.get('business_id') as string)?.trim() || null;
 
@@ -122,6 +123,16 @@ export async function createProject(
   }
 
   const createdProject = data as ProjectRow;
+
+  // Save description (stored in `notes` column) if provided — RPC doesn't accept it
+  if (notes) {
+    await supabase
+      .from('projects')
+      .update({ notes } as never)
+      .eq('id', createdProject.id)
+      .eq('owner_id', user.id);
+  }
+
   void logAuditEvent({
     actorUserId: user.id,
     action: 'project.created',

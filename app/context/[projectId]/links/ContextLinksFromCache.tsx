@@ -1,7 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { listProjectLinksAction, listLinkCategoriesAction } from './actions';
+import {
+  listProjectLinksAction,
+  listLinkCategoriesAction,
+  type LinksPermissions,
+} from './actions';
 import type { Database } from '@/lib/supabase/types';
 import { SkeletonLinks } from '@/components/skeletons/SkeletonLinks';
 import { useContextDataCache } from '../../ContextDataCache';
@@ -12,10 +16,12 @@ type LinkCategoryRow = Database['public']['Tables']['link_categories']['Row'];
 
 interface ContextLinksFromCacheProps {
   projectId: string;
+  permissions: LinksPermissions;
 }
 
 export default function ContextLinksFromCache({
   projectId,
+  permissions,
 }: ContextLinksFromCacheProps) {
   const cache = useContextDataCache();
   const cachedLinks = cache.get<ProjectLinkRow[]>({ type: 'links', projectId });
@@ -99,6 +105,7 @@ export default function ContextLinksFromCache({
       projectId={projectId}
       initialLinks={links}
       initialCategories={categories}
+      permissions={permissions}
       onRefresh={loadData}
       onCategoriesCacheUpdate={updateCategoriesCache}
     />

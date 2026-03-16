@@ -26,6 +26,12 @@ export interface CopilotModuleCapability {
   icon: string;
   /** Card visual variant — drives border color and button style. */
   cardVariant: 'create' | 'delete' | 'update' | 'graph';
+  /**
+   * RBAC action key that the user must hold to approve this proposal.
+   * Checked in the dispatcher before calling `approve`. Uses `can()` from resolver.
+   * Example: 'tasks.create', 'notes.delete', 'billings.update_description'.
+   */
+  requiredAction: string;
   /** One-line description included in the AI system prompt. */
   promptDescription: string;
   /** Canonical example payload shown to the AI in the system prompt. */

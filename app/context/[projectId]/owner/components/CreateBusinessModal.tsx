@@ -20,6 +20,7 @@ type Client = Database['public']['Tables']['clients']['Row'];
 type Business = Database['public']['Tables']['businesses']['Row'];
 
 interface CreateBusinessModalProps {
+  projectId: string;
   /** When set (e.g. from client detail page), client is fixed and dropdown is hidden. When undefined (e.g. from businesses list), show client dropdown. */
   clientId?: string;
   isOpen: boolean;
@@ -29,6 +30,7 @@ interface CreateBusinessModalProps {
 }
 
 export function CreateBusinessModal({
+  projectId,
   clientId: fixedClientId,
   isOpen,
   onClose,
@@ -58,7 +60,7 @@ export function CreateBusinessModal({
     const form = e.currentTarget;
     const formData = new FormData(form);
     setIsSubmitting(true);
-    const result = await createBusinessAction(clientId, formData);
+    const result = await createBusinessAction(clientId, projectId, formData);
     setIsSubmitting(false);
     if (result.error) {
       setError(result.error);

@@ -10,6 +10,7 @@ import {
   deleteDocuments,
   touchDocument,
   updateDocument,
+  type DocumentsPermissions,
 } from '@/app/actions/documents';
 import { deleteFolders } from '@/app/actions/document-folders';
 import { DocumentRow } from '@/components/context/documents/DocumentRow';
@@ -81,6 +82,7 @@ interface ContextDocumentsClientProps {
   projectId: string;
   initialDocuments: ProjectFile[];
   initialFolders: DocumentFolder[];
+  permissions: DocumentsPermissions;
   onRefresh?: () => void | Promise<void>;
 }
 
@@ -88,6 +90,7 @@ export default function ContextDocumentsClient({
   projectId,
   initialDocuments,
   initialFolders,
+  permissions,
   onRefresh,
 }: ContextDocumentsClientProps) {
   const { t } = useI18n();
@@ -547,7 +550,7 @@ export default function ContextDocumentsClient({
                 {t('documents.folders_section')}
               </h2>
               <div className="flex items-center gap-2">
-                {folders.length > 0 && (
+                {folders.length > 0 && permissions.canManageFolders && (
                   <button
                     type="button"
                     onClick={() => setFolderSelectionMode(true)}
@@ -557,14 +560,16 @@ export default function ContextDocumentsClient({
                     {t('documents.folder_select_mode')}
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setIsCreateFolderOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
-                >
-                  <FolderPlus className="w-4 h-4" />
-                  {t('documents.new_folder')}
-                </button>
+                {permissions.canManageFolders && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateFolderOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
+                  >
+                    <FolderPlus className="w-4 h-4" />
+                    {t('documents.new_folder')}
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -851,27 +856,31 @@ export default function ContextDocumentsClient({
                 )}
                 {selectedDocumentIds.size > 0 && (
                   <>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => setIsMoveDialogOpen(true)}
-                      className="gap-1.5"
-                    >
-                      <Move className="w-4 h-4" />
-                      {t('documents.move_to_folder')} (
-                      {selectedDocumentIds.size})
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setIsDeleteDocsOpen(true)}
-                      disabled={isDeletingDocs}
-                      className="gap-1.5"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      {t('documents.delete_selected')} (
-                      {selectedDocumentIds.size})
-                    </Button>
+                    {permissions.canUpdateMetadata && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => setIsMoveDialogOpen(true)}
+                        className="gap-1.5"
+                      >
+                        <Move className="w-4 h-4" />
+                        {t('documents.move_to_folder')} (
+                        {selectedDocumentIds.size})
+                      </Button>
+                    )}
+                    {permissions.canDelete && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setIsDeleteDocsOpen(true)}
+                        disabled={isDeletingDocs}
+                        className="gap-1.5"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        {t('documents.delete_selected')} (
+                        {selectedDocumentIds.size})
+                      </Button>
+                    )}
                   </>
                 )}
               </div>
@@ -923,9 +932,17 @@ export default function ContextDocumentsClient({
                         file={file}
                         isRecentlyOpened={false}
                         onDocumentOpened={handleDocumentOpened}
-                        onEdit={(f) => setEditTarget(f)}
-                        onArchive={handleArchive}
-                        onDelete={handleDelete}
+                        onEdit={
+                          permissions.canUpdateMetadata
+                            ? (f) => setEditTarget(f)
+                            : undefined
+                        }
+                        onArchive={
+                          permissions.canDelete ? handleArchive : undefined
+                        }
+                        onDelete={
+                          permissions.canDelete ? handleDelete : undefined
+                        }
                         onFinalToggle={handleFinalToggle}
                       />
                     </div>
@@ -938,7 +955,7 @@ export default function ContextDocumentsClient({
       )}
 
       {/* FAB — Upload; hidden when document multi-select is active */}
-      {!selectionMode && (
+      {!selectionMode && permissions.canUpload && (
         <button
           type="button"
           onClick={() => setIsUploadOpen(true)}

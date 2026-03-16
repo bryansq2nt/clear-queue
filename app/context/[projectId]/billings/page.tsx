@@ -1,6 +1,7 @@
 import { requireAuth } from '@/lib/auth';
 import { getCanViewModule } from '@/app/actions/modules';
 import { getProjectById } from '@/app/actions/projects';
+import { getBillingsPermissions } from '@/app/actions/billings';
 import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
 import ContextBillingsFromCache from './ContextBillingsFromCache';
 
@@ -12,9 +13,10 @@ export default async function ContextBillingsPage({
   await requireAuth();
   const { projectId } = params;
 
-  const [{ canView, reason }, project] = await Promise.all([
+  const [{ canView, reason }, project, permissions] = await Promise.all([
     getCanViewModule(projectId, 'billings'),
     getProjectById(projectId),
+    getBillingsPermissions(projectId),
   ]);
 
   if (!canView && reason) {
@@ -31,6 +33,7 @@ export default async function ContextBillingsPage({
     <ContextBillingsFromCache
       projectId={projectId}
       projectClientId={project?.client_id ?? null}
+      permissions={permissions}
     />
   );
 }

@@ -235,19 +235,34 @@ async function approveUpdateLink(
 
 // ─── Context fetcher ──────────────────────────────────────────────────────────
 
+/**
+ * @param ownerFilter  null = project scope (no owner filter);
+ *                     string[] = restrict to these owner IDs (own or team scope).
+ *                     Resolved by buildProjectContext before this call.
+ */
 export async function fetchLinksContext(
   projectId: string,
   scope: 'standard' | 'full',
-  supabase: any
+  supabase: any,
+  ownerFilter: string[] | null
 ): Promise<string> {
+  let linksQuery = supabase
+    .from('project_links')
+    .select('id, title, url, category_id, description')
+    .eq('project_id', projectId)
+    .is('archived_at', null)
+    .order('pinned', { ascending: false })
+    .order('sort_order', { ascending: true });
+
+  if (ownerFilter !== null) {
+    linksQuery =
+      ownerFilter.length === 1
+        ? linksQuery.eq('owner_id', ownerFilter[0])
+        : linksQuery.in('owner_id', ownerFilter);
+  }
+
   const [{ data: links }, { data: categories }] = await Promise.all([
-    supabase
-      .from('project_links')
-      .select('id, title, url, category_id, description')
-      .eq('project_id', projectId)
-      .is('archived_at', null)
-      .order('pinned', { ascending: false })
-      .order('sort_order', { ascending: true }),
+    linksQuery,
     supabase
       .from('link_categories')
       .select('id, name')
@@ -298,6 +313,7 @@ export const linksCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_link',
     icon: 'Link2',
     cardVariant: 'create',
+    requiredAction: 'links.create',
     promptDescription: 'Save a reference link in the project link vault',
     examplePayload: {
       type: 'link',
@@ -317,6 +333,7 @@ export const linksCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_delete_link',
     icon: 'Trash2',
     cardVariant: 'delete',
+    requiredAction: 'links.delete',
     promptDescription: 'Delete an existing link by its entity_id',
     examplePayload: {
       type: 'delete_link',
@@ -333,6 +350,7 @@ export const linksCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_update_link',
     icon: 'Pencil',
     cardVariant: 'update',
+    requiredAction: 'links.update',
     promptDescription:
       'Update title, url, or category of an existing link by its entity_id',
     examplePayload: {

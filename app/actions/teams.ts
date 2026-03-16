@@ -295,6 +295,9 @@ const OWNER_ONLY_ACTIONS = new Set([
 
 const VIEWER_ONLY_ACTIONS = new Set([
   'tasks.read',
+  'tasks.read.own',
+  'tasks.read.team',
+  'tasks.read.project',
   'milestones.read',
   'notes.read',
   'documents.read',
@@ -730,25 +733,21 @@ export async function removeProjectMember(
 
   const supabase = await createClient();
 
-  // Delete role assignments first, then membership
-  await (supabase as any)
-    .from('user_role_assignments')
-    .delete()
-    .eq('user_id', targetUserId)
-    .eq('project_id', projectId);
-
-  const { error } = await (supabase as any)
-    .from('project_members')
-    .delete()
-    .eq('project_id', projectId)
-    .eq('user_id', targetUserId);
+  const { error } = await (supabase as any).rpc(
+    'remove_project_member_atomic',
+    { p_project_id: projectId, p_target_user_id: targetUserId }
+  );
 
   if (error) {
+    const msg: string = error.message ?? '';
+    if (msg.includes('cannot_remove_self'))
+      return { error: 'Cannot remove yourself from the project' };
     captureWithContext(error, {
       module: 'teams',
       action: 'removeProjectMember',
       userIntent: 'Remove a member from the project',
-      expected: 'Member removed from project_members and user_role_assignments',
+      expected:
+        'remove_project_member_atomic RPC removes member and role assignments',
       extra: { projectId, targetUserId },
     });
     return { error: error.message };

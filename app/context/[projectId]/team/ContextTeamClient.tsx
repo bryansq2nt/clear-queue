@@ -23,6 +23,15 @@ import type {
   MemberAccess,
 } from '@/app/actions/teams';
 import {
+  createProjectTeam,
+  updateProjectTeam,
+  deleteProjectTeam,
+  addTeamMember,
+  removeTeamMember,
+  updateTeamMemberRole,
+} from '@/app/actions/sub-teams';
+import type { ProjectTeam, SubTeamsPermissions } from '@/app/actions/sub-teams';
+import {
   Users,
   UserMinus,
   Copy,
@@ -35,6 +44,9 @@ import {
   ChevronDown,
   ChevronRight,
   Shield,
+  Pencil,
+  Trash2,
+  UserPlus,
 } from 'lucide-react';
 import { toastSuccess } from '@/lib/ui/toast';
 import { MutationErrorDialog } from '@/components/board/MutationErrorDialog';
@@ -73,19 +85,20 @@ const MODULE_PERMISSIONS: Record<
   Array<{ key: string; label: string }>
 > = {
   board: [
-    { key: 'tasks.read', label: 'View tasks' },
-    { key: 'tasks.create', label: 'Create tasks' },
-    { key: 'tasks.update_status', label: 'Move between columns' },
-    { key: 'tasks.update_title', label: 'Edit task title' },
-    { key: 'tasks.update_notes', label: 'Edit task description' },
-    { key: 'tasks.update_priority', label: 'Change priority' },
-    { key: 'tasks.update_due_date', label: 'Set due date' },
-    { key: 'tasks.assign', label: 'Assign to team members' },
-    { key: 'tasks.unassign', label: 'Remove assignments' },
-    { key: 'tasks.delete', label: 'Delete tasks' },
+    { key: 'tasks.read.own', label: 'View own tasks (assigned to me)' },
+    { key: 'tasks.read.team', label: 'View sub-team tasks' },
+    { key: 'tasks.read.project', label: 'View all project tasks' },
+    // "Create tasks" implicitly grants edit + delete on tasks the member created.
+    // Granular edit/delete/move permissions are not shown — they are implied.
+    { key: 'tasks.create', label: 'Create tasks (includes edit & delete own)' },
+    { key: 'tasks.assign', label: 'Assign / unassign tasks' },
+    { key: 'tasks.delete', label: 'Delete any task' },
   ],
   notes: [
     { key: 'notes.read', label: 'View notes' },
+    { key: 'notes.read.own', label: 'Read scope: own notes only' },
+    { key: 'notes.read.team', label: 'Read scope: team notes' },
+    { key: 'notes.read.project', label: 'Read scope: all project notes' },
     { key: 'notes.create', label: 'Create notes' },
     { key: 'notes.update_title', label: 'Edit title' },
     { key: 'notes.update_content', label: 'Edit content' },
@@ -93,6 +106,12 @@ const MODULE_PERMISSIONS: Record<
   ],
   documents: [
     { key: 'documents.read', label: 'View documents' },
+    { key: 'documents.read.own', label: 'Read scope: own documents only' },
+    { key: 'documents.read.team', label: 'Read scope: team documents' },
+    {
+      key: 'documents.read.project',
+      label: 'Read scope: all project documents',
+    },
     { key: 'documents.upload', label: 'Upload files' },
     { key: 'documents.download', label: 'Download files' },
     { key: 'documents.update_metadata', label: 'Edit document details' },
@@ -100,12 +119,18 @@ const MODULE_PERMISSIONS: Record<
   ],
   media: [
     { key: 'media.read', label: 'View media' },
+    { key: 'media.read.own', label: 'Read scope: own media only' },
+    { key: 'media.read.team', label: 'Read scope: team media' },
+    { key: 'media.read.project', label: 'Read scope: all project media' },
     { key: 'media.upload', label: 'Upload media' },
     { key: 'media.update_metadata', label: 'Edit media details' },
     { key: 'media.delete', label: 'Delete media' },
   ],
   links: [
     { key: 'links.read', label: 'View links' },
+    { key: 'links.read.own', label: 'Read scope: own links only' },
+    { key: 'links.read.team', label: 'Read scope: team links' },
+    { key: 'links.read.project', label: 'Read scope: all project links' },
     { key: 'links.create', label: 'Add links' },
     { key: 'links.update', label: 'Edit links' },
     { key: 'links.delete', label: 'Delete links' },
@@ -119,6 +144,9 @@ const MODULE_PERMISSIONS: Record<
   ],
   budgets: [
     { key: 'budgets.read', label: 'View budgets' },
+    { key: 'budgets.read.own', label: 'Read scope: own budgets only' },
+    { key: 'budgets.read.team', label: 'Read scope: team budgets' },
+    { key: 'budgets.read.project', label: 'Read scope: all project budgets' },
     { key: 'budgets.create', label: 'Create budgets' },
     { key: 'budgets.update', label: 'Edit budgets' },
     { key: 'budgets.manage_items', label: 'Manage line items' },
@@ -126,6 +154,12 @@ const MODULE_PERMISSIONS: Record<
   ],
   billings: [
     { key: 'billings.read', label: 'View billing records' },
+    { key: 'billings.read.own', label: 'Read scope: own billing records only' },
+    { key: 'billings.read.team', label: 'Read scope: team billing records' },
+    {
+      key: 'billings.read.project',
+      label: 'Read scope: all project billing records',
+    },
     { key: 'billings.create', label: 'Create billing records' },
     { key: 'billings.update_amount', label: 'Edit amount' },
     { key: 'billings.update_status', label: 'Change payment status' },
@@ -134,6 +168,9 @@ const MODULE_PERMISSIONS: Record<
   ],
   ideas: [
     { key: 'ideas.read', label: 'View mind maps' },
+    { key: 'ideas.read.own', label: 'Read scope: own mind maps only' },
+    { key: 'ideas.read.team', label: 'Read scope: team mind maps' },
+    { key: 'ideas.read.project', label: 'Read scope: all project mind maps' },
     { key: 'ideas.create_board', label: 'Create mind maps' },
     { key: 'ideas.update_board', label: 'Edit mind map settings' },
     { key: 'ideas.create_node', label: 'Add nodes' },
@@ -143,6 +180,9 @@ const MODULE_PERMISSIONS: Record<
   ],
   calendar: [
     { key: 'calendar.read', label: 'View events' },
+    { key: 'calendar.read.own', label: 'Read scope: own events only' },
+    { key: 'calendar.read.team', label: 'Read scope: team events' },
+    { key: 'calendar.read.project', label: 'Read scope: all project events' },
     { key: 'calendar.create', label: 'Create events' },
     { key: 'calendar.update', label: 'Edit events' },
     { key: 'calendar.delete', label: 'Delete events' },
@@ -161,6 +201,15 @@ const MODULE_PERMISSIONS: Record<
     { key: 'copilot.read_proposals', label: 'View proposals' },
     { key: 'copilot.approve_proposal', label: 'Approve proposals' },
     { key: 'copilot.reject_proposal', label: 'Reject proposals' },
+  ],
+  owner: [
+    { key: 'owner.read', label: 'View client & business info' },
+    { key: 'owner.create_client', label: 'Create client' },
+    { key: 'owner.update_client', label: 'Edit client details' },
+    { key: 'owner.delete_client', label: 'Delete client' },
+    { key: 'owner.create_business', label: 'Create business' },
+    { key: 'owner.update_business', label: 'Edit business details' },
+    { key: 'owner.delete_business', label: 'Delete business' },
   ],
 };
 
@@ -208,6 +257,9 @@ function summarizeRole(
   ]);
   const VIEWER_ONLY = new Set([
     'tasks.read',
+    'tasks.read.own',
+    'tasks.read.team',
+    'tasks.read.project',
     'milestones.read',
     'notes.read',
     'documents.read',
@@ -353,6 +405,8 @@ interface Props {
   roles: Array<{ id: string; name: string; description: string | null }>;
   profiles: ProjectAccessProfile[];
   reusableRoles: InviteRole[];
+  initialTeams: ProjectTeam[];
+  subTeamsPermissions: SubTeamsPermissions;
   onRefresh: () => void;
 }
 
@@ -364,6 +418,8 @@ export default function ContextTeamClient({
   initialRejectedInvites,
   profiles,
   reusableRoles,
+  initialTeams,
+  subTeamsPermissions,
   onRefresh,
 }: Props) {
   const { t } = useI18n();
@@ -407,6 +463,8 @@ export default function ContextTeamClient({
   } | null>(null);
   const [revokeConfirmInvite, setRevokeConfirmInvite] =
     useState<ProjectInvite | null>(null);
+  const [confirmRemoveMember, setConfirmRemoveMember] =
+    useState<ProjectMember | null>(null);
   const [inviteSuccessDialog, setInviteSuccessDialog] = useState<{
     link: string;
     email: string;
@@ -440,6 +498,31 @@ export default function ContextTeamClient({
   // Refs hold latest draft so Save uses current UI state even if React hasn't committed yet
   const latestDraftModulesRef = useRef<string[] | null>(null);
   const latestDraftActionsRef = useRef<string[]>([]);
+
+  // ── Sub-teams state ───────────────────────────────────────────────
+  const [teams, setTeams] = useState<ProjectTeam[]>(initialTeams);
+  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
+
+  // Create sub-team dialog
+  const [createTeamOpen, setCreateTeamOpen] = useState(false);
+  const [createTeamName, setCreateTeamName] = useState('');
+  const [createTeamDesc, setCreateTeamDesc] = useState('');
+  const [createTeamSaving, setCreateTeamSaving] = useState(false);
+
+  // Edit sub-team dialog
+  const [editTeam, setEditTeam] = useState<ProjectTeam | null>(null);
+  const [editTeamName, setEditTeamName] = useState('');
+  const [editTeamDesc, setEditTeamDesc] = useState('');
+  const [editTeamSaving, setEditTeamSaving] = useState(false);
+
+  // Delete sub-team dialog
+  const [deleteTeam, setDeleteTeam] = useState<ProjectTeam | null>(null);
+  const [deleteTeamSaving, setDeleteTeamSaving] = useState(false);
+
+  // Add member to sub-team dialog
+  const [addMemberTeam, setAddMemberTeam] = useState<ProjectTeam | null>(null);
+  const [addMemberUserId, setAddMemberUserId] = useState('');
+  const [addMemberSaving, setAddMemberSaving] = useState(false);
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -819,10 +902,11 @@ export default function ContextTeamClient({
           open: true,
           title: t('teams.remove_error_title'),
           message: result.error,
-          retry: () => handleRemoveMember(userId),
+          retry: () => void handleRemoveMember(userId),
         });
         return;
       }
+      setConfirmRemoveMember(null);
       onRefresh();
     },
     [projectId, onRefresh, t]
@@ -934,6 +1018,166 @@ export default function ContextTeamClient({
   const canProceedFromModules =
     selectedModules.length > 0 &&
     selectedModules.every((m) => (modulePermissions[m] ?? []).length > 0);
+
+  // ── Sub-team handlers ────────────────────────────────────────────────
+
+  const handleCreateTeam = useCallback(async () => {
+    if (!createTeamName.trim()) return;
+    setCreateTeamSaving(true);
+    const { data, error } = await createProjectTeam(
+      projectId,
+      createTeamName,
+      createTeamDesc || undefined
+    );
+    setCreateTeamSaving(false);
+    if (error) {
+      setErrorDialog({
+        open: true,
+        title: t('teams.create_sub_team_error_title'),
+        message: error,
+        retry: () => void handleCreateTeam(),
+      });
+      return;
+    }
+    if (data) setTeams((prev) => [...prev, data]);
+    setCreateTeamOpen(false);
+    setCreateTeamName('');
+    setCreateTeamDesc('');
+  }, [projectId, createTeamName, createTeamDesc, t]);
+
+  const handleEditTeam = useCallback(async () => {
+    if (!editTeam || !editTeamName.trim()) return;
+    setEditTeamSaving(true);
+    const { data, error } = await updateProjectTeam(
+      editTeam.id,
+      editTeamName,
+      editTeamDesc || undefined
+    );
+    setEditTeamSaving(false);
+    if (error) {
+      setErrorDialog({
+        open: true,
+        title: t('teams.edit_sub_team_error_title'),
+        message: error,
+        retry: () => void handleEditTeam(),
+      });
+      return;
+    }
+    if (data) {
+      setTeams((prev) =>
+        prev.map((t) =>
+          t.id === editTeam.id
+            ? { ...t, name: data.name, description: data.description }
+            : t
+        )
+      );
+    }
+    setEditTeam(null);
+    setEditTeamName('');
+    setEditTeamDesc('');
+  }, [editTeam, editTeamName, editTeamDesc, t]);
+
+  const handleDeleteTeam = useCallback(async () => {
+    if (!deleteTeam) return;
+    setDeleteTeamSaving(true);
+    const { error } = await deleteProjectTeam(deleteTeam.id);
+    setDeleteTeamSaving(false);
+    if (error) {
+      setErrorDialog({
+        open: true,
+        title: t('teams.delete_sub_team_error_title'),
+        message: error,
+        retry: () => void handleDeleteTeam(),
+      });
+      return;
+    }
+    setTeams((prev) => prev.filter((t) => t.id !== deleteTeam.id));
+    setDeleteTeam(null);
+  }, [deleteTeam, t]);
+
+  const handleAddTeamMember = useCallback(async () => {
+    if (!addMemberTeam || !addMemberUserId) return;
+    setAddMemberSaving(true);
+    const { data, error } = await addTeamMember(
+      addMemberTeam.id,
+      addMemberUserId
+    );
+    setAddMemberSaving(false);
+    if (error) {
+      setErrorDialog({
+        open: true,
+        title: t('teams.add_sub_team_member_error_title'),
+        message: error,
+        retry: () => void handleAddTeamMember(),
+      });
+      return;
+    }
+    if (data) {
+      setTeams((prev) =>
+        prev.map((team) =>
+          team.id === addMemberTeam.id
+            ? { ...team, members: [...team.members, data] }
+            : team
+        )
+      );
+    }
+    setAddMemberTeam(null);
+    setAddMemberUserId('');
+  }, [addMemberTeam, addMemberUserId, t]);
+
+  const handleRemoveTeamMember = useCallback(
+    async (teamId: string, userId: string) => {
+      const { error } = await removeTeamMember(teamId, userId);
+      if (error) {
+        setErrorDialog({
+          open: true,
+          title: t('teams.remove_sub_team_member_error_title'),
+          message: error,
+          retry: () => void handleRemoveTeamMember(teamId, userId),
+        });
+        return;
+      }
+      setTeams((prev) =>
+        prev.map((team) =>
+          team.id === teamId
+            ? {
+                ...team,
+                members: team.members.filter((m) => m.user_id !== userId),
+              }
+            : team
+        )
+      );
+    },
+    [t]
+  );
+
+  const handleUpdateTeamMemberRole = useCallback(
+    async (teamId: string, userId: string, role: 'member' | 'manager') => {
+      const { error } = await updateTeamMemberRole(teamId, userId, role);
+      if (error) {
+        setErrorDialog({
+          open: true,
+          title: t('teams.update_sub_team_role_error_title'),
+          message: error,
+          retry: () => void handleUpdateTeamMemberRole(teamId, userId, role),
+        });
+        return;
+      }
+      setTeams((prev) =>
+        prev.map((team) =>
+          team.id === teamId
+            ? {
+                ...team,
+                members: team.members.map((m) =>
+                  m.user_id === userId ? { ...m, role } : m
+                ),
+              }
+            : team
+        )
+      );
+    },
+    [t]
+  );
 
   // ── Render ──────────────────────────────────────────────────────────
 
@@ -1474,7 +1718,7 @@ export default function ContextTeamClient({
                   </button>
                   <button
                     type="button"
-                    onClick={() => void handleRemoveMember(m.user_id)}
+                    onClick={() => setConfirmRemoveMember(m)}
                     className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                     aria-label={t('teams.remove_member')}
                     title={t('teams.remove_member')}
@@ -1623,6 +1867,471 @@ export default function ContextTeamClient({
         </section>
       )}
 
+      {/* Sub-teams section */}
+      {subTeamsPermissions.canRead && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-foreground">
+              {t('teams.sub_teams_title')} ({teams.length})
+            </h3>
+            {subTeamsPermissions.canCreate && (
+              <button
+                type="button"
+                onClick={() => setCreateTeamOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {t('teams.create_sub_team')}
+              </button>
+            )}
+          </div>
+
+          {teams.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {t('teams.no_sub_teams')}{' '}
+              {subTeamsPermissions.canCreate && t('teams.no_sub_teams_hint')}
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {teams.map((team) => {
+                const isExpanded = expandedTeamId === team.id;
+                const canManageThisTeam =
+                  subTeamsPermissions.canManageMembers &&
+                  (subTeamsPermissions.canCreate ||
+                    subTeamsPermissions.managedTeamIds.includes(team.id));
+                const canEditThisTeam =
+                  subTeamsPermissions.canUpdate &&
+                  (subTeamsPermissions.canCreate ||
+                    subTeamsPermissions.managedTeamIds.includes(team.id));
+                const memberCount = team.members.length;
+                return (
+                  <li
+                    key={team.id}
+                    className="rounded-lg border border-border bg-card overflow-hidden"
+                  >
+                    {/* Team header row */}
+                    <div className="flex items-center gap-2 p-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedTeamId((prev) =>
+                            prev === team.id ? null : team.id
+                          )
+                        }
+                        className="p-1 rounded hover:bg-accent shrink-0 text-muted-foreground"
+                        aria-expanded={isExpanded}
+                      >
+                        {isExpanded ? (
+                          <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4" />
+                        )}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {team.name}
+                        </p>
+                        {team.description && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {team.description}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {memberCount === 1
+                          ? t('teams.sub_team_members_count_one')
+                          : t('teams.sub_team_members_count', {
+                              count: String(memberCount),
+                            })}
+                      </span>
+                      {canEditThisTeam && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditTeam(team);
+                            setEditTeamName(team.name);
+                            setEditTeamDesc(team.description ?? '');
+                          }}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          aria-label={t('teams.edit_sub_team_dialog_title')}
+                          title={t('teams.edit_sub_team_dialog_title')}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      )}
+                      {subTeamsPermissions.canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTeam(team)}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          aria-label={t('teams.delete_sub_team_confirm_title')}
+                          title={t('teams.delete_sub_team_confirm_title')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Expanded: member list */}
+                    {isExpanded && (
+                      <div className="border-t border-border px-3 pb-3 pt-2 space-y-2 bg-muted/20">
+                        {team.members.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            {t('teams.sub_team_no_members')}
+                          </p>
+                        ) : (
+                          <ul className="space-y-1.5">
+                            {team.members.map((m) => (
+                              <li
+                                key={m.user_id}
+                                className="flex items-center gap-2 text-sm"
+                              >
+                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-semibold shrink-0">
+                                  {(m.display_name ?? m.email ?? '?')
+                                    .charAt(0)
+                                    .toUpperCase()}
+                                </div>
+                                <span className="flex-1 text-sm text-foreground truncate">
+                                  {m.display_name ?? m.email ?? m.user_id}
+                                </span>
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
+                                    m.role === 'manager'
+                                      ? 'bg-primary/15 text-primary'
+                                      : 'bg-muted text-muted-foreground'
+                                  }`}
+                                >
+                                  {m.role === 'manager'
+                                    ? t('teams.sub_team_role_manager')
+                                    : t('teams.sub_team_role_member')}
+                                </span>
+                                {canManageThisTeam && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void handleUpdateTeamMemberRole(
+                                          team.id,
+                                          m.user_id,
+                                          m.role === 'manager'
+                                            ? 'member'
+                                            : 'manager'
+                                        )
+                                      }
+                                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 shrink-0"
+                                      title={
+                                        m.role === 'manager'
+                                          ? t('teams.make_sub_team_member')
+                                          : t('teams.make_sub_team_manager')
+                                      }
+                                    >
+                                      {m.role === 'manager'
+                                        ? t('teams.make_sub_team_member')
+                                        : t('teams.make_sub_team_manager')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void handleRemoveTeamMember(
+                                          team.id,
+                                          m.user_id
+                                        )
+                                      }
+                                      className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                                      aria-label={t(
+                                        'teams.remove_sub_team_member'
+                                      )}
+                                      title={t('teams.remove_sub_team_member')}
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {canManageThisTeam && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAddMemberTeam(team);
+                              setAddMemberUserId('');
+                            }}
+                            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
+                          >
+                            <UserPlus className="w-3.5 h-3.5" />
+                            {t('teams.add_sub_team_member')}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {/* Create sub-team dialog */}
+      <Dialog
+        open={createTeamOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCreateTeamOpen(false);
+            setCreateTeamName('');
+            setCreateTeamDesc('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('teams.create_sub_team_dialog_title')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                {t('teams.create_sub_team_name_label')}
+              </label>
+              <input
+                type="text"
+                value={createTeamName}
+                onChange={(e) => setCreateTeamName(e.target.value)}
+                placeholder={t('teams.create_sub_team_name_placeholder')}
+                className="w-full text-sm rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                autoFocus
+                maxLength={100}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                {t('teams.create_sub_team_description_label')}
+              </label>
+              <input
+                type="text"
+                value={createTeamDesc}
+                onChange={(e) => setCreateTeamDesc(e.target.value)}
+                placeholder={t('teams.create_sub_team_description_placeholder')}
+                className="w-full text-sm rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setCreateTeamOpen(false);
+                setCreateTeamName('');
+                setCreateTeamDesc('');
+              }}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleCreateTeam()}
+              disabled={createTeamSaving || !createTeamName.trim()}
+            >
+              {createTeamSaving
+                ? t('common.saving')
+                : t('teams.create_sub_team_btn')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit sub-team dialog */}
+      <Dialog
+        open={!!editTeam}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditTeam(null);
+            setEditTeamName('');
+            setEditTeamDesc('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('teams.edit_sub_team_dialog_title')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                {t('teams.create_sub_team_name_label')}
+              </label>
+              <input
+                type="text"
+                value={editTeamName}
+                onChange={(e) => setEditTeamName(e.target.value)}
+                placeholder={t('teams.create_sub_team_name_placeholder')}
+                className="w-full text-sm rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                autoFocus
+                maxLength={100}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                {t('teams.create_sub_team_description_label')}
+              </label>
+              <input
+                type="text"
+                value={editTeamDesc}
+                onChange={(e) => setEditTeamDesc(e.target.value)}
+                placeholder={t('teams.create_sub_team_description_placeholder')}
+                className="w-full text-sm rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setEditTeam(null);
+                setEditTeamName('');
+                setEditTeamDesc('');
+              }}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleEditTeam()}
+              disabled={editTeamSaving || !editTeamName.trim()}
+            >
+              {editTeamSaving
+                ? t('common.saving')
+                : t('teams.edit_sub_team_btn')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete sub-team confirmation */}
+      <Dialog
+        open={!!deleteTeam}
+        onOpenChange={(open) => !open && setDeleteTeam(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t('teams.delete_sub_team_confirm_title')}
+            </DialogTitle>
+            <DialogDescription>
+              {deleteTeam
+                ? t('teams.delete_sub_team_confirm_message', {
+                    name: deleteTeam.name,
+                  })
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteTeam(null)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteTeamSaving}
+              onClick={() => void handleDeleteTeam()}
+            >
+              {deleteTeamSaving
+                ? t('common.loading')
+                : t('teams.delete_sub_team_confirm_btn')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add member to sub-team dialog */}
+      <Dialog
+        open={!!addMemberTeam}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAddMemberTeam(null);
+            setAddMemberUserId('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {addMemberTeam
+                ? t('teams.add_sub_team_member_dialog_title', {
+                    name: addMemberTeam.name,
+                  })
+                : ''}
+            </DialogTitle>
+          </DialogHeader>
+          {addMemberTeam &&
+            (() => {
+              const alreadyInTeam = new Set(
+                addMemberTeam.members.map((m) => m.user_id)
+              );
+              const available = members.filter(
+                (m) => !alreadyInTeam.has(m.user_id)
+              );
+              return available.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  {t('teams.add_sub_team_member_none_available')}
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground block mb-1">
+                      {t('teams.add_sub_team_member_select_label')}
+                    </label>
+                    <select
+                      value={addMemberUserId}
+                      onChange={(e) => setAddMemberUserId(e.target.value)}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    >
+                      <option value="">
+                        {t('teams.add_sub_team_member_select_placeholder')}
+                      </option>
+                      {available.map((m) => (
+                        <option key={m.user_id} value={m.user_id}>
+                          {m.display_name} ({m.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              );
+            })()}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setAddMemberTeam(null);
+                setAddMemberUserId('');
+              }}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleAddTeamMember()}
+              disabled={addMemberSaving || !addMemberUserId}
+            >
+              {addMemberSaving
+                ? t('common.saving')
+                : t('teams.add_sub_team_member_btn')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Invite sent success dialog */}
       <Dialog
         open={!!inviteSuccessDialog}
@@ -1741,6 +2450,46 @@ export default function ContextTeamClient({
               }
             >
               {t('teams.revoke_confirm_btn')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove member confirmation */}
+      <Dialog
+        open={!!confirmRemoveMember}
+        onOpenChange={(open) => !open && setConfirmRemoveMember(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('teams.remove_confirm_title')}</DialogTitle>
+            <DialogDescription>
+              {confirmRemoveMember
+                ? t('teams.remove_confirm_message', {
+                    name:
+                      confirmRemoveMember.display_name ||
+                      confirmRemoveMember.email,
+                  })
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmRemoveMember(null)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() =>
+                confirmRemoveMember &&
+                void handleRemoveMember(confirmRemoveMember.user_id)
+              }
+            >
+              {t('teams.remove_confirm_btn')}
             </Button>
           </DialogFooter>
         </DialogContent>

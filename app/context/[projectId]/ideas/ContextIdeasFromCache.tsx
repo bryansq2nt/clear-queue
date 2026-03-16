@@ -1,7 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getBoardsByProjectIdAction } from '@/app/actions/idea-boards';
+import {
+  getBoardsByProjectIdAction,
+  type IdeasPermissions,
+} from '@/app/actions/idea-boards';
 import { SkeletonIdeas } from '@/components/skeletons/SkeletonIdeas';
 import { useContextDataCache } from '../../ContextDataCache';
 import ContextIdeasClient from './ContextIdeasClient';
@@ -15,10 +18,12 @@ interface Board {
 
 interface ContextIdeasFromCacheProps {
   projectId: string;
+  permissions: IdeasPermissions;
 }
 
 export default function ContextIdeasFromCache({
   projectId,
+  permissions,
 }: ContextIdeasFromCacheProps) {
   const cache = useContextDataCache();
   const cached = cache.get<Board[]>({ type: 'ideas', projectId });
@@ -59,6 +64,7 @@ export default function ContextIdeasFromCache({
     <ContextIdeasClient
       projectId={projectId}
       initialBoards={boards}
+      permissions={permissions}
       onRefresh={loadData}
     />
   );

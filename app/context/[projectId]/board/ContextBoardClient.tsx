@@ -5,10 +5,16 @@ import { useRouter } from 'next/navigation';
 import { Database } from '@/lib/supabase/types';
 import { useContextDataCache } from '@/app/context/ContextDataCache';
 import KanbanBoard from '@/components/board/KanbanBoard';
-import { AddTaskModal } from '@/components/board/AddTaskModal';
+import {
+  AddTaskModal,
+  type TaskAssignee,
+} from '@/components/board/AddTaskModal';
 import { MutationErrorDialog } from '@/components/board/MutationErrorDialog';
 import { useI18n } from '@/components/shared/I18nProvider';
-import { getTasksByProjectIdPaginated } from '@/app/actions/tasks';
+import {
+  getTasksByProjectIdPaginated,
+  type BoardPermissions,
+} from '@/app/actions/tasks';
 import { BOARD_STATUSES, LOAD_MORE_TASKS_PER_COLUMN } from '@/lib/board';
 import { Plus } from 'lucide-react';
 
@@ -49,8 +55,13 @@ interface ContextBoardClientProps {
   initialProject: Project;
   initialCounts: Record<TaskStatus, number>;
   initialTasksByStatus: Record<TaskStatus, Task[]>;
+  permissions: BoardPermissions;
   /** When provided (context cache), used instead of router.refresh() */
   onRefresh?: () => void | Promise<void>;
+  /** Project members for the assignee dropdown in add/edit task modals. */
+  projectMembers?: TaskAssignee[];
+  /** Current user's ID — passed to modals for "Me" label. */
+  currentUserId?: string;
 }
 
 /**
@@ -62,7 +73,10 @@ export default function ContextBoardClient({
   initialProject,
   initialCounts,
   initialTasksByStatus,
+  permissions,
   onRefresh,
+  projectMembers,
+  currentUserId,
 }: ContextBoardClientProps) {
   const { t } = useI18n();
   const router = useRouter();
@@ -169,6 +183,27 @@ export default function ContextBoardClient({
     [cache, projectId]
   );
 
+  const handleTaskDeleted = useCallback((taskId: string) => {
+    let removedStatus: TaskStatus | null = null;
+    setTasksByStatus((prev) => {
+      const next = { ...prev };
+      for (const s of BOARD_STATUSES) {
+        if (next[s].some((t) => t.id === taskId)) {
+          next[s] = next[s].filter((t) => t.id !== taskId);
+          removedStatus = s;
+          break;
+        }
+      }
+      return next;
+    });
+    if (removedStatus !== null) {
+      setCounts((c) => ({
+        ...c,
+        [removedStatus!]: Math.max(0, c[removedStatus!] - 1),
+      }));
+    }
+  }, []);
+
   const openEditErrorDialog = useCallback(
     (params: {
       message: string;
@@ -212,10 +247,16 @@ export default function ContextBoardClient({
           currentProjectId={projectId}
           selectedTab={selectedTab}
           onTabChange={setSelectedTab}
-          onAddTask={() => setIsAddTaskOpen(true)}
+          onAddTask={
+            permissions.canCreate ? () => setIsAddTaskOpen(true) : undefined
+          }
+          canAdd={permissions.canCreate}
+          projectMembers={permissions.canAssign ? projectMembers : undefined}
+          currentUserId={currentUserId}
           onTasksChange={handleTasksChange}
           onMoveError={openMoveErrorDialog}
           onTaskUpdated={handleTaskUpdated}
+          onTaskDeleted={handleTaskDeleted}
           onEditError={openEditErrorDialog}
           skipRevalidateOnMove
           onTaskAdded={(task) => {
@@ -303,92 +344,98 @@ export default function ContextBoardClient({
           }}
         />
       </div>
-      <AddTaskModal
-        isOpen={isAddTaskOpen}
-        onClose={() => setIsAddTaskOpen(false)}
-        onTaskAdded={(createdTask) => {
-          const s = createdTask.status;
-          setTasksByStatus((prev) => ({
-            ...prev,
-            [s]: sortTasksByOrder([...prev[s], createdTask]),
-          }));
-          setCounts((c) => ({ ...c, [s]: c[s] + 1 }));
-          setIsAddTaskOpen(false);
-        }}
-        onTaskConfirmed={(realTask, optimisticId) => {
-          setTasksByStatus((prev) => {
-            const next = { ...prev };
-            const s = realTask.status;
-            for (const status of BOARD_STATUSES) {
-              const idx = next[status].findIndex((t) => t.id === optimisticId);
-              if (idx >= 0) {
-                next[status] = next[status]
-                  .filter((t) => t.id !== optimisticId)
-                  .concat(realTask);
-                next[status] = sortTasksByOrder(next[status]);
-                return next;
-              }
-            }
-            return prev;
-          });
-        }}
-        onAddError={(params) => {
-          setErrorDialog({
-            open: true,
-            title: t('mutation_error.title'),
-            message: params.message,
-            optimisticId: params.optimisticId,
-            onTryAgain: async () => {
-              const result = await params.retry();
-              if (result?.error) throw new Error(result.error);
-              if (result?.data && params.optimisticId) {
-                setTasksByStatus((prev) => {
-                  const next = { ...prev };
-                  const s = result.data!.status;
-                  const id = params.optimisticId!;
-                  for (const status of BOARD_STATUSES) {
-                    const idx = next[status].findIndex((t) => t.id === id);
-                    if (idx >= 0) {
-                      next[status] = next[status]
-                        .filter((t) => t.id !== id)
-                        .concat(result.data!);
-                      next[status] = sortTasksByOrder(next[status]);
-                      return next;
-                    }
-                  }
-                  return prev;
-                });
-              }
-            },
-            onCancel: () => {
-              if (params.optimisticId) {
-                const id = params.optimisticId;
-                let removedStatus: TaskStatus | null = null;
-                setTasksByStatus((prev) => {
-                  const next = { ...prev };
-                  for (const status of BOARD_STATUSES) {
-                    if (next[status].some((t) => t.id === id)) {
-                      next[status] = next[status].filter((t) => t.id !== id);
-                      next[status] = sortTasksByOrder(next[status]);
-                      removedStatus = status;
-                      break;
-                    }
-                  }
+      {permissions.canCreate && (
+        <AddTaskModal
+          isOpen={isAddTaskOpen}
+          onClose={() => setIsAddTaskOpen(false)}
+          onTaskAdded={(createdTask) => {
+            const s = createdTask.status;
+            setTasksByStatus((prev) => ({
+              ...prev,
+              [s]: sortTasksByOrder([...prev[s], createdTask]),
+            }));
+            setCounts((c) => ({ ...c, [s]: c[s] + 1 }));
+            setIsAddTaskOpen(false);
+          }}
+          onTaskConfirmed={(realTask, optimisticId) => {
+            setTasksByStatus((prev) => {
+              const next = { ...prev };
+              const s = realTask.status;
+              for (const status of BOARD_STATUSES) {
+                const idx = next[status].findIndex(
+                  (t) => t.id === optimisticId
+                );
+                if (idx >= 0) {
+                  next[status] = next[status]
+                    .filter((t) => t.id !== optimisticId)
+                    .concat(realTask);
+                  next[status] = sortTasksByOrder(next[status]);
                   return next;
-                });
-                if (removedStatus !== null) {
-                  setCounts((c) => ({
-                    ...c,
-                    [removedStatus!]: c[removedStatus!] - 1,
-                  }));
                 }
               }
-            },
-          });
-        }}
-        defaultProjectId={projectId}
-        defaultStatus={selectedTab}
-      />
+              return prev;
+            });
+          }}
+          onAddError={(params) => {
+            setErrorDialog({
+              open: true,
+              title: t('mutation_error.title'),
+              message: params.message,
+              optimisticId: params.optimisticId,
+              onTryAgain: async () => {
+                const result = await params.retry();
+                if (result?.error) throw new Error(result.error);
+                if (result?.data && params.optimisticId) {
+                  setTasksByStatus((prev) => {
+                    const next = { ...prev };
+                    const s = result.data!.status;
+                    const id = params.optimisticId!;
+                    for (const status of BOARD_STATUSES) {
+                      const idx = next[status].findIndex((t) => t.id === id);
+                      if (idx >= 0) {
+                        next[status] = next[status]
+                          .filter((t) => t.id !== id)
+                          .concat(result.data!);
+                        next[status] = sortTasksByOrder(next[status]);
+                        return next;
+                      }
+                    }
+                    return prev;
+                  });
+                }
+              },
+              onCancel: () => {
+                if (params.optimisticId) {
+                  const id = params.optimisticId;
+                  let removedStatus: TaskStatus | null = null;
+                  setTasksByStatus((prev) => {
+                    const next = { ...prev };
+                    for (const status of BOARD_STATUSES) {
+                      if (next[status].some((t) => t.id === id)) {
+                        next[status] = next[status].filter((t) => t.id !== id);
+                        next[status] = sortTasksByOrder(next[status]);
+                        removedStatus = status;
+                        break;
+                      }
+                    }
+                    return next;
+                  });
+                  if (removedStatus !== null) {
+                    setCounts((c) => ({
+                      ...c,
+                      [removedStatus!]: c[removedStatus!] - 1,
+                    }));
+                  }
+                }
+              },
+            });
+          }}
+          defaultProjectId={projectId}
+          defaultStatus={selectedTab}
+          projectMembers={permissions.canAssign ? projectMembers : undefined}
+          currentUserId={currentUserId}
+        />
+      )}
       {errorDialog && (
         <MutationErrorDialog
           open={errorDialog.open}
@@ -405,14 +452,16 @@ export default function ContextBoardClient({
         />
       )}
       {/* FAB: Add task — mobile only; desktop uses per-column add at top */}
-      <button
-        type="button"
-        onClick={() => setIsAddTaskOpen(true)}
-        aria-label={t('tasks.add_task')}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8 lg:hidden"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
+      {permissions.canCreate && (
+        <button
+          type="button"
+          onClick={() => setIsAddTaskOpen(true)}
+          aria-label={t('tasks.add_task')}
+          className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8 lg:hidden"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
     </>
   );
 }

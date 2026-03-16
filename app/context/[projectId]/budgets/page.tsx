@@ -1,5 +1,6 @@
 import { requireAuth } from '@/lib/auth';
 import { getCanViewModule } from '@/app/actions/modules';
+import { getBudgetsPermissions } from '@/app/actions/budgets';
 import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
 import ContextBudgetsFromCache from './ContextBudgetsFromCache';
 
@@ -11,7 +12,11 @@ export default async function ContextBudgetsPage({
   await requireAuth();
   const { projectId } = params;
 
-  const { canView, reason } = await getCanViewModule(projectId, 'budgets');
+  const [{ canView, reason }, permissions] = await Promise.all([
+    getCanViewModule(projectId, 'budgets'),
+    getBudgetsPermissions(projectId),
+  ]);
+
   if (!canView && reason) {
     return (
       <ModuleDisabledView
@@ -22,5 +27,7 @@ export default async function ContextBudgetsPage({
     );
   }
 
-  return <ContextBudgetsFromCache projectId={projectId} />;
+  return (
+    <ContextBudgetsFromCache projectId={projectId} permissions={permissions} />
+  );
 }

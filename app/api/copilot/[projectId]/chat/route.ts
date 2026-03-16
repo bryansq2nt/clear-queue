@@ -37,16 +37,29 @@ export async function POST(
   const { projectId } = params;
   const supabase = await createClient();
 
-  // 2. Validate project ownership
-  const { data: project, error: projectError } = await supabase
+  // 2. Validate project access — owner or project member
+  const { data: project } = await supabase
     .from('projects')
-    .select('id, name')
+    .select('id, name, owner_id')
     .eq('id', projectId)
-    .eq('owner_id', user.id)
-    .single();
+    .maybeSingle();
 
-  if (projectError || !project) {
+  if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 403 });
+  }
+
+  if ((project as { owner_id: string }).owner_id !== user.id) {
+    // Not the owner — check project membership
+    const { data: member } = await (supabase as any)
+      .from('project_members')
+      .select('user_id')
+      .eq('project_id', projectId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!member) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 403 });
+    }
   }
 
   // 3. Parse and validate request body

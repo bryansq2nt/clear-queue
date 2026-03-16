@@ -6,6 +6,7 @@ import {
   getBillingCategories,
   type BillingWithRelations,
   type BillingCategory,
+  type BillingsPermissions,
 } from '@/app/actions/billings';
 import { getClients } from '@/app/actions/clients';
 import { SkeletonBillings } from '@/components/skeletons/SkeletonBillings';
@@ -20,11 +21,13 @@ interface Client {
 interface ContextBillingsFromCacheProps {
   projectId: string;
   projectClientId?: string | null;
+  permissions: BillingsPermissions;
 }
 
 export default function ContextBillingsFromCache({
   projectId,
   projectClientId,
+  permissions,
 }: ContextBillingsFromCacheProps) {
   const cache = useContextDataCache();
   const cached = cache.get<BillingWithRelations[]>({
@@ -92,6 +95,7 @@ export default function ContextBillingsFromCache({
       initialClients={clients}
       initialCategories={categories}
       projectClientId={projectClientId ?? null}
+      permissions={permissions}
       onRefresh={loadData}
     />
   );

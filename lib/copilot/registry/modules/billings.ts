@@ -417,6 +417,11 @@ async function approveDeleteBillingCategory(
 
 // ─── Context fetcher ──────────────────────────────────────────────────────────
 
+/**
+ * @param ownerFilter  null = project scope (no owner filter);
+ *                     string[] = restrict to these owner IDs (own or team scope).
+ *                     Resolved by buildProjectContext before this call.
+ */
 export async function fetchBillingsContext(
   projectId: string,
   scope: 'standard' | 'full',
@@ -424,7 +429,8 @@ export async function fetchBillingsContext(
     typeof import('@/lib/supabase/server').createClient
   > extends Promise<infer T>
     ? T
-    : never
+    : never,
+  ownerFilter: string[] | null
 ): Promise<string> {
   // Fetch available billing categories (owner-scoped via RLS) so the model can use exact names in category_name and ids for update/delete
   const { data: categoryRows } = await (supabase as any)
@@ -443,13 +449,22 @@ export async function fetchBillingsContext(
     categoriesSection += `**Category ids for update/delete:** ${categoryRowsTyped.map((c) => `[${c.id}] ${c.name}`).join(', ')}\n`;
   }
 
-  const { data } = await (supabase as any)
+  let billingsQuery = (supabase as any)
     .from('billings')
     .select(
       'id, title, amount, status, type, due_date, category_id, billing_categories(name)'
     )
     .eq('project_id', projectId)
     .order('created_at', { ascending: false });
+
+  if (ownerFilter !== null) {
+    billingsQuery =
+      ownerFilter.length === 1
+        ? billingsQuery.eq('owner_id', ownerFilter[0])
+        : billingsQuery.in('owner_id', ownerFilter);
+  }
+
+  const { data } = await billingsQuery;
 
   const rows =
     (data as Array<{
@@ -538,6 +553,7 @@ export const billingsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_billing',
     icon: 'Receipt',
     cardVariant: 'create',
+    requiredAction: 'billings.create',
     promptDescription:
       'Create a new billing entry (charge, payment, or spending)',
     examplePayload: {
@@ -563,6 +579,7 @@ export const billingsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_update_billing',
     icon: 'Pencil',
     cardVariant: 'update',
+    requiredAction: 'billings.update_description',
     promptDescription: 'Update fields of an existing billing by its entity_id',
     examplePayload: {
       type: 'update_billing',
@@ -583,6 +600,7 @@ export const billingsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_delete_billing',
     icon: 'Trash2',
     cardVariant: 'delete',
+    requiredAction: 'billings.delete',
     promptDescription: 'Delete an existing billing entry by its entity_id',
     examplePayload: {
       type: 'delete_billing',
@@ -602,6 +620,7 @@ export const billingsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_billing_category',
     icon: 'Folder',
     cardVariant: 'create',
+    requiredAction: 'billings.manage_categories',
     promptDescription:
       'Create a new billing category (name required, color optional)',
     examplePayload: {
@@ -622,6 +641,7 @@ export const billingsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_update_billing_category',
     icon: 'Pencil',
     cardVariant: 'update',
+    requiredAction: 'billings.manage_categories',
     promptDescription:
       'Update name or color of an existing billing category by entity_id (ids listed in Billings section in full scope)',
     examplePayload: {
@@ -644,6 +664,7 @@ export const billingsCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_delete_billing_category',
     icon: 'Trash2',
     cardVariant: 'delete',
+    requiredAction: 'billings.manage_categories',
     promptDescription:
       'Delete an existing billing category by entity_id (ids listed in Billings section in full scope)',
     examplePayload: {

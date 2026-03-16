@@ -1,7 +1,8 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth';
-import { requireCan } from '@/lib/rbac/resolver';
+import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
+import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
 import { createClient } from '@/lib/supabase/server';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
@@ -144,11 +145,49 @@ export async function deleteBoardAction(id: string) {
   }
 }
 
-/** Server action for context ideas tab: list boards by project (cacheable from client). */
+/** Server action for context ideas tab: list boards by project, scope-aware. */
 export async function getBoardsByProjectIdAction(projectId: string) {
-  await requireAuth();
-  if (!projectId?.trim()) return [];
-  return listBoardsByProjectId(projectId.trim());
+  const user = await requireAuth();
+  const pid = projectId?.trim();
+  if (!pid) return [];
+
+  const scope = await getReadScope(user.id, pid, 'ideas');
+
+  if (scope === 'project') {
+    return listBoardsByProjectId(pid);
+  }
+
+  // For 'own' or 'team', filter in-application after fetching all boards,
+  // since listBoardsByProjectId is a lib function used elsewhere.
+  const supabase = await createClient();
+  let query = supabase
+    .from('idea_boards')
+    .select(
+      'id, owner_id, name, description, project_id, created_at, updated_at'
+    )
+    .eq('project_id', pid)
+    .order('created_at', { ascending: false });
+
+  if (scope === 'own') {
+    query = query.eq('owner_id', user.id);
+  } else {
+    // scope === 'team'
+    const teamIds = await getTeamMemberIds(user.id, pid);
+    query = query.in('owner_id', teamIds);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    captureWithContext(error, {
+      module: 'ideas',
+      action: 'getBoardsByProjectIdAction',
+      userIntent: 'Cargar boards de ideas del proyecto',
+      expected: 'Lista de boards filtrada por scope',
+      extra: { projectId: pid, scope },
+    });
+    return [];
+  }
+  return data ?? [];
 }
 
 /**
@@ -247,4 +286,37 @@ export async function addIdeaToBoardAction(formData: FormData) {
         error instanceof Error ? error.message : 'Failed to add idea to board',
     };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Ideas UI permissions
+// ---------------------------------------------------------------------------
+
+export type IdeasPermissions = {
+  canCreate: boolean;
+};
+
+export async function getIdeasPermissions(
+  projectId: string
+): Promise<IdeasPermissions> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const allFalse: IdeasPermissions = { canCreate: false };
+  if (!projectId?.trim()) return allFalse;
+
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (project?.owner_id === user.id) {
+    return { canCreate: true };
+  }
+
+  const granted = await getGrantedActions(user.id, projectId, true);
+  return {
+    canCreate: granted.has('ideas.create_board'),
+  };
 }

@@ -14,7 +14,11 @@ import {
   X,
 } from 'lucide-react';
 import { updateProject, linkBusinessToProject } from '@/app/actions/projects';
-import { getClients, getBusinessesByClientId } from '@/app/actions/clients';
+import {
+  getClients,
+  getBusinessesByClientId,
+  type OwnerPermissions,
+} from '@/app/actions/clients';
 import { CreateClientModal } from './components/CreateClientModal';
 import { CreateBusinessModal } from './components/CreateBusinessModal';
 import { EditClientModal } from './components/EditClientModal';
@@ -64,6 +68,7 @@ interface ContextOwnerClientProps {
   project: Project;
   client: Client | null;
   business: Business | null;
+  permissions: OwnerPermissions;
   /** Called after linking a new client or business to the project (so owner data can refresh). */
   onOwnerUpdated?: () => void;
 }
@@ -76,6 +81,7 @@ export default function ContextOwnerClient({
   project,
   client,
   business,
+  permissions,
   onOwnerUpdated,
 }: ContextOwnerClientProps) {
   const { t } = useI18n();
@@ -266,22 +272,26 @@ export default function ContextOwnerClient({
             {t('context.owner_empty_hint')}
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => setClientChoiceModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <UserCircle className="w-4 h-4" />
-              {t('context.add_or_select_client')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setBusinessChoiceModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <Building2 className="w-4 h-4" />
-              {t('context.add_or_select_business')}
-            </button>
+            {permissions.canCreateClient && (
+              <button
+                type="button"
+                onClick={() => setClientChoiceModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <UserCircle className="w-4 h-4" />
+                {t('context.add_or_select_client')}
+              </button>
+            )}
+            {permissions.canCreateBusiness && (
+              <button
+                type="button"
+                onClick={() => setBusinessChoiceModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <Building2 className="w-4 h-4" />
+                {t('context.add_or_select_business')}
+              </button>
+            )}
           </div>
           {selectClientModalOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -329,11 +339,13 @@ export default function ContextOwnerClient({
             </div>
           )}
           <CreateClientModal
+            projectId={project.id}
             isOpen={clientModalOpen}
             onClose={() => setClientModalOpen(false)}
             onCreated={handleClientCreated}
           />
           <CreateBusinessModal
+            projectId={project.id}
             isOpen={addBusinessModalOpen}
             onClose={() => setAddBusinessModalOpen(false)}
             onCreated={handleBusinessCreated}
@@ -351,16 +363,18 @@ export default function ContextOwnerClient({
                   </h3>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setEditClientModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-                  >
-                    <Pencil className="w-4 h-4" />
-                    <span className="hidden sm:inline">
-                      {t('clients.edit_client')}
-                    </span>
-                  </button>
+                  {permissions.canUpdateClient && (
+                    <button
+                      type="button"
+                      onClick={() => setEditClientModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      <span className="hidden sm:inline">
+                        {t('clients.edit_client')}
+                      </span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setClientModalOpen(true)}
@@ -455,14 +469,16 @@ export default function ContextOwnerClient({
               <p className="text-sm text-muted-foreground mb-3">
                 {t('context.owner_empty_hint')}
               </p>
-              <button
-                type="button"
-                onClick={() => setBusinessChoiceModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:opacity-90 transition-opacity"
-              >
-                <Building2 className="w-4 h-4" />
-                {t('context.add_or_select_business')}
-              </button>
+              {permissions.canCreateBusiness && (
+                <button
+                  type="button"
+                  onClick={() => setBusinessChoiceModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  <Building2 className="w-4 h-4" />
+                  {t('context.add_or_select_business')}
+                </button>
+              )}
             </div>
           )}
           {selectBusinessModalOpen && client && (
@@ -645,6 +661,7 @@ export default function ContextOwnerClient({
               />
               <EditClientModal
                 client={client}
+                projectId={project.id}
                 isOpen={editClientModalOpen}
                 onClose={() => setEditClientModalOpen(false)}
                 onUpdated={onOwnerUpdated}
@@ -659,6 +676,7 @@ export default function ContextOwnerClient({
             />
           )}
           <CreateBusinessModal
+            projectId={project.id}
             clientId={client?.id}
             isOpen={addBusinessModalOpen}
             onClose={() => setAddBusinessModalOpen(false)}

@@ -3,7 +3,8 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
-import { requireCan } from '@/lib/rbac/resolver';
+import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
+import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
 import { revalidatePath } from 'next/cache';
 import { captureWithContext } from '@/lib/sentry';
 
@@ -103,9 +104,14 @@ export async function seedDefaultBillingCategories(): Promise<void> {
 }
 
 export async function createBillingCategory(
-  name: string
+  name: string,
+  projectId: string
 ): Promise<{ data?: BillingCategory; error?: string }> {
   const user = await requireAuth();
+  await requireCan(user.id, 'billings.manage_categories', {
+    type: 'project',
+    projectId,
+  });
   const supabase = await createClient();
   const trimmed = name.trim();
   if (!trimmed) return { error: 'Category name is required' };
@@ -139,9 +145,14 @@ export async function createBillingCategory(
 }
 
 export async function deleteBillingCategory(
-  categoryId: string
+  categoryId: string,
+  projectId: string
 ): Promise<{ error?: string }> {
   const user = await requireAuth();
+  await requireCan(user.id, 'billings.manage_categories', {
+    type: 'project',
+    projectId,
+  });
   const supabase = await createClient();
   const { error } = await (supabase as any)
     .from('billing_categories')
@@ -167,14 +178,25 @@ export const getBillingsByProjectId = cache(
     const user = await requireAuth();
     const supabase = await createClient();
 
-    const { data, error } = await (supabase as any)
+    const scope = await getReadScope(user.id, projectId, 'billings');
+
+    let billingsQuery = (supabase as any)
       .from('billings')
       .select(
         `${BILLING_COLS}, client:clients!billings_client_id_fkey(id, full_name), billing_categories(id, name, color)`
       )
       .eq('project_id', projectId)
-      .eq('owner_id', user.id)
       .order('created_at', { ascending: false });
+
+    if (scope === 'own') {
+      billingsQuery = billingsQuery.eq('owner_id', user.id);
+    } else if (scope === 'team') {
+      const teamIds = await getTeamMemberIds(user.id, projectId);
+      billingsQuery = billingsQuery.in('owner_id', teamIds);
+    }
+    // scope === 'project': no owner filter
+
+    const { data, error } = await billingsQuery;
 
     if (error || !data?.length) return [];
     return data as BillingWithRelations[];
@@ -431,4 +453,53 @@ export async function deleteBilling(
 
   revalidateBillingPaths(projectId);
   return {};
+}
+
+// ---------------------------------------------------------------------------
+// Billings UI permissions
+// ---------------------------------------------------------------------------
+
+export type BillingsPermissions = {
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  canManageCategories: boolean;
+};
+
+export async function getBillingsPermissions(
+  projectId: string
+): Promise<BillingsPermissions> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const allFalse: BillingsPermissions = {
+    canCreate: false,
+    canEdit: false,
+    canDelete: false,
+    canManageCategories: false,
+  };
+  if (!projectId?.trim()) return allFalse;
+
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (project?.owner_id === user.id) {
+    return {
+      canCreate: true,
+      canEdit: true,
+      canDelete: true,
+      canManageCategories: true,
+    };
+  }
+
+  const granted = await getGrantedActions(user.id, projectId, true);
+  return {
+    canCreate: granted.has('billings.create'),
+    canEdit: granted.has('billings.update_description'),
+    canDelete: granted.has('billings.delete'),
+    canManageCategories: granted.has('billings.manage_categories'),
+  };
 }

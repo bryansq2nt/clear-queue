@@ -7,7 +7,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import TaskCard from './TaskCard';
-import { AddTaskModal } from './AddTaskModal';
+import { AddTaskModal, type TaskAssignee } from './AddTaskModal';
 import type { EditTaskErrorParams } from './EditTaskModal';
 import { Plus, ChevronDown, ChevronRight } from 'lucide-react';
 import { useI18n } from '@/components/shared/I18nProvider';
@@ -28,6 +28,7 @@ interface ColumnProps {
   isExpanded?: boolean;
   onToggle?: () => void;
   onTaskUpdated?: (updatedTask: Task) => void;
+  onTaskDeleted?: (taskId: string) => void;
   onEditError?: (params: EditTaskErrorParams) => void;
   /** Total task count for this column (when paginated); used for "X tareas" and "Ver más" */
   totalCount?: number;
@@ -43,6 +44,12 @@ interface ColumnProps {
     retry: () => Promise<{ data?: Task; error?: string }>;
     optimisticId?: string;
   }) => void;
+  /** Whether the current user can create tasks. Defaults to true. */
+  canAdd?: boolean;
+  /** Project members available for task assignment. */
+  projectMembers?: TaskAssignee[];
+  /** Current user's ID — passed to modals for "Me" label. */
+  currentUserId?: string;
 }
 
 export default function Column({
@@ -56,6 +63,7 @@ export default function Column({
   isExpanded = true,
   onToggle,
   onTaskUpdated,
+  onTaskDeleted,
   onEditError,
   totalCount,
   onLoadMore,
@@ -63,6 +71,9 @@ export default function Column({
   onTaskAdded,
   onTaskConfirmed,
   onAddTaskError,
+  canAdd = true,
+  projectMembers,
+  currentUserId,
 }: ColumnProps) {
   const { t } = useI18n();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -225,7 +236,7 @@ export default function Column({
                 )}
               >
                 {/* Add Task — at top of column (desktop); status = this column */}
-                {currentProjectId && (
+                {canAdd && currentProjectId && (
                   <button
                     type="button"
                     onClick={() => setIsAddModalOpen(true)}
@@ -253,7 +264,10 @@ export default function Column({
                             )}
                             onTaskUpdate={onTaskUpdate}
                             onTaskUpdated={onTaskUpdated}
+                            onTaskDeleted={onTaskDeleted}
                             onEditError={onEditError}
+                            projectMembers={projectMembers}
+                            currentUserId={currentUserId}
                             {...selectionProps}
                           />
                         );
@@ -296,6 +310,8 @@ export default function Column({
           onTaskConfirmed={onTaskConfirmed}
           onAddError={onAddTaskError}
           defaultProjectId={currentProjectId}
+          projectMembers={projectMembers}
+          currentUserId={currentUserId}
           defaultStatus={id}
         />
       )}

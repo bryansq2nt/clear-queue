@@ -14,7 +14,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { createBoardWithProjectAction } from '@/app/actions/idea-boards';
+import {
+  createBoardWithProjectAction,
+  type IdeasPermissions,
+} from '@/app/actions/idea-boards';
 
 interface Board {
   id: string;
@@ -26,6 +29,7 @@ interface Board {
 interface ContextIdeasClientProps {
   projectId: string;
   initialBoards: Board[];
+  permissions: IdeasPermissions;
   /** When provided (context cache), called after mutations to refresh list */
   onRefresh?: () => void | Promise<void>;
 }
@@ -36,6 +40,7 @@ interface ContextIdeasClientProps {
 export default function ContextIdeasClient({
   projectId,
   initialBoards,
+  permissions,
   onRefresh,
 }: ContextIdeasClientProps) {
   const { t } = useI18n();
@@ -96,15 +101,17 @@ export default function ContextIdeasClient({
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={() => setNewBoardOpen(true)}
-        title={t('ideas.new_mind_map')}
-        aria-label={t('ideas.new_mind_map')}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
+      {permissions.canCreate && (
+        <button
+          type="button"
+          onClick={() => setNewBoardOpen(true)}
+          title={t('ideas.new_mind_map')}
+          aria-label={t('ideas.new_mind_map')}
+          className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:bottom-8 md:right-8"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
 
       <Dialog open={newBoardOpen} onOpenChange={setNewBoardOpen}>
         <DialogContent className="sm:max-w-md">

@@ -154,6 +154,7 @@ export const milestonesCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_milestone',
     icon: 'Flag',
     cardVariant: 'create',
+    requiredAction: 'milestones.create',
     promptDescription: 'Create a new project milestone',
     examplePayload: {
       type: 'milestone',
@@ -174,6 +175,7 @@ export const milestonesCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_delete_milestone',
     icon: 'Trash2',
     cardVariant: 'delete',
+    requiredAction: 'milestones.delete',
     promptDescription: 'Delete an existing milestone by its entity_id',
     examplePayload: {
       type: 'delete_milestone',
@@ -195,6 +197,7 @@ export const milestonesCapabilities: CopilotModuleCapability[] = [
     label: 'copilot.proposal_update_milestone',
     icon: 'Pencil',
     cardVariant: 'update',
+    requiredAction: 'milestones.update',
     promptDescription:
       'Update title or description of an existing milestone by its entity_id',
     examplePayload: {
