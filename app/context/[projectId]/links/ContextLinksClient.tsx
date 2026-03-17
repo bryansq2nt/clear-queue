@@ -154,8 +154,6 @@ interface ContextLinksClientProps {
   initialLinks: ProjectLinkRow[];
   initialCategories?: LinkCategoryRow[];
   permissions: LinksPermissions;
-  onRefresh?: () => void | Promise<void>;
-  onCategoriesCacheUpdate?: (categories: LinkCategoryRow[]) => void;
 }
 
 function SortableSectionHeader({
@@ -459,11 +457,20 @@ export default function ContextLinksClient({
   initialLinks,
   initialCategories,
   permissions,
-  onRefresh,
-  onCategoriesCacheUpdate,
 }: ContextLinksClientProps) {
   const { t } = useI18n();
   const [links, setLinks] = useState<ProjectLinkRow[]>(initialLinks);
+
+  // ── Realtime subscription slot (empty until Realtime phase) ───────────────
+  // useEffect(() => {
+  //   const channel = supabase
+  //     .channel(`project_links:${projectId}`)
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'project_links',
+  //         filter: `project_id=eq.${projectId}` },
+  //       (payload) => { /* reconcile setLinks */ })
+  //     .subscribe();
+  //   return () => { supabase.removeChannel(channel); };
+  // }, [projectId]);
   const [categories, setCategories] = useState<LinkCategoryRow[]>(
     initialCategories ?? []
   );
@@ -576,8 +583,7 @@ export default function ContextLinksClient({
     );
     const next = await listLinkCategoriesAction();
     setCategories(next);
-    onCategoriesCacheUpdate?.(next);
-  }, [categoryToDelete, onCategoriesCacheUpdate]);
+  }, [categoryToDelete]);
 
   const handleSaveEditCategory = useCallback(async () => {
     if (!editingCategory) return;
@@ -588,8 +594,7 @@ export default function ContextLinksClient({
     const next = await listLinkCategoriesAction();
     setCategories(next);
     setEditingCategory(null);
-    onCategoriesCacheUpdate?.(next);
-  }, [editingCategory, editingCategoryName, onCategoriesCacheUpdate]);
+  }, [editingCategory, editingCategoryName]);
 
   const handleOpenAllInSection = useCallback(
     (sectionLinks: ProjectLinkRow[]) => {
@@ -704,10 +709,9 @@ export default function ContextLinksClient({
         return out;
       });
       const fullOrdered = buildFullOrderedIds(sectionKey, reorderedIds);
-      const { error } = await reorderProjectLinksAction(projectId, fullOrdered);
-      if (error) onRefresh?.();
+      await reorderProjectLinksAction(projectId, fullOrdered);
     },
-    [projectId, sectionOrder, linksBySection, buildFullOrderedIds, onRefresh]
+    [projectId, sectionOrder, linksBySection, buildFullOrderedIds]
   );
 
   const showList = links.length > 0 && categoriesLoaded;
@@ -830,7 +834,6 @@ export default function ContextLinksClient({
         onSuccess={handleSuccess}
         onCategoriesUpdated={(cats) => {
           setCategories(cats);
-          onCategoriesCacheUpdate?.(cats);
         }}
       />
 

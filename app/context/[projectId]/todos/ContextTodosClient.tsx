@@ -12,7 +12,6 @@ interface ContextTodosClientProps {
   initialProjectName: string;
   initialDefaultListId: string;
   initialItems: TodoItem[];
-  onRefresh?: () => void | Promise<void>;
 }
 
 /**
@@ -23,7 +22,6 @@ export default function ContextTodosClient({
   initialProjectName,
   initialDefaultListId,
   initialItems,
-  onRefresh,
 }: ContextTodosClientProps) {
   const { t } = useI18n();
   const [projectName] = useState(initialProjectName);
@@ -45,7 +43,6 @@ export default function ContextTodosClient({
     await createItem(content);
     setAdding(false);
     setNewTaskContent('');
-    onRefresh?.();
   };
 
   return (
@@ -90,15 +87,12 @@ export default function ContextTodosClient({
                 item={item}
                 onToggle={async () => {
                   await toggleItem(item);
-                  onRefresh?.();
                 }}
                 onSaveContent={async (content) => {
                   await updateItem(item, content);
-                  onRefresh?.();
                 }}
                 onDelete={async () => {
                   await deleteItem(item);
-                  onRefresh?.();
                 }}
               />
             ))}

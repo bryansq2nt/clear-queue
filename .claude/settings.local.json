@@ -52,7 +52,15 @@
       "Bash(tail:*)",
       "Bash(chmod:*)",
       "Bash(python3:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(for dir:*)",
+      "Bash(do)",
+      "Bash(echo \"=== $dir ===\")",
+      "Read(//Users/mutechlabs/development/clear-queue/app/context/[projectId]/**)",
+      "Bash(for file:*)",
+      "Bash(echo \"=== $file ===\")",
+      "Read(//Users/mutechlabs/development/clear-queue/**)",
+      "Bash(head:*)"
     ]
   }
 }

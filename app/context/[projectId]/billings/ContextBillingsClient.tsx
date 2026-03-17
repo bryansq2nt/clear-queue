@@ -38,7 +38,6 @@ interface ContextBillingsClientProps {
   initialCategories: BillingCategory[];
   projectClientId?: string | null;
   permissions: BillingsPermissions;
-  onRefresh?: () => void | Promise<void>;
 }
 
 type StatusFilter = 'all' | Billing['status'];
@@ -94,7 +93,6 @@ export default function ContextBillingsClient({
   initialCategories,
   projectClientId,
   permissions,
-  onRefresh,
 }: ContextBillingsClientProps) {
   const { t, formatCurrency } = useI18n();
 
@@ -103,6 +101,17 @@ export default function ContextBillingsClient({
   const [clients] = useState<Client[]>(initialClients);
   const [categories, setCategories] =
     useState<BillingCategory[]>(initialCategories);
+
+  // ── Realtime subscription slot (empty until Realtime phase) ───────────────
+  // useEffect(() => {
+  //   const channel = supabase
+  //     .channel(`billings:${projectId}`)
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'billings',
+  //         filter: `project_id=eq.${projectId}` },
+  //       (payload) => { /* reconcile setBillings */ })
+  //     .subscribe();
+  //   return () => { supabase.removeChannel(channel); };
+  // }, [projectId]);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -275,8 +284,7 @@ export default function ContextBillingsClient({
     }
 
     closeModal();
-    await onRefresh?.();
-  }, [form, editingBilling, projectId, onRefresh, t]);
+  }, [form, editingBilling, projectId, t]);
 
   // ─── Status change ────────────────────────────────────────────────────────
 
@@ -302,7 +310,6 @@ export default function ContextBillingsClient({
           : b
       )
     );
-    await onRefresh?.();
   }
 
   // ─── Delete ───────────────────────────────────────────────────────────────
@@ -327,7 +334,6 @@ export default function ContextBillingsClient({
     }
     setBillings((prev) => prev.filter((b) => b.id !== deleteTarget.id));
     setDeleteTarget(null);
-    await onRefresh?.();
   }
 
   // ─── Categories ───────────────────────────────────────────────────────────

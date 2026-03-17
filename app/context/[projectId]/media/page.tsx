@@ -1,8 +1,9 @@
 import { requireAuth } from '@/lib/auth';
 import { getCanViewModule } from '@/app/actions/modules';
-import { getMediaPermissions } from '@/app/actions/media';
+import { getMedia, getMediaPermissions } from '@/app/actions/media';
+import { MEDIA_PAGE_SIZE } from '@/lib/validation/project-media';
 import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
-import ContextMediaFromCache from './ContextMediaFromCache';
+import ContextMediaClient from './ContextMediaClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,12 @@ export default async function ContextMediaPage({
   await requireAuth();
   const { projectId } = params;
 
-  const { canView, reason } = await getCanViewModule(projectId, 'media');
+  const [{ canView, reason }, permissions, mediaResult] = await Promise.all([
+    getCanViewModule(projectId, 'media'),
+    getMediaPermissions(projectId),
+    getMedia(projectId, { offset: 0, limit: MEDIA_PAGE_SIZE }),
+  ]);
+
   if (!canView && reason) {
     return (
       <ModuleDisabledView
@@ -25,9 +31,13 @@ export default async function ContextMediaPage({
     );
   }
 
-  const permissions = await getMediaPermissions(projectId);
-
   return (
-    <ContextMediaFromCache projectId={projectId} permissions={permissions} />
+    <ContextMediaClient
+      projectId={projectId}
+      initialMedia={mediaResult.items}
+      initialHasMore={mediaResult.hasMore}
+      initialLoadedCount={mediaResult.items.length}
+      permissions={permissions}
+    />
   );
 }

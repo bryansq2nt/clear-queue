@@ -1,9 +1,14 @@
 import { requireAuth } from '@/lib/auth';
 import { getCanViewModule } from '@/app/actions/modules';
 import { getProjectById } from '@/app/actions/projects';
-import { getBillingsPermissions } from '@/app/actions/billings';
+import {
+  getBillingsPermissions,
+  getBillingsByProjectId,
+  getBillingCategories,
+} from '@/app/actions/billings';
+import { getClients } from '@/app/actions/clients';
 import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
-import ContextBillingsFromCache from './ContextBillingsFromCache';
+import ContextBillingsClient from './ContextBillingsClient';
 
 export default async function ContextBillingsPage({
   params,
@@ -13,10 +18,20 @@ export default async function ContextBillingsPage({
   await requireAuth();
   const { projectId } = params;
 
-  const [{ canView, reason }, project, permissions] = await Promise.all([
+  const [
+    { canView, reason },
+    project,
+    permissions,
+    billings,
+    categories,
+    clients,
+  ] = await Promise.all([
     getCanViewModule(projectId, 'billings'),
     getProjectById(projectId),
     getBillingsPermissions(projectId),
+    getBillingsByProjectId(projectId),
+    getBillingCategories(),
+    getClients(),
   ]);
 
   if (!canView && reason) {
@@ -30,8 +45,11 @@ export default async function ContextBillingsPage({
   }
 
   return (
-    <ContextBillingsFromCache
+    <ContextBillingsClient
       projectId={projectId}
+      initialBillings={billings}
+      initialClients={clients as { id: string; full_name: string }[]}
+      initialCategories={categories}
       projectClientId={project?.client_id ?? null}
       permissions={permissions}
     />

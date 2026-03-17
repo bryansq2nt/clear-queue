@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/shared/I18nProvider';
 import {
   inviteProjectMember,
@@ -407,7 +408,6 @@ interface Props {
   reusableRoles: InviteRole[];
   initialTeams: ProjectTeam[];
   subTeamsPermissions: SubTeamsPermissions;
-  onRefresh: () => void;
 }
 
 export default function ContextTeamClient({
@@ -420,9 +420,9 @@ export default function ContextTeamClient({
   reusableRoles,
   initialTeams,
   subTeamsPermissions,
-  onRefresh,
 }: Props) {
   const { t } = useI18n();
+  const router = useRouter();
   const members = initialMembers;
   const invites = initialInvites;
   const rejectedInvites = initialRejectedInvites;
@@ -494,6 +494,17 @@ export default function ContextTeamClient({
   const [editMemberLoadError, setEditMemberLoadError] = useState<string | null>(
     null
   );
+
+  // ── Realtime subscription slot (empty until Realtime phase) ───────────────
+  // useEffect(() => {
+  //   const channel = supabase
+  //     .channel(`project_members:${projectId}`)
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'project_members',
+  //         filter: `project_id=eq.${projectId}` },
+  //       (payload) => { /* router.refresh() */ })
+  //     .subscribe();
+  //   return () => { supabase.removeChannel(channel); };
+  // }, [projectId]);
 
   // Refs hold latest draft so Save uses current UI state even if React hasn't committed yet
   const latestDraftModulesRef = useRef<string[] | null>(null);
@@ -649,8 +660,8 @@ export default function ContextTeamClient({
     setGeneratedLink(null);
     setLastInvitedEmail(null);
     setEmailSent(false);
-    onRefresh();
-  }, [resetForm, onRefresh]);
+    router.refresh();
+  }, [resetForm, router]);
 
   const handleEmailStepNext = useCallback(async () => {
     if (!inviteEmail.trim()) return;
@@ -889,9 +900,9 @@ export default function ContextTeamClient({
         });
         return;
       }
-      onRefresh();
+      router.refresh();
     },
-    [projectId, onRefresh, t]
+    [projectId, router, t]
   );
 
   const handleRemoveMember = useCallback(
@@ -907,9 +918,9 @@ export default function ContextTeamClient({
         return;
       }
       setConfirmRemoveMember(null);
-      onRefresh();
+      router.refresh();
     },
-    [projectId, onRefresh, t]
+    [projectId, router, t]
   );
 
   const handleApplyRoleOrProfile = useCallback(
@@ -946,9 +957,9 @@ export default function ContextTeamClient({
         latestDraftModulesRef.current = modules;
         latestDraftActionsRef.current = actions;
       }
-      onRefresh();
+      router.refresh();
     },
-    [projectId, onRefresh, t]
+    [projectId, router, t]
   );
 
   const handleToggleEditMemberModuleDraft = useCallback(
@@ -1009,9 +1020,9 @@ export default function ContextTeamClient({
       }
       toastSuccess(t('teams.permissions_saved_toast'));
       setEditMember(null);
-      onRefresh();
+      router.refresh();
     },
-    [projectId, editMemberDraftModules, editMemberDraftActions, onRefresh, t]
+    [projectId, editMemberDraftModules, editMemberDraftActions, router, t]
   );
 
   // Derived: can proceed from modules step?

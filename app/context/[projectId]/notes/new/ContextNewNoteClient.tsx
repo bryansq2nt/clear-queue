@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/shared/I18nProvider';
-import { useContextDataCache } from '@/app/context/ContextDataCache';
 import { NoteEditor } from '../components/NoteEditor';
 import { ArrowLeft } from 'lucide-react';
 
@@ -24,7 +23,6 @@ export default function ContextNewNoteClient({
 }: ContextNewNoteClientProps) {
   const { t } = useI18n();
   const router = useRouter();
-  const cache = useContextDataCache();
   const folderQuery =
     defaultFolderId !== undefined
       ? `?folderId=${defaultFolderId === null || defaultFolderId === 'root' ? 'root' : defaultFolderId}`
@@ -34,8 +32,6 @@ export default function ContextNewNoteClient({
 
   const handleBack = (e: React.MouseEvent) => {
     e.preventDefault();
-    cache.invalidate({ type: 'notes', projectId });
-    cache.invalidate({ type: 'noteFolders', projectId });
     router.push(listHref);
   };
 

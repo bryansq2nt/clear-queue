@@ -1,7 +1,7 @@
 import { requireAuth } from '@/lib/auth';
 import { getCanViewModule } from '@/app/actions/modules';
 import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
-import ContextCopilotFromCache from './ContextCopilotFromCache';
+import ContextCopilotLoader from './ContextCopilotLoader';
 
 export default async function ContextCopilotPage({
   params,
@@ -22,5 +22,5 @@ export default async function ContextCopilotPage({
     );
   }
 
-  return <ContextCopilotFromCache projectId={projectId} />;
+  return <ContextCopilotLoader projectId={projectId} />;
 }

@@ -5,7 +5,10 @@ import type {
   CalendarFeedItem,
   CalendarPermissions,
 } from '@/app/actions/calendar';
-import { deleteCalendarEvent } from '@/app/actions/calendar';
+import {
+  deleteCalendarEvent,
+  getProjectCalendarFeed,
+} from '@/app/actions/calendar';
 import { CalendarMonthGrid } from '@/components/context/calendar/CalendarMonthGrid';
 import { CalendarDayDialog } from '@/components/context/calendar/CalendarDayDialog';
 import {
@@ -20,18 +23,27 @@ interface ContextCalendarClientProps {
   start: string;
   end: string;
   permissions: CalendarPermissions;
-  onRefresh?: () => void | Promise<void>;
-  onLoadMonth?: (year: number, month: number) => void | Promise<void>;
+}
+
+function getMonthRangeFor(
+  year: number,
+  month: number
+): { start: string; end: string } {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const s = new Date(year, month, 1);
+  const e = new Date(year, month + 1, 0);
+  return {
+    start: `${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(s.getDate())}`,
+    end: `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}`,
+  };
 }
 
 export default function ContextCalendarClient({
   projectId,
   initialItems,
-  start,
-  end,
+  start: _start,
+  end: _end,
   permissions,
-  onRefresh,
-  onLoadMonth,
 }: ContextCalendarClientProps) {
   const [items, setItems] = useState<CalendarFeedItem[]>(initialItems);
   useEffect(() => {
@@ -40,6 +52,17 @@ export default function ContextCalendarClient({
   const now = useMemo(() => new Date(), []);
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
+
+  // ── Realtime subscription slot (empty until Realtime phase) ───────────────
+  // useEffect(() => {
+  //   const channel = supabase
+  //     .channel(`calendar:${projectId}`)
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events',
+  //         filter: `project_id=eq.${projectId}` },
+  //       (payload) => { /* reconcile setItems */ })
+  //     .subscribe();
+  //   return () => { supabase.removeChannel(channel); };
+  // }, [projectId]);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -73,23 +96,36 @@ export default function ContextCalendarClient({
     setDayDialogOpen(true);
   }, []);
 
+  const loadMonthItems = useCallback(
+    async (year: number, month: number) => {
+      const range = getMonthRangeFor(year, month);
+      const result = await getProjectCalendarFeed({
+        projectId,
+        start: range.start,
+        end: range.end,
+      });
+      setItems(result);
+    },
+    [projectId]
+  );
+
   const handlePrevMonth = useCallback(() => {
     const d = new Date(viewYear, viewMonth - 1);
     setViewYear(d.getFullYear());
     setViewMonth(d.getMonth());
-    onLoadMonth?.(d.getFullYear(), d.getMonth());
-  }, [viewYear, viewMonth, onLoadMonth]);
+    void loadMonthItems(d.getFullYear(), d.getMonth());
+  }, [viewYear, viewMonth, loadMonthItems]);
 
   const handleNextMonth = useCallback(() => {
     const d = new Date(viewYear, viewMonth + 1);
     setViewYear(d.getFullYear());
     setViewMonth(d.getMonth());
-    onLoadMonth?.(d.getFullYear(), d.getMonth());
-  }, [viewYear, viewMonth, onLoadMonth]);
+    void loadMonthItems(d.getFullYear(), d.getMonth());
+  }, [viewYear, viewMonth, loadMonthItems]);
 
   const handleRefresh = useCallback(() => {
-    onRefresh?.();
-  }, [onRefresh]);
+    void loadMonthItems(viewYear, viewMonth);
+  }, [loadMonthItems, viewYear, viewMonth]);
 
   const handleEditEvent = useCallback((sourceId: string) => {
     setDayDialogOpen(false);

@@ -45,7 +45,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { useContextDataCache } from '@/app/context/ContextDataCache';
 import { useActionToast } from '@/components/shared/ActionToastProvider';
 import { toastError } from '@/lib/ui/toast';
 
@@ -83,7 +82,6 @@ interface ContextDocumentsClientProps {
   initialDocuments: ProjectFile[];
   initialFolders: DocumentFolder[];
   permissions: DocumentsPermissions;
-  onRefresh?: () => void | Promise<void>;
 }
 
 export default function ContextDocumentsClient({
@@ -91,10 +89,19 @@ export default function ContextDocumentsClient({
   initialDocuments,
   initialFolders,
   permissions,
-  onRefresh,
 }: ContextDocumentsClientProps) {
   const { t } = useI18n();
-  const cache = useContextDataCache();
+
+  // ── Realtime subscription slot (empty until Realtime phase) ───────────────
+  // useEffect(() => {
+  //   const channel = supabase
+  //     .channel(`project_files:${projectId}`)
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'project_files',
+  //         filter: `project_id=eq.${projectId}` },
+  //       (payload) => { /* reconcile setDocuments */ })
+  //     .subscribe();
+  //   return () => { supabase.removeChannel(channel); };
+  // }, [projectId]);
   const { showActionToast, dismiss } = useActionToast();
 
   // ─── Data ────────────────────────────────────────────────────────────────
@@ -245,10 +252,6 @@ export default function ContextDocumentsClient({
   };
 
   const refresh = async () => {
-    if (onRefresh) {
-      await onRefresh();
-      return;
-    }
     const data = await getDocuments(projectId);
     setDocuments(data);
   };
@@ -269,16 +272,14 @@ export default function ContextDocumentsClient({
     setIsUploadOpen(false);
     const next = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles];
     setDocuments((prev) => [...next, ...prev]);
-    void onRefresh?.();
   };
 
-  // Phase 2: create folder → open it immediately; invalidate cache without reload
+  // Phase 2: create folder → open it immediately
   const handleCreateFolderSuccess = (folder: DocumentFolder) => {
     setFolders((prev) =>
       [...prev, folder].sort((a, b) => a.sort_order - b.sort_order)
     );
     setSelectedFolderId(folder.id);
-    cache.invalidate({ type: 'documentFolders', projectId });
   };
 
   const handleEditSuccess = (updated: ProjectFile) => {
@@ -286,14 +287,12 @@ export default function ContextDocumentsClient({
     setDocuments((prev) =>
       prev.map((d) => (d.id === updated.id ? updated : d))
     );
-    void onRefresh?.();
   };
 
   const handleArchive = async (file: ProjectFile) => {
     const { success } = await archiveDocument(file.id);
     if (success) {
       setDocuments((prev) => prev.filter((d) => d.id !== file.id));
-      void onRefresh?.();
     }
   };
 
@@ -301,7 +300,6 @@ export default function ContextDocumentsClient({
     const { success } = await deleteDocument(file.id);
     if (success) {
       setDocuments((prev) => prev.filter((d) => d.id !== file.id));
-      void onRefresh?.();
     }
   };
 
@@ -372,8 +370,6 @@ export default function ContextDocumentsClient({
     );
     setIsDeleteFoldersOpen(false);
     exitFolderSelectionMode();
-    cache.invalidate({ type: 'documents', projectId });
-    cache.invalidate({ type: 'documentFolders', projectId });
   };
 
   // ─── Phase 4: document selection + move handlers ─────────────────────────
@@ -442,9 +438,6 @@ export default function ContextDocumentsClient({
           // before onUndo(), so this new toast will not be immediately cleared.
           showActionToast({ message: t('documents.move_undone') });
           // Server reverts in background.
-          // We intentionally do NOT call cache.invalidate here: the session cache
-          // already holds the pre-move documents (never updated after the move),
-          // so it is already correct after the undo.
           void (async () => {
             for (const { docId, previousFolderId: prev } of moved) {
               await updateDocument(docId, { folder_id: prev });
@@ -492,7 +485,6 @@ export default function ContextDocumentsClient({
     setDocuments((prev) => prev.filter((d) => !deletedSet.has(d.id)));
     setIsDeleteDocsOpen(false);
     exitSelectionMode();
-    cache.invalidate({ type: 'documents', projectId });
   };
 
   // ─── JSX ─────────────────────────────────────────────────────────────────

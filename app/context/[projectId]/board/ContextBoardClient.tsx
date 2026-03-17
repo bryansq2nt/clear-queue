@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Database } from '@/lib/supabase/types';
-import { useContextDataCache } from '@/app/context/ContextDataCache';
 import KanbanBoard from '@/components/board/KanbanBoard';
 import {
   AddTaskModal,
@@ -56,8 +55,6 @@ interface ContextBoardClientProps {
   initialCounts: Record<TaskStatus, number>;
   initialTasksByStatus: Record<TaskStatus, Task[]>;
   permissions: BoardPermissions;
-  /** When provided (context cache), used instead of router.refresh() */
-  onRefresh?: () => void | Promise<void>;
   /** Project members for the assignee dropdown in add/edit task modals. */
   projectMembers?: TaskAssignee[];
   /** Current user's ID — passed to modals for "Me" label. */
@@ -74,13 +71,11 @@ export default function ContextBoardClient({
   initialCounts,
   initialTasksByStatus,
   permissions,
-  onRefresh,
   projectMembers,
   currentUserId,
 }: ContextBoardClientProps) {
   const { t } = useI18n();
   const router = useRouter();
-  const cache = useContextDataCache();
   const [tasksByStatus, setTasksByStatus] =
     useState<Record<TaskStatus, Task[]>>(initialTasksByStatus);
   const [counts, setCounts] =
@@ -95,10 +90,20 @@ export default function ContextBoardClient({
     [tasksByStatus]
   );
 
+  // ── Realtime subscription slot (empty until Realtime phase) ───────────────
+  // useEffect(() => {
+  //   const channel = supabase
+  //     .channel(`tasks:${projectId}`)
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks',
+  //         filter: `project_id=eq.${projectId}` },
+  //       (payload) => { /* reconcile setTasksByStatus */ })
+  //     .subscribe();
+  //   return () => { supabase.removeChannel(channel); };
+  // }, [projectId]);
+
   const loadData = useCallback(() => {
-    if (onRefresh) void onRefresh();
-    else router.refresh();
-  }, [onRefresh, router]);
+    router.refresh();
+  }, [router]);
 
   const loadMoreForStatus = useCallback(
     async (status: TaskStatus) => {
@@ -149,39 +154,35 @@ export default function ContextBoardClient({
     setTasksByStatus(groupTasksByStatus(newTasks));
   }, []);
 
-  const handleTaskUpdated = useCallback(
-    (updatedTask: Task) => {
-      cache.invalidate({ type: 'milestones', projectId });
-      setTasksByStatus((prev) => {
-        const next = { ...prev };
-        for (const s of BOARD_STATUSES) {
-          const idx = next[s].findIndex((t) => t.id === updatedTask.id);
-          if (idx >= 0) {
-            if (updatedTask.status === s) {
-              next[s] = next[s].map((t) =>
-                t.id === updatedTask.id ? updatedTask : t
-              );
-              next[s] = sortTasksByOrder(next[s]);
-            } else {
-              next[s] = next[s].filter((t) => t.id !== updatedTask.id);
-              next[updatedTask.status] = sortTasksByOrder([
-                ...next[updatedTask.status],
-                updatedTask,
-              ]);
-              setCounts((c) => ({
-                ...c,
-                [s]: c[s] - 1,
-                [updatedTask.status]: c[updatedTask.status] + 1,
-              }));
-            }
-            return next;
+  const handleTaskUpdated = useCallback((updatedTask: Task) => {
+    setTasksByStatus((prev) => {
+      const next = { ...prev };
+      for (const s of BOARD_STATUSES) {
+        const idx = next[s].findIndex((t) => t.id === updatedTask.id);
+        if (idx >= 0) {
+          if (updatedTask.status === s) {
+            next[s] = next[s].map((t) =>
+              t.id === updatedTask.id ? updatedTask : t
+            );
+            next[s] = sortTasksByOrder(next[s]);
+          } else {
+            next[s] = next[s].filter((t) => t.id !== updatedTask.id);
+            next[updatedTask.status] = sortTasksByOrder([
+              ...next[updatedTask.status],
+              updatedTask,
+            ]);
+            setCounts((c) => ({
+              ...c,
+              [s]: c[s] - 1,
+              [updatedTask.status]: c[updatedTask.status] + 1,
+            }));
           }
+          return next;
         }
-        return prev;
-      });
-    },
-    [cache, projectId]
-  );
+      }
+      return prev;
+    });
+  }, []);
 
   const handleTaskDeleted = useCallback((taskId: string) => {
     let removedStatus: TaskStatus | null = null;
@@ -260,7 +261,6 @@ export default function ContextBoardClient({
           onEditError={openEditErrorDialog}
           skipRevalidateOnMove
           onTaskAdded={(task) => {
-            cache.invalidate({ type: 'milestones', projectId });
             const s = task.status;
             setTasksByStatus((prev) => ({
               ...prev,
@@ -269,7 +269,6 @@ export default function ContextBoardClient({
             setCounts((c) => ({ ...c, [s]: c[s] + 1 }));
           }}
           onTaskConfirmed={(realTask, optimisticId) => {
-            cache.invalidate({ type: 'milestones', projectId });
             setTasksByStatus((prev) => {
               const next = { ...prev };
               const s = realTask.status;

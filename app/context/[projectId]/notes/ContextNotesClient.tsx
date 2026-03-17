@@ -42,7 +42,6 @@ import { ChooseFolderForNewNoteDialog } from '@/components/context/notes/ChooseF
 import { MoveNotesToFolderDialog } from '@/components/context/notes/MoveNotesToFolderDialog';
 import { DeleteFoldersConfirmDialog } from '@/components/context/notes/DeleteFoldersConfirmDialog';
 import { DeleteNotesConfirmDialog } from '@/components/context/notes/DeleteNotesConfirmDialog';
-import { useContextDataCache } from '@/app/context/ContextDataCache';
 import { useActionToast } from '@/components/shared/ActionToastProvider';
 import { toastError } from '@/lib/ui/toast';
 import { cn } from '@/lib/utils';
@@ -90,7 +89,6 @@ interface ContextNotesClientProps {
   permissions: NotesPermissions;
   /** When opening with ?folderId=xxx or ?folderId=root */
   initialFolderId?: string;
-  onRefresh?: () => void | Promise<void>;
 }
 
 /**
@@ -102,11 +100,20 @@ export default function ContextNotesClient({
   initialFolders,
   permissions,
   initialFolderId,
-  onRefresh,
 }: ContextNotesClientProps) {
   const { t, locale } = useI18n();
   const router = useRouter();
-  const cache = useContextDataCache();
+
+  // ── Realtime subscription slot (empty until Realtime phase) ───────────────
+  // useEffect(() => {
+  //   const channel = supabase
+  //     .channel(`notes:${projectId}`)
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'notes',
+  //         filter: `project_id=eq.${projectId}` },
+  //       (payload) => { /* reconcile setNotes */ })
+  //     .subscribe();
+  //   return () => { supabase.removeChannel(channel); };
+  // }, [projectId]);
   const { showActionToast, dismiss } = useActionToast();
   const [notes, setNotes] = useState<Note[]>(initialNotes);
   const [folders, setFolders] = useState<NoteFolder[]>(initialFolders);
@@ -232,12 +239,6 @@ export default function ContextNotesClient({
   }, [recentNotes, dismissedAt]);
 
   const loadNotes = async () => {
-    if (onRefresh) {
-      setIsLoading(true);
-      await onRefresh();
-      setIsLoading(false);
-      return;
-    }
     setIsLoading(true);
     const data = await getNotes({ projectId });
     setNotes(data);
@@ -266,10 +267,6 @@ export default function ContextNotesClient({
     );
     setSelectedFolderId(folder.id);
     router.replace(`/context/${projectId}/notes?folderId=${folder.id}`);
-    // Invalidate only; do not call onRefresh() here so the re-render does not
-    // run with stale initialFolderId from the URL (e.g. last move destination).
-    cache.invalidate({ type: 'notes', projectId });
-    cache.invalidate({ type: 'noteFolders', projectId });
   };
 
   const clearFilters = () => setSearchQuery('');
@@ -362,8 +359,6 @@ export default function ContextNotesClient({
     );
     setIsDeleteFoldersOpen(false);
     exitFolderSelectionMode();
-    cache.invalidate({ type: 'notes', projectId });
-    cache.invalidate({ type: 'noteFolders', projectId });
   };
 
   const handleDeleteNotes = async () => {
@@ -379,12 +374,10 @@ export default function ContextNotesClient({
     }
 
     // Optimistic update: remove deleted notes from local state.
-    // Cache is invalidated so the next visit refetches fresh data.
     const deletedSet = new Set(ids);
     setNotes((prev) => prev.filter((n) => !deletedSet.has(n.id)));
     setIsDeleteNotesOpen(false);
     exitSelectionMode();
-    cache.invalidate({ type: 'notes', projectId });
   };
 
   const handleMoveToFolder = (targetFolderId: string | null) => {
@@ -444,11 +437,6 @@ export default function ContextNotesClient({
           // before onUndo(), so this new toast will not be immediately cleared.
           showActionToast({ message: t('notes.move_undone') });
           // Server writes in background.
-          // We intentionally do NOT call cache.invalidate here: the session cache
-          // already holds the pre-move notes (it was never updated after the move),
-          // so it is already correct after the undo.  Calling invalidate would
-          // trigger a skeleton re-render that resets selectedFolderId and kicks
-          // the user out of the current folder.
           void (async () => {
             for (const { noteId, previousFolderId: prev } of moved) {
               await updateNote(noteId, { folder_id: prev });

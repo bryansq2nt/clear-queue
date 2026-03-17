@@ -22,13 +22,13 @@ import type {
   CopilotProposal,
 } from '@/lib/copilot/schema';
 
-interface ContextCopilotFromCacheProps {
+interface ContextCopilotLoaderProps {
   projectId: string;
 }
 
-export default function ContextCopilotFromCache({
+export default function ContextCopilotLoader({
   projectId,
-}: ContextCopilotFromCacheProps) {
+}: ContextCopilotLoaderProps) {
   const [sessions, setSessions] = useState<CopilotSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
     null

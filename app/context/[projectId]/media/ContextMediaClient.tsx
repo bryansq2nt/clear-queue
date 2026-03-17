@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image as ImageIcon, Plus } from 'lucide-react';
 import { Database } from '@/lib/supabase/types';
 import { useI18n } from '@/components/shared/I18nProvider';
-import { useContextDataCache } from '@/app/context/ContextDataCache';
 import { toastError, toastSuccess } from '@/lib/ui/toast';
 import {
   getMedia,
@@ -48,12 +47,6 @@ import { EditMediaDialog } from '@/components/context/media/EditMediaDialog';
 
 type ProjectFile = Database['public']['Tables']['project_files']['Row'];
 
-type PaginatedMediaCache = {
-  items: ProjectFile[];
-  hasMore: boolean;
-  loadedCount: number;
-};
-
 interface ContextMediaClientProps {
   projectId: string;
   initialMedia: ProjectFile[];
@@ -70,9 +63,19 @@ export default function ContextMediaClient({
   permissions,
 }: ContextMediaClientProps) {
   const { t } = useI18n();
-  const cache = useContextDataCache();
 
   const [media, setMedia] = useState<ProjectFile[]>(initialMedia);
+
+  // ── Realtime subscription slot (empty until Realtime phase) ───────────────
+  // useEffect(() => {
+  //   const channel = supabase
+  //     .channel(`project_files:${projectId}`)
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'project_files',
+  //         filter: `project_id=eq.${projectId}` },
+  //       (payload) => { /* reconcile setMedia */ })
+  //     .subscribe();
+  //   return () => { supabase.removeChannel(channel); };
+  // }, [projectId]);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loadedCount, setLoadedCount] = useState(initialLoadedCount);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -86,7 +89,6 @@ export default function ContextMediaClient({
   const [archiveConfirmFile, setArchiveConfirmFile] =
     useState<ProjectFile | null>(null);
   const [shareLink, setShareLink] = useState<string | null>(null);
-  const [isFiltersDefault, setIsFiltersDefault] = useState(true);
   const [category, setCategory] = useState<string>('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -111,23 +113,14 @@ export default function ContextMediaClient({
 
   const refreshFromServer = useCallback(async () => {
     const result = await fetchWithFilters(0);
-    const newCache: PaginatedMediaCache = {
-      items: result.items,
-      hasMore: result.hasMore,
-      loadedCount: result.items.length,
-    };
-    if (isFiltersDefault) {
-      cache.set({ type: 'media', projectId }, newCache);
-    }
     setMedia(result.items);
     setHasMore(result.hasMore);
     setLoadedCount(result.items.length);
-  }, [projectId, cache, fetchWithFilters, isFiltersDefault]);
+  }, [fetchWithFilters]);
 
   useEffect(() => {
     if (!filtersChangedOnce.current) return;
     setIsRefetching(true);
-    setIsFiltersDefault(false);
     fetchWithFilters(0).then((result) => {
       setMedia(result.items);
       setHasMore(result.hasMore);
@@ -287,16 +280,6 @@ export default function ContextMediaClient({
     setMedia(updatedItems);
     setHasMore(result.hasMore);
     setLoadedCount(newLoadedCount);
-    if (isFiltersDefault) {
-      cache.set(
-        { type: 'media', projectId },
-        {
-          items: updatedItems,
-          hasMore: result.hasMore,
-          loadedCount: newLoadedCount,
-        }
-      );
-    }
     setIsLoadingMore(false);
   };
 

@@ -1,5 +1,6 @@
 import { requireAuth } from '@/lib/auth';
-import ContextTodosFromCache from './ContextTodosFromCache';
+import { getProjectTodoBoardAction } from '@/app/actions/todo';
+import ContextTodosClient from './ContextTodosClient';
 
 export default async function ContextTodosPage({
   params,
@@ -7,7 +8,15 @@ export default async function ContextTodosPage({
   params: { projectId: string };
 }) {
   await requireAuth();
-  const projectId = params.projectId;
-
-  return <ContextTodosFromCache projectId={projectId} />;
+  const { projectId } = params;
+  const result = await getProjectTodoBoardAction(projectId);
+  if (!result.ok) return null;
+  return (
+    <ContextTodosClient
+      projectId={projectId}
+      initialProjectName={result.data.projectName}
+      initialDefaultListId={result.data.defaultListId}
+      initialItems={result.data.items}
+    />
+  );
 }

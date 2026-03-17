@@ -1,9 +1,9 @@
 import { requireAuth } from '@/lib/auth';
 import { getCanViewModule } from '@/app/actions/modules';
-import { getBoardPermissions } from '@/app/actions/tasks';
+import { getBoardPermissions, getBoardInitialData } from '@/app/actions/tasks';
 import { listProjectMembers } from '@/app/actions/teams';
 import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
-import ContextBoardFromCache from './ContextBoardFromCache';
+import ContextBoardClient from './ContextBoardClient';
 
 export default async function ContextBoardPage({
   params,
@@ -13,7 +13,14 @@ export default async function ContextBoardPage({
   const currentUser = await requireAuth();
   const { projectId } = params;
 
-  const { canView, reason } = await getCanViewModule(projectId, 'board');
+  const [{ canView, reason }, permissions, members, boardData] =
+    await Promise.all([
+      getCanViewModule(projectId, 'board'),
+      getBoardPermissions(projectId),
+      listProjectMembers(projectId),
+      getBoardInitialData(projectId),
+    ]);
+
   if (!canView && reason) {
     return (
       <ModuleDisabledView
@@ -24,10 +31,7 @@ export default async function ContextBoardPage({
     );
   }
 
-  const [permissions, members] = await Promise.all([
-    getBoardPermissions(projectId),
-    listProjectMembers(projectId),
-  ]);
+  if (!boardData) return null;
 
   const projectMembers = members.map((m) => ({
     user_id: m.user_id,
@@ -35,8 +39,11 @@ export default async function ContextBoardPage({
   }));
 
   return (
-    <ContextBoardFromCache
+    <ContextBoardClient
       projectId={projectId}
+      initialProject={boardData.project}
+      initialCounts={boardData.counts}
+      initialTasksByStatus={boardData.tasksByStatus}
       permissions={permissions}
       projectMembers={projectMembers}
       currentUserId={currentUser.id}

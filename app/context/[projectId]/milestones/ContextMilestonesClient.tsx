@@ -10,7 +10,6 @@ import {
   type MilestonesPermissions,
 } from '@/app/actions/milestones';
 import type { MilestoneWithProgress } from '@/lib/milestones/schema';
-import { useContextDataCache } from '@/app/context/ContextDataCache';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { Plus, Flag, Check, Pencil, Trash2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,17 +29,14 @@ interface ContextMilestonesClientProps {
   projectId: string;
   initialMilestones: MilestoneWithProgress[];
   permissions: MilestonesPermissions;
-  onRefresh: () => void | Promise<void>;
 }
 
 export default function ContextMilestonesClient({
   projectId,
   initialMilestones,
   permissions,
-  onRefresh,
 }: ContextMilestonesClientProps) {
   const { t } = useI18n();
-  const cache = useContextDataCache();
   const [milestones, setMilestones] =
     useState<MilestoneWithProgress[]>(initialMilestones);
   const [createOpen, setCreateOpen] = useState(false);
@@ -59,9 +55,16 @@ export default function ContextMilestonesClient({
   const [reopenConfirmMilestone, setReopenConfirmMilestone] =
     useState<MilestoneWithProgress | null>(null);
 
-  const syncFromRefresh = useCallback(() => {
-    onRefresh();
-  }, [onRefresh]);
+  // ── Realtime subscription slot (empty until Realtime phase) ───────────────
+  // useEffect(() => {
+  //   const channel = supabase
+  //     .channel(`milestones:${projectId}`)
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'milestones',
+  //         filter: `project_id=eq.${projectId}` },
+  //       (payload) => { /* reconcile setMilestones */ })
+  //     .subscribe();
+  //   return () => { supabase.removeChannel(channel); };
+  // }, [projectId]);
 
   const handleCreate = useCallback(async () => {
     const title = createTitle.trim();
@@ -89,9 +92,8 @@ export default function ContextMilestonesClient({
       setCreateOpen(false);
       setCreateTitle('');
       setCreateDescription('');
-      syncFromRefresh();
     }
-  }, [projectId, createTitle, createDescription, syncFromRefresh]);
+  }, [projectId, createTitle, createDescription]);
 
   const handleUpdate = useCallback(
     async (milestoneId: string) => {
@@ -119,10 +121,9 @@ export default function ContextMilestonesClient({
           })
         );
         setEditId(null);
-        syncFromRefresh();
       }
     },
-    [editTitle, editDescription, syncFromRefresh]
+    [editTitle, editDescription]
   );
 
   const handleComplete = useCallback(
@@ -141,7 +142,6 @@ export default function ContextMilestonesClient({
       }
       if (result.data) {
         setCompleteConfirmMilestone(null);
-        cache.invalidate({ type: 'board', projectId });
         setMilestones((prev) =>
           prev.map((m) =>
             m.id === milestoneId
@@ -154,61 +154,51 @@ export default function ContextMilestonesClient({
           )
         );
         setEditId(null);
-        syncFromRefresh();
       }
     },
-    [t, cache, projectId, syncFromRefresh]
+    [t]
   );
 
-  const handleReopen = useCallback(
-    async (milestoneId: string) => {
-      setBusy(true);
-      setError(null);
-      const result = await reopenMilestone(milestoneId);
-      setBusy(false);
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-      if (result.data) {
-        setReopenConfirmMilestone(null);
-        cache.invalidate({ type: 'board', projectId });
-        setMilestones((prev) =>
-          prev.map((m) =>
-            m.id === milestoneId
-              ? {
-                  ...m,
-                  status: 'pending' as const,
-                  completed_at: null,
-                  tasks_done: 0,
-                }
-              : m
-          )
-        );
-        setEditId(null);
-        syncFromRefresh();
-      }
-    },
-    [cache, projectId, syncFromRefresh]
-  );
-
-  const handleDelete = useCallback(
-    async (milestoneId: string) => {
-      setBusy(true);
-      setError(null);
-      const result = await deleteMilestone(milestoneId);
-      setBusy(false);
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-      setMilestones((prev) => prev.filter((m) => m.id !== milestoneId));
+  const handleReopen = useCallback(async (milestoneId: string) => {
+    setBusy(true);
+    setError(null);
+    const result = await reopenMilestone(milestoneId);
+    setBusy(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    if (result.data) {
+      setReopenConfirmMilestone(null);
+      setMilestones((prev) =>
+        prev.map((m) =>
+          m.id === milestoneId
+            ? {
+                ...m,
+                status: 'pending' as const,
+                completed_at: null,
+                tasks_done: 0,
+              }
+            : m
+        )
+      );
       setEditId(null);
-      setDeleteConfirmMilestoneId(null);
-      syncFromRefresh();
-    },
-    [syncFromRefresh]
-  );
+    }
+  }, []);
+
+  const handleDelete = useCallback(async (milestoneId: string) => {
+    setBusy(true);
+    setError(null);
+    const result = await deleteMilestone(milestoneId);
+    setBusy(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setMilestones((prev) => prev.filter((m) => m.id !== milestoneId));
+    setEditId(null);
+    setDeleteConfirmMilestoneId(null);
+  }, []);
 
   const openEdit = useCallback((m: MilestoneWithProgress) => {
     setEditId(m.id);

@@ -19,8 +19,6 @@ interface ContextBudgetsClientProps {
   projectId: string;
   initialBudgets: BudgetWithProject[];
   permissions: BudgetsPermissions;
-  /** When provided (context cache), used instead of local fetch for refresh */
-  onRefresh?: () => void | Promise<void>;
 }
 
 /**
@@ -31,29 +29,33 @@ export default function ContextBudgetsClient({
   projectId,
   initialBudgets,
   permissions,
-  onRefresh,
 }: ContextBudgetsClientProps) {
   const { t } = useI18n();
   const [budgets, setBudgets] = useState<BudgetWithProject[]>(initialBudgets);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // ── Realtime subscription slot (empty until Realtime phase) ───────────────
+  // useEffect(() => {
+  //   const channel = supabase
+  //     .channel(`budgets:${projectId}`)
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'budgets',
+  //         filter: `project_id=eq.${projectId}` },
+  //       (payload) => { /* reconcile setBudgets */ })
+  //     .subscribe();
+  //   return () => { supabase.removeChannel(channel); };
+  // }, [projectId]);
+
   useEffect(() => {
     setBudgets(initialBudgets);
   }, [initialBudgets]);
 
   const loadBudgets = useCallback(async () => {
-    if (onRefresh) {
-      setIsLoading(true);
-      await onRefresh();
-      setIsLoading(false);
-      return;
-    }
     setIsLoading(true);
     const data = await getBudgetsByProjectId(projectId);
     setBudgets(data);
     setIsLoading(false);
-  }, [projectId, onRefresh]);
+  }, [projectId]);
 
   const handleModalClose = () => {
     setIsModalOpen(false);

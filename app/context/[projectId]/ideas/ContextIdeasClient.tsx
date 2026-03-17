@@ -30,9 +30,18 @@ interface ContextIdeasClientProps {
   projectId: string;
   initialBoards: Board[];
   permissions: IdeasPermissions;
-  /** When provided (context cache), called after mutations to refresh list */
-  onRefresh?: () => void | Promise<void>;
 }
+
+// ── Realtime subscription slot (empty until Realtime phase) ───────────────
+// useEffect(() => {
+//   const channel = supabase
+//     .channel(`idea_boards:${projectId}`)
+//     .on('postgres_changes', { event: '*', schema: 'public', table: 'idea_boards',
+//         filter: `project_id=eq.${projectId}` },
+//       (payload) => { /* reconcile initialBoards */ })
+//     .subscribe();
+//   return () => { supabase.removeChannel(channel); };
+// }, [projectId]);
 
 /**
  * Ideas tab — grid of boards. Select a board to open its canvas; clicking Ideas tab again returns here.
@@ -41,7 +50,6 @@ export default function ContextIdeasClient({
   projectId,
   initialBoards,
   permissions,
-  onRefresh,
 }: ContextIdeasClientProps) {
   const { t } = useI18n();
   const router = useRouter();
@@ -59,7 +67,6 @@ export default function ContextIdeasClient({
     if (result.data) {
       setNewBoardName('');
       setNewBoardOpen(false);
-      if (onRefresh) await onRefresh();
       router.push(`/context/${projectId}/ideas/board/${result.data.id}`);
     }
     setCreating(false);

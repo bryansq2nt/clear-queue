@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { Database } from '@/lib/supabase/types';
 import {
@@ -69,8 +70,6 @@ interface ContextOwnerClientProps {
   client: Client | null;
   business: Business | null;
   permissions: OwnerPermissions;
-  /** Called after linking a new client or business to the project (so owner data can refresh). */
-  onOwnerUpdated?: () => void;
 }
 
 /**
@@ -82,9 +81,20 @@ export default function ContextOwnerClient({
   client,
   business,
   permissions,
-  onOwnerUpdated,
 }: ContextOwnerClientProps) {
   const { t } = useI18n();
+  const router = useRouter();
+
+  // ── Realtime subscription slot (empty until Realtime phase) ───────────────
+  // useEffect(() => {
+  //   const channel = supabase
+  //     .channel(`projects:${projectId}`)
+  //     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'projects',
+  //         filter: `id=eq.${project.id}` },
+  //       (payload) => { /* router.refresh() */ })
+  //     .subscribe();
+  //   return () => { supabase.removeChannel(channel); };
+  // }, [project.id]);
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [businessModalOpen, setBusinessModalOpen] = useState(false);
   const [addBusinessModalOpen, setAddBusinessModalOpen] = useState(false);
@@ -114,12 +124,12 @@ export default function ContextOwnerClient({
       const result = await updateProject(formData);
       if (result.ok) {
         setSelectClientModalOpen(false);
-        onOwnerUpdated?.();
+        router.refresh();
       } else {
         alert(result.error);
       }
     },
-    [project.id, onOwnerUpdated]
+    [project.id, router]
   );
 
   const handleSelectBusiness = useCallback(
@@ -127,12 +137,12 @@ export default function ContextOwnerClient({
       const result = await linkBusinessToProject(project.id, selected.id);
       if (result.ok) {
         setSelectBusinessModalOpen(false);
-        onOwnerUpdated?.();
+        router.refresh();
       } else {
         alert(result.error);
       }
     },
-    [project.id, onOwnerUpdated]
+    [project.id, router]
   );
 
   const handleClientCreated = useCallback(
@@ -143,12 +153,12 @@ export default function ContextOwnerClient({
       formData.set('client_id', created.id);
       const result = await updateProject(formData);
       if (result.ok) {
-        onOwnerUpdated?.();
+        router.refresh();
       } else {
         alert(result.error);
       }
     },
-    [project.id, onOwnerUpdated]
+    [project.id, router]
   );
 
   const handleBusinessCreated = useCallback(
@@ -165,9 +175,9 @@ export default function ContextOwnerClient({
         fd.set('client_id', created.client_id);
         await updateProject(fd);
       }
-      onOwnerUpdated?.();
+      router.refresh();
     },
-    [project.id, project.client_id, onOwnerUpdated]
+    [project.id, project.client_id, router]
   );
 
   const clientChoiceModal = (
@@ -664,7 +674,7 @@ export default function ContextOwnerClient({
                 projectId={project.id}
                 isOpen={editClientModalOpen}
                 onClose={() => setEditClientModalOpen(false)}
-                onUpdated={onOwnerUpdated}
+                onUpdated={() => router.refresh()}
               />
             </>
           )}

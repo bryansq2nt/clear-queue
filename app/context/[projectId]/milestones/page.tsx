@@ -1,8 +1,11 @@
 import { requireAuth } from '@/lib/auth';
 import { getCanViewModule } from '@/app/actions/modules';
-import { getMilestonesPermissions } from '@/app/actions/milestones';
+import {
+  getMilestonesPermissions,
+  getMilestonesWithProgress,
+} from '@/app/actions/milestones';
 import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
-import ContextMilestonesFromCache from './ContextMilestonesFromCache';
+import ContextMilestonesClient from './ContextMilestonesClient';
 
 export default async function ContextMilestonesPage({
   params,
@@ -11,12 +14,11 @@ export default async function ContextMilestonesPage({
 }) {
   await requireAuth();
   const { projectId } = params;
-
-  const [{ canView, reason }, permissions] = await Promise.all([
+  const [{ canView, reason }, permissions, milestones] = await Promise.all([
     getCanViewModule(projectId, 'milestones'),
     getMilestonesPermissions(projectId),
+    getMilestonesWithProgress(projectId),
   ]);
-
   if (!canView && reason) {
     return (
       <ModuleDisabledView
@@ -26,10 +28,10 @@ export default async function ContextMilestonesPage({
       />
     );
   }
-
   return (
-    <ContextMilestonesFromCache
+    <ContextMilestonesClient
       projectId={projectId}
+      initialMilestones={milestones}
       permissions={permissions}
     />
   );

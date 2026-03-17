@@ -1,8 +1,9 @@
 import { requireAuth } from '@/lib/auth';
 import { getCanViewModule } from '@/app/actions/modules';
-import { getDocumentsPermissions } from '@/app/actions/documents';
+import { getDocuments, getDocumentsPermissions } from '@/app/actions/documents';
+import { listFolders } from '@/app/actions/document-folders';
 import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
-import ContextDocumentsFromCache from './ContextDocumentsFromCache';
+import ContextDocumentsClient from './ContextDocumentsClient';
 
 export default async function ContextDocumentsPage({
   params,
@@ -12,10 +13,13 @@ export default async function ContextDocumentsPage({
   await requireAuth();
   const { projectId } = params;
 
-  const [{ canView, reason }, permissions] = await Promise.all([
-    getCanViewModule(projectId, 'documents'),
-    getDocumentsPermissions(projectId),
-  ]);
+  const [{ canView, reason }, permissions, documents, folders] =
+    await Promise.all([
+      getCanViewModule(projectId, 'documents'),
+      getDocumentsPermissions(projectId),
+      getDocuments(projectId),
+      listFolders(projectId),
+    ]);
 
   if (!canView && reason) {
     return (
@@ -28,8 +32,10 @@ export default async function ContextDocumentsPage({
   }
 
   return (
-    <ContextDocumentsFromCache
+    <ContextDocumentsClient
       projectId={projectId}
+      initialDocuments={documents}
+      initialFolders={folders}
       permissions={permissions}
     />
   );

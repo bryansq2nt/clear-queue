@@ -1,8 +1,12 @@
 import { requireAuth } from '@/lib/auth';
 import { getCanViewModule } from '@/app/actions/modules';
-import { getLinksPermissions } from './actions';
+import {
+  getLinksPermissions,
+  listProjectLinksAction,
+  listLinkCategoriesAction,
+} from './actions';
 import { ModuleDisabledView } from '@/components/context/ModuleDisabledView';
-import ContextLinksFromCache from './ContextLinksFromCache';
+import ContextLinksClient from './ContextLinksClient';
 
 export default async function ContextLinksPage({
   params,
@@ -12,10 +16,13 @@ export default async function ContextLinksPage({
   await requireAuth();
   const { projectId } = params;
 
-  const [{ canView, reason }, permissions] = await Promise.all([
-    getCanViewModule(projectId, 'links'),
-    getLinksPermissions(projectId),
-  ]);
+  const [{ canView, reason }, permissions, links, categories] =
+    await Promise.all([
+      getCanViewModule(projectId, 'links'),
+      getLinksPermissions(projectId),
+      listProjectLinksAction(projectId),
+      listLinkCategoriesAction(),
+    ]);
 
   if (!canView && reason) {
     return (
@@ -28,6 +35,11 @@ export default async function ContextLinksPage({
   }
 
   return (
-    <ContextLinksFromCache projectId={projectId} permissions={permissions} />
+    <ContextLinksClient
+      projectId={projectId}
+      initialLinks={links}
+      initialCategories={categories}
+      permissions={permissions}
+    />
   );
 }
