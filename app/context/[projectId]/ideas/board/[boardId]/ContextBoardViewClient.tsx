@@ -92,9 +92,26 @@ export default function ContextBoardViewClient({
       addFormData.append('ideaId', result.data.id);
       addFormData.append('x', '400');
       addFormData.append('y', '300');
-      await addIdeaToBoardAction(addFormData);
-      router.refresh();
+      const addResult = await addIdeaToBoardAction(addFormData);
+      if (addResult.data) {
+        // Optimistically add new item to canvas state from returned data
+        setBoardItems((prev) => [
+          ...prev,
+          {
+            id: addResult.data.id,
+            idea_id: result.data.id,
+            x: addResult.data.x ?? 400,
+            y: addResult.data.y ?? 300,
+            idea: {
+              id: result.data.id,
+              title: result.data.title,
+              description: result.data.description ?? null,
+            },
+          },
+        ]);
+      }
       setIsCreatingIdea(false);
+      router.refresh(); // background sync
     }
   };
 
@@ -114,7 +131,7 @@ export default function ContextBoardViewClient({
       if (result.data) {
         setBoard((prev) => ({ ...prev, ...result.data }));
         setIsEditingBoard(false);
-        router.refresh();
+        router.refresh(); // background sync — board state already updated above
       } else {
         setBoardEditError(result.error ?? t('common.error'));
       }

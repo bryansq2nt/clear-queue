@@ -62,6 +62,19 @@ export function ContextShell({
     return () => clearTimeout(t);
   }, []);
 
+  // Prefetch all enabled tabs so tab switches are instant from the Router Cache (~5 min TTL).
+  useEffect(() => {
+    for (const mod of modules) {
+      if (enabledModuleKeys.has(mod.key)) {
+        const path =
+          mod.key === 'board'
+            ? `/context/${projectId}`
+            : `/context/${projectId}/${mod.nav.slug}`;
+        router.prefetch(path);
+      }
+    }
+  }, [projectId, modules, enabledModuleKeys, router]);
+
   // Pre-render home data so Salir can show it sliding in (user can't change projects from here).
   useEffect(() => {
     getHomePageData().then(setHomeData);

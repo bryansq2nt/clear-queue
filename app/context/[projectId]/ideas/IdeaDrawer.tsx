@@ -18,7 +18,6 @@ import {
   unlinkIdeaFromProjectAction,
 } from '@/app/actions/idea-project-links';
 import { getIdeaDataAction } from './load-idea-data';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface Idea {
@@ -52,7 +51,6 @@ export default function IdeaDrawer({
   onUpdate: () => void;
 }) {
   const { t } = useI18n();
-  const router = useRouter();
   const [idea, setIdea] = useState<Idea | null>(null);
   const [projectLinks, setProjectLinks] = useState<ProjectLink[]>([]);
   const [availableProjects, setAvailableProjects] = useState<
@@ -124,8 +122,7 @@ export default function IdeaDrawer({
 
     if (result.success) {
       onClose();
-      onUpdate();
-      router.refresh();
+      onUpdate(); // triggers router.refresh() via handleRefresh in parent
     } else if (result.error) {
       alert(result.error);
       setIsDeleting(false);
@@ -151,8 +148,7 @@ export default function IdeaDrawer({
         'link-project-form'
       ) as HTMLFormElement;
       form?.reset();
-      router.refresh();
-      onUpdate();
+      onUpdate(); // triggers router.refresh() via handleRefresh in parent
     } else if (result.error) {
       setLinkError(result.error);
     }
@@ -170,8 +166,7 @@ export default function IdeaDrawer({
     const result = await unlinkIdeaFromProjectAction(linkId);
 
     if (result.success) {
-      router.refresh();
-      onUpdate();
+      onUpdate(); // triggers router.refresh() via handleRefresh in parent
     } else if (result.error) {
       alert(result.error);
     }

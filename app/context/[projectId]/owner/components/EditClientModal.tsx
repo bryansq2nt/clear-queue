@@ -25,7 +25,7 @@ interface EditClientModalProps {
   projectId: string;
   isOpen: boolean;
   onClose: () => void;
-  onUpdated?: () => void;
+  onUpdated?: (updated: Client) => void;
 }
 
 export function EditClientModal({
@@ -79,7 +79,7 @@ export function EditClientModal({
       return;
     }
     onClose();
-    onUpdated?.();
+    if (result.data) onUpdated?.(result.data);
   };
 
   useEffect(() => {

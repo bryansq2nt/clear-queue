@@ -101,6 +101,8 @@ export default function ContextBoardClient({
   //   return () => { supabase.removeChannel(channel); };
   // }, [projectId]);
 
+  // Background sync after optimistic state update — called by KanbanBoard via onTaskUpdate.
+  // Board state is already updated via setTasksByStatus before this fires.
   const loadData = useCallback(() => {
     router.refresh();
   }, [router]);

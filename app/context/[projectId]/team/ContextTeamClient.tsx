@@ -423,8 +423,8 @@ export default function ContextTeamClient({
 }: Props) {
   const { t } = useI18n();
   const router = useRouter();
-  const members = initialMembers;
-  const invites = initialInvites;
+  const [members, setMembers] = useState<ProjectMember[]>(initialMembers);
+  const [invites, setInvites] = useState<ProjectInvite[]>(initialInvites);
   const rejectedInvites = initialRejectedInvites;
 
   // ── Invite form state ─────────────────────────────────────────────
@@ -660,7 +660,7 @@ export default function ContextTeamClient({
     setGeneratedLink(null);
     setLastInvitedEmail(null);
     setEmailSent(false);
-    router.refresh();
+    router.refresh(); // background sync — refresh invites list to show newly created invite
   }, [resetForm, router]);
 
   const handleEmailStepNext = useCallback(async () => {
@@ -900,7 +900,8 @@ export default function ContextTeamClient({
         });
         return;
       }
-      router.refresh();
+      setInvites((prev) => prev.filter((i) => i.id !== inviteId));
+      router.refresh(); // background sync
     },
     [projectId, router, t]
   );
@@ -918,7 +919,8 @@ export default function ContextTeamClient({
         return;
       }
       setConfirmRemoveMember(null);
-      router.refresh();
+      setMembers((prev) => prev.filter((m) => m.user_id !== userId));
+      router.refresh(); // background sync
     },
     [projectId, router, t]
   );
@@ -957,7 +959,7 @@ export default function ContextTeamClient({
         latestDraftModulesRef.current = modules;
         latestDraftActionsRef.current = actions;
       }
-      router.refresh();
+      router.refresh(); // background sync — update member role display in list
     },
     [projectId, router, t]
   );
@@ -1020,7 +1022,7 @@ export default function ContextTeamClient({
       }
       toastSuccess(t('teams.permissions_saved_toast'));
       setEditMember(null);
-      router.refresh();
+      router.refresh(); // background sync — update member role display in list
     },
     [projectId, editMemberDraftModules, editMemberDraftActions, router, t]
   );

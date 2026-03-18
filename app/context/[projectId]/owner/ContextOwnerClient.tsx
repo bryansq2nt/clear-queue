@@ -78,12 +78,14 @@ interface ContextOwnerClientProps {
  */
 export default function ContextOwnerClient({
   project,
-  client,
-  business,
+  client: initialClient,
+  business: initialBusiness,
   permissions,
 }: ContextOwnerClientProps) {
   const { t } = useI18n();
   const router = useRouter();
+  const [client, setClient] = useState<Client | null>(initialClient);
+  const [business, setBusiness] = useState<Business | null>(initialBusiness);
 
   // ── Realtime subscription slot (empty until Realtime phase) ───────────────
   // useEffect(() => {
@@ -124,7 +126,8 @@ export default function ContextOwnerClient({
       const result = await updateProject(formData);
       if (result.ok) {
         setSelectClientModalOpen(false);
-        router.refresh();
+        setClient(selected);
+        router.refresh(); // background sync
       } else {
         alert(result.error);
       }
@@ -137,7 +140,8 @@ export default function ContextOwnerClient({
       const result = await linkBusinessToProject(project.id, selected.id);
       if (result.ok) {
         setSelectBusinessModalOpen(false);
-        router.refresh();
+        setBusiness(selected);
+        router.refresh(); // background sync
       } else {
         alert(result.error);
       }
@@ -153,7 +157,8 @@ export default function ContextOwnerClient({
       formData.set('client_id', created.id);
       const result = await updateProject(formData);
       if (result.ok) {
-        router.refresh();
+        setClient(created);
+        router.refresh(); // background sync
       } else {
         alert(result.error);
       }
@@ -169,15 +174,16 @@ export default function ContextOwnerClient({
         alert(result.error);
         return;
       }
-      if (created.client_id && !project.client_id) {
+      if (created.client_id && !client) {
         const fd = new FormData();
         fd.set('id', project.id);
         fd.set('client_id', created.client_id);
         await updateProject(fd);
       }
-      router.refresh();
+      setBusiness(created);
+      router.refresh(); // background sync
     },
-    [project.id, project.client_id, router]
+    [project.id, client, router]
   );
 
   const clientChoiceModal = (
@@ -674,7 +680,7 @@ export default function ContextOwnerClient({
                 projectId={project.id}
                 isOpen={editClientModalOpen}
                 onClose={() => setEditClientModalOpen(false)}
-                onUpdated={() => router.refresh()}
+                onUpdated={(updated) => setClient(updated)}
               />
             </>
           )}
