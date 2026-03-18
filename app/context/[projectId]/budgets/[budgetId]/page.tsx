@@ -1,6 +1,7 @@
 import { requireAuth } from '@/lib/auth';
-import { getProjectById } from '@/app/actions/projects';
+import { getProjectById, getProjectsForSidebar } from '@/app/actions/projects';
 import { getBudgetProjectId } from '@/app/actions/budgets';
+import { getBudgetWithData } from '@/app/actions/budget-detail';
 import { notFound } from 'next/navigation';
 import BudgetDetailClient from './BudgetDetailClient';
 
@@ -12,10 +13,13 @@ export default async function ContextBudgetDetailPage({
   await requireAuth();
   const { projectId, budgetId } = params;
 
-  const [project, budgetProjectId] = await Promise.all([
-    getProjectById(projectId),
-    getBudgetProjectId(budgetId),
-  ]);
+  const [project, budgetProjectId, initialBudgetData, initialProjects] =
+    await Promise.all([
+      getProjectById(projectId),
+      getBudgetProjectId(budgetId),
+      getBudgetWithData(budgetId),
+      getProjectsForSidebar(),
+    ]);
 
   if (!project || budgetProjectId !== projectId) {
     notFound();
@@ -24,6 +28,8 @@ export default async function ContextBudgetDetailPage({
   return (
     <BudgetDetailClient
       budgetId={budgetId}
+      initialBudgetData={initialBudgetData}
+      initialProjects={initialProjects}
       backHref={`/context/${projectId}/budgets`}
       hideBackHeader
     />

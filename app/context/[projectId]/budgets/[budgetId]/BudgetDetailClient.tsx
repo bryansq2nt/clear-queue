@@ -1,17 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useI18n } from '@/components/shared/I18nProvider';
 import { captureWithContext } from '@/lib/sentry';
 import { Database } from '@/lib/supabase/types';
 import { DetailLayout } from '@/components/shared/DetailLayout';
 import { Plus, FolderPlus, Package, ChevronLeft } from 'lucide-react';
-import { getProjectsForSidebar } from '@/app/actions/projects';
-import {
-  getBudgetWithData,
-  reorderCategories,
-  reorderItems,
-} from '@/app/actions/budget-detail';
+import { reorderCategories, reorderItems } from '@/app/actions/budget-detail';
 import { BudgetHeader } from './components/BudgetHeader';
 import { CategorySection } from './components/CategorySection';
 import { CreateCategoryModal } from './components/CreateCategoryModal';
@@ -29,12 +24,23 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 
-type Project = Database['public']['Tables']['projects']['Row'];
 type BudgetItem = Database['public']['Tables']['budget_items']['Row'];
 type BudgetCategory = Database['public']['Tables']['budget_categories']['Row'];
 
+type UpdatedBudget = {
+  id: string;
+  name: string;
+  description: string | null;
+  project_id: string | null;
+  owner_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
 interface BudgetDetailClientProps {
   budgetId: string;
+  initialBudgetData: any;
+  initialProjects: { id: string; name: string }[];
   /** When provided (e.g. context view), back link goes here instead of /budgets */
   backHref?: string;
   /** When true (e.g. context view), do not show the back header; user navigates via tab bar */
@@ -43,13 +49,14 @@ interface BudgetDetailClientProps {
 
 export default function BudgetDetailClient({
   budgetId,
+  initialBudgetData,
+  initialProjects,
   backHref = '/budgets',
   hideBackHeader = false,
 }: BudgetDetailClientProps) {
   const { t } = useI18n();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [budgetData, setBudgetData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [projects] = useState(initialProjects);
+  const [budgetData, setBudgetData] = useState<any>(initialBudgetData);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [fabMenuOpen, setFabMenuOpen] = useState(false);
   const [fabSubView, setFabSubView] = useState<'main' | 'pick-category'>(
@@ -58,21 +65,7 @@ export default function BudgetDetailClient({
   const [categoryIdForNewItem, setCategoryIdForNewItem] = useState<
     string | null
   >(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const fabRef = useRef<HTMLDivElement>(null);
-
-  // Close FAB menu when clicking outside
-  useEffect(() => {
-    if (!fabMenuOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (fabRef.current && !fabRef.current.contains(e.target as Node)) {
-        setFabMenuOpen(false);
-        setFabSubView('main');
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [fabMenuOpen]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -80,34 +73,79 @@ export default function BudgetDetailClient({
     })
   );
 
-  const loadProjects = useCallback(async () => {
-    const data = await getProjectsForSidebar();
-    setProjects(data);
+  // Close FAB menu when clicking outside
+  const handleFabClickOutside = useCallback((e: MouseEvent) => {
+    if (fabRef.current && !fabRef.current.contains(e.target as Node)) {
+      setFabMenuOpen(false);
+      setFabSubView('main');
+    }
   }, []);
 
-  const loadBudgetData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await getBudgetWithData(budgetId);
-      setBudgetData(data);
-    } catch (error) {
-      captureWithContext(error, {
-        module: 'budgets',
-        action: 'loadBudget',
-        userIntent: 'Cargar detalle del presupuesto',
-        expected: 'Se muestra el presupuesto con categorías e ítems',
-        extra: { budgetId },
-      });
-      alert('Failed to load budget');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [budgetId]);
+  const handleFabToggle = useCallback(() => {
+    setFabMenuOpen((open) => {
+      if (!open) {
+        document.addEventListener('mousedown', handleFabClickOutside);
+      } else {
+        document.removeEventListener('mousedown', handleFabClickOutside);
+      }
+      return !open;
+    });
+  }, [handleFabClickOutside]);
 
-  useEffect(() => {
-    loadProjects();
-    loadBudgetData();
-  }, [loadProjects, loadBudgetData]);
+  // Called after a category is deleted. Removes it from local state.
+  const handleCategoryDeleted = useCallback((categoryId: string) => {
+    setBudgetData((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        categories: (prev.categories || []).filter(
+          (c: any) => c.id !== categoryId
+        ),
+      };
+    });
+  }, []);
+
+  // Called after a category name/description is edited. Updates local state.
+  const handleCategoryUpdated = useCallback(
+    (categoryId: string, name: string, description: string | null) => {
+      setBudgetData((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          categories: (prev.categories || []).map((c: any) =>
+            c.id === categoryId ? { ...c, name, description } : c
+          ),
+        };
+      });
+    },
+    []
+  );
+
+  // Called after budget header fields (name, description, project) are updated.
+  // Uses the returned data to update local state — no re-fetch needed.
+  const handleBudgetUpdated = useCallback(
+    (updated: UpdatedBudget) => {
+      const matchedProject = updated.project_id
+        ? (projects.find((p) => p.id === updated.project_id) ?? null)
+        : null;
+      setBudgetData((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          budget: {
+            ...prev.budget,
+            name: updated.name,
+            description: updated.description,
+            project_id: updated.project_id,
+            projects: matchedProject
+              ? { id: matchedProject.id, name: matchedProject.name }
+              : null,
+          },
+        };
+      });
+    },
+    [projects]
+  );
 
   const handleCategoryModalClose = () => {
     setIsCategoryModalOpen(false);
@@ -311,7 +349,6 @@ export default function BudgetDetailClient({
           setBudgetData((prev: any) =>
             prev ? { ...prev, categories: prevCategories } : prev
           );
-          alert('Failed to reorder items');
         }
       })();
     },
@@ -355,7 +392,6 @@ export default function BudgetDetailClient({
           setBudgetData((prev: any) =>
             prev ? { ...prev, categories: prevCategories } : prev
           );
-          alert('Failed to reorder categories');
         }
       })();
     },
@@ -363,29 +399,6 @@ export default function BudgetDetailClient({
   );
 
   const contentClassName = 'p-4 sm:p-6';
-
-  if (isLoading) {
-    const skeleton = (
-      <div className="animate-pulse space-y-4">
-        <div className="h-48 bg-muted rounded-lg" />
-        <div className="h-32 bg-muted rounded-lg" />
-        <div className="h-32 bg-muted rounded-lg" />
-      </div>
-    );
-    if (hideBackHeader) {
-      return <div className={contentClassName}>{skeleton}</div>;
-    }
-    return (
-      <DetailLayout
-        backHref={backHref}
-        backLabel=""
-        title={t('budgets.detail_title')}
-        contentClassName={contentClassName}
-      >
-        {skeleton}
-      </DetailLayout>
-    );
-  }
 
   if (!budgetData) {
     const notFoundContent = (
@@ -436,7 +449,7 @@ export default function BudgetDetailClient({
         budget={budgetData.budget}
         projects={projects}
         stats={stats}
-        onUpdated={loadBudgetData}
+        onUpdated={handleBudgetUpdated}
         compact
       />
 
@@ -481,7 +494,10 @@ export default function BudgetDetailClient({
                     key={category.id}
                     category={category}
                     budgetId={budgetId}
-                    onRefresh={loadBudgetData}
+                    onDeleted={() => handleCategoryDeleted(category.id)}
+                    onCategoryUpdated={(name, desc) =>
+                      handleCategoryUpdated(category.id, name, desc)
+                    }
                     onItemCreated={handleItemCreated}
                     onItemUpdated={handleItemUpdated}
                     onItemDeleted={handleItemDeleted}
@@ -575,7 +591,7 @@ export default function BudgetDetailClient({
         )}
         <button
           type="button"
-          onClick={() => setFabMenuOpen((open) => !open)}
+          onClick={handleFabToggle}
           aria-label={t('budgets.add_category')}
           className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background md:h-14 md:w-14"
         >

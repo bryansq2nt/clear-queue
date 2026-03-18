@@ -30,7 +30,7 @@ interface ItemsListProps {
   items: BudgetItem[];
   categoryId: string;
   budgetId: string;
-  onRefresh: () => void;
+  onRefresh?: () => void;
   onItemCreated?: (item: BudgetItem) => void;
   onItemUpdated?: (item: BudgetItem) => void;
   onItemDeleted?: (item: BudgetItem) => void;
@@ -151,7 +151,7 @@ export function ItemsList({
         if (onItemDeleted) {
           onItemDeleted(item);
         } else {
-          onRefresh();
+          onRefresh?.();
         }
       }, 520);
     } catch (error) {
@@ -210,7 +210,7 @@ export function ItemsList({
         if (onItemsDeleted) {
           onItemsDeleted(selectedItems);
         } else {
-          onRefresh();
+          onRefresh?.();
         }
         onExitSelectionMode?.();
       }, 520);
@@ -254,7 +254,7 @@ export function ItemsList({
     if (onItemsReordered) {
       onItemsReordered(nextIds);
     } else {
-      onRefresh();
+      onRefresh?.();
     }
   };
 
@@ -385,7 +385,7 @@ export function ItemsList({
           if (onItemCreated) {
             onItemCreated(item);
           } else {
-            onRefresh();
+            onRefresh?.();
           }
         }}
         categoryId={categoryId}
@@ -407,7 +407,7 @@ export function ItemsList({
             if (onItemUpdated) {
               onItemUpdated(updated);
             } else {
-              onRefresh();
+              onRefresh?.();
             }
           }}
           item={editingItem}

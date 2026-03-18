@@ -6,6 +6,16 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { EditBudgetModal } from './EditBudgetModal';
 
+type UpdatedBudget = {
+  id: string;
+  name: string;
+  description: string | null;
+  project_id: string | null;
+  owner_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
 interface BudgetHeaderProps {
   budget: {
     id: string;
@@ -21,7 +31,7 @@ interface BudgetHeaderProps {
     pending: number;
     progress: number;
   };
-  onUpdated: () => void;
+  onUpdated: (updated: UpdatedBudget) => void;
   /** When true, used inside DetailLayout: no back button in card, title (h1) shown in card */
   compact?: boolean;
 }

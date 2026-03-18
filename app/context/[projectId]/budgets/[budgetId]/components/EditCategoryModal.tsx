@@ -9,7 +9,7 @@ import { updateCategory } from '@/app/actions/budget-detail';
 interface EditCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpdated: () => void;
+  onUpdated: (name: string, description: string | null) => void;
   category: {
     id: string;
     name: string;
@@ -54,7 +54,7 @@ export function EditCategoryModal({
         description: nextDescription,
       });
       onClose();
-      onUpdated();
+      onUpdated(nextName, nextDescription || null);
     } catch (error) {
       captureWithContext(error, {
         module: 'budgets',

@@ -6,10 +6,20 @@ import { captureWithContext } from '@/lib/sentry';
 import { X, Edit2 } from 'lucide-react';
 import { updateBudget } from '@/app/actions/budgets';
 
+type UpdatedBudget = {
+  id: string;
+  name: string;
+  description: string | null;
+  project_id: string | null;
+  owner_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
 interface EditBudgetModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpdated: () => void;
+  onUpdated: (updated: UpdatedBudget) => void;
   projects: { id: string; name: string }[];
   budget: {
     id: string;
@@ -55,13 +65,13 @@ export function EditBudgetModal({
 
     setIsSubmitting(true);
     try {
-      await updateBudget(budget.id, {
+      const updated = await updateBudget(budget.id, {
         name: nextName,
         description: nextDescription,
         project_id: projectId,
       });
       onClose();
-      onUpdated();
+      onUpdated(updated as UpdatedBudget);
     } catch (err) {
       captureWithContext(err, {
         module: 'budgets',

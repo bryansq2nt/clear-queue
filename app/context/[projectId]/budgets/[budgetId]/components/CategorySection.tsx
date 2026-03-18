@@ -30,7 +30,8 @@ interface CategorySectionProps {
     item_count: number;
   };
   budgetId: string;
-  onRefresh: () => void;
+  onDeleted: () => void;
+  onCategoryUpdated: (name: string, description: string | null) => void;
   onItemCreated?: (categoryId: string, item: any) => void;
   onItemUpdated?: (categoryId: string, item: any) => void;
   onItemDeleted?: (categoryId: string, item: any) => void;
@@ -41,7 +42,8 @@ interface CategorySectionProps {
 export function CategorySection({
   category,
   budgetId,
-  onRefresh,
+  onDeleted,
+  onCategoryUpdated,
   onItemCreated,
   onItemUpdated,
   onItemDeleted,
@@ -96,7 +98,7 @@ export function CategorySection({
     setIsDeleting(true);
     try {
       await deleteCategory(category.id, budgetId);
-      onRefresh();
+      onDeleted();
     } catch (error) {
       captureWithContext(error, {
         module: 'budgets',
@@ -292,7 +294,7 @@ export function CategorySection({
       <EditCategoryModal
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
-        onUpdated={onRefresh}
+        onUpdated={onCategoryUpdated}
         category={category}
         budgetId={budgetId}
       />
@@ -304,7 +306,6 @@ export function CategorySection({
             items={category.items}
             categoryId={category.id}
             budgetId={budgetId}
-            onRefresh={onRefresh}
             onItemCreated={(item) => onItemCreated?.(category.id, item)}
             onItemUpdated={(item) => onItemUpdated?.(category.id, item)}
             onItemDeleted={(item) => onItemDeleted?.(category.id, item)}
