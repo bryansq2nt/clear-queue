@@ -60,7 +60,18 @@
       "Bash(for file:*)",
       "Bash(echo \"=== $file ===\")",
       "Read(//Users/mutechlabs/development/clear-queue/**)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(cat:*)",
+      "WebFetch(domain:supabase.com)",
+      "WebSearch",
+      "WebFetch(domain:makerkit.dev)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:shipsaas.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(node:*)",
+      "Bash(wc:*)",
+      "WebFetch(domain:drdroid.io)",
+      "WebFetch(domain:medium.com)"
     ]
   }
 }
