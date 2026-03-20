@@ -8,9 +8,11 @@ import {
 import { getProjectById } from '@/app/actions/projects';
 import {
   listProjectTeams,
+  listMySubTeamMemberships,
   getSubTeamsPermissions,
 } from '@/app/actions/sub-teams';
 import { getProjectModules } from '@/app/actions/modules';
+import { can } from '@/lib/rbac/resolver';
 import ContextTeamClient from './ContextTeamClient';
 
 export default async function ContextTeamPage({
@@ -21,6 +23,15 @@ export default async function ContextTeamPage({
   const user = await requireAuth();
   const { projectId } = await params;
 
+  const canInvite = await can(user.id, 'teams.invite', {
+    type: 'project',
+    projectId,
+  });
+  const canManageMembers = await can(user.id, 'teams.manage_members', {
+    type: 'project',
+    projectId,
+  });
+
   const [
     members,
     invites,
@@ -28,15 +39,17 @@ export default async function ContextTeamPage({
     roles,
     project,
     teams,
+    mySubTeamMemberships,
     subTeamsPermissions,
     projectModules,
   ] = await Promise.all([
     listProjectMembers(projectId),
-    listPendingInvites(projectId),
-    listRejectedInvites(projectId),
+    canInvite ? listPendingInvites(projectId) : Promise.resolve([]),
+    canInvite ? listRejectedInvites(projectId) : Promise.resolve([]),
     listProjectRoles(),
     getProjectById(projectId),
     listProjectTeams(projectId),
+    listMySubTeamMemberships(projectId),
     getSubTeamsPermissions(projectId),
     getProjectModules(projectId),
   ]);
@@ -56,8 +69,11 @@ export default async function ContextTeamPage({
       initialRejectedInvites={rejectedInvites}
       roles={roles}
       initialTeams={teams}
+      initialMySubTeamMemberships={mySubTeamMemberships}
       subTeamsPermissions={subTeamsPermissions}
       enabledInviteModuleKeys={enabledInviteModuleKeys}
+      canInvite={canInvite}
+      canManageMembers={canManageMembers}
     />
   );
 }

@@ -85,6 +85,7 @@
   },
   "context": {
     "title": "Contexto del proyecto",
+    "home": "Inicio",
     "all_projects": "Todos los proyectos",
     "back_to_app": "Volver al inicio",
     "back_to_project": "Volver al proyecto",
@@ -137,6 +138,10 @@
   "teams": {
     "title": "Equipo del proyecto",
     "members_title": "Miembros",
+    "my_membership_title": "Tu rol y equipos",
+    "my_project_role_label": "Rol en el proyecto:",
+    "my_teams_label": "Tus equipos",
+    "my_teams_none": "No perteneces a ningún subequipo todavía.",
     "pending_invites": "Invitaciones pendientes",
     "no_members": "Aún no hay miembros.",
     "invite_member": "Invitar miembro",
@@ -227,6 +232,7 @@
     "save_permissions": "Guardar permisos",
     "edit_permissions_error_title": "No se pudieron actualizar los permisos",
     "edit_permissions_load_error": "No se pudieron cargar los permisos",
+    "owner_access_not_editable": "El propietario del proyecto tiene acceso total; no se puede editar su rol ni los módulos aquí.",
     "apply_role_or_profile": "Aplicar rol o perfil",
     "select_role_or_profile": "Seleccionar un rol o perfil…",
     "profiles_group": "Perfiles",
@@ -264,7 +270,11 @@
     "add_sub_team_member_error_title": "No se pudo agregar el miembro",
     "add_sub_team_member_none_available": "Todos los miembros del proyecto ya están en este subequipo.",
     "remove_sub_team_member": "Quitar del subequipo",
+    "remove_sub_team_member_confirm_title": "¿Quitar miembro del subequipo?",
+    "remove_sub_team_member_confirm_message": "¿Seguro que quieres quitar a {name} del subequipo {team}?",
+    "remove_sub_team_member_confirm_btn": "Quitar miembro",
     "remove_sub_team_member_error_title": "No se pudo quitar al miembro",
+    "sub_team_member_unknown": "Miembro sin nombre",
     "sub_team_role_manager": "Responsable",
     "sub_team_role_member": "Miembro",
     "make_sub_team_manager": "Hacer responsable",
@@ -889,6 +899,7 @@
     "quota_limit_message": "Lo sentimos. Tu organización alcanzó el límite de proyectos de tu plan. Para crear uno nuevo, elimina o archiva un proyecto existente desde Editar proyecto.",
     "quota_limit_message_with_numbers": "Lo sentimos. Alcanzaste el límite de proyectos de tu plan ({current}/{max}). Para crear uno nuevo, elimina o archiva un proyecto existente desde Editar proyecto.",
     "delete_confirm": "¿Eliminar el proyecto \"{name}\" y todas sus tareas? Esta acción no se puede deshacer.",
+    "delete_owner_only": "Solo el propietario del proyecto puede eliminarlo.",
     "deleting": "Eliminando...",
     "filter_by_category": "Filtrar por categoría",
     "show_archived": "Mostrar archivados"
@@ -905,7 +916,14 @@
     "project_manager": "Gerente de proyecto",
     "team_manager": "Gerente de equipo",
     "team_member": "Miembro del equipo",
-    "guest": "Invitado"
+    "guest": "Invitado",
+    "description": {
+      "owner": "Control total: gestiona miembros, módulos y todo el contenido.",
+      "project_manager": "Gestiona todos los subequipos; invita, configura módulos y edita todo el contenido.",
+      "team_manager": "Gestiona un subequipo concreto; invita a miembros e invitados.",
+      "team_member": "Crea y gestiona su propio contenido; edita las tareas que le asignen.",
+      "guest": "Acceso de solo lectura a los módulos seleccionados."
+    }
   },
   "invite_page": {
     "not_found_title": "Invitación no encontrada",

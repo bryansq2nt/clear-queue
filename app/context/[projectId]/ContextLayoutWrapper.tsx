@@ -18,6 +18,7 @@ interface ContextLayoutWrapperProps {
   initialModules: SerializableResolvedModule[];
   initialAccessGrant: string[] | null | undefined;
   initialCanToggle: boolean;
+  initialCanDeleteProject: boolean;
 }
 
 /**
@@ -31,10 +32,12 @@ export default function ContextLayoutWrapper({
   initialModules,
   initialAccessGrant,
   initialCanToggle,
+  initialCanDeleteProject,
 }: ContextLayoutWrapperProps) {
   const [modules, setModules] =
     useState<SerializableResolvedModule[]>(initialModules);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const canOpenSettings = initialCanToggle || initialCanDeleteProject;
 
   // ── Realtime subscription slot (empty until Realtime phase) ───────────────
   // useEffect(() => {
@@ -79,8 +82,13 @@ export default function ContextLayoutWrapper({
       enabledModuleKeys={enabledModuleKeys}
       modules={modules}
       canToggleModules={initialCanToggle}
+      canDeleteProject={initialCanDeleteProject}
+      canOpenSettings={canOpenSettings}
       drawerOpen={drawerOpen}
-      onOpenSettings={() => setDrawerOpen(true)}
+      onOpenSettings={() => {
+        if (!canOpenSettings) return;
+        setDrawerOpen(true);
+      }}
       onCloseSettings={() => setDrawerOpen(false)}
       onModulesChange={handleModulesChange}
     >

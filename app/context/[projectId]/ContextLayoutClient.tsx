@@ -15,6 +15,8 @@ interface ContextLayoutClientProps {
   enabledModuleKeys: Set<ModuleKey>;
   modules: SerializableResolvedModule[];
   canToggleModules: boolean;
+  canDeleteProject: boolean;
+  canOpenSettings: boolean;
   drawerOpen: boolean;
   onOpenSettings: () => void;
   onCloseSettings: () => void;
@@ -28,6 +30,8 @@ export default function ContextLayoutClient({
   enabledModuleKeys,
   modules,
   canToggleModules,
+  canDeleteProject,
+  canOpenSettings,
   drawerOpen,
   onOpenSettings,
   onCloseSettings,
@@ -44,6 +48,8 @@ export default function ContextLayoutClient({
       enabledModuleKeys={enabledModuleKeys}
       modules={modules}
       canToggleModules={canToggleModules}
+      canDeleteProject={canDeleteProject}
+      canOpenSettings={canOpenSettings}
       drawerOpen={drawerOpen}
       onOpenSettings={onOpenSettings}
       onCloseSettings={onCloseSettings}

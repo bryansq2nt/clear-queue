@@ -16,6 +16,7 @@ interface ProjectSettingsDrawerProps {
   projectName: string;
   modules: SerializableResolvedModule[];
   canToggleModules: boolean;
+  canDeleteProject: boolean;
   onModulesChange: (updated: SerializableResolvedModule[]) => void;
 }
 
@@ -26,6 +27,7 @@ export function ProjectSettingsDrawer({
   projectName,
   modules,
   canToggleModules,
+  canDeleteProject,
   onModulesChange,
 }: ProjectSettingsDrawerProps) {
   const router = useRouter();
@@ -48,6 +50,7 @@ export function ProjectSettingsDrawer({
 
   const showBackButton = mobileView !== 'menu';
   const isMenuOnly = mobileView === 'menu';
+  const isGeneralView = mobileView === 'general' || !canToggleModules;
 
   async function handleDeleteProject() {
     setIsDeleting(true);
@@ -94,7 +97,11 @@ export function ProjectSettingsDrawer({
               aria-label={t('project_settings.back_to_menu')}
             >
               <ChevronLeft className="w-4 h-4" aria-hidden />
-              <span>{t('project_settings.nav_modules')}</span>
+              <span>
+                {canToggleModules
+                  ? t('project_settings.nav_modules')
+                  : t('project_settings.nav_general')}
+              </span>
             </button>
           ) : (
             <span className="text-base font-semibold">
@@ -124,18 +131,20 @@ export function ProjectSettingsDrawer({
               showBackButton ? 'hidden' : '',
             ].join(' ')}
           >
-            <button
-              type="button"
-              onClick={() => setMobileView('modules')}
-              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-left w-full ${
-                mobileView === 'modules'
-                  ? 'bg-muted text-foreground'
-                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-              }`}
-            >
-              <Puzzle className="w-4 h-4 flex-shrink-0" aria-hidden />
-              {t('project_settings.nav_modules')}
-            </button>
+            {canToggleModules && (
+              <button
+                type="button"
+                onClick={() => setMobileView('modules')}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-left w-full ${
+                  mobileView === 'modules'
+                    ? 'bg-muted text-foreground'
+                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                }`}
+              >
+                <Puzzle className="w-4 h-4 flex-shrink-0" aria-hidden />
+                {t('project_settings.nav_modules')}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setMobileView('general')}
@@ -156,7 +165,7 @@ export function ProjectSettingsDrawer({
               isMenuOnly ? 'hidden md:block' : '',
             ].join(' ')}
           >
-            {mobileView === 'general' ? (
+            {isGeneralView ? (
               <div className="space-y-4">
                 <div>
                   <h2 className="text-sm font-semibold text-foreground">
@@ -167,7 +176,13 @@ export function ProjectSettingsDrawer({
                   </p>
                 </div>
 
-                {!showDeleteConfirm ? (
+                {!canDeleteProject ? (
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    <p className="text-sm text-muted-foreground">
+                      {t('projects.delete_owner_only')}
+                    </p>
+                  </div>
+                ) : !showDeleteConfirm ? (
                   <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-3">
                     <p className="text-sm text-foreground">{projectName}</p>
                     <p className="text-xs text-muted-foreground">

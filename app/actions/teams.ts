@@ -9,6 +9,7 @@ import { revalidatePath } from 'next/cache';
 import { checkProjectMemberQuota } from '@/lib/quotas';
 import { logAuditEvent } from '@/lib/rbac/audit';
 import { sendEmail } from '@/lib/email/send';
+import { OWNER_ACCESS_NOT_EDITABLE } from '@/lib/teams/member-access-errors';
 
 export type ProjectMember = {
   user_id: string;
@@ -544,6 +545,15 @@ export async function removeProjectMember(
   }
 
   const supabase = await createClient();
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (project?.owner_id === targetUserId) {
+    return { error: 'Cannot remove the project owner' };
+  }
 
   const { error } = await (supabase as any).rpc(
     'remove_project_member_atomic',
@@ -577,6 +587,23 @@ export async function removeProjectMember(
   return { success: true };
 }
 
+/** Project owner (`projects.owner_id`) has full access; do not load or mutate RBAC/modules for them in the team UI. */
+async function assertTargetIsNotProjectOwner(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  projectId: string,
+  targetUserId: string
+): Promise<string | null> {
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle();
+  if (project?.owner_id === targetUserId) {
+    return OWNER_ACCESS_NOT_EDITABLE;
+  }
+  return null;
+}
+
 // ── getMemberAccess ───────────────────────────────────────────────────
 // Returns current roles, allowed_modules, and granted_actions for a project member.
 // Used by the Teams UI to show and edit a member's permissions.
@@ -597,6 +624,12 @@ export async function getMemberAccess(
     projectId,
   });
   const supabase = await createClient();
+  const ownerBlock = await assertTargetIsNotProjectOwner(
+    supabase,
+    projectId,
+    userId
+  );
+  if (ownerBlock) return { error: ownerBlock };
   const { data, error } = await (supabase as any).rpc(
     'get_member_access_for_project',
     { p_project_id: projectId, p_user_id: userId }
@@ -644,6 +677,12 @@ export async function updateMemberRole(
     projectId,
   });
   const supabase = await createClient();
+  const ownerBlock = await assertTargetIsNotProjectOwner(
+    supabase,
+    projectId,
+    userId
+  );
+  if (ownerBlock) return { error: ownerBlock };
   const { error } = await (supabase as any).rpc('update_member_role_atomic', {
     p_project_id: projectId,
     p_user_id: userId,
@@ -710,6 +749,12 @@ export async function updateMemberModules(
     projectId,
   });
   const supabase = await createClient();
+  const ownerBlock = await assertTargetIsNotProjectOwner(
+    supabase,
+    projectId,
+    userId
+  );
+  if (ownerBlock) return { error: ownerBlock };
   const { error } = await (supabase as any).rpc(
     'update_member_modules_atomic',
     {
@@ -757,6 +802,12 @@ export async function updateMemberAccessFull(
       : null;
 
   const supabase = await createClient();
+  const ownerBlock = await assertTargetIsNotProjectOwner(
+    supabase,
+    projectId,
+    userId
+  );
+  if (ownerBlock) return { error: ownerBlock };
   const { error } = await (supabase as any).rpc(
     'update_member_access_full_atomic',
     {

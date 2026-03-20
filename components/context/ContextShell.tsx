@@ -8,7 +8,7 @@ import { ContextTabBar } from './ContextTabBar';
 import { ProjectSettingsDrawer } from './ProjectSettingsDrawer';
 import ContextProjectPicker from '@/app/context/ContextProjectPicker';
 import { getHomePageData } from '@/app/actions/home';
-import { LogOut, Settings } from 'lucide-react';
+import { Home, Settings } from 'lucide-react';
 import type {
   ModuleKey,
   SerializableResolvedModule,
@@ -23,6 +23,8 @@ export interface ContextShellProps {
   enabledModuleKeys: Set<ModuleKey>;
   modules: SerializableResolvedModule[];
   canToggleModules: boolean;
+  canDeleteProject: boolean;
+  canOpenSettings: boolean;
   drawerOpen: boolean;
   onOpenSettings: () => void;
   onCloseSettings: () => void;
@@ -30,8 +32,8 @@ export interface ContextShellProps {
 }
 
 /**
- * Context navigation shell: header + tab bar (Ajustes + project name + Salir) + content.
- * "Salir" pre-renders the home with fetched data, then slides project left and home in from the right
+ * Context navigation shell: header + tab bar + content.
+ * "Home" pre-renders the home with fetched data, then slides project left and home in from the right
  * so the user sees content during the transition (no blank load). URL is updated without a full navigation.
  */
 export function ContextShell({
@@ -41,6 +43,8 @@ export function ContextShell({
   enabledModuleKeys,
   modules,
   canToggleModules,
+  canDeleteProject,
+  canOpenSettings,
   drawerOpen,
   onOpenSettings,
   onCloseSettings,
@@ -75,7 +79,7 @@ export function ContextShell({
     }
   }, [projectId, modules, enabledModuleKeys, router]);
 
-  // Pre-render home data so Salir can show it sliding in (user can't change projects from here).
+  // Pre-render home data so "Home" can slide in without blank states.
   useEffect(() => {
     getHomePageData().then(setHomeData);
   }, []);
@@ -123,23 +127,30 @@ export function ContextShell({
         <header className="bg-primary text-primary-foreground shadow flex-shrink-0 relative">
           <div className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3 min-w-0">
             {/* Settings button — left side */}
-            <button
-              onClick={onOpenSettings}
-              className="flex items-center gap-2 py-2 px-3 rounded-md text-primary-foreground hover:bg-primary-foreground/10 transition-colors min-h-[44px] flex-shrink-0 z-10"
-              aria-label={t('context.settings')}
-            >
-              <Settings className="w-5 h-5 flex-shrink-0" aria-hidden />
-              <span className="hidden sm:inline font-medium">
-                {t('context.settings')}
-              </span>
-            </button>
+            {canOpenSettings ? (
+              <button
+                onClick={onOpenSettings}
+                className="flex items-center gap-2 py-2 px-3 rounded-md text-primary-foreground hover:bg-primary-foreground/10 transition-colors min-h-[44px] flex-shrink-0 z-10"
+                aria-label={t('context.settings')}
+              >
+                <Settings className="w-5 h-5 flex-shrink-0" aria-hidden />
+                <span className="hidden sm:inline font-medium">
+                  {t('context.settings')}
+                </span>
+              </button>
+            ) : (
+              <div
+                className="w-[44px] sm:w-[110px] flex-shrink-0 z-10"
+                aria-hidden
+              />
+            )}
 
             {/* Project name — centered in header regardless of side buttons width */}
             <h1 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-base md:text-xl font-bold truncate max-w-[50vw] px-2 text-center">
               {projectName}
             </h1>
 
-            {/* Exit button — right side */}
+            {/* Home button — right side */}
             <div className="flex flex-1 justify-end min-w-0 flex-shrink-0 z-10">
               <Link
                 href="/?from=project"
@@ -150,11 +161,11 @@ export function ContextShell({
                   }
                 }}
                 className="flex items-center gap-2 py-2 px-3 rounded-md text-primary-foreground hover:bg-primary-foreground/10 transition-colors min-h-[44px]"
-                aria-label={t('context.exit')}
+                aria-label={t('context.home')}
               >
-                <LogOut className="w-5 h-5 flex-shrink-0" aria-hidden />
+                <Home className="w-5 h-5 flex-shrink-0" aria-hidden />
                 <span className="hidden sm:inline font-medium">
-                  {t('context.exit')}
+                  {t('context.home')}
                 </span>
               </Link>
             </div>
@@ -182,6 +193,7 @@ export function ContextShell({
         projectName={projectName}
         modules={modules}
         canToggleModules={canToggleModules}
+        canDeleteProject={canDeleteProject}
         onModulesChange={onModulesChange}
       />
 

@@ -44,16 +44,58 @@ export type SubTeamsPermissions = {
   managedTeamIds: string[];
 };
 
+/** Current user's sub-team rows for this project (for "Tu rol y equipos"). */
+export type MySubTeamMembership = {
+  teamId: string;
+  teamName: string;
+  role: 'member' | 'manager';
+};
+
 // ---------------------------------------------------------------------------
 // Reads
 // ---------------------------------------------------------------------------
 
-export const listProjectTeams = cache(
-  async (projectId: string): Promise<ProjectTeam[]> => {
-    const user = await requireAuth();
+const fetchMySubTeamMemberships = cache(
+  async (projectId: string, userId: string): Promise<MySubTeamMembership[]> => {
+    const supabase = await createClient();
+    const { data, error } = await (supabase as any).rpc(
+      'get_my_sub_team_memberships',
+      { p_project_id: projectId }
+    );
+    if (error) {
+      captureWithContext(error, {
+        module: 'sub-teams',
+        action: 'listMySubTeamMemberships',
+        userIntent: 'Load current user sub-team memberships for team tab',
+        expected: 'get_my_sub_team_memberships RPC returns rows',
+        extra: { projectId, userId },
+      });
+      return [];
+    }
+    const rows = Array.isArray(data) ? data : [];
+    return rows.map(
+      (row: { team_id: string; team_name: string; role: string }) => ({
+        teamId: row.team_id,
+        teamName: row.team_name,
+        role: row.role === 'manager' ? 'manager' : 'member',
+      })
+    );
+  }
+);
+
+/** Sub-teams the current user belongs to in this project (not gated on project_teams.read). */
+export async function listMySubTeamMemberships(
+  projectId: string
+): Promise<MySubTeamMembership[]> {
+  const user = await requireAuth();
+  return fetchMySubTeamMemberships(projectId, user.id);
+}
+
+const fetchListProjectTeams = cache(
+  async (projectId: string, userId: string): Promise<ProjectTeam[]> => {
     const supabase = await createClient();
 
-    const allowed = await can(user.id, 'project_teams.read', {
+    const allowed = await can(userId, 'project_teams.read', {
       type: 'project',
       projectId,
     });
@@ -75,23 +117,48 @@ export const listProjectTeams = cache(
 
     const { data: members } = await (supabase as any)
       .from('project_team_members')
-      .select(
-        'id, team_id, user_id, role, joined_at, user_profiles(display_name, email, avatar_url)'
-      )
+      .select('id, team_id, user_id, role, joined_at')
       .in('team_id', teamIds);
+
+    const memberUserIds = Array.from(
+      new Set((members ?? []).map((m: { user_id: string }) => m.user_id))
+    );
+    const { data: profiles } =
+      memberUserIds.length > 0
+        ? await (supabase as any)
+            .from('profiles')
+            .select('user_id, display_name, avatar_asset_id')
+            .in('user_id', memberUserIds)
+        : { data: [] };
+    const profileByUserId = new Map<
+      string,
+      {
+        display_name: string | null;
+        avatar_asset_id: string | null;
+      }
+    >(
+      (profiles ?? []).map(
+        (p: {
+          user_id: string;
+          display_name: string | null;
+          avatar_asset_id: string | null;
+        }) => [p.user_id, p]
+      )
+    );
 
     const membersByTeam: Record<string, ProjectTeamMember[]> = {};
     for (const m of members ?? []) {
       if (!membersByTeam[m.team_id]) membersByTeam[m.team_id] = [];
+      const profile = profileByUserId.get(m.user_id);
       membersByTeam[m.team_id].push({
         id: m.id,
         team_id: m.team_id,
         user_id: m.user_id,
         role: m.role,
         joined_at: m.joined_at,
-        display_name: m.user_profiles?.display_name ?? null,
-        email: m.user_profiles?.email ?? null,
-        avatar_url: m.user_profiles?.avatar_url ?? null,
+        display_name: profile?.display_name ?? null,
+        email: null,
+        avatar_url: null,
       });
     }
 
@@ -101,6 +168,13 @@ export const listProjectTeams = cache(
     }));
   }
 );
+
+export async function listProjectTeams(
+  projectId: string
+): Promise<ProjectTeam[]> {
+  const user = await requireAuth();
+  return fetchListProjectTeams(projectId, user.id);
+}
 
 export async function getSubTeamsPermissions(
   projectId: string
@@ -373,33 +447,33 @@ export async function addTeamMember(
 
     await _requireCanManageTeam(user.id, teamId, team.project_id);
 
-    // Verify the target user is a project member
-    const { data: projectMember } = await (supabase as any)
-      .from('project_members')
-      .select('id')
-      .eq('project_id', team.project_id)
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (!projectMember) {
-      return {
-        error: 'User must be a project member before joining a sub-team.',
-      };
-    }
-
     const { data, error } = await (supabase as any)
       .from('project_team_members')
       .insert({ team_id: teamId, user_id: userId, role: 'member' })
-      .select(
-        'id, team_id, user_id, role, joined_at, user_profiles(display_name, email, avatar_url)'
-      )
+      .select('id, team_id, user_id, role, joined_at')
       .single();
 
     if (error) {
       if (error.code === '23505')
         return { error: 'User is already a member of this sub-team.' };
+      if (error.code === '23503')
+        return { error: 'Invalid user or team reference.' };
+      if (
+        typeof error.message === 'string' &&
+        error.message.toLowerCase().includes('row-level security')
+      ) {
+        return {
+          error: 'You do not have permission to add members to this sub-team.',
+        };
+      }
       throw error;
     }
+
+    const { data: profile } = await (supabase as any)
+      .from('profiles')
+      .select('display_name, email, avatar_url')
+      .eq('id', userId)
+      .maybeSingle();
 
     revalidatePath(`/context/${team.project_id}/team`);
     return {
@@ -409,9 +483,9 @@ export async function addTeamMember(
         user_id: data.user_id,
         role: data.role,
         joined_at: data.joined_at,
-        display_name: data.user_profiles?.display_name ?? null,
-        email: data.user_profiles?.email ?? null,
-        avatar_url: data.user_profiles?.avatar_url ?? null,
+        display_name: profile?.display_name ?? null,
+        email: profile?.email ?? null,
+        avatar_url: profile?.avatar_url ?? null,
       },
     };
   } catch (err) {
@@ -420,8 +494,20 @@ export async function addTeamMember(
       action: 'addTeamMember',
       userIntent: 'Add a member to a sub-team',
       expected: 'project_team_members row inserted',
+      extra: { teamId, userId },
     });
-    return { error: 'Failed to add team member. Please try again.' };
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === 'object' &&
+            err !== null &&
+            'message' in err &&
+            typeof (err as { message?: unknown }).message === 'string'
+          ? ((err as { message: string }).message ?? '')
+          : '';
+    return {
+      error: message.trim() || 'Failed to add team member. Please try again.',
+    };
   }
 }
 

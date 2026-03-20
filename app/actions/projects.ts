@@ -396,12 +396,27 @@ export async function deleteProject(
 ): Promise<ActionResult<{ success: true }>> {
   const user = await requireAuth();
 
+  const supabase = await createClient();
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (
+    !project ||
+    (project as { owner_id: string | null }).owner_id !== user.id
+  ) {
+    return {
+      ok: false,
+      error: 'Only the project owner can delete this project.',
+    };
+  }
+
   await requireCan(user.id, 'projects.delete', {
     type: 'project',
     projectId: id,
   });
-
-  const supabase = await createClient();
 
   const { error } = await supabase
     .from('projects')

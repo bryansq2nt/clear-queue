@@ -4,30 +4,32 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/shared/I18nProvider';
 import {
-  inviteProjectMember,
-  revokeInvite,
-  removeProjectMember,
-  sendInviteEmail,
   checkCanInviteEmail,
   getMemberAccess,
-  updateMemberRole,
+  inviteProjectMember,
+  removeProjectMember,
+  revokeInvite,
+  sendInviteEmail,
   updateMemberAccessFull,
+  updateMemberRole,
+  type MemberAccess,
+  type ProjectInvite,
+  type ProjectMember,
+  type RejectedInvite,
 } from '@/app/actions/teams';
-import type {
-  ProjectMember,
-  ProjectInvite,
-  RejectedInvite,
-  MemberAccess,
-} from '@/app/actions/teams';
+import { OWNER_ACCESS_NOT_EDITABLE } from '@/lib/teams/member-access-errors';
 import {
   createProjectTeam,
   updateProjectTeam,
   deleteProjectTeam,
   addTeamMember,
   removeTeamMember,
-  updateTeamMemberRole,
 } from '@/app/actions/sub-teams';
-import type { ProjectTeam, SubTeamsPermissions } from '@/app/actions/sub-teams';
+import type {
+  MySubTeamMembership,
+  ProjectTeam,
+  SubTeamsPermissions,
+} from '@/app/actions/sub-teams';
 import {
   Users,
   UserMinus,
@@ -163,15 +165,39 @@ const MODULE_PERMISSIONS: Record<
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function roleLabel(name: string): string {
-  const map: Record<string, string> = {
-    owner: 'Owner',
-    project_manager: 'Project Manager',
-    team_manager: 'Team Manager',
-    team_member: 'Team Member',
-    guest: 'Guest',
-  };
-  return map[name] ?? name;
+function projectRoleLabel(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  name: string
+): string {
+  const key = `roles.${name}`;
+  const translated = t(key);
+  return translated === key ? name.replaceAll('_', ' ') : translated;
+}
+
+function projectRoleDescription(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  name: string
+): string | undefined {
+  const key = `roles.description.${name}`;
+  const translated = t(key);
+  return translated === key ? undefined : translated;
+}
+
+function mapMemberAccessActionError(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  error: string
+): string {
+  if (error === OWNER_ACCESS_NOT_EDITABLE) {
+    return t('teams.owner_access_not_editable');
+  }
+  return error;
+}
+
+function subTeamRoleLabel(
+  t: (key: string, vars?: Record<string, string>) => string,
+  role: 'member' | 'manager'
+): string {
+  return role === 'manager' ? t('roles.team_manager') : t('roles.team_member');
 }
 
 function roleBadgeClass(name: string): string {
@@ -184,17 +210,6 @@ function roleBadgeClass(name: string): string {
   };
   return map[name] ?? 'bg-muted text-muted-foreground';
 }
-
-// Descriptions shown in the role selector.
-const ROLE_DESCRIPTIONS: Record<string, string> = {
-  owner: 'Full control — manage members, modules, and all content.',
-  project_manager:
-    'Manage all sub-teams; invite, configure modules, and edit all content.',
-  team_manager: 'Manage a specific sub-team; invite Members and Guests.',
-  team_member:
-    'Create and manage own content; edit tasks they are assigned to.',
-  guest: 'Read-only access to selected modules.',
-};
 
 // Hierarchy index — lower = higher authority.
 const ROLE_HIERARCHY = [
@@ -218,8 +233,12 @@ interface Props {
   initialRejectedInvites: RejectedInvite[];
   roles: Array<{ id: string; name: string; description: string | null }>;
   initialTeams: ProjectTeam[];
+  /** Sub-teams the viewer belongs to (always loaded; not gated on project_teams.read). */
+  initialMySubTeamMemberships: MySubTeamMembership[];
   subTeamsPermissions: SubTeamsPermissions;
   enabledInviteModuleKeys: string[];
+  canInvite: boolean;
+  canManageMembers: boolean;
 }
 
 export default function ContextTeamClient({
@@ -231,8 +250,11 @@ export default function ContextTeamClient({
   initialRejectedInvites,
   roles,
   initialTeams,
+  initialMySubTeamMemberships,
   subTeamsPermissions,
   enabledInviteModuleKeys,
+  canInvite,
+  canManageMembers,
 }: Props) {
   const { t } = useI18n();
   const router = useRouter();
@@ -344,6 +366,52 @@ export default function ContextTeamClient({
   // ── Sub-teams state ───────────────────────────────────────────────
   const [teams, setTeams] = useState<ProjectTeam[]>(initialTeams);
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
+  const [mySubTeamMemberships, setMySubTeamMemberships] = useState<
+    MySubTeamMembership[]
+  >(initialMySubTeamMemberships);
+
+  useEffect(() => {
+    setMySubTeamMemberships(initialMySubTeamMemberships);
+  }, [initialMySubTeamMemberships]);
+
+  const myTeamsFromFullList = useMemo(
+    () =>
+      teams
+        .map((team) => {
+          const membership = team.members.find(
+            (m) => m.user_id === currentUserId
+          );
+          if (!membership) return null;
+          return {
+            teamId: team.id,
+            teamName: team.name,
+            role: membership.role,
+          };
+        })
+        .filter(
+          (
+            value
+          ): value is {
+            teamId: string;
+            teamName: string;
+            role: 'member' | 'manager';
+          } => value !== null
+        ),
+    [teams, currentUserId]
+  );
+
+  // Merge: full team list may omit the viewer in `members` (RLS / partial data);
+  // dedicated load (RPC) fills gaps so "Tu rol y equipos" stays correct.
+  const myTeams = useMemo(() => {
+    const map = new Map<string, MySubTeamMembership>();
+    for (const m of myTeamsFromFullList) {
+      map.set(m.teamId, m);
+    }
+    for (const m of mySubTeamMemberships) {
+      if (!map.has(m.teamId)) map.set(m.teamId, m);
+    }
+    return Array.from(map.values());
+  }, [myTeamsFromFullList, mySubTeamMemberships]);
 
   // Create sub-team dialog
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
@@ -366,6 +434,12 @@ export default function ContextTeamClient({
   const [addMemberTeam, setAddMemberTeam] = useState<ProjectTeam | null>(null);
   const [addMemberUserId, setAddMemberUserId] = useState('');
   const [addMemberSaving, setAddMemberSaving] = useState(false);
+  const [confirmRemoveSubTeamMember, setConfirmRemoveSubTeamMember] = useState<{
+    teamId: string;
+    teamName: string;
+    userId: string;
+    userLabel: string;
+  } | null>(null);
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -731,7 +805,7 @@ export default function ContextTeamClient({
         setErrorDialog({
           open: true,
           title: t('teams.edit_permissions_error_title'),
-          message: result.error,
+          message: mapMemberAccessActionError(t, result.error),
           retry: () => handleApplyRole(userId, roleId),
         });
         return;
@@ -807,7 +881,7 @@ export default function ContextTeamClient({
         setErrorDialog({
           open: true,
           title: t('teams.edit_permissions_error_title'),
-          message: result.error,
+          message: mapMemberAccessActionError(t, result.error),
           retry: () => handleSaveEditMember(userId),
         });
         return;
@@ -930,10 +1004,23 @@ export default function ContextTeamClient({
             : team
         )
       );
+      if (addMemberUserId === currentUserId) {
+        setMySubTeamMemberships((prev) => {
+          if (prev.some((m) => m.teamId === addMemberTeam.id)) return prev;
+          return [
+            ...prev,
+            {
+              teamId: addMemberTeam.id,
+              teamName: addMemberTeam.name,
+              role: data.role,
+            },
+          ];
+        });
+      }
     }
     setAddMemberTeam(null);
     setAddMemberUserId('');
-  }, [addMemberTeam, addMemberUserId, t]);
+  }, [addMemberTeam, addMemberUserId, currentUserId, t]);
 
   const handleRemoveTeamMember = useCallback(
     async (teamId: string, userId: string) => {
@@ -957,36 +1044,13 @@ export default function ContextTeamClient({
             : team
         )
       );
-    },
-    [t]
-  );
-
-  const handleUpdateTeamMemberRole = useCallback(
-    async (teamId: string, userId: string, role: 'member' | 'manager') => {
-      const { error } = await updateTeamMemberRole(teamId, userId, role);
-      if (error) {
-        setErrorDialog({
-          open: true,
-          title: t('teams.update_sub_team_role_error_title'),
-          message: error,
-          retry: () => void handleUpdateTeamMemberRole(teamId, userId, role),
-        });
-        return;
+      if (userId === currentUserId) {
+        setMySubTeamMemberships((prev) =>
+          prev.filter((m) => m.teamId !== teamId)
+        );
       }
-      setTeams((prev) =>
-        prev.map((team) =>
-          team.id === teamId
-            ? {
-                ...team,
-                members: team.members.map((m) =>
-                  m.user_id === userId ? { ...m, role } : m
-                ),
-              }
-            : team
-        )
-      );
     },
-    [t]
+    [currentUserId, t]
   );
 
   // ── Render ──────────────────────────────────────────────────────────
@@ -1001,18 +1065,57 @@ export default function ContextTeamClient({
             {t('teams.title')}
           </h2>
         </div>
-        <button
-          type="button"
-          onClick={handleToggleForm}
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-4 h-4" />
-          {t('teams.invite_member')}
-        </button>
+        {canInvite && (
+          <button
+            type="button"
+            onClick={handleToggleForm}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-4 h-4" />
+            {t('teams.invite_member')}
+          </button>
+        )}
       </div>
 
+      {(myRoleName || myTeams.length > 0) && (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">
+            {t('teams.my_membership_title')}
+          </h3>
+          {myRoleName && (
+            <p className="text-sm text-muted-foreground">
+              {t('teams.my_project_role_label')}{' '}
+              <span className="font-medium text-foreground">
+                {projectRoleLabel(t, myRoleName)}
+              </span>
+            </p>
+          )}
+          {myTeams.length > 0 ? (
+            <div className="space-y-1.5">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                {t('teams.my_teams_label')}
+              </p>
+              {myTeams.map((item) => (
+                <p key={item.teamId} className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {item.teamName}
+                  </span>{' '}
+                  - {subTeamRoleLabel(t, item.role)}
+                </p>
+              ))}
+            </div>
+          ) : (
+            myRoleName !== 'owner' && (
+              <p className="text-sm text-muted-foreground">
+                {t('teams.my_teams_none')}
+              </p>
+            )
+          )}
+        </div>
+      )}
+
       {/* Generated invite link */}
-      {generatedLink && (
+      {canInvite && generatedLink && (
         <div className="rounded-lg border border-border bg-card p-4 space-y-2">
           <p className="text-sm font-medium text-foreground">
             {t('teams.invite_link_ready')}
@@ -1078,7 +1181,7 @@ export default function ContextTeamClient({
       )}
 
       {/* Invite form */}
-      {showInviteForm && (
+      {canInvite && showInviteForm && (
         <div className="rounded-lg border border-border bg-card p-4 space-y-4">
           {/* ── Step 1: Email ─────────────────────────────────────── */}
           {step === 'email' && (
@@ -1152,41 +1255,44 @@ export default function ContextTeamClient({
                   <>
                     {' · '}
                     <span className="font-medium text-foreground">
-                      {roleLabel(selectedRoleName)}
+                      {projectRoleLabel(t, selectedRoleName)}
                     </span>
                   </>
                 )}
               </p>
 
               <div className="space-y-2">
-                {allowedInviteRoles.map((role) => (
-                  <button
-                    key={role.id}
-                    type="button"
-                    onClick={() => setSelectedRoleId(role.id)}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      selectedRoleId === role.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border bg-background hover:bg-accent/40'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-foreground">
-                        {roleLabel(role.name)}
-                      </span>
-                      <span
-                        className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${roleBadgeClass(role.name)}`}
-                      >
-                        {roleLabel(role.name)}
-                      </span>
-                    </div>
-                    {ROLE_DESCRIPTIONS[role.name] && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {ROLE_DESCRIPTIONS[role.name]}
-                      </p>
-                    )}
-                  </button>
-                ))}
+                {allowedInviteRoles.map((role) => {
+                  const roleDesc = projectRoleDescription(t, role.name);
+                  return (
+                    <button
+                      key={role.id}
+                      type="button"
+                      onClick={() => setSelectedRoleId(role.id)}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        selectedRoleId === role.id
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border bg-background hover:bg-accent/40'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {projectRoleLabel(t, role.name)}
+                        </span>
+                        <span
+                          className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${roleBadgeClass(role.name)}`}
+                        >
+                          {projectRoleLabel(t, role.name)}
+                        </span>
+                      </div>
+                      {roleDesc && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {roleDesc}
+                        </p>
+                      )}
+                    </button>
+                  );
+                })}
                 {allowedInviteRoles.length === 0 && (
                   <p className="text-sm text-muted-foreground">
                     {t('teams.invite_no_roles_available')}
@@ -1426,65 +1532,76 @@ export default function ContextTeamClient({
           </p>
         ) : (
           <ul className="space-y-2">
-            {members.map((m) => (
-              <li
-                key={m.user_id}
-                className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card"
-              >
-                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm shrink-0">
-                  {m.display_name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {m.display_name}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {m.email}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {m.roles.map((r) => (
-                    <span
-                      key={r.id}
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleBadgeClass(r.name)}`}
-                    >
-                      {roleLabel(r.name)}
-                    </span>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setEditMember(m)}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                    aria-label={t('teams.edit_permissions')}
-                    title={t('teams.edit_permissions')}
-                  >
-                    <Shield className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmRemoveMember(m)}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    aria-label={t('teams.remove_member')}
-                    title={t('teams.remove_member')}
-                  >
-                    <UserMinus className="w-4 h-4" />
-                  </button>
-                </div>
-              </li>
-            ))}
+            {members.map((m) => {
+              const isOwner = m.roles.some((r) => r.name === 'owner');
+              const isSelf = m.user_id === currentUserId;
+              const canRemoveThisMember =
+                canManageMembers && !isOwner && !isSelf;
+              const canEditThisMemberAccess = canManageMembers && !isOwner;
+              return (
+                <li
+                  key={m.user_id}
+                  className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card"
+                >
+                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm shrink-0">
+                    {m.display_name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {m.display_name}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {m.email}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {m.roles.map((r) => (
+                      <span
+                        key={r.id}
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleBadgeClass(r.name)}`}
+                      >
+                        {projectRoleLabel(t, r.name)}
+                      </span>
+                    ))}
+                    {canEditThisMemberAccess && (
+                      <button
+                        type="button"
+                        onClick={() => setEditMember(m)}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        aria-label={t('teams.edit_permissions')}
+                        title={t('teams.edit_permissions')}
+                      >
+                        <Shield className="w-4 h-4" />
+                      </button>
+                    )}
+                    {canRemoveThisMember && (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmRemoveMember(m)}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        aria-label={t('teams.remove_member')}
+                        title={t('teams.remove_member')}
+                      >
+                        <UserMinus className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
 
       {/* Pending invites */}
-      {invites.length > 0 && (
+      {canInvite && invites.length > 0 && (
         <section className="space-y-2">
           <h3 className="text-sm font-semibold text-foreground">
             {t('teams.pending_invites')} ({invites.length})
           </h3>
           <ul className="space-y-2">
             {invites.map((inv) => {
-              const displayLabel = roleLabel(inv.role_name);
+              const displayLabel = projectRoleLabel(t, inv.role_name);
               const badgeClass = roleBadgeClass(inv.role_name);
               return (
                 <li
@@ -1559,14 +1676,14 @@ export default function ContextTeamClient({
       )}
 
       {/* Rejected invites */}
-      {rejectedInvites.length > 0 && (
+      {canInvite && rejectedInvites.length > 0 && (
         <section className="space-y-2">
           <h3 className="text-sm font-semibold text-foreground">
             {t('teams.rejected_invites')} ({rejectedInvites.length})
           </h3>
           <ul className="space-y-2">
             {rejectedInvites.map((rej) => {
-              const displayLabel = roleLabel(rej.role_name);
+              const displayLabel = projectRoleLabel(t, rej.role_name);
               return (
                 <li
                   key={rej.id}
@@ -1715,61 +1832,46 @@ export default function ContextTeamClient({
                           </p>
                         ) : (
                           <ul className="space-y-1.5">
-                            {team.members.map((m) => (
-                              <li
-                                key={m.user_id}
-                                className="flex items-center gap-2 text-sm"
-                              >
-                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-semibold shrink-0">
-                                  {(m.display_name ?? m.email ?? '?')
-                                    .charAt(0)
-                                    .toUpperCase()}
-                                </div>
-                                <span className="flex-1 text-sm text-foreground truncate">
-                                  {m.display_name ?? m.email ?? m.user_id}
-                                </span>
-                                <span
-                                  className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
-                                    m.role === 'manager'
-                                      ? 'bg-primary/15 text-primary'
-                                      : 'bg-muted text-muted-foreground'
-                                  }`}
+                            {team.members.map((m) => {
+                              const projectMember = members.find(
+                                (pm) => pm.user_id === m.user_id
+                              );
+                              const memberLabel =
+                                m.display_name ??
+                                m.email ??
+                                projectMember?.display_name ??
+                                projectMember?.email ??
+                                t('teams.sub_team_member_unknown');
+                              return (
+                                <li
+                                  key={m.user_id}
+                                  className="flex items-center gap-2 text-sm"
                                 >
-                                  {m.role === 'manager'
-                                    ? t('teams.sub_team_role_manager')
-                                    : t('teams.sub_team_role_member')}
-                                </span>
-                                {canManageThisTeam && (
-                                  <>
+                                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-semibold shrink-0">
+                                    {memberLabel.charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="flex-1 text-sm text-foreground truncate">
+                                    {memberLabel}
+                                  </span>
+                                  <span
+                                    className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${roleBadgeClass(
+                                      m.role === 'manager'
+                                        ? 'team_manager'
+                                        : 'team_member'
+                                    )}`}
+                                  >
+                                    {subTeamRoleLabel(t, m.role)}
+                                  </span>
+                                  {canManageThisTeam && (
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        void handleUpdateTeamMemberRole(
-                                          team.id,
-                                          m.user_id,
-                                          m.role === 'manager'
-                                            ? 'member'
-                                            : 'manager'
-                                        )
-                                      }
-                                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 shrink-0"
-                                      title={
-                                        m.role === 'manager'
-                                          ? t('teams.make_sub_team_member')
-                                          : t('teams.make_sub_team_manager')
-                                      }
-                                    >
-                                      {m.role === 'manager'
-                                        ? t('teams.make_sub_team_member')
-                                        : t('teams.make_sub_team_manager')}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        void handleRemoveTeamMember(
-                                          team.id,
-                                          m.user_id
-                                        )
+                                        setConfirmRemoveSubTeamMember({
+                                          teamId: team.id,
+                                          teamName: team.name,
+                                          userId: m.user_id,
+                                          userLabel: memberLabel,
+                                        })
                                       }
                                       className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
                                       aria-label={t(
@@ -1779,10 +1881,10 @@ export default function ContextTeamClient({
                                     >
                                       <X className="w-3.5 h-3.5" />
                                     </button>
-                                  </>
-                                )}
-                              </li>
-                            ))}
+                                  )}
+                                </li>
+                              );
+                            })}
                           </ul>
                         )}
                         {canManageThisTeam && (
@@ -2199,6 +2301,53 @@ export default function ContextTeamClient({
         </DialogContent>
       </Dialog>
 
+      {/* Confirm remove sub-team member */}
+      <Dialog
+        open={!!confirmRemoveSubTeamMember}
+        onOpenChange={(open) => {
+          if (!open) setConfirmRemoveSubTeamMember(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t('teams.remove_sub_team_member_confirm_title')}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmRemoveSubTeamMember
+                ? t('teams.remove_sub_team_member_confirm_message', {
+                    name: confirmRemoveSubTeamMember.userLabel,
+                    team: confirmRemoveSubTeamMember.teamName,
+                  })
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmRemoveSubTeamMember(null)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (!confirmRemoveSubTeamMember) return;
+                void handleRemoveTeamMember(
+                  confirmRemoveSubTeamMember.teamId,
+                  confirmRemoveSubTeamMember.userId
+                );
+                setConfirmRemoveSubTeamMember(null);
+              }}
+            >
+              {t('teams.remove_sub_team_member_confirm_btn')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Revoke invite confirmation */}
       <Dialog
         open={!!revokeConfirmInvite}
@@ -2301,11 +2450,15 @@ export default function ContextTeamClient({
           ) : editMemberLoadError ? (
             <div className="py-6 space-y-3">
               <p className="text-sm text-destructive">
-                {t('teams.edit_permissions_load_error')}
+                {editMemberLoadError === OWNER_ACCESS_NOT_EDITABLE
+                  ? t('teams.owner_access_not_editable')
+                  : t('teams.edit_permissions_load_error')}
               </p>
-              <p className="text-xs text-muted-foreground font-mono break-all">
-                {editMemberLoadError}
-              </p>
+              {editMemberLoadError !== OWNER_ACCESS_NOT_EDITABLE && (
+                <p className="text-xs text-muted-foreground font-mono break-all">
+                  {editMemberLoadError}
+                </p>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -2367,7 +2520,7 @@ export default function ContextTeamClient({
                   <option value="">{t('teams.select_role_or_profile')}</option>
                   {roles.map((r) => (
                     <option key={r.id} value={r.id}>
-                      {roleLabel(r.name)}
+                      {projectRoleLabel(t, r.name)}
                       {r.description ? ` — ${r.description}` : ''}
                     </option>
                   ))}
@@ -2384,7 +2537,7 @@ export default function ContextTeamClient({
                 {t('teams.current_roles')}:{' '}
                 {memberAccess.roleNames.length > 0
                   ? memberAccess.roleNames
-                      .map((name) => roleLabel(name))
+                      .map((name) => projectRoleLabel(t, name))
                       .join(', ')
                   : '—'}
                 {' · '}

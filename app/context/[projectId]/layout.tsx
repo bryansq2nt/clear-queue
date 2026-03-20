@@ -15,7 +15,7 @@ export default async function ContextProjectLayout({
   children: React.ReactNode;
   params: { projectId: string };
 }) {
-  await requireAuth();
+  const user = await requireAuth();
   const projectId = params.projectId;
 
   const [project, initialModules, initialAccessGrant, initialCanToggle] =
@@ -35,6 +35,7 @@ export default async function ContextProjectLayout({
       initialModules={initialModules}
       initialAccessGrant={initialAccessGrant}
       initialCanToggle={initialCanToggle}
+      initialCanDeleteProject={project.owner_id === user.id}
     >
       {children}
     </ContextLayoutWrapper>

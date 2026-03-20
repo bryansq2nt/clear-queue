@@ -88,6 +88,7 @@
   },
   "context": {
     "title": "Project context",
+    "home": "Home",
     "all_projects": "All projects",
     "back_to_app": "Back to app",
     "back_to_project": "Back to project",
@@ -140,6 +141,10 @@
   "teams": {
     "title": "Project team",
     "members_title": "Members",
+    "my_membership_title": "Your role and teams",
+    "my_project_role_label": "Project role:",
+    "my_teams_label": "Your teams",
+    "my_teams_none": "You are not part of any sub-team yet.",
     "pending_invites": "Pending invites",
     "no_members": "No members yet.",
     "invite_member": "Invite member",
@@ -230,6 +235,7 @@
     "save_permissions": "Save permissions",
     "edit_permissions_error_title": "Could not update permissions",
     "edit_permissions_load_error": "Could not load permissions",
+    "owner_access_not_editable": "The project owner has full access; their role and modules cannot be edited here.",
     "apply_role_or_profile": "Apply role or profile",
     "select_role_or_profile": "Select a role or profile…",
     "profiles_group": "Profiles",
@@ -267,7 +273,11 @@
     "add_sub_team_member_error_title": "Could not add member",
     "add_sub_team_member_none_available": "All project members are already in this sub-team.",
     "remove_sub_team_member": "Remove from sub-team",
+    "remove_sub_team_member_confirm_title": "Remove member from sub-team?",
+    "remove_sub_team_member_confirm_message": "Are you sure you want to remove {name} from sub-team {team}?",
+    "remove_sub_team_member_confirm_btn": "Remove member",
     "remove_sub_team_member_error_title": "Could not remove member",
+    "sub_team_member_unknown": "Member without name",
     "sub_team_role_manager": "Manager",
     "sub_team_role_member": "Member",
     "make_sub_team_manager": "Make manager",
@@ -952,6 +962,7 @@
     "quota_limit_message": "We're sorry. Your organization has reached the project limit for your plan. To create a new one, delete or archive an existing project from Edit project.",
     "quota_limit_message_with_numbers": "We're sorry. You've reached your plan's project limit ({current}/{max}). To create a new one, delete or archive an existing project from Edit project.",
     "delete_confirm": "Delete project \"{name}\" and all its tasks? This cannot be undone.",
+    "delete_owner_only": "Only the project owner can delete this project.",
     "deleting": "Deleting...",
     "filter_by_category": "Filter by category",
     "show_archived": "Show archived"
@@ -968,7 +979,14 @@
     "project_manager": "Project Manager",
     "team_manager": "Team Manager",
     "team_member": "Team Member",
-    "guest": "Guest"
+    "guest": "Guest",
+    "description": {
+      "owner": "Full control — manage members, modules, and all content.",
+      "project_manager": "Manage all sub-teams; invite, configure modules, and edit all content.",
+      "team_manager": "Manage a specific sub-team; invite Members and Guests.",
+      "team_member": "Create and manage own content; edit tasks they are assigned to.",
+      "guest": "Read-only access to selected modules."
+    }
   },
   "invite_page": {
     "not_found_title": "Invite not found",

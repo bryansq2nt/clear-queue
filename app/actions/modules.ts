@@ -50,7 +50,24 @@ export const getMyProjectAccessGrant = cache(
     const raw = data.allowed_modules;
     if (raw == null) return null; // row with null → unrestricted
     const arr = Array.isArray(raw) ? raw : [];
-    return arr.filter((x): x is string => typeof x === 'string');
+    const sanitized = arr.filter((x): x is string => typeof x === 'string');
+
+    // Team members/managers must always see the Team module to know
+    // their sub-team and teammates, even when invite allowlist omitted it.
+    if (!sanitized.includes('team')) {
+      const { data: teamMemberships } = await (supabase as any)
+        .from('project_team_members')
+        .select('team_id, project_teams!inner(project_id)')
+        .eq('user_id', user.id)
+        .eq('project_teams.project_id', projectId)
+        .limit(1);
+
+      if (Array.isArray(teamMemberships) && teamMemberships.length > 0) {
+        return [...sanitized, 'team'];
+      }
+    }
+
+    return sanitized;
   }
 );
 
