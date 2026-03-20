@@ -61,7 +61,7 @@ export async function updateBoardAction(formData: FormData) {
   }
 
   if (projectId) {
-    await requireCan(user.id, 'ideas.update_board', {
+    await requireCan(user.id, 'ideas.update', {
       type: 'idea',
       projectId,
     });
@@ -74,7 +74,7 @@ export async function updateBoardAction(formData: FormData) {
       .eq('id', id)
       .maybeSingle()) as any;
     if (boardRow?.project_id) {
-      await requireCan(user.id, 'ideas.update_board', {
+      await requireCan(user.id, 'ideas.update', {
         type: 'idea',
         projectId: boardRow.project_id,
       });
@@ -119,7 +119,7 @@ export async function deleteBoardAction(id: string) {
     .eq('id', id)
     .maybeSingle()) as any;
   if (boardRow?.project_id) {
-    await requireCan(user.id, 'ideas.delete_board', {
+    await requireCan(user.id, 'ideas.delete', {
       type: 'idea',
       projectId: boardRow.project_id,
     });
@@ -207,7 +207,7 @@ export async function createBoardWithProjectAction(
   const trimmedProjectId = projectId?.trim();
   if (!trimmedProjectId) return { error: 'Project ID is required' };
 
-  await requireCan(user.id, 'ideas.create_board', {
+  await requireCan(user.id, 'ideas.create', {
     type: 'idea',
     projectId: trimmedProjectId,
   });
@@ -255,7 +255,7 @@ export async function addIdeaToBoardAction(formData: FormData) {
     .eq('id', boardId)
     .maybeSingle()) as any;
   if (boardRow?.project_id) {
-    await requireCan(user.id, 'ideas.create_node', {
+    await requireCan(user.id, 'ideas.create', {
       type: 'idea',
       projectId: boardRow.project_id,
     });
@@ -317,6 +317,6 @@ export async function getIdeasPermissions(
 
   const granted = await getGrantedActions(user.id, projectId, true);
   return {
-    canCreate: granted.has('ideas.create_board'),
+    canCreate: granted.has('ideas.create'),
   };
 }

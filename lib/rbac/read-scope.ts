@@ -1,29 +1,35 @@
 import { createClient } from '@/lib/supabase/server';
-import { getGrantedActions } from './resolver';
 
 export type ReadScope = 'own' | 'team' | 'project';
 
 /**
- * Returns the highest read scope the user holds for a given module in a project.
+ * Returns the read scope for the given user in a project.
  *
- * Resolution order (highest wins):
+ * Scope is derived from the user's role name, not from action key variants.
+ * This replaces the old action-key-based resolution (*.read.own/team/project).
+ *
+ * Resolution order:
  *   1. Project owner fast path → 'project'
- *   2. `{module}.read.project` OR legacy `{module}.read` → 'project'
- *   3. `{module}.read.team` → 'team'
- *   4. `{module}.read.own` → 'own'
- *   5. Fallback → 'own' (show only own content rather than nothing)
+ *   2. Role name:
+ *      'owner' | 'project_manager' → 'project'
+ *      'team_manager'              → 'team'
+ *      'team_member'               → 'own'
+ *      'guest'                     → read from user_project_access_grants.read_scope
+ *                                    (defaults to 'project' if null)
+ *   3. Fallback (no role assigned) → 'own'
  *
- * Uses `getGrantedActions()` which is React-cache()-wrapped, so multiple
- * calls for the same (userId, projectId) in one render share one DB round-trip.
+ * The `module` parameter is accepted for interface compatibility but is no
+ * longer used in scope resolution — scope is uniform across all modules for
+ * a given role.
  */
 export async function getReadScope(
   userId: string,
   projectId: string,
-  module: string
+  _module?: string
 ): Promise<ReadScope> {
   const supabase = await createClient();
 
-  // Owner fast path
+  // 1. Owner fast path — always project scope
   const { data: project } = await (supabase as any)
     .from('projects')
     .select('owner_id')
@@ -32,17 +38,45 @@ export async function getReadScope(
 
   if (project?.owner_id === userId) return 'project';
 
-  const granted = await getGrantedActions(userId, projectId, true);
+  // 2. Look up the user's role name and (for guests) their access grant
+  const [{ data: assignment }, { data: grant }] = await Promise.all([
+    (supabase as any)
+      .from('user_role_assignments')
+      .select('rbac_roles(name)')
+      .eq('user_id', userId)
+      .eq('project_id', projectId)
+      .maybeSingle(),
+    (supabase as any)
+      .from('user_project_access_grants')
+      .select('read_scope')
+      .eq('user_id', userId)
+      .eq('project_id', projectId)
+      .maybeSingle(),
+  ]);
 
-  // Legacy *.read key acts as project-scope for backwards compatibility
-  if (granted.has(`${module}.read.project`) || granted.has(`${module}.read`)) {
-    return 'project';
+  const roleName: string | undefined = assignment?.rbac_roles?.name;
+
+  switch (roleName) {
+    case 'owner':
+    case 'project_manager':
+      return 'project';
+
+    case 'team_manager':
+      return 'team';
+
+    case 'team_member':
+      return 'own';
+
+    case 'guest': {
+      // Guest scope is set at invite time and stored in user_project_access_grants
+      const grantedScope = grant?.read_scope as ReadScope | null | undefined;
+      return grantedScope ?? 'project';
+    }
+
+    default:
+      // No role assigned (e.g. before backfill) — fail safe to 'own'
+      return 'own';
   }
-  if (granted.has(`${module}.read.team`)) return 'team';
-  if (granted.has(`${module}.read.own`)) return 'own';
-
-  // Fallback: if user has any read capability at all, default to own
-  return 'own';
 }
 
 /**
@@ -50,7 +84,7 @@ export async function getReadScope(
  * to within a project (including the user themselves).
  *
  * Used when scope = 'team' to build an `owner_id IN (...)` filter.
- * Returns an empty array if the user belongs to no sub-teams.
+ * Returns [userId] (self only) if the user belongs to no sub-teams.
  */
 export async function getTeamMemberIds(
   userId: string,

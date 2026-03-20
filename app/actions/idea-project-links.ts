@@ -25,7 +25,7 @@ export async function linkIdeaToProjectAction(
     return { error: 'Project ID is required' };
   }
 
-  await requireCan(user.id, 'ideas.link_project', { type: 'idea', projectId });
+  await requireCan(user.id, 'ideas.update', { type: 'idea', projectId });
 
   try {
     const data = await linkIdeaToProject({
@@ -69,7 +69,7 @@ export async function unlinkIdeaFromProjectAction(linkId: string) {
     .eq('id', linkId)
     .maybeSingle();
   if (linkRow?.project_id) {
-    await requireCan(user.id, 'ideas.link_project', {
+    await requireCan(user.id, 'ideas.update', {
       type: 'idea',
       projectId: linkRow.project_id,
     });

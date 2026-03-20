@@ -25,18 +25,22 @@ export async function signIn(formData: FormData) {
     return { error: error.message };
   }
 
-  if (data.user) {
-    const returnUrl = formData.get('returnUrl');
-    const url =
-      typeof returnUrl === 'string' &&
-      returnUrl.trim().startsWith('/') &&
-      !returnUrl.trim().startsWith('//')
-        ? returnUrl.trim()
-        : '/';
-    redirect(url);
+  if (!data.session) {
+    return {
+      error:
+        'Sign in failed: session was not created. Please try again or reset your password.',
+    };
   }
 
-  return { error: 'Sign in failed' };
+  const returnUrl = formData.get('returnUrl');
+  const url =
+    typeof returnUrl === 'string' &&
+    returnUrl.trim().startsWith('/') &&
+    !returnUrl.trim().startsWith('//')
+      ? returnUrl.trim()
+      : '/';
+
+  return { success: true, redirectTo: url };
 }
 
 export async function signUp(formData: FormData) {

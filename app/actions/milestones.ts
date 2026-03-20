@@ -235,7 +235,7 @@ export async function completeMilestone(
     .eq('id', milestoneId)
     .maybeSingle();
   if (milestoneRow?.project_id) {
-    await requireCan(user.id, 'milestones.complete', {
+    await requireCan(user.id, 'milestones.update', {
       type: 'milestone',
       projectId: milestoneRow.project_id,
     });
@@ -281,7 +281,7 @@ export async function reopenMilestone(
     .eq('id', milestoneId)
     .maybeSingle();
   if (milestoneRow?.project_id) {
-    await requireCan(user.id, 'milestones.reopen', {
+    await requireCan(user.id, 'milestones.update', {
       type: 'milestone',
       projectId: milestoneRow.project_id,
     });
@@ -403,7 +403,7 @@ export async function getMilestonesPermissions(
   return {
     canCreate: granted.has('milestones.create'),
     canUpdate: granted.has('milestones.update'),
-    canComplete: granted.has('milestones.complete'),
+    canComplete: granted.has('milestones.update'),
     canDelete: granted.has('milestones.delete'),
   };
 }

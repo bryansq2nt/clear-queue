@@ -179,6 +179,7 @@ export function ContextShell({
         open={drawerOpen}
         onClose={onCloseSettings}
         projectId={projectId}
+        projectName={projectName}
         modules={modules}
         canToggleModules={canToggleModules}
         onModulesChange={onModulesChange}
@@ -197,6 +198,7 @@ export function ContextShell({
             showBackButton={false}
             userDisplayName={homeData.userDisplayName}
             returningFromProject={true}
+            notificationsCount={homeData.notificationsCount}
             onBackToProject={handleBackToProject}
             backToProjectId={projectId}
           />

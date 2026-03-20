@@ -169,7 +169,7 @@ export async function updateNote(
     .maybeSingle();
   const noteProjectId = (noteRow as { project_id?: string } | null)?.project_id;
   if (noteProjectId) {
-    await requireCan(user.id, 'notes.update_title', {
+    await requireCan(user.id, 'notes.update', {
       type: 'note',
       projectId: noteProjectId,
     });
@@ -279,7 +279,7 @@ export async function deleteNotes(
   const projectId = (noteRows as { project_id: string | null }[] | null)?.[0]
     ?.project_id;
   if (projectId) {
-    await requireCan(user.id, 'notes.bulk_delete', { type: 'note', projectId });
+    await requireCan(user.id, 'notes.delete', { type: 'note', projectId });
   }
 
   const { error } = await supabase
@@ -350,7 +350,7 @@ export async function addNoteLink(
     .maybeSingle();
   if (!note) return { error: 'Note not found or access denied' };
   if ((note as { project_id: string | null }).project_id) {
-    await requireCan(user.id, 'notes.add_link', {
+    await requireCan(user.id, 'notes.update', {
       type: 'note',
       projectId: (note as unknown as { project_id: string }).project_id,
     });
@@ -407,7 +407,7 @@ export async function deleteNoteLink(
     .maybeSingle();
   if (!note) return { error: 'Link not found or access denied' };
   if ((note as { project_id: string | null }).project_id) {
-    await requireCan(user.id, 'notes.delete_link', {
+    await requireCan(user.id, 'notes.update', {
       type: 'note',
       projectId: (note as unknown as { project_id: string }).project_id,
     });
@@ -467,6 +467,6 @@ export async function getNotesPermissions(
   return {
     canCreate: granted.has('notes.create'),
     canDelete: granted.has('notes.delete'),
-    canManageFolders: granted.has('notes.manage_folders'),
+    canManageFolders: granted.has('notes.update'),
   };
 }

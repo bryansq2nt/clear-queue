@@ -60,91 +60,117 @@ export const getProjectById = cache(
 export async function createProject(
   formData: FormData
 ): Promise<ActionResult<ProjectRow>> {
-  const user = await requireAuth();
-  const supabase = await createClient();
+  try {
+    const user = await requireAuth();
+    const supabase = await createClient();
 
-  const name = formData.get('name') as string;
-  const color = formData.get('color') as string | null;
-  const category = (formData.get('category') as string) || 'business';
+    const name = formData.get('name') as string;
+    const color = formData.get('color') as string | null;
+    const category = (formData.get('category') as string) || 'business';
 
-  const validCategories = PROJECT_CATEGORIES.map((c) => c.key);
-  if (!validCategories.includes(category as ProjectCategory)) {
-    return { ok: false, error: 'Invalid category' };
-  }
-
-  if (!name || name.trim().length === 0) {
-    return { ok: false, error: 'Project name is required' };
-  }
-
-  const notes = (formData.get('notes') as string)?.trim() || null;
-  const client_id = (formData.get('client_id') as string)?.trim() || null;
-  const business_id = (formData.get('business_id') as string)?.trim() || null;
-
-  // Resolve the user's org (first org membership) for quota enforcement + FK
-  const { data: orgMembership } = await (supabase as any)
-    .from('organization_members')
-    .select('org_id')
-    .eq('user_id', user.id)
-    .order('joined_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  const orgId = (orgMembership as { org_id?: string } | null)?.org_id ?? null;
-
-  // Enforce org project quota when an org is found
-  if (orgId) {
-    const quota = await checkOrgProjectQuota(orgId);
-    if (!quota.allowed) {
-      return { ok: false, error: 'quota_projects_per_org' };
+    const validCategories = PROJECT_CATEGORIES.map((c) => c.key);
+    if (!validCategories.includes(category as ProjectCategory)) {
+      return { ok: false, error: 'Invalid category' };
     }
-  }
 
-  // create_project_atomic: creates the project, adds creator to project_members,
-  // and assigns the project_owner role — all in one transaction.
-  const { data, error } = await (supabase as any).rpc('create_project_atomic', {
-    in_name: name.trim(),
-    in_color: color || null,
-    in_category: category,
-    in_org_id: orgId,
-    in_client_id: client_id || null,
-    in_business_id: business_id || null,
-  });
-
-  if (error || !data) {
-    if (error) {
-      captureWithContext(error, {
-        module: 'projects',
-        action: 'createProject',
-        userIntent: 'Crear nuevo proyecto',
-        expected: 'El proyecto se crea y aparece en la lista',
-        extra: { category },
-      });
+    if (!name || name.trim().length === 0) {
+      return { ok: false, error: 'Project name is required' };
     }
-    return { ok: false, error: error?.message ?? 'Failed to create project' };
+
+    const notes = (formData.get('notes') as string)?.trim() || null;
+    const client_id = (formData.get('client_id') as string)?.trim() || null;
+    const business_id = (formData.get('business_id') as string)?.trim() || null;
+
+    // Resolve the user's org (first org membership) for quota enforcement + FK
+    const { data: orgMembership } = await (supabase as any)
+      .from('organization_members')
+      .select('org_id')
+      .eq('user_id', user.id)
+      .order('joined_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const orgId = (orgMembership as { org_id?: string } | null)?.org_id ?? null;
+
+    // Enforce org project quota when an org is found
+    if (orgId) {
+      const quota = await checkOrgProjectQuota(orgId);
+      if (!quota.allowed) {
+        if (
+          typeof quota.details?.maxAllowed === 'number' &&
+          typeof quota.details?.currentCount === 'number'
+        ) {
+          return {
+            ok: false,
+            error: `quota_projects_per_org:${quota.details.currentCount}:${quota.details.maxAllowed}`,
+          };
+        }
+        return { ok: false, error: 'quota_projects_per_org' };
+      }
+    }
+
+    // create_project_atomic: creates the project, adds creator to project_members,
+    // and assigns the owner role (legacy fallback handled in SQL) — all in one transaction.
+    const { data, error } = await (supabase as any).rpc(
+      'create_project_atomic',
+      {
+        in_name: name.trim(),
+        in_color: color || null,
+        in_category: category,
+        in_org_id: orgId,
+        in_client_id: client_id || null,
+        in_business_id: business_id || null,
+      }
+    );
+
+    if (error || !data) {
+      if (error) {
+        captureWithContext(error, {
+          module: 'projects',
+          action: 'createProject',
+          userIntent: 'Crear nuevo proyecto',
+          expected: 'El proyecto se crea y aparece en la lista',
+          extra: { category },
+        });
+      }
+      return { ok: false, error: error?.message ?? 'Failed to create project' };
+    }
+
+    const createdProject = data as ProjectRow;
+
+    // Save description (stored in `notes` column) if provided — RPC doesn't accept it
+    if (notes) {
+      await supabase
+        .from('projects')
+        .update({ notes } as never)
+        .eq('id', createdProject.id)
+        .eq('owner_id', user.id);
+    }
+
+    void logAuditEvent({
+      actorUserId: user.id,
+      action: 'project.created',
+      resourceType: 'project',
+      resourceId: createdProject.id,
+      orgId: orgId ?? undefined,
+      metadata: {
+        name: createdProject.name,
+        category: createdProject.category,
+      },
+    });
+
+    revalidatePath('/dashboard');
+    revalidatePath('/context');
+    return { ok: true, data: createdProject };
+  } catch (error) {
+    captureWithContext(error, {
+      module: 'projects',
+      action: 'createProject',
+      userIntent: 'Crear nuevo proyecto',
+      expected: 'El proyecto se crea y aparece en la lista',
+      extra: { source: 'unexpected_exception' },
+    });
+    return { ok: false, error: 'Failed to create project' };
   }
-
-  const createdProject = data as ProjectRow;
-
-  // Save description (stored in `notes` column) if provided — RPC doesn't accept it
-  if (notes) {
-    await supabase
-      .from('projects')
-      .update({ notes } as never)
-      .eq('id', createdProject.id)
-      .eq('owner_id', user.id);
-  }
-
-  void logAuditEvent({
-    actorUserId: user.id,
-    action: 'project.created',
-    resourceType: 'project',
-    resourceId: createdProject.id,
-    orgId: orgId ?? undefined,
-    metadata: { name: createdProject.name, category: createdProject.category },
-  });
-
-  revalidatePath('/dashboard');
-  revalidatePath('/context');
-  return { ok: true, data: createdProject };
 }
 
 export async function updateProject(
@@ -279,7 +305,7 @@ export async function archiveProject(
 ): Promise<ActionResult<ProjectRow>> {
   const user = await requireAuth();
 
-  await requireCan(user.id, 'projects.archive', {
+  await requireCan(user.id, 'projects.update', {
     type: 'project',
     projectId: id,
   });
@@ -320,7 +346,7 @@ export async function unarchiveProject(
 ): Promise<ActionResult<ProjectRow>> {
   const user = await requireAuth();
 
-  await requireCan(user.id, 'projects.unarchive', {
+  await requireCan(user.id, 'projects.update', {
     type: 'project',
     projectId: id,
   });

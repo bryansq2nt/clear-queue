@@ -39,7 +39,7 @@ type Business = Database['public']['Tables']['businesses']['Row'];
 interface AddProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onProjectAdded: () => void;
+  onProjectAdded: (projectId: string) => void;
   /** When opening from business detail, pre-fill client and business. */
   defaultClientId?: string;
   defaultBusinessId?: string;
@@ -89,6 +89,8 @@ export function AddProjectModal({
   >(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorTitle, setErrorTitle] = useState<string>(t('common.error'));
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) getClients().then(setClients);
@@ -126,232 +128,292 @@ export function AddProjectModal({
     });
   }
 
+  function presentError(rawError: string | null | undefined) {
+    setErrorTitle(t('common.error'));
+    let message =
+      typeof rawError === 'string' && rawError.trim().length > 0
+        ? rawError
+        : t('common.error');
+
+    if (
+      rawError === 'quota_projects_per_org' ||
+      rawError?.startsWith('quota_projects_per_org:')
+    ) {
+      setErrorTitle(t('projects.quota_limit_title'));
+      const quotaMatch = rawError?.match(
+        /^quota_projects_per_org:(\d+):(\d+)$/
+      );
+      if (quotaMatch) {
+        const currentCount = Number(quotaMatch[1]);
+        const maxAllowed = Number(quotaMatch[2]);
+        message = t('projects.quota_limit_message_with_numbers', {
+          current: currentCount,
+          max: maxAllowed,
+        });
+      } else {
+        message = t('projects.quota_limit_message');
+      }
+    }
+
+    setError(message);
+    setErrorDialogOpen(true);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('category', category);
+      if (description.trim()) formData.append('notes', description.trim());
+      if (selectedColor) formData.append('color', selectedColor);
+      if (clientId) formData.append('client_id', clientId);
+      if (businessId) formData.append('business_id', businessId);
 
-    const formData = new FormData();
-    formData.append('name', name);
-    formData.append('category', category);
-    if (description.trim()) formData.append('notes', description.trim());
-    if (selectedColor) formData.append('color', selectedColor);
-    if (clientId) formData.append('client_id', clientId);
-    if (businessId) formData.append('business_id', businessId);
+      const result = await createProject(formData);
 
-    const result = await createProject(formData);
+      if (!result.ok) {
+        presentError(result.error);
+        return;
+      }
 
-    if (!result.ok) {
-      setError(result.error);
+      // Apply module overrides that differ from registry defaults.
+      // A module setup failure should not block opening the created project.
+      const projectId = result.data.id;
+      const overridesToApply = ORDERED_MODULES.filter((mod) => {
+        if (mod.lock) return false;
+        const override = moduleOverrides.get(mod.key);
+        return override !== undefined && override !== mod.defaultEnabled;
+      });
+
+      if (overridesToApply.length > 0) {
+        try {
+          await Promise.all(
+            overridesToApply.map((mod) =>
+              setProjectModuleEnabled(
+                projectId,
+                mod.key,
+                moduleOverrides.get(mod.key)!
+              )
+            )
+          );
+        } catch {
+          // Project creation already succeeded; keep UX moving.
+        }
+      }
+
+      setName('');
+      setDescription('');
+      setCategory('business');
+      setSelectedColor(null);
+      setClientId('');
+      setBusinessId('');
+      setModuleOverrides(new Map());
+      onProjectAdded(projectId);
+      onClose();
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message.trim().length > 0
+          ? err.message
+          : 'No se pudo crear el proyecto';
+      presentError(message);
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    // Apply module overrides that differ from registry defaults
-    const projectId = result.data.id;
-    const overridesToApply = ORDERED_MODULES.filter((mod) => {
-      if (mod.lock) return false;
-      const override = moduleOverrides.get(mod.key);
-      return override !== undefined && override !== mod.defaultEnabled;
-    });
-
-    if (overridesToApply.length > 0) {
-      await Promise.all(
-        overridesToApply.map((mod) =>
-          setProjectModuleEnabled(
-            projectId,
-            mod.key,
-            moduleOverrides.get(mod.key)!
-          )
-        )
-      );
-    }
-
-    setName('');
-    setDescription('');
-    setCategory('business');
-    setSelectedColor(null);
-    setClientId('');
-    setBusinessId('');
-    setModuleOverrides(new Map());
-    onProjectAdded();
-    onClose();
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{t('projects.add_title')}</DialogTitle>
-          <DialogDescription>{t('projects.add_description')}</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="max-h-[60vh] overflow-y-auto space-y-4 py-4 pr-1">
-            <div className="space-y-2">
-              <Label htmlFor="name">{t('projects.project_name')}</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('projects.project_name_placeholder')}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">
-                {t('projects.description_optional')}
-              </Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={t('projects.description_placeholder')}
-                rows={3}
-                className="resize-none"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="category">{t('projects.category')}</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger id="category">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROJECT_CATEGORIES.filter((c) => c.key !== 'archived').map(
-                    (cat) => (
-                      <SelectItem key={cat.key} value={cat.key}>
-                        {t(`categories.${cat.key}`)}
-                      </SelectItem>
-                    )
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="client">{t('projects.client_optional')}</Label>
-              <Select
-                value={clientId || 'none'}
-                onValueChange={(v) => setClientId(v === 'none' ? '' : v)}
-              >
-                <SelectTrigger id="client">
-                  <SelectValue placeholder={t('projects.select_client')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">
-                    {t('projects.no_client')}
-                  </SelectItem>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {clientId && (
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('projects.add_title')}</DialogTitle>
+            <DialogDescription>
+              {t('projects.add_description')}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <div className="max-h-[60vh] overflow-y-auto space-y-4 py-4 pr-1">
               <div className="space-y-2">
-                <Label htmlFor="business">
-                  {t('projects.business_optional')}
+                <Label htmlFor="name">{t('projects.project_name')}</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('projects.project_name_placeholder')}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">
+                  {t('projects.description_optional')}
                 </Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder={t('projects.description_placeholder')}
+                  rows={3}
+                  className="resize-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="category">{t('projects.category')}</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger id="category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROJECT_CATEGORIES.filter((c) => c.key !== 'archived').map(
+                      (cat) => (
+                        <SelectItem key={cat.key} value={cat.key}>
+                          {t(`categories.${cat.key}`)}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="client">{t('projects.client_optional')}</Label>
                 <Select
-                  value={businessId || 'none'}
-                  onValueChange={(v) => setBusinessId(v === 'none' ? '' : v)}
+                  value={clientId || 'none'}
+                  onValueChange={(v) => setClientId(v === 'none' ? '' : v)}
                 >
-                  <SelectTrigger id="business">
-                    <SelectValue placeholder={t('projects.select_business')} />
+                  <SelectTrigger id="client">
+                    <SelectValue placeholder={t('projects.select_client')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">
-                      {t('projects.no_business')}
+                      {t('projects.no_client')}
                     </SelectItem>
-                    {businesses.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.name}
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.full_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
-            <div className="space-y-2">
-              <Label>{t('projects.color_optional')}</Label>
-              <div className="grid grid-cols-10 gap-2">
-                {COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() =>
-                      setSelectedColor(selectedColor === color ? null : color)
-                    }
-                    className={`w-8 h-8 rounded-full border-2 transition-all ${
-                      selectedColor === color
-                        ? 'border-slate-900 scale-110'
-                        : 'border-slate-300 hover:border-slate-500'
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <Label>{t('projects.modules_label')}</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t('projects.modules_hint')}
-                </p>
-              </div>
-              <div className="space-y-2">
-                {ORDERED_MODULES.map((mod) => {
-                  const Icon = MODULE_REGISTRY[mod.key].icon;
-                  const enabled = getModuleEnabled(mod);
-                  return (
-                    <label
-                      key={mod.key}
-                      className={`flex items-center gap-3 rounded-md border px-3 py-2 transition-colors ${
-                        mod.lock
-                          ? 'bg-muted/40 cursor-not-allowed opacity-60'
-                          : 'cursor-pointer hover:bg-muted/30'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={enabled}
-                        disabled={mod.lock}
-                        onChange={(e) =>
-                          toggleModule(mod.key, e.target.checked)
-                        }
-                        className="h-4 w-4 rounded border-gray-300 text-primary"
+              {clientId && (
+                <div className="space-y-2">
+                  <Label htmlFor="business">
+                    {t('projects.business_optional')}
+                  </Label>
+                  <Select
+                    value={businessId || 'none'}
+                    onValueChange={(v) => setBusinessId(v === 'none' ? '' : v)}
+                  >
+                    <SelectTrigger id="business">
+                      <SelectValue
+                        placeholder={t('projects.select_business')}
                       />
-                      <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <span className="text-sm flex-1">{t(mod.labelKey)}</span>
-                      {mod.lock && (
-                        <span className="text-xs text-muted-foreground">
-                          Always on
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        {t('projects.no_business')}
+                      </SelectItem>
+                      {businesses.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>{t('projects.color_optional')}</Label>
+                <div className="grid grid-cols-10 gap-2">
+                  {COLORS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() =>
+                        setSelectedColor(selectedColor === color ? null : color)
+                      }
+                      className={`w-8 h-8 rounded-full border-2 transition-all ${
+                        selectedColor === color
+                          ? 'border-slate-900 scale-110'
+                          : 'border-slate-300 hover:border-slate-500'
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <Label>{t('projects.modules_label')}</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('projects.modules_hint')}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {ORDERED_MODULES.map((mod) => {
+                    const Icon = MODULE_REGISTRY[mod.key].icon;
+                    const enabled = getModuleEnabled(mod);
+                    return (
+                      <label
+                        key={mod.key}
+                        className={`flex items-center gap-3 rounded-md border px-3 py-2 transition-colors ${
+                          mod.lock
+                            ? 'bg-muted/40 cursor-not-allowed opacity-60'
+                            : 'cursor-pointer hover:bg-muted/30'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={enabled}
+                          disabled={mod.lock}
+                          onChange={(e) =>
+                            toggleModule(mod.key, e.target.checked)
+                          }
+                          className="h-4 w-4 rounded border-gray-300 text-primary"
+                        />
+                        <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm flex-1">
+                          {t(mod.labelKey)}
                         </span>
-                      )}
-                    </label>
-                  );
-                })}
+                        {mod.lock && (
+                          <span className="text-xs text-muted-foreground">
+                            Always on
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-            {error && (
-              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
-                {error}
-              </div>
-            )}
-          </div>
-          <DialogFooter className="mt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading
-                ? t('projects.creating')
-                : t('projects.create_project')}
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="outline" onClick={onClose}>
+                {t('common.cancel')}
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading
+                  ? t('projects.creating')
+                  : t('projects.create_project')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{errorTitle}</DialogTitle>
+            <DialogDescription>{error ?? t('common.error')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" onClick={() => setErrorDialogOpen(false)}>
+              {t('common.close')}
             </Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

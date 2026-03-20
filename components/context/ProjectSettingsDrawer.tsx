@@ -2,14 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { X, Puzzle, ChevronLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/shared/I18nProvider';
 import type { SerializableResolvedModule } from '@/lib/modules/registry';
 import { ProjectModulesSettingsView } from './ProjectModulesSettingsView';
+import { deleteProject } from '@/app/actions/projects';
+import { Button } from '@/components/ui/button';
 
 interface ProjectSettingsDrawerProps {
   open: boolean;
   onClose: () => void;
   projectId: string;
+  projectName: string;
   modules: SerializableResolvedModule[];
   canToggleModules: boolean;
   onModulesChange: (updated: SerializableResolvedModule[]) => void;
@@ -19,19 +23,44 @@ export function ProjectSettingsDrawer({
   open,
   onClose,
   projectId,
+  projectName,
   modules,
   canToggleModules,
   onModulesChange,
 }: ProjectSettingsDrawerProps) {
+  const router = useRouter();
   const { t } = useI18n();
-  const [mobileView, setMobileView] = useState<'menu' | 'modules'>('menu');
+  const [mobileView, setMobileView] = useState<'menu' | 'modules' | 'general'>(
+    'menu'
+  );
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) setMobileView('menu');
+    if (open) {
+      setMobileView('menu');
+      setShowDeleteConfirm(false);
+      setIsDeleting(false);
+      setError(null);
+    }
   }, [open]);
 
-  const showBackButton = mobileView === 'modules';
+  const showBackButton = mobileView !== 'menu';
   const isMenuOnly = mobileView === 'menu';
+
+  async function handleDeleteProject() {
+    setIsDeleting(true);
+    setError(null);
+    const result = await deleteProject(projectId);
+    if (!result.ok) {
+      setError(result.error);
+      setIsDeleting(false);
+      return;
+    }
+    onClose();
+    router.push('/context');
+  }
 
   return (
     <>
@@ -98,15 +127,23 @@ export function ProjectSettingsDrawer({
             <button
               type="button"
               onClick={() => setMobileView('modules')}
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium bg-muted text-foreground text-left w-full md:pointer-events-none"
+              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-left w-full ${
+                mobileView === 'modules'
+                  ? 'bg-muted text-foreground'
+                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+              }`}
             >
               <Puzzle className="w-4 h-4 flex-shrink-0" aria-hidden />
               {t('project_settings.nav_modules')}
             </button>
             <button
               type="button"
-              disabled
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground/40 text-left cursor-not-allowed w-full"
+              onClick={() => setMobileView('general')}
+              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm text-left w-full ${
+                mobileView === 'general'
+                  ? 'bg-muted text-foreground'
+                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+              }`}
             >
               {t('project_settings.nav_general')}
             </button>
@@ -119,12 +156,78 @@ export function ProjectSettingsDrawer({
               isMenuOnly ? 'hidden md:block' : '',
             ].join(' ')}
           >
-            <ProjectModulesSettingsView
-              projectId={projectId}
-              modules={modules}
-              canToggleModules={canToggleModules}
-              onModulesChange={onModulesChange}
-            />
+            {mobileView === 'general' ? (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground">
+                    {t('project_settings.nav_general')}
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {t('projects.edit_description')}
+                  </p>
+                </div>
+
+                {!showDeleteConfirm ? (
+                  <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-3">
+                    <p className="text-sm text-foreground">{projectName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('projects.delete_warning_tasks')}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => setShowDeleteConfirm(true)}
+                    >
+                      {t('projects.delete_project')}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-3">
+                    <p className="text-sm font-semibold text-destructive">
+                      {t('projects.delete_warning')}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {t('projects.delete_confirm', { name: projectName })}
+                    </p>
+                    {error && (
+                      <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+                        {error}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setShowDeleteConfirm(false);
+                          setError(null);
+                        }}
+                        disabled={isDeleting}
+                      >
+                        {t('common.cancel')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={handleDeleteProject}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting
+                          ? t('projects.deleting')
+                          : t('projects.delete_confirm_btn')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <ProjectModulesSettingsView
+                projectId={projectId}
+                modules={modules}
+                canToggleModules={canToggleModules}
+                onModulesChange={onModulesChange}
+              />
+            )}
           </div>
         </div>
       </div>

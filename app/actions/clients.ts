@@ -108,7 +108,7 @@ export async function createClientAction(
   formData: FormData
 ): Promise<{ error?: string; data?: Client }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'owner.create_client', {
+  await requireCan(user.id, 'owner.create', {
     type: 'project',
     projectId,
   });
@@ -157,7 +157,7 @@ export async function updateClientAction(
   formData: FormData
 ): Promise<{ error?: string; data?: Client }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'owner.update_client', {
+  await requireCan(user.id, 'owner.update', {
     type: 'project',
     projectId,
   });
@@ -329,7 +329,7 @@ export async function createBusinessAction(
   formData: FormData
 ): Promise<{ error?: string; data?: Business }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'owner.create_business', {
+  await requireCan(user.id, 'owner.create', {
     type: 'project',
     projectId,
   });
@@ -676,9 +676,9 @@ export async function getOwnerPermissions(
 
   const granted = await getGrantedActions(user.id, projectId, true);
   return {
-    canCreateClient: granted.has('owner.create_client'),
-    canUpdateClient: granted.has('owner.update_client'),
-    canCreateBusiness: granted.has('owner.create_business'),
-    canUpdateBusiness: granted.has('owner.update_business'),
+    canCreateClient: granted.has('owner.create'),
+    canUpdateClient: granted.has('owner.update'),
+    canCreateBusiness: granted.has('owner.create'),
+    canUpdateBusiness: granted.has('owner.update'),
   };
 }

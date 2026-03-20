@@ -42,7 +42,7 @@ export async function createConnectionAction(
       .eq('id', boardItem.board_id)
       .maybeSingle();
     if (boardRow?.project_id) {
-      await requireCan(user.id, 'ideas.manage_connections', {
+      await requireCan(user.id, 'ideas.update', {
         type: 'idea',
         projectId: boardRow.project_id,
       });
@@ -102,7 +102,7 @@ export async function deleteConnectionAction(connectionId: string) {
         .eq('id', boardItem.board_id)
         .maybeSingle();
       if (boardRow?.project_id) {
-        await requireCan(user.id, 'ideas.manage_connections', {
+        await requireCan(user.id, 'ideas.update', {
           type: 'idea',
           projectId: boardRow.project_id,
         });

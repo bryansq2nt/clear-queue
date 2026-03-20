@@ -124,7 +124,7 @@ export async function createCategory(formData: {
     .eq('id', formData.budget_id)
     .maybeSingle();
   if ((budgetRow as { project_id: string | null } | null)?.project_id) {
-    await requireCan(user.id, 'budgets.manage_categories', {
+    await requireCan(user.id, 'budgets.update', {
       type: 'budget',
       projectId: (budgetRow as unknown as { project_id: string }).project_id,
     });
@@ -183,7 +183,7 @@ export async function updateCategory(
     .eq('id', budgetId)
     .maybeSingle();
   if ((budgetRow as { project_id: string | null } | null)?.project_id) {
-    await requireCan(user.id, 'budgets.manage_categories', {
+    await requireCan(user.id, 'budgets.update', {
       type: 'budget',
       projectId: (budgetRow as unknown as { project_id: string }).project_id,
     });
@@ -225,7 +225,7 @@ export async function deleteCategory(categoryId: string, budgetId: string) {
     .eq('id', budgetId)
     .maybeSingle();
   if ((budgetRow as { project_id: string | null } | null)?.project_id) {
-    await requireCan(user.id, 'budgets.manage_categories', {
+    await requireCan(user.id, 'budgets.update', {
       type: 'budget',
       projectId: (budgetRow as unknown as { project_id: string }).project_id,
     });
@@ -262,7 +262,7 @@ export async function reorderCategories(
     .eq('id', budgetId)
     .maybeSingle();
   if ((budgetRow as { project_id: string | null } | null)?.project_id) {
-    await requireCan(user.id, 'budgets.manage_categories', {
+    await requireCan(user.id, 'budgets.update', {
       type: 'budget',
       projectId: (budgetRow as unknown as { project_id: string }).project_id,
     });
@@ -320,7 +320,7 @@ export async function createItem(formData: {
     .eq('id', budgetId)
     .maybeSingle();
   if ((budgetRow as { project_id: string | null } | null)?.project_id) {
-    await requireCan(user.id, 'budgets.manage_items', {
+    await requireCan(user.id, 'budgets.update', {
       type: 'budget',
       projectId: (budgetRow as unknown as { project_id: string }).project_id,
     });
@@ -391,7 +391,7 @@ export async function updateItem(
     .eq('id', budgetId)
     .maybeSingle();
   if ((budgetRow as { project_id: string | null } | null)?.project_id) {
-    await requireCan(user.id, 'budgets.manage_items', {
+    await requireCan(user.id, 'budgets.update', {
       type: 'budget',
       projectId: (budgetRow as unknown as { project_id: string }).project_id,
     });
@@ -441,7 +441,7 @@ export async function deleteItem(itemId: string, budgetId: string) {
     .eq('id', budgetId)
     .maybeSingle();
   if ((budgetRow as { project_id: string | null } | null)?.project_id) {
-    await requireCan(user.id, 'budgets.manage_items', {
+    await requireCan(user.id, 'budgets.update', {
       type: 'budget',
       projectId: (budgetRow as unknown as { project_id: string }).project_id,
     });
@@ -479,7 +479,7 @@ export async function deleteItems(itemIds: string[], budgetId: string) {
     .eq('id', budgetId)
     .maybeSingle();
   if ((budgetRow as { project_id: string | null } | null)?.project_id) {
-    await requireCan(user.id, 'budgets.manage_items', {
+    await requireCan(user.id, 'budgets.update', {
       type: 'budget',
       projectId: (budgetRow as unknown as { project_id: string }).project_id,
     });
@@ -537,7 +537,7 @@ export async function reorderItems(
     .eq('id', budgetId)
     .maybeSingle();
   if ((budgetRow as { project_id: string | null } | null)?.project_id) {
-    await requireCan(user.id, 'budgets.manage_items', {
+    await requireCan(user.id, 'budgets.update', {
       type: 'budget',
       projectId: (budgetRow as unknown as { project_id: string }).project_id,
     });

@@ -390,7 +390,7 @@ export async function duplicateBudget(sourceBudgetId: string) {
   const budgetProjectId = (budgetRow as { project_id?: string } | null)
     ?.project_id;
   if (budgetProjectId) {
-    await requireCan(user.id, 'budgets.duplicate', {
+    await requireCan(user.id, 'budgets.create', {
       type: 'budget',
       projectId: budgetProjectId,
     });

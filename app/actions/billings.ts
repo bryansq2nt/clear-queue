@@ -108,7 +108,7 @@ export async function createBillingCategory(
   projectId: string
 ): Promise<{ data?: BillingCategory; error?: string }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'billings.manage_categories', {
+  await requireCan(user.id, 'billings.update', {
     type: 'project',
     projectId,
   });
@@ -149,7 +149,7 @@ export async function deleteBillingCategory(
   projectId: string
 ): Promise<{ error?: string }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'billings.manage_categories', {
+  await requireCan(user.id, 'billings.update', {
     type: 'project',
     projectId,
   });
@@ -317,7 +317,7 @@ export async function updateBilling(
   }
 
   if (formData.project_id) {
-    await requireCan(user.id, 'billings.update_description', {
+    await requireCan(user.id, 'billings.update', {
       type: 'billing',
       projectId: formData.project_id,
     });
@@ -375,7 +375,7 @@ export async function updateBillingStatus(
     .eq('owner_id', user.id)
     .single();
   if ((billingRow as { project_id: string | null } | null)?.project_id) {
-    await requireCan(user.id, 'billings.update_status', {
+    await requireCan(user.id, 'billings.update', {
       type: 'billing',
       projectId: (billingRow as unknown as { project_id: string }).project_id,
     });
@@ -498,8 +498,8 @@ export async function getBillingsPermissions(
   const granted = await getGrantedActions(user.id, projectId, true);
   return {
     canCreate: granted.has('billings.create'),
-    canEdit: granted.has('billings.update_description'),
+    canEdit: granted.has('billings.update'),
     canDelete: granted.has('billings.delete'),
-    canManageCategories: granted.has('billings.manage_categories'),
+    canManageCategories: granted.has('billings.update'),
   };
 }

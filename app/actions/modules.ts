@@ -19,9 +19,16 @@ import {
 // ─────────────────────────────────────────────────────────────────
 
 // Returns the current user's allowed_modules for a project.
-// null = no row (or row with null) → unrestricted; string[] → explicit allowlist.
+//
+// Return values:
+//   undefined  — no row (fail-closed: user has no module access grant)
+//   null       — row exists with null allowed_modules (explicitly unrestricted: all tabs visible)
+//   string[]   — row exists with explicit allowlist (only listed tabs visible)
+//
+// After the backfill migration (20260324100000) every project member has a row,
+// so undefined should only appear for users who are not members of the project.
 export const getMyProjectAccessGrant = cache(
-  async (projectId: string): Promise<string[] | null> => {
+  async (projectId: string): Promise<string[] | null | undefined> => {
     const user = await requireAuth();
     const supabase = await createClient();
     const { data } = await (supabase as any)
@@ -30,9 +37,18 @@ export const getMyProjectAccessGrant = cache(
       .eq('project_id', projectId)
       .eq('user_id', user.id)
       .maybeSingle();
-    if (!data) return null;
+    if (!data) {
+      // Owner safeguard: owners always have full module visibility.
+      const { data: project } = await (supabase as any)
+        .from('projects')
+        .select('owner_id')
+        .eq('id', projectId)
+        .maybeSingle();
+      if (project?.owner_id === user.id) return null;
+      return undefined; // no row → fail-closed for non-owners
+    }
     const raw = data.allowed_modules;
-    if (raw == null) return null;
+    if (raw == null) return null; // row with null → unrestricted
     const arr = Array.isArray(raw) ? raw : [];
     return arr.filter((x): x is string => typeof x === 'string');
   }
@@ -43,7 +59,7 @@ export const getCanToggleModules = cache(
   async (projectId: string): Promise<boolean> => {
     try {
       const user = await requireAuth();
-      await requireCan(user.id, 'projects.toggle_module', {
+      await requireCan(user.id, 'projects.manage_modules', {
         type: 'project',
         projectId,
       });
@@ -69,10 +85,11 @@ export const getCanViewModule = cache(
     ]);
     const projectEnabledKeys = getEnabledModuleKeys(modules);
     const projectEnabled = projectEnabledKeys.has(moduleKey);
-    // null = no row → unrestricted; non-empty array = allowlist (must include moduleKey)
+    // null  = row with null allowed_modules → unrestricted (all modules visible)
+    // string[] = explicit allowlist → module must be in the list
+    // undefined = no row → fail-closed (no module access)
     const userAllowed =
-      grant === null ||
-      (Array.isArray(grant) && grant.length > 0 && grant.includes(moduleKey));
+      grant === null || (Array.isArray(grant) && grant.includes(moduleKey));
     const canView = projectEnabled && userAllowed;
     const reason = !canView
       ? !projectEnabled
@@ -119,7 +136,7 @@ export async function setProjectModuleEnabled(
   enabled: boolean
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'projects.toggle_module', {
+  await requireCan(user.id, 'projects.manage_modules', {
     type: 'project',
     projectId,
   });

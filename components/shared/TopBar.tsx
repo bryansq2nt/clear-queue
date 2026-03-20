@@ -24,7 +24,7 @@ interface TopBarProps {
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
   onSignOut: () => void;
-  onProjectAdded?: () => void;
+  onProjectAdded?: (projectId: string) => void;
   onProjectUpdated?: () => void;
   projectName: string;
   currentProject?: Project | null;

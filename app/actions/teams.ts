@@ -23,10 +23,8 @@ export type ProjectInvite = {
   email: string;
   role_id: string;
   role_name: string;
-  profile_id: string | null;
-  profile_name: string | null;
-  invite_role_id: string | null;
-  invite_role_name: string | null;
+  allowed_modules: string[] | null;
+  guest_scope: string | null;
   status: string;
   invited_by_name: string;
   expires_at: string;
@@ -39,13 +37,12 @@ export type RejectedInvite = {
   id: string;
   email: string;
   role_name: string;
-  profile_name: string | null;
-  invite_role_name: string | null;
   invited_by_name: string;
   rejected_at: string;
   rejection_reason: string | null;
 };
 
+/** @deprecated Removed in simplified-roles migration. Types kept for TS compat during Phase 6 UI rebuild. */
 export type InviteRole = {
   id: string;
   project_id: string;
@@ -56,6 +53,7 @@ export type InviteRole = {
   created_at: string;
 };
 
+/** @deprecated Removed in simplified-roles migration. Types kept for TS compat during Phase 6 UI rebuild. */
 export type ProjectAccessProfile = {
   id: string;
   project_id: string | null;
@@ -63,7 +61,6 @@ export type ProjectAccessProfile = {
   description: string | null;
   base_role_id: string;
   base_role_name: string;
-  /** NULL = unrestricted (all tabs visible). Array = explicit allowlist of module keys. */
   allowed_modules: string[] | null;
   sort_order: number;
   is_default: boolean;
@@ -90,7 +87,7 @@ export async function checkCanInviteEmail(
   email: string
 ): Promise<{ allowed: true } | { allowed: false; error: string }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'teams.invite_project_member', {
+  await requireCan(user.id, 'teams.invite', {
     type: 'project',
     projectId,
   });
@@ -125,7 +122,7 @@ export async function listPendingInvites(
   projectId: string
 ): Promise<ProjectInvite[]> {
   const user = await requireAuth();
-  await requireCan(user.id, 'teams.read_project_members', {
+  await requireCan(user.id, 'teams.invite', {
     type: 'project',
     projectId,
   });
@@ -149,10 +146,8 @@ export async function listPendingInvites(
     email: row.email as string,
     role_id: (row.role_id as string | null) ?? '',
     role_name: (row.role_name as string) ?? '',
-    profile_id: (row.profile_id as string | null) ?? null,
-    profile_name: (row.profile_name as string | null) ?? null,
-    invite_role_id: (row.invite_role_id as string | null) ?? null,
-    invite_role_name: (row.invite_role_name as string | null) ?? null,
+    allowed_modules: (row.allowed_modules as string[] | null) ?? null,
+    guest_scope: (row.guest_scope as string | null) ?? null,
     status: row.status as string,
     invited_by_name: (row.invited_by_name as string) ?? '',
     expires_at: row.expires_at as string,
@@ -166,7 +161,7 @@ export async function listRejectedInvites(
   projectId: string
 ): Promise<RejectedInvite[]> {
   const user = await requireAuth();
-  await requireCan(user.id, 'teams.read_project_members', {
+  await requireCan(user.id, 'teams.invite', {
     type: 'project',
     projectId,
   });
@@ -189,268 +184,54 @@ export async function listRejectedInvites(
     id: row.id as string,
     email: row.email as string,
     role_name: (row.role_name as string) ?? '',
-    profile_name: (row.profile_name as string | null) ?? null,
-    invite_role_name: (row.invite_role_name as string | null) ?? null,
     invited_by_name: (row.invited_by_name as string) ?? '',
     rejected_at: row.rejected_at as string,
     rejection_reason: (row.rejection_reason as string | null) ?? null,
   }));
 }
 
-// ── listProjectAccessProfiles ─────────────────────────────────────────
-// Returns global defaults + any project-scoped profiles, ordered by sort_order.
-export const listProjectAccessProfiles = cache(
-  async (projectId: string): Promise<ProjectAccessProfile[]> => {
-    await requireAuth();
-    const supabase = await createClient();
-    const { data, error } = await (supabase as any)
-      .from('project_access_profiles')
-      .select(
-        'id, project_id, name, description, base_role_id, allowed_modules, sort_order, is_default, rbac_roles(name)'
-      )
-      .or(`project_id.is.null,project_id.eq.${projectId}`)
-      .order('sort_order', { ascending: true });
-
-    if (error) return [];
-    return (data || []).map((row: any) => ({
-      id: row.id as string,
-      project_id: row.project_id as string | null,
-      name: row.name as string,
-      description: row.description as string | null,
-      base_role_id: row.base_role_id as string,
-      base_role_name: (row.rbac_roles?.name as string) ?? '',
-      allowed_modules: (row.allowed_modules as string[] | null) ?? null,
-      sort_order: row.sort_order as number,
-      is_default: row.is_default as boolean,
-    }));
-  }
-);
-
-// ── createProjectAccessProfile ────────────────────────────────────────
-// Creates a project-scoped access profile. Used by the invite form for custom configs.
-export async function createProjectAccessProfile(
-  projectId: string,
-  payload: {
-    name: string;
-    base_role_id: string;
-    allowed_modules: string[] | null;
-    description?: string;
-  }
-): Promise<{ data?: { id: string }; error?: string }> {
-  const user = await requireAuth();
-  await requireCan(user.id, 'teams.invite_project_member', {
-    type: 'project',
-    projectId,
-  });
-
-  const supabase = await createClient();
-  const { data, error } = await (supabase as any)
-    .from('project_access_profiles')
-    .insert({
-      project_id: projectId,
-      name: payload.name,
-      base_role_id: payload.base_role_id,
-      allowed_modules: payload.allowed_modules,
-      description: payload.description ?? null,
-      created_by: user.id,
-    })
-    .select('id')
-    .single();
-
-  if (error) {
-    captureWithContext(error, {
-      module: 'teams',
-      action: 'createProjectAccessProfile',
-      userIntent: 'Create a custom access profile for a project invite',
-      expected: 'Profile record inserted and id returned',
-      extra: { projectId },
-    });
-    return { error: error.message };
-  }
-
-  return { data: { id: (data as any).id as string } };
-}
-
-// ── Permission derivation helpers ─────────────────────────────────────
-// Used by createInviteRole to compute allowed_modules and effective_role_name.
-
-const OWNER_ONLY_ACTIONS = new Set([
-  'tasks.bulk_delete',
-  'notes.bulk_delete',
-  'documents.bulk_delete',
-  'documents.mark_final',
-  'media.share_create',
-  'copilot.bulk_approve',
-  'copilot.bulk_reject',
-  'projects.update',
-  'projects.archive',
-  'projects.unarchive',
-  'projects.delete',
-  'projects.link_client',
-  'projects.toggle_module',
-  'teams.invite_project_member',
-  'teams.remove_project_member',
-  'teams.update_project_member_roles',
-]);
-
-const VIEWER_ONLY_ACTIONS = new Set([
-  'tasks.read',
-  'tasks.read.own',
-  'tasks.read.team',
-  'tasks.read.project',
-  'milestones.read',
-  'notes.read',
-  'documents.read',
-  'media.read',
-  'calendar.read',
-  'links.read',
-  'ideas.read',
-  'budgets.read',
-  'billings.read',
-  'todos.read',
-  'copilot.read_sessions',
-  'copilot.read_proposals',
-  'projects.read',
-  'profile.read',
-  'workspace.read',
-  'teams.read_project_members',
-]);
-
-// Maps module key → action key prefix for allowed_modules derivation.
-const MODULE_ACTION_PREFIXES: Record<string, string> = {
-  board: 'tasks.',
-  notes: 'notes.',
-  documents: 'documents.',
-  media: 'media.',
-  links: 'links.',
-  milestones: 'milestones.',
-  budgets: 'budgets.',
-  billings: 'billings.',
-  ideas: 'ideas.',
-  calendar: 'calendar.',
-  todos: 'todos.',
-  copilot: 'copilot.',
-};
-
-const ALL_MODULE_KEYS = Object.keys(MODULE_ACTION_PREFIXES);
-
-function deriveEffectiveRoleName(
-  grantedActions: string[]
-): 'project_viewer' | 'project_editor' | 'project_owner' {
-  if (grantedActions.some((a) => OWNER_ONLY_ACTIONS.has(a)))
-    return 'project_owner';
-  if (grantedActions.some((a) => !VIEWER_ONLY_ACTIONS.has(a)))
-    return 'project_editor';
-  return 'project_viewer';
-}
-
-function deriveAllowedModules(grantedActions: string[]): string[] {
-  return ALL_MODULE_KEYS.filter((moduleKey) =>
-    grantedActions.some((a) => a.startsWith(MODULE_ACTION_PREFIXES[moduleKey]))
-  );
-}
-
-// ── createInviteRole ──────────────────────────────────────────────────
-// Creates a project_invite_roles row with derived allowed_modules and effective_role_name.
-// If name is provided, the role is saved as reusable; otherwise it is ephemeral.
-export async function createInviteRole(
-  projectId: string,
-  payload: { grantedActions: string[]; name?: string }
-): Promise<{ data?: { id: string }; error?: string }> {
-  const user = await requireAuth();
-  await requireCan(user.id, 'teams.invite_project_member', {
-    type: 'project',
-    projectId,
-  });
-
-  if (!payload.grantedActions.length) {
-    return { error: 'At least one permission must be granted' };
-  }
-
-  const allowedModules = deriveAllowedModules(payload.grantedActions);
-  const effectiveRoleName = deriveEffectiveRoleName(payload.grantedActions);
-
-  const supabase = await createClient();
-  const { data, error } = await (supabase as any)
-    .from('project_invite_roles')
-    .insert({
-      project_id: projectId,
-      name: payload.name ?? null,
-      granted_actions: payload.grantedActions,
-      allowed_modules: allowedModules,
-      effective_role_name: effectiveRoleName,
-      created_by: user.id,
-    })
-    .select('id')
-    .single();
-
-  if (error) {
-    captureWithContext(error, {
-      module: 'teams',
-      action: 'createInviteRole',
-      userIntent: 'Create a granular invite permission role',
-      expected: 'project_invite_roles row inserted and id returned',
-      extra: { projectId },
-    });
-    return { error: error.message };
-  }
-
-  return { data: { id: (data as any).id as string } };
-}
-
-// ── listReusableInviteRoles ───────────────────────────────────────────
-// Returns named (reusable) invite roles for this project, newest first.
-export const listReusableInviteRoles = cache(
-  async (projectId: string): Promise<InviteRole[]> => {
-    await requireAuth();
-    const supabase = await createClient();
-    const { data, error } = await (supabase as any)
-      .from('project_invite_roles')
-      .select(
-        'id, project_id, name, granted_actions, allowed_modules, effective_role_name, created_at'
-      )
-      .eq('project_id', projectId)
-      .not('name', 'is', null)
-      .order('created_at', { ascending: false });
-
-    if (error) return [];
-    return (data || []).map((row: any) => ({
-      id: row.id as string,
-      project_id: row.project_id as string,
-      name: row.name as string | null,
-      granted_actions: (row.granted_actions as string[]) ?? [],
-      allowed_modules: (row.allowed_modules as string[]) ?? [],
-      effective_role_name: row.effective_role_name as string,
-      created_at: row.created_at as string,
-    }));
-  }
-);
-
 // ── listProjectRoles ──────────────────────────────────────────────────
+// Returns the 5 simplified project roles in hierarchy order.
 export const listProjectRoles = cache(async () => {
   await requireAuth();
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await (supabase as any)
     .from('rbac_roles')
     .select('id, name, description')
-    .in('name', ['project_owner', 'project_editor', 'project_viewer'])
-    .order('name');
-  return (data || []) as Array<{
+    .in('name', [
+      'owner',
+      'project_manager',
+      'team_manager',
+      'team_member',
+      'guest',
+    ])
+    .eq('is_system_role', true);
+  // Sort in hierarchy order
+  const order = [
+    'owner',
+    'project_manager',
+    'team_manager',
+    'team_member',
+    'guest',
+  ];
+  const rows = (data || []) as Array<{
     id: string;
     name: string;
     description: string | null;
   }>;
+  return rows.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
 });
 
 // ── inviteProjectMember ───────────────────────────────────────────────
-// When invite_role_id is set, role_id and profile_id are intentionally not set
-// (nullable); accept_invite_atomic uses invite_role_id first.
+// 2-step simplified invite: email → (role + modules).
+// allowed_modules: null = unrestricted; array = explicit allowlist.
+// guest_scope is derived automatically: Team Manager inviting → 'team', else → 'project'.
 export async function inviteProjectMember(
   projectId: string,
   email: string,
   roleId: string,
-  profileId?: string,
-  inviteRoleId?: string,
+  allowedModules?: string[] | null,
+  teamId?: string,
   projectName?: string
 ): Promise<{
   token?: string;
@@ -459,7 +240,7 @@ export async function inviteProjectMember(
   emailError?: string;
 }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'teams.invite_project_member', {
+  await requireCan(user.id, 'teams.invite', {
     type: 'project',
     projectId,
   });
@@ -494,24 +275,57 @@ export async function inviteProjectMember(
     return { error: 'user_already_member' };
   }
 
-  // When inviteRoleId is set, role_id is redundant — accept_invite_atomic
-  // resolves the system role from project_invite_roles.effective_role_name.
-  // role_id is nullable (migration 20260313210000) so we omit it in that path.
-  const insertPayload: Record<string, unknown> = {
-    project_id: projectId,
-    invited_by: user.id,
-    email: normalizedEmail,
-  };
-  if (!inviteRoleId) {
-    // Legacy path: role_id must be a valid UUID.
-    insertPayload.role_id = roleId;
+  // Derive guest_scope: check if inviter is a team_manager
+  const { data: inviterRole } = await (supabase as any)
+    .from('user_role_assignments')
+    .select('rbac_roles(name)')
+    .eq('user_id', user.id)
+    .eq('project_id', projectId)
+    .maybeSingle();
+
+  const inviterRoleName: string | undefined = inviterRole?.rbac_roles?.name;
+  const guestScope = inviterRoleName === 'team_manager' ? 'team' : 'project';
+
+  // Fetch the guest role name to decide whether to set guest_scope
+  const { data: roleRow } = await (supabase as any)
+    .from('rbac_roles')
+    .select('name')
+    .eq('id', roleId)
+    .maybeSingle();
+
+  const roleName: string | undefined = roleRow?.name;
+  const isGuestInvite = roleName === 'guest';
+  const isTeamRole = roleName === 'team_manager' || roleName === 'team_member';
+
+  let effectiveAllowedModules = allowedModules ?? null;
+  if (isTeamRole) {
+    if (!teamId?.trim()) {
+      return { error: 'team_required_for_role' };
+    }
+    const { data: team } = await (supabase as any)
+      .from('project_teams')
+      .select('id, allowed_modules')
+      .eq('id', teamId.trim())
+      .eq('project_id', projectId)
+      .maybeSingle();
+    if (!team) return { error: 'team_not_found' };
+    effectiveAllowedModules =
+      Array.isArray(team.allowed_modules) && team.allowed_modules.length > 0
+        ? team.allowed_modules
+        : null;
   }
-  if (profileId) insertPayload.profile_id = profileId;
-  if (inviteRoleId) insertPayload.invite_role_id = inviteRoleId;
 
   const { data, error } = await (supabase as any)
     .from('project_invites')
-    .insert(insertPayload)
+    .insert({
+      project_id: projectId,
+      invited_by: user.id,
+      email: normalizedEmail,
+      role_id: roleId,
+      allowed_modules: effectiveAllowedModules,
+      team_id: isTeamRole ? (teamId?.trim() ?? null) : null,
+      guest_scope: isGuestInvite ? guestScope : null,
+    })
     .select('token')
     .single();
 
@@ -536,8 +350,6 @@ export async function inviteProjectMember(
     metadata: {
       email: email.trim().toLowerCase(),
       role_id: roleId,
-      profile_id: profileId ?? null,
-      invite_role_id: inviteRoleId ?? null,
     },
   });
 
@@ -681,7 +493,7 @@ export async function revokeInvite(
   projectId: string
 ): Promise<{ success?: boolean; error?: string }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'teams.invite_project_member', {
+  await requireCan(user.id, 'teams.invite', {
     type: 'project',
     projectId,
   });
@@ -722,7 +534,7 @@ export async function removeProjectMember(
   targetUserId: string
 ): Promise<{ success?: boolean; error?: string }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'teams.remove_project_member', {
+  await requireCan(user.id, 'teams.manage_members', {
     type: 'project',
     projectId,
   });
@@ -780,7 +592,7 @@ export async function getMemberAccess(
   userId: string
 ): Promise<{ data?: MemberAccess; error?: string }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'teams.read_project_members', {
+  await requireCan(user.id, 'teams.manage_members', {
     type: 'project',
     projectId,
   });
@@ -818,23 +630,24 @@ export async function getMemberAccess(
   };
 }
 
-// ── updateMemberAccess ──────────────────────────────────────────────────
-// Assigns an access profile to an existing project member (role + module allowlist).
-export async function updateMemberAccess(
+// ── updateMemberRole ───────────────────────────────────────────────────
+// Assigns a role to an existing project member.
+// Use this instead of the removed profile-based updateMemberAccess.
+export async function updateMemberRole(
   projectId: string,
   userId: string,
-  profileId: string
+  roleId: string
 ): Promise<{ success?: boolean; error?: string }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'teams.update_project_member_roles', {
+  await requireCan(user.id, 'teams.manage_members', {
     type: 'project',
     projectId,
   });
   const supabase = await createClient();
-  const { error } = await (supabase as any).rpc('update_member_access_atomic', {
+  const { error } = await (supabase as any).rpc('update_member_role_atomic', {
     p_project_id: projectId,
     p_user_id: userId,
-    p_profile_id: profileId,
+    p_role_id: roleId,
     p_assigned_by: user.id,
   });
   if (error) {
@@ -844,14 +657,12 @@ export async function updateMemberAccess(
         error:
           'Cannot change the last project owner. Assign another owner first.',
       };
-    if (msg.includes('profile_not_found'))
-      return { error: 'Profile not found' };
     captureWithContext(error, {
       module: 'teams',
-      action: 'updateMemberAccess',
-      userIntent: 'Update member permissions',
-      expected: 'update_member_access_atomic RPC succeeds',
-      extra: { projectId, userId, profileId },
+      action: 'updateMemberRole',
+      userIntent: 'Update member role',
+      expected: 'update_member_role_atomic RPC succeeds',
+      extra: { projectId, userId, roleId },
     });
     return { error: error.message };
   }
@@ -859,48 +670,31 @@ export async function updateMemberAccess(
   return { success: true };
 }
 
-// ── updateMemberAccessByInviteRole ──────────────────────────────────────
-// Applies a saved invite role (e.g. Developer) to an existing member.
-export async function updateMemberAccessByInviteRole(
+// ── updateMemberAccess ─────────────────────────────────────────────────
+// @deprecated Use updateMemberRole instead. Kept for TS compat during Phase 6 UI rebuild.
+export async function updateMemberAccess(
   projectId: string,
   userId: string,
-  inviteRoleId: string
+  roleId: string
 ): Promise<{ success?: boolean; error?: string }> {
-  const user = await requireAuth();
-  await requireCan(user.id, 'teams.update_project_member_roles', {
+  return updateMemberRole(projectId, userId, roleId);
+}
+
+// ── updateMemberAccessByInviteRole ─────────────────────────────────────
+// @deprecated Removed. Kept for TS compat during Phase 6 UI rebuild.
+export async function updateMemberAccessByInviteRole(
+  projectId: string,
+  _userId: string,
+  _inviteRoleId: string
+): Promise<{ success?: boolean; error?: string }> {
+  await requireAuth();
+  await requireCan((await requireAuth()).id, 'teams.manage_members', {
     type: 'project',
     projectId,
   });
-  const supabase = await createClient();
-  const { error } = await (supabase as any).rpc(
-    'update_member_access_by_invite_role_atomic',
-    {
-      p_project_id: projectId,
-      p_user_id: userId,
-      p_invite_role_id: inviteRoleId,
-      p_assigned_by: user.id,
-    }
-  );
-  if (error) {
-    const msg: string = error.message ?? '';
-    if (msg.includes('cannot_demote_last_owner'))
-      return {
-        error:
-          'Cannot change the last project owner. Assign another owner first.',
-      };
-    if (msg.includes('invite_role_not_found'))
-      return { error: 'Role not found' };
-    captureWithContext(error, {
-      module: 'teams',
-      action: 'updateMemberAccessByInviteRole',
-      userIntent: 'Apply saved role to member',
-      expected: 'update_member_access_by_invite_role_atomic RPC succeeds',
-      extra: { projectId, userId, inviteRoleId },
-    });
-    return { error: error.message };
-  }
-  revalidatePath(`/context/${projectId}/team`);
-  return { success: true };
+  return {
+    error: 'Custom role builder removed. Use the simplified role selector.',
+  };
 }
 
 // ── updateMemberModules ─────────────────────────────────────────────────
@@ -911,7 +705,7 @@ export async function updateMemberModules(
   allowedModules: string[] | null
 ): Promise<{ success?: boolean; error?: string }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'teams.update_project_member_roles', {
+  await requireCan(user.id, 'teams.manage_members', {
     type: 'project',
     projectId,
   });
@@ -940,20 +734,20 @@ export async function updateMemberModules(
 }
 
 // ── updateMemberAccessFull ─────────────────────────────────────────────
-// Updates both visible modules and granted actions (custom permissions).
-// Use this when the editor has made granular changes; avoids per-toggle reload.
+// Updates visible modules for a member.
+// grantedActions parameter is ignored (custom action grants removed in simplified-roles migration).
 export async function updateMemberAccessFull(
   projectId: string,
   userId: string,
   allowedModules: string[] | null,
-  grantedActions: string[]
+  _grantedActions?: string[]
 ): Promise<{ success?: boolean; error?: string }> {
   const user = await requireAuth();
-  await requireCan(user.id, 'teams.update_project_member_roles', {
+  await requireCan(user.id, 'teams.manage_members', {
     type: 'project',
     projectId,
   });
-  // Normalize: ensure we send a plain string[] or null so the RPC persists correctly
+
   const normalizedModules: string[] | null = Array.isArray(allowedModules)
     ? allowedModules.filter((m): m is string => typeof m === 'string')
     : null;
@@ -962,11 +756,6 @@ export async function updateMemberAccessFull(
       ? normalizedModules
       : null;
 
-  const normalizedActions: string[] = Array.isArray(grantedActions)
-    ? grantedActions.filter((a): a is string => typeof a === 'string')
-    : [];
-  const pActions = normalizedActions.length > 0 ? normalizedActions : null;
-
   const supabase = await createClient();
   const { error } = await (supabase as any).rpc(
     'update_member_access_full_atomic',
@@ -974,14 +763,14 @@ export async function updateMemberAccessFull(
       p_project_id: projectId,
       p_user_id: userId,
       p_allowed_modules: pAllowed,
-      p_granted_actions: pActions,
+      p_granted_actions: null,
     }
   );
   if (error) {
     captureWithContext(error, {
       module: 'teams',
       action: 'updateMemberAccessFull',
-      userIntent: 'Update member modules and permissions',
+      userIntent: 'Update member visible modules',
       expected: 'update_member_access_full_atomic RPC succeeds',
       extra: { projectId, userId },
     });
@@ -1014,7 +803,6 @@ export const getInviteByToken = cache(async (token: string) => {
     project_id: row.project_id as string,
     project_name: (row.project_name as string) ?? '',
     role_name: (row.role_name as string) ?? '',
-    profile_name: (row.profile_name as string | null) ?? null,
     allowed_modules: (row.allowed_modules as string[] | null) ?? null,
   };
 });

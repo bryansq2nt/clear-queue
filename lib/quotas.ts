@@ -12,7 +12,14 @@ import { createClient } from '@/lib/supabase/server';
 
 export type QuotaResult =
   | { allowed: true }
-  | { allowed: false; reason: string };
+  | {
+      allowed: false;
+      reason: string;
+      details?: {
+        currentCount?: number;
+        maxAllowed?: number;
+      };
+    };
 
 /**
  * Checks whether the project can accept one more member,
@@ -58,9 +65,38 @@ export async function checkOrgProjectQuota(
     return { allowed: true };
   }
   if (data === false) {
+    // Try to provide actionable quota numbers for UX messaging.
+    const [{ count: projectsCount }, { data: orgData }] = await Promise.all([
+      supabase
+        .from('projects')
+        .select('id', { count: 'exact', head: true })
+        .eq('org_id', orgId),
+      supabase
+        .from('organizations')
+        .select('plan')
+        .eq('id', orgId)
+        .maybeSingle(),
+    ]);
+
+    let maxAllowed: number | undefined;
+    const plan = (orgData as { plan?: string } | null)?.plan;
+    if (plan) {
+      const { data: planQuota } = await supabase
+        .from('plan_quotas')
+        .select('max_projects_per_org')
+        .eq('plan', plan)
+        .maybeSingle();
+      maxAllowed = (planQuota as { max_projects_per_org?: number } | null)
+        ?.max_projects_per_org;
+    }
+
     return {
       allowed: false,
       reason: 'quota_projects_per_org',
+      details: {
+        currentCount: projectsCount ?? undefined,
+        maxAllowed,
+      },
     };
   }
   return { allowed: true };

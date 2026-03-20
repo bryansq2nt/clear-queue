@@ -3,6 +3,7 @@
 import { getUser } from '@/lib/auth';
 import { getProfileOptional } from '@/app/profile/actions';
 import { getProjectsList, type ProjectListItem } from '@/app/actions/projects';
+import { getMyNotificationsCount } from '@/app/actions/notifications';
 
 /**
  * Data for the home project picker. Used when pre-rendering the "Salir" target
@@ -11,6 +12,7 @@ import { getProjectsList, type ProjectListItem } from '@/app/actions/projects';
 export type HomePageData = {
   projects: ProjectListItem[];
   userDisplayName: string;
+  notificationsCount: number;
 };
 
 export async function getHomePageData(): Promise<HomePageData | null> {
@@ -21,8 +23,9 @@ export async function getHomePageData(): Promise<HomePageData | null> {
     getProjectsList(),
     getProfileOptional(),
   ]);
+  const notificationsCount = await getMyNotificationsCount();
   const userDisplayName =
     profile?.display_name?.trim() || user.email?.split('@')[0] || 'User';
 
-  return { projects, userDisplayName };
+  return { projects, userDisplayName, notificationsCount };
 }

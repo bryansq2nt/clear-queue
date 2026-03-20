@@ -32,7 +32,7 @@ export async function batchUpdatePositionsAction(
         .eq('id', boardItem.board_id)
         .maybeSingle();
       if (boardRow?.project_id) {
-        await requireCan(user.id, 'ideas.batch_update', {
+        await requireCan(user.id, 'ideas.update', {
           type: 'idea',
           projectId: boardRow.project_id,
         });

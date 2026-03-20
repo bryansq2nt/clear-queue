@@ -407,7 +407,7 @@ export async function archiveProjectLinkAction(
     return { error: 'Link not found or access denied' };
   }
 
-  await requireCan(user.id, 'links.archive', {
+  await requireCan(user.id, 'links.update', {
     type: 'link',
     projectId: (link as unknown as { project_id: string }).project_id,
   });
@@ -440,7 +440,7 @@ export async function reorderProjectLinksAction(
     return { error: 'Project and ordered link IDs are required' };
   }
 
-  await requireCan(user.id, 'links.reorder', { type: 'link', projectId: pid });
+  await requireCan(user.id, 'links.update', { type: 'link', projectId: pid });
 
   const { error } = await (supabase as any).rpc('reorder_links_atomic', {
     p_project_id: pid,
@@ -500,6 +500,6 @@ export async function getLinksPermissions(
     canCreate: granted.has('links.create'),
     canUpdate: granted.has('links.update'),
     canDelete: granted.has('links.delete'),
-    canManageCategories: granted.has('links.manage_categories'),
+    canManageCategories: granted.has('links.update'),
   };
 }

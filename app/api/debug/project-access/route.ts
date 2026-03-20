@@ -57,9 +57,17 @@ export async function GET(request: NextRequest) {
       myAccessGrant: {
         raw: grant,
         hasMedia:
-          grant === null ? 'unrestricted (null)' : grant.includes('media'),
+          grant === undefined
+            ? 'no row (fail-closed)'
+            : grant === null
+              ? 'unrestricted (null)'
+              : grant.includes('media'),
         hasBoard:
-          grant === null ? 'unrestricted (null)' : grant.includes('board'),
+          grant === undefined
+            ? 'no row (fail-closed)'
+            : grant === null
+              ? 'unrestricted (null)'
+              : grant.includes('board'),
       },
       getCanViewModule_media: mediaAccess,
       rbacActionGrants: {
@@ -73,13 +81,16 @@ export async function GET(request: NextRequest) {
         allGrantedActions: Array.from(grantedActions).sort(),
         totalGrantedActions: grantedActions.size,
       },
-      hint: !grantedActions.has('tasks.create')
-        ? 'tasks.create missing → go to Team tab → edit member access → enable "Create tasks" and save.'
-        : grant === null
-          ? 'No row in user_project_access_grants → unrestricted module access.'
-          : Array.isArray(grant) && !grant.includes('board')
-            ? "allowed_modules does not include 'board' → add it and save again."
-            : 'Permissions look correct.',
+      hint:
+        grant === undefined
+          ? 'No row in user_project_access_grants → run backfill migration 20260324100000 or re-invite the user.'
+          : !grantedActions.has('tasks.create')
+            ? 'tasks.create missing → go to Team tab → edit member access → enable "Create tasks" and save.'
+            : grant === null
+              ? 'Row exists with null allowed_modules → unrestricted module access (all tabs visible).'
+              : Array.isArray(grant) && !grant.includes('board')
+                ? "allowed_modules does not include 'board' → add it and save again."
+                : 'Permissions look correct.',
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

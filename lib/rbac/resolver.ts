@@ -45,8 +45,11 @@ function getContextFromResource(resource: Resource): {
 //
 // React's cache() deduplicates calls with the same (userId, contextId,
 // isProjectScope) within a single server render. Multiple can() calls for
-// the same project share one resolution result (3 DB queries total, not
-// 3×N where N is the number of permission checks on the page).
+// the same project share one resolution result.
+//
+// Role is the single source of truth. Per-member action key overrides were
+// removed in the Phase 1 simplified-roles migration — roles now define the
+// complete permission set for each member.
 // ---------------------------------------------------------------------------
 
 export const getGrantedActions = cache(
@@ -57,42 +60,28 @@ export const getGrantedActions = cache(
   ): Promise<Set<string>> => {
     const supabase = await createClient();
 
-    if (isProjectScope) {
-      // Per-member custom action grants override role-based permissions
-      const { data: customRow } = await (supabase as any)
-        .from('user_project_action_grants')
-        .select('granted_actions')
-        .eq('project_id', contextId)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      const actions = customRow?.granted_actions as string[] | undefined;
-      if (actions && Array.isArray(actions) && actions.length > 0) {
-        return new Set(actions);
-      }
-    }
-
     const roleIds: string[] = [];
 
     if (isProjectScope) {
-      // Project-level role assignments
-      const { data: projectRoles } = await (supabase as any)
-        .from('user_role_assignments')
-        .select('role_id')
-        .eq('user_id', userId)
-        .eq('project_id', contextId);
+      // Fetch project roles and the project's org_id in parallel
+      const [{ data: projectRoles }, { data: project }] = await Promise.all([
+        (supabase as any)
+          .from('user_role_assignments')
+          .select('role_id')
+          .eq('user_id', userId)
+          .eq('project_id', contextId),
+        (supabase as any)
+          .from('projects')
+          .select('org_id')
+          .eq('id', contextId)
+          .maybeSingle(),
+      ]);
 
       if (projectRoles) {
         for (const r of projectRoles) roleIds.push(r.role_id);
       }
 
       // Inherit org-level role assignments via the project's parent org
-      const { data: project } = await (supabase as any)
-        .from('projects')
-        .select('org_id')
-        .eq('id', contextId)
-        .maybeSingle();
-
       if (project?.org_id) {
         const { data: orgRoles } = await (supabase as any)
           .from('user_role_assignments')
@@ -105,7 +94,6 @@ export const getGrantedActions = cache(
         }
       }
     } else {
-      // Org-level role assignments
       const { data: orgRoles } = await (supabase as any)
         .from('user_role_assignments')
         .select('role_id')
@@ -117,19 +105,20 @@ export const getGrantedActions = cache(
       }
     }
 
-    if (roleIds.length === 0) return new Set();
-
-    // Expand all role IDs → action keys via the RBAC join tables
-    const { data: actionRows } = await (supabase as any)
-      .from('rbac_role_module_actions')
-      .select('rbac_module_actions(action_key)')
-      .in('role_id', roleIds);
-
     const granted = new Set<string>();
-    for (const row of actionRows ?? []) {
-      const key = row?.rbac_module_actions?.action_key;
-      if (key) granted.add(key);
+
+    if (roleIds.length > 0) {
+      const { data: actionRows } = await (supabase as any)
+        .from('rbac_role_module_actions')
+        .select('rbac_module_actions(action_key)')
+        .in('role_id', roleIds);
+
+      for (const row of actionRows ?? []) {
+        const key = row?.rbac_module_actions?.action_key;
+        if (key) granted.add(key);
+      }
     }
+
     return granted;
   }
 );
@@ -159,11 +148,9 @@ export async function can(
   const supabase = await createClient();
 
   if (ctx.isProjectScope) {
-    // Check membership AND ownership in one query.
     // Project owners bypass role expansion entirely — they always have full access.
     // This is the authoritative fallback: even if user_role_assignments has no row
-    // for the owner (e.g. before backfill or before create_project_atomic ran),
-    // the owner is never locked out of their own project.
+    // for the owner, the owner is never locked out of their own project.
     const { data: project } = await (supabase as any)
       .from('projects')
       .select('owner_id')
@@ -190,12 +177,12 @@ export async function can(
     if (!member) return false;
   }
 
-  const granted = await getGrantedActions(
+  const grantedActions = await getGrantedActions(
     userId,
     ctx.contextId,
     ctx.isProjectScope
   );
-  return granted.has(action);
+  return grantedActions.has(action);
 }
 
 // ---------------------------------------------------------------------------

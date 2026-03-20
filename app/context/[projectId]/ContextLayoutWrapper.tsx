@@ -16,7 +16,7 @@ interface ContextLayoutWrapperProps {
   children: React.ReactNode;
   project: Project;
   initialModules: SerializableResolvedModule[];
-  initialAccessGrant: string[] | null;
+  initialAccessGrant: string[] | null | undefined;
   initialCanToggle: boolean;
 }
 
@@ -55,16 +55,22 @@ export default function ContextLayoutWrapper({
   );
 
   const projectEnabledKeys = getEnabledModuleKeys(modules);
-  // Apply per-member access grant: intersect project-enabled keys with user's allowlist.
-  // null = unrestricted (show all project-enabled modules).
+  // Apply per-member access grant to determine which tabs are visible.
+  //
+  //   undefined  — no row (fail-closed): show no tabs. Should not happen after
+  //                the backfill migration; treated as empty set for safety.
+  //   null       — row exists, unrestricted: show all project-enabled modules.
+  //   string[]   — explicit allowlist: intersect with project-enabled modules.
   const enabledModuleKeys: Set<ModuleKey> =
-    initialAccessGrant != null
-      ? new Set(
-          initialAccessGrant.filter((k) =>
-            projectEnabledKeys.has(k as ModuleKey)
-          ) as ModuleKey[]
-        )
-      : projectEnabledKeys;
+    initialAccessGrant === null
+      ? projectEnabledKeys
+      : initialAccessGrant === undefined
+        ? new Set<ModuleKey>()
+        : new Set(
+            initialAccessGrant.filter((k) =>
+              projectEnabledKeys.has(k as ModuleKey)
+            ) as ModuleKey[]
+          );
 
   return (
     <ContextLayoutClient

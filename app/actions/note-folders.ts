@@ -91,7 +91,7 @@ export async function createFolder(
   if (!project)
     return { success: false, error: 'Project not found or access denied' };
 
-  await requireCan(user.id, 'notes.manage_folders', {
+  await requireCan(user.id, 'notes.update', {
     type: 'note',
     projectId: pid,
   });
@@ -159,7 +159,7 @@ export async function updateFolder(
   const folderProjectId = (folderRow as { project_id?: string } | null)
     ?.project_id;
   if (folderProjectId) {
-    await requireCan(user.id, 'notes.manage_folders', {
+    await requireCan(user.id, 'notes.update', {
       type: 'note',
       projectId: folderProjectId,
     });
@@ -234,7 +234,7 @@ export async function deleteFolder(
     return { success: false, error: 'Folder not found or access denied' };
   }
 
-  await requireCan(user.id, 'notes.manage_folders', {
+  await requireCan(user.id, 'notes.update', {
     type: 'note',
     projectId: (existing as unknown as { project_id: string }).project_id,
   });
@@ -277,7 +277,7 @@ export async function deleteFolders(
   const pid = projectId?.trim();
   if (!pid) return { success: false, error: 'Project ID is required' };
 
-  await requireCan(user.id, 'notes.manage_folders', {
+  await requireCan(user.id, 'notes.update', {
     type: 'note',
     projectId: pid,
   });

@@ -4,14 +4,13 @@ import {
   listPendingInvites,
   listRejectedInvites,
   listProjectRoles,
-  listProjectAccessProfiles,
-  listReusableInviteRoles,
 } from '@/app/actions/teams';
 import { getProjectById } from '@/app/actions/projects';
 import {
   listProjectTeams,
   getSubTeamsPermissions,
 } from '@/app/actions/sub-teams';
+import { getProjectModules } from '@/app/actions/modules';
 import ContextTeamClient from './ContextTeamClient';
 
 export default async function ContextTeamPage({
@@ -19,7 +18,7 @@ export default async function ContextTeamPage({
 }: {
   params: Promise<{ projectId: string }>;
 }) {
-  await requireAuth();
+  const user = await requireAuth();
   const { projectId } = await params;
 
   const [
@@ -27,35 +26,38 @@ export default async function ContextTeamPage({
     invites,
     rejectedInvites,
     roles,
-    profiles,
-    reusableRoles,
     project,
     teams,
     subTeamsPermissions,
+    projectModules,
   ] = await Promise.all([
     listProjectMembers(projectId),
     listPendingInvites(projectId),
     listRejectedInvites(projectId),
     listProjectRoles(),
-    listProjectAccessProfiles(projectId),
-    listReusableInviteRoles(projectId),
     getProjectById(projectId),
     listProjectTeams(projectId),
     getSubTeamsPermissions(projectId),
+    getProjectModules(projectId),
   ]);
+
+  const enabledInviteModuleKeys = projectModules
+    .filter((m) => m.enabled)
+    .map((m) => m.key)
+    .filter((key) => key !== 'owner' && key !== 'team');
 
   return (
     <ContextTeamClient
       projectId={projectId}
       projectName={project?.name ?? ''}
+      currentUserId={user.id}
       initialMembers={members}
       initialInvites={invites}
       initialRejectedInvites={rejectedInvites}
       roles={roles}
-      profiles={profiles}
-      reusableRoles={reusableRoles}
       initialTeams={teams}
       subTeamsPermissions={subTeamsPermissions}
+      enabledInviteModuleKeys={enabledInviteModuleKeys}
     />
   );
 }

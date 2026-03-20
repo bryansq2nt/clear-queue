@@ -4,6 +4,7 @@ import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
+import { getReadScope } from '@/lib/rbac/read-scope';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -19,6 +20,41 @@ type TaskUpdate = Database['public']['Tables']['tasks']['Update'];
 type TaskWithProject = Database['public']['Tables']['tasks']['Row'] & {
   projects: { id: string; name: string; color: string | null } | null;
 };
+
+type TaskActivityAction =
+  | 'created'
+  | 'updated'
+  | 'status_changed'
+  | 'assigned'
+  | 'unassigned'
+  | 'deleted';
+
+/** Fire-and-forget audit log write. Never throws; captures errors via Sentry. */
+async function logTaskActivity(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  taskId: string,
+  projectId: string,
+  userId: string,
+  action: TaskActivityAction,
+  changedFields?: Record<string, unknown>
+): Promise<void> {
+  const { error } = await (supabase as any).from('task_activity_log').insert({
+    task_id: taskId,
+    project_id: projectId,
+    user_id: userId,
+    action,
+    changed_fields: changedFields ?? null,
+  });
+  if (error) {
+    captureWithContext(error, {
+      module: 'tasks',
+      action: 'logTaskActivity',
+      userIntent: 'Audit: log task activity event',
+      expected: 'Row inserted into task_activity_log',
+      extra: { taskId, action },
+    });
+  }
+}
 
 export async function createTask(formData: FormData) {
   const user = await requireAuth();
@@ -84,6 +120,18 @@ export async function createTask(formData: FormData) {
 
   revalidatePath('/dashboard');
   revalidatePath('/context');
+
+  // Audit log — fire-and-forget
+  if (data && (data as any).id) {
+    void logTaskActivity(
+      supabase,
+      (data as any).id,
+      projectId,
+      user.id,
+      'created'
+    );
+  }
+
   return { data };
 }
 
@@ -126,20 +174,18 @@ export async function updateTask(id: string, formData: FormData) {
       .maybeSingle();
 
     if (proj?.owner_id !== user.id) {
-      const granted = await getGrantedActions(user.id, resolvedProjectId, true);
+      const [granted, readScope] = await Promise.all([
+        getGrantedActions(user.id, resolvedProjectId, true),
+        getReadScope(user.id, resolvedProjectId),
+      ]);
       const isCreator = taskMeta?.created_by === user.id;
       const isAssignee = taskMeta?.assigned_to === user.id;
 
-      // Permission rules (in priority order):
-      // 1. Has tasks.create + tasks.read.project  → manage all project tasks
-      // 2. Has tasks.create + tasks.read.team     → manage team tasks
-      // 3. Has tasks.create + (creator|assignee)  → manage own tasks
-      // 4. Has tasks.assign                       → can update assignment
+      // Scope is role-derived (project/team/own); ownership check only needed
+      // for 'own' scope (team_member can only edit tasks they created/are assigned to).
       const canEdit =
-        (granted.has('tasks.create') && granted.has('tasks.read.project')) ||
-        (granted.has('tasks.create') && granted.has('tasks.read.team')) ||
-        (granted.has('tasks.create') && (isCreator || isAssignee)) ||
-        granted.has('tasks.assign');
+        granted.has('tasks.update') &&
+        (readScope !== 'own' || isCreator || isAssignee);
 
       if (!canEdit) {
         return { error: "You don't have permission to edit this task." };
@@ -179,6 +225,44 @@ export async function updateTask(id: string, formData: FormData) {
 
   revalidatePath('/dashboard');
   revalidatePath('/context');
+
+  // Audit log — fire-and-forget
+  if (data) {
+    const taskRow = data as { id: string; project_id?: string | null };
+    const prevAssignedTo = taskMeta?.assigned_to ?? null;
+    const newAssignedTo =
+      assignedTo !== undefined ? assignedTo || null : undefined;
+    const assignmentChanged =
+      newAssignedTo !== undefined && newAssignedTo !== prevAssignedTo;
+
+    let activityAction: TaskActivityAction;
+    let changedFields: Record<string, unknown> | undefined;
+    if (status) {
+      activityAction = 'status_changed';
+      changedFields = { status };
+    } else if (assignmentChanged) {
+      activityAction = newAssignedTo ? 'assigned' : 'unassigned';
+      changedFields = {
+        assigned_to: { from: prevAssignedTo, to: newAssignedTo },
+      };
+    } else {
+      activityAction = 'updated';
+      changedFields =
+        Object.keys(updates).length > 0
+          ? { fields: Object.keys(updates) }
+          : undefined;
+    }
+
+    void logTaskActivity(
+      supabase,
+      taskRow.id,
+      (taskRow.project_id ?? resolvedProjectId) as string,
+      user.id,
+      activityAction,
+      changedFields
+    );
+  }
+
   return { data };
 }
 
@@ -205,15 +289,16 @@ export async function deleteTask(id: string) {
       .maybeSingle();
 
     if (proj?.owner_id !== user.id) {
-      const granted = await getGrantedActions(user.id, taskProjectId, true);
+      const [granted, readScope] = await Promise.all([
+        getGrantedActions(user.id, taskProjectId, true),
+        getReadScope(user.id, taskProjectId),
+      ]);
       const isCreator = taskMeta?.created_by === user.id;
       const isAssignee = taskMeta?.assigned_to === user.id;
 
       const canDelete =
-        (granted.has('tasks.create') && granted.has('tasks.read.project')) ||
-        (granted.has('tasks.create') && granted.has('tasks.read.team')) ||
-        (granted.has('tasks.create') && (isCreator || isAssignee)) ||
-        granted.has('tasks.delete');
+        granted.has('tasks.delete') &&
+        (readScope !== 'own' || isCreator || isAssignee);
 
       if (!canDelete) {
         return { error: "You don't have permission to delete this task." };
@@ -236,6 +321,10 @@ export async function deleteTask(id: string) {
 
   revalidatePath('/dashboard');
   revalidatePath('/context');
+
+  // Audit log — fire-and-forget
+  void logTaskActivity(supabase, id, taskProjectId ?? '', user.id, 'deleted');
+
   return { success: true };
 }
 
@@ -256,7 +345,7 @@ export async function deleteTasksByIds(ids: string[]) {
   const firstTaskProjectId = (firstTask as { project_id?: string } | null)
     ?.project_id;
   if (firstTaskProjectId) {
-    await requireCan(user.id, 'tasks.bulk_delete', {
+    await requireCan(user.id, 'tasks.delete', {
       type: 'task',
       projectId: firstTaskProjectId,
     });
@@ -528,7 +617,7 @@ export async function updateTaskOrder(
     .maybeSingle();
   const taskProjectId2 = (task as { project_id?: string } | null)?.project_id;
   if (taskProjectId2) {
-    await requireCan(user.id, 'tasks.update_status', {
+    await requireCan(user.id, 'tasks.update', {
       type: 'task',
       projectId: taskProjectId2,
     });
@@ -558,6 +647,19 @@ export async function updateTaskOrder(
     revalidatePath('/dashboard');
     revalidatePath('/context');
   }
+
+  // Audit log — fire-and-forget
+  if (taskProjectId2) {
+    void logTaskActivity(
+      supabase,
+      taskId,
+      taskProjectId2,
+      user.id,
+      'status_changed',
+      { to: newStatus }
+    );
+  }
+
   return { success: true };
 }
 
@@ -572,14 +674,6 @@ export type BoardPermissions = {
   /** Determines which tasks the user can see. */
   readScope: TaskReadScope;
 };
-
-function resolveTaskReadScope(granted: Set<string>): TaskReadScope {
-  if (granted.has('tasks.read.project') || granted.has('tasks.read'))
-    return 'project';
-  if (granted.has('tasks.read.team')) return 'team';
-  if (granted.has('tasks.read.own')) return 'own';
-  return 'project'; // safe default (project owners bypass this path)
-}
 
 /**
  * Returns the user IDs of all members who share a sub-team with the given user
@@ -638,11 +732,14 @@ export const getBoardPermissions = cache(
       return { canCreate: true, canAssign: true, readScope: 'project' };
     }
 
-    const granted = await getGrantedActions(user.id, projectId, true);
+    const [granted, readScope] = await Promise.all([
+      getGrantedActions(user.id, projectId, true),
+      getReadScope(user.id, projectId),
+    ]);
     return {
       canCreate: granted.has('tasks.create'),
-      canAssign: granted.has('tasks.assign'),
-      readScope: resolveTaskReadScope(granted),
+      canAssign: granted.has('tasks.update'),
+      readScope: readScope as TaskReadScope,
     };
   }
 );

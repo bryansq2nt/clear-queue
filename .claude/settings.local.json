@@ -71,7 +71,17 @@
       "Bash(node:*)",
       "Bash(wc:*)",
       "WebFetch(domain:drdroid.io)",
-      "WebFetch(domain:medium.com)"
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:www.builder.io)",
+      "WebFetch(domain:vercel.com)",
+      "WebFetch(domain:www.smashingmagazine.com)",
+      "WebFetch(domain:tkdodo.eu)",
+      "WebFetch(domain:web.dev)",
+      "WebFetch(domain:www.nngroup.com)",
+      "WebFetch(domain:blog.sentry.io)",
+      "WebFetch(domain:www.patterns.dev)",
+      "WebFetch(domain:linear.app)",
+      "WebFetch(domain:www.developerway.com)"
     ]
   }
 }

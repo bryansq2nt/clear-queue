@@ -87,12 +87,12 @@ export async function getMediaPermissions(
   // Member: expand roles once, check all media actions
   const granted = await getGrantedActions(user.id, pid, true);
   return {
-    canUpload: granted.has('media.upload'),
-    canEdit: granted.has('media.update_metadata'),
-    canArchive: granted.has('media.archive'),
+    canUpload: granted.has('media.create'),
+    canEdit: granted.has('media.update'),
+    canArchive: granted.has('media.update'),
     canDelete: granted.has('media.delete'),
-    canShare: granted.has('media.share_create'),
-    canMarkFinal: granted.has('media.mark_final'),
+    canShare: granted.has('media.create'),
+    canMarkFinal: granted.has('media.update'),
   };
 }
 
@@ -192,7 +192,7 @@ export async function uploadMedia(
   if (!project)
     return { success: false, error: 'Project not found or access denied' };
 
-  await requireCan(user.id, 'media.upload', { type: 'media', projectId: pid });
+  await requireCan(user.id, 'media.create', { type: 'media', projectId: pid });
 
   // Extract and validate file
   const file = formData.get('file');
@@ -327,7 +327,7 @@ export async function updateMedia(
   }
 
   const projectId = (existing as unknown as { project_id: string }).project_id;
-  await requireCan(user.id, 'media.update_metadata', {
+  await requireCan(user.id, 'media.update', {
     type: 'media',
     projectId,
   });
@@ -411,7 +411,7 @@ export async function archiveMedia(
   }
 
   const projectId = (existing as unknown as { project_id: string }).project_id;
-  await requireCan(user.id, 'media.archive', {
+  await requireCan(user.id, 'media.update', {
     type: 'media',
     projectId,
   });
@@ -457,7 +457,7 @@ export async function unarchiveMedia(
   }
 
   const projectId = (existing as unknown as { project_id: string }).project_id;
-  await requireCan(user.id, 'media.unarchive', {
+  await requireCan(user.id, 'media.update', {
     type: 'media',
     projectId,
   });
@@ -567,7 +567,7 @@ export async function markMediaFinal(
   }
 
   const projectId = (existing as unknown as { project_id: string }).project_id;
-  await requireCan(user.id, 'media.mark_final', {
+  await requireCan(user.id, 'media.update', {
     type: 'media',
     projectId,
   });
@@ -681,7 +681,7 @@ export async function createMediaShareLink(
   }
 
   const projectId = (row as unknown as { project_id: string }).project_id;
-  await requireCan(user.id, 'media.share_create', {
+  await requireCan(user.id, 'media.create', {
     type: 'media',
     projectId,
   });

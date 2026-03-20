@@ -4,11 +4,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useI18n } from '@/components/shared/I18nProvider';
+import { signOut } from '@/app/actions/auth';
 import {
+  Bell,
   ChevronLeft,
   Clock,
   FolderKanban,
   LayoutDashboard,
+  LogOut,
   Menu,
   Plus,
   Settings,
@@ -28,6 +31,7 @@ const MAX_RECENT_HIGHLIGHT = 5;
 
 interface ContextProjectPickerProps {
   initialProjects: ProjectListItem[];
+  notificationsCount?: number;
   /** When true (e.g. on /context), show "Volver al inicio" link. When false (on /), hide it. */
   showBackButton?: boolean;
   /** When set (e.g. on /), show "Welcome back, {name}" or the returning question. */
@@ -42,6 +46,7 @@ interface ContextProjectPickerProps {
 
 export default function ContextProjectPicker({
   initialProjects,
+  notificationsCount = 0,
   showBackButton = true,
   userDisplayName,
   returningFromProject = false,
@@ -107,9 +112,28 @@ export default function ContextProjectPicker({
                   aria-label={t('sidebar.navigation')}
                 >
                   <Menu className="w-5 h-5" />
+                  {notificationsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold flex items-center justify-center">
+                      {notificationsCount > 9 ? '9+' : notificationsCount}
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/notifications"
+                    className="flex items-center gap-2"
+                  >
+                    <Bell className="w-4 h-4" />
+                    {t('notifications.title')}
+                    {notificationsCount > 0 && (
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {notificationsCount}
+                      </span>
+                    )}
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/profile" className="flex items-center gap-2">
                     <UserCircle className="w-4 h-4" />
@@ -121,6 +145,18 @@ export default function ContextProjectPicker({
                     <Settings className="w-4 h-4" />
                     {t('sidebar.settings')}
                   </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void signOut();
+                    }}
+                    className="w-full flex items-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    {t('sidebar.logout')}
+                  </button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -227,9 +263,9 @@ export default function ContextProjectPicker({
       <AddProjectModal
         isOpen={addProjectOpen}
         onClose={() => setAddProjectOpen(false)}
-        onProjectAdded={() => {
+        onProjectAdded={(projectId) => {
           setAddProjectOpen(false);
-          router.refresh();
+          router.push(`/context/${projectId}/board`);
         }}
       />
     </div>

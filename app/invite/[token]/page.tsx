@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { getInviteByToken } from '@/app/actions/teams';
 import { getUser } from '@/lib/auth';
+import { getProfileOptional } from '@/app/profile/actions';
+import { t, type Locale } from '@/lib/i18n';
 import Link from 'next/link';
 import { Users, AlertCircle, CheckCircle, Eye } from 'lucide-react';
 import InvitePageActions from '@/components/invite/InvitePageActions';
@@ -18,13 +20,10 @@ const MODULE_LABELS: Record<string, string> = {
   todos: 'Todos',
 };
 
-function roleLabel(name: string): string {
-  const map: Record<string, string> = {
-    project_owner: 'Owner',
-    project_editor: 'Editor',
-    project_viewer: 'Viewer',
-  };
-  return map[name] ?? name;
+function roleLabel(locale: Locale, name: string): string {
+  const key = `roles.${name}`;
+  const translated = t(locale, key);
+  return translated === key ? name.replaceAll('_', ' ') : translated;
 }
 
 export default async function InvitePage({
@@ -33,10 +32,12 @@ export default async function InvitePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const [invite, user] = await Promise.all([
+  const [invite, user, profile] = await Promise.all([
     getInviteByToken(token),
     getUser(),
+    getProfileOptional(),
   ]);
+  const locale: Locale = profile?.locale === 'es' ? 'es' : 'en';
 
   if (!invite) {
     return (
@@ -44,16 +45,16 @@ export default async function InvitePage({
         <div className="max-w-md w-full rounded-xl border border-border bg-card p-8 text-center space-y-4">
           <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
           <h1 className="text-xl font-semibold text-foreground">
-            Invite not found
+            {t(locale, 'invite_page.not_found_title')}
           </h1>
           <p className="text-muted-foreground text-sm">
-            This invite link is invalid or has been removed.
+            {t(locale, 'invite_page.not_found_message')}
           </p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
           >
-            Go home
+            {t(locale, 'invite_page.go_home')}
           </Link>
         </div>
       </div>
@@ -66,10 +67,10 @@ export default async function InvitePage({
         <div className="max-w-md w-full rounded-xl border border-border bg-card p-8 text-center space-y-4">
           <AlertCircle className="w-12 h-12 text-orange-500 mx-auto" />
           <h1 className="text-xl font-semibold text-foreground">
-            Invite revoked
+            {t(locale, 'invite_page.revoked_title')}
           </h1>
           <p className="text-muted-foreground text-sm">
-            This invite has been revoked by the project owner.
+            {t(locale, 'invite_page.revoked_message')}
           </p>
         </div>
       </div>
@@ -82,16 +83,16 @@ export default async function InvitePage({
         <div className="max-w-md w-full rounded-xl border border-border bg-card p-8 text-center space-y-4">
           <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
           <h1 className="text-xl font-semibold text-foreground">
-            Already accepted
+            {t(locale, 'invite_page.accepted_title')}
           </h1>
           <p className="text-muted-foreground text-sm">
-            This invite has already been accepted.
+            {t(locale, 'invite_page.accepted_message')}
           </p>
           <Link
             href={`/context/${invite.project_id}/board`}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
           >
-            Open project
+            {t(locale, 'invite_page.open_project')}
           </Link>
         </div>
       </div>
@@ -104,16 +105,16 @@ export default async function InvitePage({
         <div className="max-w-md w-full rounded-xl border border-border bg-card p-8 text-center space-y-4">
           <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
           <h1 className="text-xl font-semibold text-foreground">
-            You declined
+            {t(locale, 'invite_page.rejected_title')}
           </h1>
           <p className="text-muted-foreground text-sm">
-            You previously declined this invitation.
+            {t(locale, 'invite_page.rejected_message')}
           </p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
           >
-            Go home
+            {t(locale, 'invite_page.go_home')}
           </Link>
         </div>
       </div>
@@ -127,10 +128,10 @@ export default async function InvitePage({
         <div className="max-w-md w-full rounded-xl border border-border bg-card p-8 text-center space-y-4">
           <AlertCircle className="w-12 h-12 text-orange-500 mx-auto" />
           <h1 className="text-xl font-semibold text-foreground">
-            Invite expired
+            {t(locale, 'invite_page.expired_title')}
           </h1>
           <p className="text-muted-foreground text-sm">
-            This invite expired on{' '}
+            {t(locale, 'invite_page.expired_message_prefix')}{' '}
             {new Date(invite.expires_at).toLocaleDateString()}.
           </p>
         </div>
@@ -155,26 +156,26 @@ export default async function InvitePage({
         <div className="max-w-md w-full rounded-xl border border-border bg-card p-8 text-center space-y-4">
           <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
           <h1 className="text-xl font-semibold text-foreground">
-            Wrong account
+            {t(locale, 'invite_page.wrong_account_title')}
           </h1>
           <p className="text-muted-foreground text-sm">
-            This invite was sent to{' '}
-            <span className="font-medium text-foreground">{invite.email}</span>.
-            You&apos;re signed in as{' '}
-            <span className="font-medium text-foreground">{user.email}</span>.
-            Sign in with the invited account to accept.
+            {t(locale, 'invite_page.wrong_account_message_prefix')}{' '}
+            <span className="font-medium text-foreground">{invite.email}</span>.{' '}
+            {t(locale, 'invite_page.wrong_account_message_middle')}{' '}
+            <span className="font-medium text-foreground">{user.email}</span>.{' '}
+            {t(locale, 'invite_page.wrong_account_message_suffix')}
           </p>
           <Link
             href={`/?returnUrl=${encodeURIComponent(`/invite/${token}`)}`}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
           >
-            Sign in with invited account
+            {t(locale, 'invite_page.sign_in_with_invited')}
           </Link>
           <Link
             href="/"
             className="block text-sm text-muted-foreground hover:text-foreground"
           >
-            Go home
+            {t(locale, 'invite_page.go_home')}
           </Link>
         </div>
       </div>
@@ -189,16 +190,16 @@ export default async function InvitePage({
             <Users className="w-7 h-7 text-primary" />
           </div>
           <h1 className="text-xl font-semibold text-foreground">
-            You&apos;ve been invited
+            {t(locale, 'invite_page.invited_title')}
           </h1>
           <p className="text-muted-foreground text-sm">
-            You&apos;ve been invited to join{' '}
+            {t(locale, 'invite_page.invited_message_prefix')}{' '}
             <span className="font-medium text-foreground">
               {invite.project_name}
             </span>{' '}
-            as{' '}
+            {t(locale, 'invite_page.invited_message_as')}{' '}
             <span className="font-medium text-foreground">
-              {invite.profile_name ?? roleLabel(invite.role_name)}
+              {roleLabel(locale, invite.role_name)}
             </span>
             .
           </p>
@@ -208,7 +209,7 @@ export default async function InvitePage({
           <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
               <Eye className="w-3.5 h-3.5" />
-              You&apos;ll have access to
+              {t(locale, 'invite_page.access_to')}
             </div>
             <div className="flex flex-wrap gap-1">
               {invite.allowed_modules.map((key) => (
@@ -224,14 +225,21 @@ export default async function InvitePage({
         )}
 
         <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground text-center">
-          Joining as{' '}
+          {t(locale, 'invite_page.joining_as')}{' '}
           <span className="font-medium text-foreground">{user.email}</span>
         </div>
 
         <InvitePageActions token={token} />
+        <Link
+          href="/notifications"
+          className="block text-center text-sm text-muted-foreground hover:text-foreground"
+        >
+          {t(locale, 'invite_page.back_to_notifications')}
+        </Link>
 
         <p className="text-center text-xs text-muted-foreground">
-          Invite expires on {new Date(invite.expires_at).toLocaleDateString()}.
+          {t(locale, 'invite_page.expires_on')}{' '}
+          {new Date(invite.expires_at).toLocaleDateString()}.
         </p>
       </div>
     </div>

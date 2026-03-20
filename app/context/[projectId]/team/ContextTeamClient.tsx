@@ -5,22 +5,18 @@ import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/shared/I18nProvider';
 import {
   inviteProjectMember,
-  createInviteRole,
   revokeInvite,
   removeProjectMember,
   sendInviteEmail,
   checkCanInviteEmail,
   getMemberAccess,
-  updateMemberAccess,
-  updateMemberAccessByInviteRole,
+  updateMemberRole,
   updateMemberAccessFull,
 } from '@/app/actions/teams';
 import type {
   ProjectMember,
   ProjectInvite,
   RejectedInvite,
-  ProjectAccessProfile,
-  InviteRole,
   MemberAccess,
 } from '@/app/actions/teams';
 import {
@@ -86,52 +82,31 @@ const MODULE_PERMISSIONS: Record<
   Array<{ key: string; label: string }>
 > = {
   board: [
-    { key: 'tasks.read.own', label: 'View own tasks (assigned to me)' },
-    { key: 'tasks.read.team', label: 'View sub-team tasks' },
-    { key: 'tasks.read.project', label: 'View all project tasks' },
-    // "Create tasks" implicitly grants edit + delete on tasks the member created.
-    // Granular edit/delete/move permissions are not shown — they are implied.
-    { key: 'tasks.create', label: 'Create tasks (includes edit & delete own)' },
-    { key: 'tasks.assign', label: 'Assign / unassign tasks' },
-    { key: 'tasks.delete', label: 'Delete any task' },
+    { key: 'tasks.read', label: 'View tasks' },
+    { key: 'tasks.create', label: 'Create tasks' },
+    { key: 'tasks.update', label: 'Edit tasks' },
+    { key: 'tasks.delete', label: 'Delete tasks' },
   ],
   notes: [
     { key: 'notes.read', label: 'View notes' },
-    { key: 'notes.read.own', label: 'Read scope: own notes only' },
-    { key: 'notes.read.team', label: 'Read scope: team notes' },
-    { key: 'notes.read.project', label: 'Read scope: all project notes' },
     { key: 'notes.create', label: 'Create notes' },
-    { key: 'notes.update_title', label: 'Edit title' },
-    { key: 'notes.update_content', label: 'Edit content' },
+    { key: 'notes.update', label: 'Edit notes' },
     { key: 'notes.delete', label: 'Delete notes' },
   ],
   documents: [
     { key: 'documents.read', label: 'View documents' },
-    { key: 'documents.read.own', label: 'Read scope: own documents only' },
-    { key: 'documents.read.team', label: 'Read scope: team documents' },
-    {
-      key: 'documents.read.project',
-      label: 'Read scope: all project documents',
-    },
-    { key: 'documents.upload', label: 'Upload files' },
-    { key: 'documents.download', label: 'Download files' },
-    { key: 'documents.update_metadata', label: 'Edit document details' },
+    { key: 'documents.create', label: 'Upload documents' },
+    { key: 'documents.update', label: 'Edit document details' },
     { key: 'documents.delete', label: 'Delete documents' },
   ],
   media: [
     { key: 'media.read', label: 'View media' },
-    { key: 'media.read.own', label: 'Read scope: own media only' },
-    { key: 'media.read.team', label: 'Read scope: team media' },
-    { key: 'media.read.project', label: 'Read scope: all project media' },
-    { key: 'media.upload', label: 'Upload media' },
-    { key: 'media.update_metadata', label: 'Edit media details' },
+    { key: 'media.create', label: 'Upload media' },
+    { key: 'media.update', label: 'Edit media details' },
     { key: 'media.delete', label: 'Delete media' },
   ],
   links: [
     { key: 'links.read', label: 'View links' },
-    { key: 'links.read.own', label: 'Read scope: own links only' },
-    { key: 'links.read.team', label: 'Read scope: team links' },
-    { key: 'links.read.project', label: 'Read scope: all project links' },
     { key: 'links.create', label: 'Add links' },
     { key: 'links.update', label: 'Edit links' },
     { key: 'links.delete', label: 'Delete links' },
@@ -140,77 +115,49 @@ const MODULE_PERMISSIONS: Record<
     { key: 'milestones.read', label: 'View milestones' },
     { key: 'milestones.create', label: 'Create milestones' },
     { key: 'milestones.update', label: 'Edit milestones' },
-    { key: 'milestones.complete', label: 'Mark as complete' },
     { key: 'milestones.delete', label: 'Delete milestones' },
   ],
   budgets: [
     { key: 'budgets.read', label: 'View budgets' },
-    { key: 'budgets.read.own', label: 'Read scope: own budgets only' },
-    { key: 'budgets.read.team', label: 'Read scope: team budgets' },
-    { key: 'budgets.read.project', label: 'Read scope: all project budgets' },
     { key: 'budgets.create', label: 'Create budgets' },
     { key: 'budgets.update', label: 'Edit budgets' },
-    { key: 'budgets.manage_items', label: 'Manage line items' },
     { key: 'budgets.delete', label: 'Delete budgets' },
   ],
   billings: [
     { key: 'billings.read', label: 'View billing records' },
-    { key: 'billings.read.own', label: 'Read scope: own billing records only' },
-    { key: 'billings.read.team', label: 'Read scope: team billing records' },
-    {
-      key: 'billings.read.project',
-      label: 'Read scope: all project billing records',
-    },
     { key: 'billings.create', label: 'Create billing records' },
-    { key: 'billings.update_amount', label: 'Edit amount' },
-    { key: 'billings.update_status', label: 'Change payment status' },
-    { key: 'billings.update_description', label: 'Edit description' },
+    { key: 'billings.update', label: 'Edit billing records' },
     { key: 'billings.delete', label: 'Delete billing records' },
   ],
   ideas: [
     { key: 'ideas.read', label: 'View mind maps' },
-    { key: 'ideas.read.own', label: 'Read scope: own mind maps only' },
-    { key: 'ideas.read.team', label: 'Read scope: team mind maps' },
-    { key: 'ideas.read.project', label: 'Read scope: all project mind maps' },
-    { key: 'ideas.create_board', label: 'Create mind maps' },
-    { key: 'ideas.update_board', label: 'Edit mind map settings' },
-    { key: 'ideas.create_node', label: 'Add nodes' },
-    { key: 'ideas.update_node', label: 'Edit nodes' },
-    { key: 'ideas.delete_node', label: 'Delete nodes' },
-    { key: 'ideas.delete_board', label: 'Delete mind maps' },
+    { key: 'ideas.create', label: 'Create mind maps' },
+    { key: 'ideas.update', label: 'Edit mind maps' },
+    { key: 'ideas.delete', label: 'Delete mind maps' },
   ],
   calendar: [
     { key: 'calendar.read', label: 'View events' },
-    { key: 'calendar.read.own', label: 'Read scope: own events only' },
-    { key: 'calendar.read.team', label: 'Read scope: team events' },
-    { key: 'calendar.read.project', label: 'Read scope: all project events' },
     { key: 'calendar.create', label: 'Create events' },
     { key: 'calendar.update', label: 'Edit events' },
     { key: 'calendar.delete', label: 'Delete events' },
   ],
   todos: [
     { key: 'todos.read', label: 'View todo lists' },
-    { key: 'todos.create_list', label: 'Create lists' },
-    { key: 'todos.create_item', label: 'Add items' },
-    { key: 'todos.update_item', label: 'Edit items' },
-    { key: 'todos.toggle_item', label: 'Check / uncheck items' },
-    { key: 'todos.delete_item', label: 'Delete items' },
+    { key: 'todos.create', label: 'Create todos' },
+    { key: 'todos.update', label: 'Edit todos' },
+    { key: 'todos.delete', label: 'Delete todos' },
   ],
   copilot: [
-    { key: 'copilot.read_sessions', label: 'View sessions' },
-    { key: 'copilot.create_session', label: 'Start sessions' },
-    { key: 'copilot.read_proposals', label: 'View proposals' },
-    { key: 'copilot.approve_proposal', label: 'Approve proposals' },
-    { key: 'copilot.reject_proposal', label: 'Reject proposals' },
+    { key: 'copilot.read', label: 'View copilot sessions' },
+    { key: 'copilot.create', label: 'Create copilot sessions' },
+    { key: 'copilot.update', label: 'Update copilot content' },
+    { key: 'copilot.delete', label: 'Delete copilot content' },
   ],
   owner: [
     { key: 'owner.read', label: 'View client & business info' },
-    { key: 'owner.create_client', label: 'Create client' },
-    { key: 'owner.update_client', label: 'Edit client details' },
-    { key: 'owner.delete_client', label: 'Delete client' },
-    { key: 'owner.create_business', label: 'Create business' },
-    { key: 'owner.update_business', label: 'Edit business details' },
-    { key: 'owner.delete_business', label: 'Delete business' },
+    { key: 'owner.create', label: 'Create owner data' },
+    { key: 'owner.update', label: 'Edit owner data' },
+    { key: 'owner.delete', label: 'Delete owner data' },
   ],
 };
 
@@ -218,208 +165,74 @@ const MODULE_PERMISSIONS: Record<
 
 function roleLabel(name: string): string {
   const map: Record<string, string> = {
-    project_owner: 'Owner',
-    project_editor: 'Editor',
-    project_viewer: 'Viewer',
+    owner: 'Owner',
+    project_manager: 'Project Manager',
+    team_manager: 'Team Manager',
+    team_member: 'Team Member',
+    guest: 'Guest',
   };
   return map[name] ?? name;
 }
 
 function roleBadgeClass(name: string): string {
   const map: Record<string, string> = {
-    project_owner: 'bg-primary/15 text-primary',
-    project_editor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
-    project_viewer: 'bg-muted text-muted-foreground',
+    owner: 'bg-primary/15 text-primary',
+    project_manager: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+    team_manager: 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
+    team_member: 'bg-green-500/15 text-green-600 dark:text-green-400',
+    guest: 'bg-muted text-muted-foreground',
   };
   return map[name] ?? 'bg-muted text-muted-foreground';
 }
 
-// Returns the "richest" effective role name given a set of granted action keys.
-function summarizeRole(
-  grantedActions: string[]
-): 'project_owner' | 'project_editor' | 'project_viewer' {
-  const OWNER_ONLY = new Set([
-    'tasks.bulk_delete',
-    'notes.bulk_delete',
-    'documents.bulk_delete',
-    'documents.mark_final',
-    'media.share_create',
-    'copilot.bulk_approve',
-    'copilot.bulk_reject',
-    'projects.update',
-    'projects.archive',
-    'projects.unarchive',
-    'projects.delete',
-    'projects.link_client',
-    'projects.toggle_module',
-    'teams.invite_project_member',
-    'teams.remove_project_member',
-    'teams.update_project_member_roles',
-  ]);
-  const VIEWER_ONLY = new Set([
-    'tasks.read',
-    'tasks.read.own',
-    'tasks.read.team',
-    'tasks.read.project',
-    'milestones.read',
-    'notes.read',
-    'documents.read',
-    'media.read',
-    'calendar.read',
-    'links.read',
-    'ideas.read',
-    'budgets.read',
-    'billings.read',
-    'todos.read',
-    'copilot.read_sessions',
-    'copilot.read_proposals',
-    'projects.read',
-    'profile.read',
-    'workspace.read',
-    'teams.read_project_members',
-  ]);
-  if (grantedActions.some((a) => OWNER_ONLY.has(a))) return 'project_owner';
-  if (grantedActions.some((a) => !VIEWER_ONLY.has(a))) return 'project_editor';
-  return 'project_viewer';
-}
+// Descriptions shown in the role selector.
+const ROLE_DESCRIPTIONS: Record<string, string> = {
+  owner: 'Full control — manage members, modules, and all content.',
+  project_manager:
+    'Manage all sub-teams; invite, configure modules, and edit all content.',
+  team_manager: 'Manage a specific sub-team; invite Members and Guests.',
+  team_member:
+    'Create and manage own content; edit tasks they are assigned to.',
+  guest: 'Read-only access to selected modules.',
+};
 
-// ── Module card with inline permission checklist ──────────────────────────────
-
-function ModuleCard({
-  moduleKey,
-  label,
-  isSelected,
-  isExpanded,
-  selectedPermissions,
-  onToggleModule,
-  onTogglePermission,
-}: {
-  moduleKey: string;
-  label: string;
-  isSelected: boolean;
-  isExpanded: boolean;
-  selectedPermissions: string[];
-  onToggleModule: () => void;
-  onTogglePermission: (key: string) => void;
-}) {
-  const perms = MODULE_PERMISSIONS[moduleKey] ?? [];
-  const selectedSet = new Set(selectedPermissions);
-  const grantedCount = selectedPermissions.length;
-
-  return (
-    <div
-      className={`rounded-lg border transition-colors ${
-        isSelected
-          ? 'border-primary bg-primary/5'
-          : 'border-border bg-background'
-      }`}
-    >
-      {/* Module header — click to toggle selection */}
-      <button
-        type="button"
-        onClick={onToggleModule}
-        className="w-full flex items-center justify-between px-3 py-2.5 text-left"
-      >
-        <div className="flex items-center gap-2">
-          <span
-            className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-              isSelected
-                ? 'bg-primary border-primary'
-                : 'border-muted-foreground/40'
-            }`}
-          >
-            {isSelected && (
-              <Check className="w-2.5 h-2.5 text-primary-foreground" />
-            )}
-          </span>
-          <span
-            className={`text-sm font-medium ${
-              isSelected ? 'text-foreground' : 'text-muted-foreground'
-            }`}
-          >
-            {label}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {isSelected && (
-            <span className="text-xs text-muted-foreground">
-              {grantedCount}/{perms.length}
-            </span>
-          )}
-          {isSelected &&
-            (isExpanded ? (
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-            ))}
-        </div>
-      </button>
-
-      {/* Permission checklist — shown when expanded */}
-      {isSelected && isExpanded && (
-        <div className="px-3 pb-3 border-t border-border/60 pt-2 space-y-1">
-          {perms.map(({ key, label: permLabel }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onTogglePermission(key)}
-              className="w-full flex items-center gap-2 py-1 text-left hover:bg-accent/40 rounded px-1 transition-colors"
-            >
-              <span
-                className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${
-                  selectedSet.has(key)
-                    ? 'bg-primary border-primary'
-                    : 'border-muted-foreground/40'
-                }`}
-              >
-                {selectedSet.has(key) && (
-                  <Check className="w-2 h-2 text-primary-foreground" />
-                )}
-              </span>
-              <span
-                className={`text-xs ${
-                  selectedSet.has(key)
-                    ? 'text-foreground'
-                    : 'text-muted-foreground'
-                }`}
-              >
-                {permLabel}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// Hierarchy index — lower = higher authority.
+const ROLE_HIERARCHY = [
+  'owner',
+  'project_manager',
+  'team_manager',
+  'team_member',
+  'guest',
+];
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-type InviteStep = 'email' | 'mode' | 'modules' | 'review';
+type InviteStep = 'email' | 'role' | 'team' | 'modules';
 
 interface Props {
   projectId: string;
   projectName: string;
+  currentUserId: string;
   initialMembers: ProjectMember[];
   initialInvites: ProjectInvite[];
   initialRejectedInvites: RejectedInvite[];
   roles: Array<{ id: string; name: string; description: string | null }>;
-  profiles: ProjectAccessProfile[];
-  reusableRoles: InviteRole[];
   initialTeams: ProjectTeam[];
   subTeamsPermissions: SubTeamsPermissions;
+  enabledInviteModuleKeys: string[];
 }
 
 export default function ContextTeamClient({
   projectId,
   projectName,
+  currentUserId,
   initialMembers,
   initialInvites,
   initialRejectedInvites,
-  profiles,
-  reusableRoles,
+  roles,
   initialTeams,
   subTeamsPermissions,
+  enabledInviteModuleKeys,
 }: Props) {
   const { t } = useI18n();
   const router = useRouter();
@@ -431,22 +244,40 @@ export default function ContextTeamClient({
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [step, setStep] = useState<InviteStep>('email');
   const [inviteEmail, setInviteEmail] = useState('');
-
-  // Mode: 'saved' = use existing role; 'custom' = build from scratch
-  const [mode, setMode] = useState<'saved' | 'custom'>('custom');
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
-
-  // Custom builder state
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [selectedModules, setSelectedModules] = useState<string[]>([]);
-  const [expandedModule, setExpandedModule] = useState<string | null>(null);
-  // granted permissions per module: Record<moduleKey, actionKey[]>
-  const [modulePermissions, setModulePermissions] = useState<
-    Record<string, string[]>
-  >({});
+  const inviteModules = useMemo(() => {
+    const enabledSet = new Set(enabledInviteModuleKeys);
+    return ALL_MODULES.filter((m) => enabledSet.has(m.key));
+  }, [enabledInviteModuleKeys]);
 
-  // Review step: optionally save as reusable role
-  const [saveAsRole, setSaveAsRole] = useState(false);
-  const [roleName, setRoleName] = useState('');
+  useEffect(() => {
+    const enabledSet = new Set(enabledInviteModuleKeys);
+    setSelectedModules((prev) => prev.filter((key) => enabledSet.has(key)));
+  }, [enabledInviteModuleKeys]);
+
+  // Derived: current user's role name (used to filter invite role options by hierarchy)
+  const myRoleName = useMemo(
+    () =>
+      members.find((m) => m.user_id === currentUserId)?.roles[0]?.name ?? '',
+    [members, currentUserId]
+  );
+
+  // Derived: roles the current user can assign (cannot grant higher than own role)
+  const myHierarchyIndex = ROLE_HIERARCHY.indexOf(myRoleName);
+  const allowedInviteRoles = useMemo(
+    () =>
+      roles.filter((r) => {
+        const idx = ROLE_HIERARCHY.indexOf(r.name);
+        return idx > myHierarchyIndex; // can only invite roles below own level
+      }),
+    [roles, myHierarchyIndex]
+  );
+  const selectedRoleName = useMemo(
+    () => roles.find((r) => r.id === selectedRoleId)?.name ?? null,
+    [roles, selectedRoleId]
+  );
 
   // UI feedback
   const [inviteSaving, setInviteSaving] = useState(false);
@@ -518,6 +349,7 @@ export default function ContextTeamClient({
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
   const [createTeamName, setCreateTeamName] = useState('');
   const [createTeamDesc, setCreateTeamDesc] = useState('');
+  const [createTeamModules, setCreateTeamModules] = useState<string[]>([]);
   const [createTeamSaving, setCreateTeamSaving] = useState(false);
 
   // Edit sub-team dialog
@@ -590,17 +422,6 @@ export default function ContextTeamClient({
     };
   }, [projectId, editMember]);
 
-  // Flat list of all granted action keys (custom flow)
-  const allGrantedActions = useMemo(
-    () => selectedModules.flatMap((m) => modulePermissions[m] ?? []),
-    [selectedModules, modulePermissions]
-  );
-
-  const effectiveRole = useMemo(
-    () => summarizeRole(allGrantedActions),
-    [allGrantedActions]
-  );
-
   const handleCopyLink = useCallback((link: string) => {
     void navigator.clipboard.writeText(link).then(() => {
       setCopied(true);
@@ -635,13 +456,9 @@ export default function ContextTeamClient({
   const resetForm = useCallback(() => {
     setStep('email');
     setInviteEmail('');
-    setMode('custom');
     setSelectedRoleId(null);
+    setSelectedTeamId(null);
     setSelectedModules([]);
-    setExpandedModule(null);
-    setModulePermissions({});
-    setSaveAsRole(false);
-    setRoleName('');
   }, []);
 
   const handleToggleForm = useCallback(() => {
@@ -681,8 +498,8 @@ export default function ContextTeamClient({
       });
       return;
     }
-    setStep(reusableRoles.length > 0 ? 'mode' : 'modules');
-  }, [projectId, inviteEmail, reusableRoles.length, t]);
+    setStep('role');
+  }, [projectId, inviteEmail, t]);
 
   const handleSendEmail = useCallback(async () => {
     if (!generatedLink || !lastInvitedEmail) return;
@@ -753,95 +570,35 @@ export default function ContextTeamClient({
   );
 
   const handleToggleModule = useCallback((moduleKey: string) => {
-    setSelectedModules((prev) => {
-      if (prev.includes(moduleKey)) {
-        // Deselect: also clear its permissions and collapse
-        setModulePermissions((mp) => {
-          const next = { ...mp };
-          delete next[moduleKey];
-          return next;
-        });
-        setExpandedModule((em) => (em === moduleKey ? null : em));
-        return prev.filter((k) => k !== moduleKey);
-      }
-      // Select: expand it for permission configuration
-      setExpandedModule(moduleKey);
-      return [...prev, moduleKey];
-    });
+    setSelectedModules((prev) =>
+      prev.includes(moduleKey)
+        ? prev.filter((k) => k !== moduleKey)
+        : [...prev, moduleKey]
+    );
   }, []);
-
-  const handleExpandModule = useCallback((moduleKey: string) => {
-    setExpandedModule((prev) => (prev === moduleKey ? null : moduleKey));
-  }, []);
-
-  const handleTogglePermission = useCallback(
-    (moduleKey: string, actionKey: string) => {
-      setModulePermissions((prev) => {
-        const current = prev[moduleKey] ?? [];
-        const next = current.includes(actionKey)
-          ? current.filter((k) => k !== actionKey)
-          : [...current, actionKey];
-        return { ...prev, [moduleKey]: next };
-      });
-    },
-    []
-  );
 
   const handleInvite = useCallback(async () => {
+    if (!selectedRoleId) return;
     setInviteSaving(true);
 
-    let inviteRoleId: string | undefined;
-    // For the saved-role mode, we need a fallback roleId for the invites table.
-    // We use the effective_role_name from the selected saved role.
-    let roleId = '';
-
-    if (mode === 'saved' && selectedRoleId) {
-      const savedRole = reusableRoles.find((r) => r.id === selectedRoleId);
-      inviteRoleId = selectedRoleId;
-      // The role_id column still needs a value; use a placeholder viewer role.
-      // accept_invite_atomic will override it with effective_role_name from invite_roles.
-      // We pass empty string here and let the RPC handle role assignment.
-      // However the insert requires role_id NOT NULL, so we need to pass something valid.
-      // We'll derive from effective_role_name.
-      roleId = savedRole?.effective_role_name ?? 'project_viewer';
-    } else {
-      // Custom: create the invite role first
-      const roleResult = await createInviteRole(projectId, {
-        grantedActions: allGrantedActions,
-        name: saveAsRole && roleName.trim() ? roleName.trim() : undefined,
-      });
-      if (roleResult.error) {
-        setInviteSaving(false);
-        setErrorDialog({
-          open: true,
-          title: t('teams.invite_error_title'),
-          message: roleResult.error,
-          retry: handleInvite,
-        });
-        return;
-      }
-      inviteRoleId = roleResult.data?.id;
-      roleId = effectiveRole; // effective role name — used as fallback role_id lookup
-    }
-
-    // Resolve the actual role UUID for the role_id column
-    // We pass the role name; the server action needs the UUID.
-    // Since inviteProjectMember needs a roleId UUID, not name, we need to get it.
-    // For now we store the effective_role_name in the invite_roles row and the RPC
-    // resolves it. The role_id column in project_invites still needs a valid UUID.
-    // We'll use a sentinel approach: find the matching system role UUID via a lookup.
-    // This is handled server-side in inviteProjectMember via a new lookup path.
-    // For now, pass the effective role name as roleId and handle in the action.
-    // TODO: resolve via getSystemRoleId helper.
-    // For the current implementation, we pass the role name and the action
-    // will look up the UUID.
+    // project_manager always has full access to active project modules.
+    // Passing null keeps access unrestricted at member grant level.
+    const moduleSelection =
+      selectedRoleName === 'project_manager'
+        ? null
+        : selectedRoleName === 'team_manager' ||
+            selectedRoleName === 'team_member'
+          ? null
+          : selectedModules.length > 0
+            ? selectedModules
+            : null;
 
     const result = await inviteProjectMember(
       projectId,
       inviteEmail.trim(),
-      roleId, // effective role name; action resolves to UUID
-      undefined, // profileId (old path)
-      inviteRoleId,
+      selectedRoleId,
+      moduleSelection,
+      selectedTeamId ?? undefined,
       projectName || undefined
     );
     setInviteSaving(false);
@@ -852,7 +609,11 @@ export default function ContextTeamClient({
           ? t('teams.invite_already_pending')
           : result.error === 'user_already_member'
             ? t('teams.user_already_member')
-            : result.error;
+            : result.error === 'team_required_for_role'
+              ? t('teams.invite_team_required')
+              : result.error === 'team_not_found'
+                ? t('teams.invite_team_not_found')
+                : result.error;
       setErrorDialog({
         open: true,
         title: t('teams.invite_error_title'),
@@ -861,29 +622,64 @@ export default function ContextTeamClient({
       });
       return;
     }
-    if (result.token) {
-      const link = `${baseUrl}/invite/${result.token}`;
+    const token = result.token;
+    if (token) {
+      const link = `${baseUrl}/invite/${token}`;
       const email = inviteEmail.trim();
+      const nowIso = new Date().toISOString();
+      const expiresAtIso = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000
+      ).toISOString();
+      const selectedTeam = selectedTeamId
+        ? teams.find((t) => t.id === selectedTeamId)
+        : null;
+      const localAllowedModules =
+        selectedRoleName === 'project_manager'
+          ? null
+          : selectedRoleName === 'team_manager' ||
+              selectedRoleName === 'team_member'
+            ? (selectedTeam?.allowed_modules ?? null)
+            : selectedModules.length > 0
+              ? selectedModules
+              : null;
+      const inviterName =
+        members.find((m) => m.user_id === currentUserId)?.display_name ?? 'You';
+
+      setInvites((prev) => [
+        {
+          id: token,
+          email,
+          role_id: selectedRoleId,
+          role_name: selectedRoleName ?? '',
+          allowed_modules: localAllowedModules,
+          guest_scope: selectedRoleName === 'guest' ? 'project' : null,
+          status: 'pending',
+          invited_by_name: inviterName,
+          expires_at: expiresAtIso,
+          created_at: nowIso,
+          token,
+        },
+        ...prev,
+      ]);
       setInviteSuccessDialog({
         link,
         email,
         emailSent: result.emailSent,
         emailError: result.emailError,
       });
-      // No refresh or form close here — dialog is shown; list updates when they close the dialog
     }
   }, [
-    mode,
     selectedRoleId,
-    reusableRoles,
-    allGrantedActions,
-    saveAsRole,
-    roleName,
-    effectiveRole,
+    selectedRoleName,
+    selectedTeamId,
+    selectedModules,
     projectId,
     projectName,
     inviteEmail,
     baseUrl,
+    teams,
+    members,
+    currentUserId,
     t,
   ]);
 
@@ -925,22 +721,18 @@ export default function ContextTeamClient({
     [projectId, router, t]
   );
 
-  const handleApplyRoleOrProfile = useCallback(
-    async (userId: string, value: string) => {
-      if (!value) return;
+  const handleApplyRole = useCallback(
+    async (userId: string, roleId: string) => {
+      if (!roleId) return;
       setEditMemberSaving(true);
-      const isProfile = value.startsWith('profile:');
-      const id = value.replace(/^(profile|role):/, '');
-      const result = isProfile
-        ? await updateMemberAccess(projectId, userId, id)
-        : await updateMemberAccessByInviteRole(projectId, userId, id);
+      const result = await updateMemberRole(projectId, userId, roleId);
       setEditMemberSaving(false);
       if (result.error) {
         setErrorDialog({
           open: true,
           title: t('teams.edit_permissions_error_title'),
           message: result.error,
-          retry: () => handleApplyRoleOrProfile(userId, value),
+          retry: () => handleApplyRole(userId, roleId),
         });
         return;
       }
@@ -1027,10 +819,8 @@ export default function ContextTeamClient({
     [projectId, editMemberDraftModules, editMemberDraftActions, router, t]
   );
 
-  // Derived: can proceed from modules step?
-  const canProceedFromModules =
-    selectedModules.length > 0 &&
-    selectedModules.every((m) => (modulePermissions[m] ?? []).length > 0);
+  // Derived: can proceed from modules step (at least one module selected)?
+  const canProceedFromModules = selectedModules.length > 0;
 
   // ── Sub-team handlers ────────────────────────────────────────────────
 
@@ -1040,7 +830,8 @@ export default function ContextTeamClient({
     const { data, error } = await createProjectTeam(
       projectId,
       createTeamName,
-      createTeamDesc || undefined
+      createTeamDesc || undefined,
+      createTeamModules
     );
     setCreateTeamSaving(false);
     if (error) {
@@ -1056,7 +847,8 @@ export default function ContextTeamClient({
     setCreateTeamOpen(false);
     setCreateTeamName('');
     setCreateTeamDesc('');
-  }, [projectId, createTeamName, createTeamDesc, t]);
+    setCreateTeamModules([]);
+  }, [projectId, createTeamName, createTeamDesc, createTeamModules, t]);
 
   const handleEditTeam = useCallback(async () => {
     if (!editTeam || !editTeamName.trim()) return;
@@ -1080,7 +872,12 @@ export default function ContextTeamClient({
       setTeams((prev) =>
         prev.map((t) =>
           t.id === editTeam.id
-            ? { ...t, name: data.name, description: data.description }
+            ? {
+                ...t,
+                name: data.name,
+                description: data.description,
+                allowed_modules: data.allowed_modules ?? t.allowed_modules,
+              }
             : t
         )
       );
@@ -1330,8 +1127,8 @@ export default function ContextTeamClient({
             </>
           )}
 
-          {/* ── Step 2: Mode (only when saved roles exist) ─────────── */}
-          {step === 'mode' && (
+          {/* ── Step 2: Role selection ──────────────────────────────── */}
+          {step === 'role' && (
             <>
               <div className="flex items-center gap-2">
                 <button
@@ -1343,7 +1140,7 @@ export default function ContextTeamClient({
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <h3 className="text-sm font-semibold text-foreground">
-                  {t('teams.invite_access_title')}
+                  {t('teams.invite_role_title')}
                 </h3>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -1351,69 +1148,50 @@ export default function ContextTeamClient({
                 <span className="font-medium text-foreground">
                   {inviteEmail}
                 </span>
+                {selectedRoleName && (
+                  <>
+                    {' · '}
+                    <span className="font-medium text-foreground">
+                      {roleLabel(selectedRoleName)}
+                    </span>
+                  </>
+                )}
               </p>
 
               <div className="space-y-2">
-                {/* Saved roles */}
-                {reusableRoles.map((role) => (
+                {allowedInviteRoles.map((role) => (
                   <button
                     key={role.id}
                     type="button"
-                    onClick={() => {
-                      setMode('saved');
-                      setSelectedRoleId(role.id);
-                    }}
+                    onClick={() => setSelectedRoleId(role.id)}
                     className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      mode === 'saved' && selectedRoleId === role.id
+                      selectedRoleId === role.id
                         ? 'border-primary bg-primary/5'
                         : 'border-border bg-background hover:bg-accent/40'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm font-medium text-foreground">
-                          {role.name}
-                        </span>
-                      </div>
+                      <span className="text-sm font-medium text-foreground">
+                        {roleLabel(role.name)}
+                      </span>
                       <span
-                        className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${roleBadgeClass(role.effective_role_name)}`}
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${roleBadgeClass(role.name)}`}
                       >
-                        {roleLabel(role.effective_role_name)}
+                        {roleLabel(role.name)}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 pl-6">
-                      {role.allowed_modules.length} module
-                      {role.allowed_modules.length !== 1 ? 's' : ''} ·{' '}
-                      {role.granted_actions.length} permission
-                      {role.granted_actions.length !== 1 ? 's' : ''}
-                    </p>
+                    {ROLE_DESCRIPTIONS[role.name] && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {ROLE_DESCRIPTIONS[role.name]}
+                      </p>
+                    )}
                   </button>
                 ))}
-
-                {/* Custom option */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('custom');
-                    setSelectedRoleId(null);
-                  }}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                    mode === 'custom'
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border bg-background hover:bg-accent/40'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Plus className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-medium text-foreground">
-                      {t('teams.invite_custom_label')}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 pl-6">
-                    {t('teams.invite_custom_hint')}
+                {allowedInviteRoles.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {t('teams.invite_no_roles_available')}
                   </p>
-                </button>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-1">
@@ -1430,229 +1208,95 @@ export default function ContextTeamClient({
                 <button
                   type="button"
                   onClick={() => {
-                    if (mode === 'saved' && selectedRoleId) {
-                      setStep('review');
-                    } else {
-                      setStep('modules');
+                    if (selectedRoleName === 'project_manager') {
+                      void handleInvite();
+                      return;
                     }
+                    if (
+                      selectedRoleName === 'team_manager' ||
+                      selectedRoleName === 'team_member'
+                    ) {
+                      setStep('team');
+                      return;
+                    }
+                    setStep('modules');
                   }}
-                  disabled={mode === 'saved' && !selectedRoleId}
+                  disabled={inviteSaving || !selectedRoleId}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                  {t('teams.invite_next')}
+                  {selectedRoleName === 'project_manager' ? (
+                    <>
+                      <Mail className="w-4 h-4" />
+                      {inviteSaving
+                        ? t('common.loading')
+                        : t('teams.generate_link')}
+                    </>
+                  ) : (
+                    t('teams.invite_next')
+                  )}
                 </button>
               </div>
             </>
           )}
 
-          {/* ── Step 3: Module + permission selection ──────────────── */}
-          {step === 'modules' && (
+          {/* ── Step 3: Team selection (team_manager/team_member) ─────────────────── */}
+          {step === 'team' && (
             <>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() =>
-                    setStep(reusableRoles.length > 0 ? 'mode' : 'email')
-                  }
+                  onClick={() => setStep('role')}
                   className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                   aria-label="Back"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <h3 className="text-sm font-semibold text-foreground">
-                  {t('teams.invite_modules_title')}
+                  {t('teams.select_team_title')}
                 </h3>
               </div>
               <p className="text-xs text-muted-foreground">
-                {t('teams.invite_modules_hint')}
+                {t('teams.select_team_hint')}
               </p>
 
-              <div className="grid grid-cols-1 gap-2">
-                {ALL_MODULES.map(({ key, label }) => (
-                  <ModuleCard
-                    key={key}
-                    moduleKey={key}
-                    label={label}
-                    isSelected={selectedModules.includes(key)}
-                    isExpanded={expandedModule === key}
-                    selectedPermissions={modulePermissions[key] ?? []}
-                    onToggleModule={() => {
-                      if (selectedModules.includes(key)) {
-                        handleToggleModule(key);
-                      } else {
-                        handleToggleModule(key);
-                        handleExpandModule(key);
-                      }
-                    }}
-                    onTogglePermission={(actionKey) =>
-                      handleTogglePermission(key, actionKey)
-                    }
-                  />
-                ))}
-              </div>
-
-              {selectedModules.length > 0 &&
-                !selectedModules.every(
-                  (m) => (modulePermissions[m] ?? []).length > 0
-                ) && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    {t('teams.invite_modules_missing_permissions')}
+              {teams.length === 0 ? (
+                <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    {t('teams.invite_no_teams_for_role')}
                   </p>
-                )}
-
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowInviteForm(false);
-                    resetForm();
-                  }}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStep('review')}
-                  disabled={!canProceedFromModules}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {t('teams.invite_review')}
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* ── Step 4: Review + optional save ─────────────────────── */}
-          {step === 'review' && (
-            <>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setStep(mode === 'saved' ? 'mode' : 'modules')}
-                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <h3 className="text-sm font-semibold text-foreground">
-                  {t('teams.invite_review_title')}
-                </h3>
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                {t('teams.invite_email_summary')}{' '}
-                <span className="font-medium text-foreground">
-                  {inviteEmail}
-                </span>
-              </p>
-
-              {/* Access summary */}
-              <div className="rounded-lg border border-border bg-background p-3 space-y-2">
-                {mode === 'saved' && selectedRoleId ? (
-                  (() => {
-                    const role = reusableRoles.find(
-                      (r) => r.id === selectedRoleId
-                    );
-                    return role ? (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-foreground">
-                            {role.name}
-                          </span>
-                          <span
-                            className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleBadgeClass(role.effective_role_name)}`}
-                          >
-                            {roleLabel(role.effective_role_name)}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {role.allowed_modules.map((m) => {
-                            const mod = ALL_MODULES.find((am) => am.key === m);
-                            return (
-                              <span
-                                key={m}
-                                className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium"
-                              >
-                                {mod?.label ?? m}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </>
-                    ) : null;
-                  })()
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        {t('teams.invite_review_access')}
-                      </span>
-                      <span
-                        className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleBadgeClass(effectiveRole)}`}
-                      >
-                        {roleLabel(effectiveRole)}
-                      </span>
-                    </div>
-                    <div className="space-y-1.5 pt-1">
-                      {selectedModules.map((moduleKey) => {
-                        const mod = ALL_MODULES.find(
-                          (m) => m.key === moduleKey
-                        );
-                        const perms = modulePermissions[moduleKey] ?? [];
-                        const permLabels = perms.map(
-                          (pk) =>
-                            MODULE_PERMISSIONS[moduleKey]?.find(
-                              (p) => p.key === pk
-                            )?.label ?? pk
-                        );
-                        return (
-                          <div key={moduleKey}>
-                            <span className="text-xs font-medium text-foreground">
-                              {mod?.label ?? moduleKey}
-                            </span>
-                            <p className="text-xs text-muted-foreground">
-                              {permLabels.join(' · ')}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Save as reusable role (custom flow only) */}
-              {mode === 'custom' && (
-                <div className="space-y-2 pt-1 border-t border-border">
-                  <button
+                  <Button
                     type="button"
-                    onClick={() => setSaveAsRole((v) => !v)}
-                    className="flex items-center gap-2 text-sm text-foreground hover:opacity-80 transition-opacity"
+                    size="sm"
+                    onClick={() => setCreateTeamOpen(true)}
                   >
-                    <span
-                      className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                        saveAsRole
-                          ? 'bg-primary border-primary'
-                          : 'border-muted-foreground/40'
+                    {t('teams.create_sub_team')}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {teams.map((team) => (
+                    <button
+                      key={team.id}
+                      type="button"
+                      onClick={() => setSelectedTeamId(team.id)}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        selectedTeamId === team.id
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border bg-background hover:bg-accent/40'
                       }`}
                     >
-                      {saveAsRole && (
-                        <Check className="w-2.5 h-2.5 text-primary-foreground" />
-                      )}
-                    </span>
-                    {t('teams.invite_save_role')}
-                  </button>
-                  {saveAsRole && (
-                    <input
-                      type="text"
-                      value={roleName}
-                      onChange={(e) => setRoleName(e.target.value)}
-                      placeholder={t('teams.invite_save_role_placeholder')}
-                      className="w-full text-sm rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      autoFocus
-                    />
-                  )}
+                      <p className="text-sm font-medium text-foreground">
+                        {team.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {(team.allowed_modules?.length ?? 0) > 0
+                          ? t('teams.team_modules_count', {
+                              count: String(team.allowed_modules?.length ?? 0),
+                            })
+                          : t('teams.team_modules_unrestricted')}
+                      </p>
+                    </button>
+                  ))}
                 </div>
               )}
 
@@ -1670,7 +1314,94 @@ export default function ContextTeamClient({
                 <button
                   type="button"
                   onClick={() => void handleInvite()}
-                  disabled={inviteSaving || (saveAsRole && !roleName.trim())}
+                  disabled={!selectedTeamId || inviteSaving}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  <Mail className="w-4 h-4" />
+                  {inviteSaving
+                    ? t('common.loading')
+                    : t('teams.generate_link')}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ── Step 3: Module selection (non project_manager) ───────────────────── */}
+          {step === 'modules' && (
+            <>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStep('role')}
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  aria-label="Back"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <h3 className="text-sm font-semibold text-foreground">
+                  {t('teams.invite_modules_title')}
+                </h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t('teams.invite_email_summary')}{' '}
+                <span className="font-medium text-foreground">
+                  {inviteEmail}
+                </span>
+                {'. '}
+                {t('teams.invite_modules_hint')}
+              </p>
+
+              <div className="grid grid-cols-2 gap-2">
+                {inviteModules.map(({ key, label }) => {
+                  const isSelected = selectedModules.includes(key);
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => handleToggleModule(key)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-colors ${
+                        isSelected
+                          ? 'border-primary bg-primary/5 text-foreground'
+                          : 'border-border bg-background text-muted-foreground hover:bg-accent/40'
+                      }`}
+                    >
+                      <span
+                        className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center ${
+                          isSelected
+                            ? 'bg-primary border-primary'
+                            : 'border-muted-foreground/40'
+                        }`}
+                      >
+                        {isSelected && (
+                          <Check className="w-2.5 h-2.5 text-primary-foreground" />
+                        )}
+                      </span>
+                      <span className="text-sm font-medium">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {inviteModules.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {t('teams.invite_no_active_modules')}
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowInviteForm(false);
+                    resetForm();
+                  }}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleInvite()}
+                  disabled={!canProceedFromModules || inviteSaving}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   <Mail className="w-4 h-4" />
@@ -1753,15 +1484,8 @@ export default function ContextTeamClient({
           </h3>
           <ul className="space-y-2">
             {invites.map((inv) => {
-              // Priority: invite_role_name → profile_name → role_name
-              const displayLabel =
-                inv.invite_role_name ??
-                inv.profile_name ??
-                roleLabel(inv.role_name);
-              const badgeClass =
-                inv.invite_role_name || inv.profile_name
-                  ? 'bg-accent text-accent-foreground'
-                  : roleBadgeClass(inv.role_name);
+              const displayLabel = roleLabel(inv.role_name);
+              const badgeClass = roleBadgeClass(inv.role_name);
               return (
                 <li
                   key={inv.id}
@@ -1842,10 +1566,7 @@ export default function ContextTeamClient({
           </h3>
           <ul className="space-y-2">
             {rejectedInvites.map((rej) => {
-              const displayLabel =
-                rej.invite_role_name ??
-                rej.profile_name ??
-                roleLabel(rej.role_name);
+              const displayLabel = roleLabel(rej.role_name);
               return (
                 <li
                   key={rej.id}
@@ -2095,6 +1816,7 @@ export default function ContextTeamClient({
             setCreateTeamOpen(false);
             setCreateTeamName('');
             setCreateTeamDesc('');
+            setCreateTeamModules([]);
           }
         }}
       >
@@ -2130,6 +1852,47 @@ export default function ContextTeamClient({
                 maxLength={500}
               />
             </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                {t('teams.team_modules_label')}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {inviteModules.map(({ key, label }) => {
+                  const checked = createTeamModules.includes(key);
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() =>
+                        setCreateTeamModules((prev) =>
+                          prev.includes(key)
+                            ? prev.filter((k) => k !== key)
+                            : [...prev, key]
+                        )
+                      }
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md border text-xs ${
+                        checked
+                          ? 'border-primary bg-primary/5 text-foreground'
+                          : 'border-border text-muted-foreground'
+                      }`}
+                    >
+                      <span
+                        className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${
+                          checked
+                            ? 'bg-primary border-primary'
+                            : 'border-muted-foreground/40'
+                        }`}
+                      >
+                        {checked && (
+                          <Check className="w-2.5 h-2.5 text-primary-foreground" />
+                        )}
+                      </span>
+                      <span className="truncate">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -2139,6 +1902,7 @@ export default function ContextTeamClient({
                 setCreateTeamOpen(false);
                 setCreateTeamName('');
                 setCreateTeamDesc('');
+                setCreateTeamModules([]);
               }}
             >
               {t('common.cancel')}
@@ -2146,7 +1910,11 @@ export default function ContextTeamClient({
             <Button
               type="button"
               onClick={() => void handleCreateTeam()}
-              disabled={createTeamSaving || !createTeamName.trim()}
+              disabled={
+                createTeamSaving ||
+                !createTeamName.trim() ||
+                createTeamModules.length === 0
+              }
             >
               {createTeamSaving
                 ? t('common.saving')
@@ -2576,7 +2344,7 @@ export default function ContextTeamClient({
             </div>
           ) : editMember && memberAccess ? (
             <div className="space-y-4 overflow-y-auto min-h-0">
-              {/* Apply role or profile (one-click replace) */}
+              {/* Apply role (one-click replace) */}
               <div>
                 <label
                   htmlFor="edit-member-apply"
@@ -2590,34 +2358,19 @@ export default function ContextTeamClient({
                   onChange={(e) => {
                     const v = e.target.value;
                     setEditMemberApplyValue(v);
-                    if (v) void handleApplyRoleOrProfile(editMember.user_id, v);
+                    if (v && editMember)
+                      void handleApplyRole(editMember.user_id, v);
                   }}
                   disabled={editMemberSaving}
                   className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 >
                   <option value="">{t('teams.select_role_or_profile')}</option>
-                  <optgroup label={t('teams.profiles_group')}>
-                    {profiles.map((p) => (
-                      <option key={p.id} value={`profile:${p.id}`}>
-                        {p.name}
-                        {p.allowed_modules && p.allowed_modules.length > 0
-                          ? ` (${p.allowed_modules.length} ${t('teams.modules')})`
-                          : ''}
-                      </option>
-                    ))}
-                  </optgroup>
-                  {reusableRoles.length > 0 && (
-                    <optgroup label={t('teams.saved_roles_group')}>
-                      {reusableRoles.map((r) => (
-                        <option key={r.id} value={`role:${r.id}`}>
-                          {r.name ?? roleLabel(r.effective_role_name)}
-                          {r.allowed_modules?.length
-                            ? ` (${r.allowed_modules.length} ${t('teams.modules')})`
-                            : ''}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {roleLabel(r.name)}
+                      {r.description ? ` — ${r.description}` : ''}
+                    </option>
+                  ))}
                 </select>
                 {editMemberSaving && (
                   <p className="text-xs text-muted-foreground mt-1">

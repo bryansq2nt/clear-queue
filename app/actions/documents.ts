@@ -131,7 +131,7 @@ export async function uploadDocument(
   if (!project)
     return { success: false, error: 'Project not found or access denied' };
 
-  await requireCan(user.id, 'documents.upload', {
+  await requireCan(user.id, 'documents.create', {
     type: 'document',
     projectId: pid,
   });
@@ -285,7 +285,7 @@ export async function uploadDocumentsBulk(
       ],
     };
 
-  await requireCan(user.id, 'documents.upload', {
+  await requireCan(user.id, 'documents.create', {
     type: 'document',
     projectId: pid,
   });
@@ -454,7 +454,7 @@ export async function updateDocument(
   }
 
   const projectId = (existing as unknown as { project_id: string }).project_id;
-  await requireCan(user.id, 'documents.update_metadata', {
+  await requireCan(user.id, 'documents.update', {
     type: 'document',
     projectId,
   });
@@ -554,7 +554,7 @@ export async function archiveDocument(
     return { success: false, error: 'Document not found or access denied' };
   }
 
-  await requireCan(user.id, 'documents.archive', {
+  await requireCan(user.id, 'documents.update', {
     type: 'document',
     projectId: (existing as unknown as { project_id: string }).project_id,
   });
@@ -603,7 +603,7 @@ export async function markDocumentFinal(
     return { success: false, error: 'Document not found or access denied' };
   }
 
-  await requireCan(user.id, 'documents.mark_final', {
+  await requireCan(user.id, 'documents.update', {
     type: 'document',
     projectId: (existing as unknown as { project_id: string }).project_id,
   });
@@ -652,7 +652,7 @@ export async function getDocumentSignedUrl(
   }
 
   if ((row as { project_id: string | null }).project_id) {
-    await requireCan(user.id, 'documents.view_signed_url', {
+    await requireCan(user.id, 'documents.read', {
       type: 'document',
       projectId: (row as unknown as { project_id: string }).project_id,
     });
@@ -737,7 +737,7 @@ export async function deleteDocuments(
   const pid = projectId?.trim();
   if (!pid) return { error: 'Project ID is required' };
 
-  await requireCan(user.id, 'documents.bulk_delete', {
+  await requireCan(user.id, 'documents.delete', {
     type: 'document',
     projectId: pid,
   });
@@ -790,7 +790,7 @@ export async function getDocumentDownloadUrl(
   }
 
   if ((row as { project_id: string | null }).project_id) {
-    await requireCan(user.id, 'documents.download', {
+    await requireCan(user.id, 'documents.read', {
       type: 'document',
       projectId: (row as unknown as { project_id: string }).project_id,
     });
@@ -868,10 +868,10 @@ export async function getDocumentsPermissions(
 
   const granted = await getGrantedActions(user.id, projectId, true);
   return {
-    canUpload: granted.has('documents.upload'),
-    canUpdateMetadata: granted.has('documents.update_metadata'),
+    canUpload: granted.has('documents.create'),
+    canUpdateMetadata: granted.has('documents.update'),
     canDelete: granted.has('documents.delete'),
-    canManageFolders: granted.has('documents.manage_folders'),
+    canManageFolders: granted.has('documents.update'),
   };
 }
 

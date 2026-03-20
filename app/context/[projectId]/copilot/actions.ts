@@ -56,7 +56,7 @@ export async function createCopilotSession(
   projectId: string
 ): Promise<CopilotSession | null> {
   const user = await requireAuth();
-  await requireCan(user.id, 'copilot.create_session', {
+  await requireCan(user.id, 'copilot.create', {
     type: 'project',
     projectId,
   });
@@ -128,7 +128,7 @@ export async function archiveCopilotSession(
     .eq('owner_id', user.id)
     .maybeSingle();
   if (sessionRow?.project_id) {
-    await requireCan(user.id, 'copilot.archive_session', {
+    await requireCan(user.id, 'copilot.update', {
       type: 'project',
       projectId: sessionRow.project_id,
     });
@@ -168,7 +168,7 @@ export async function deleteCopilotSession(
     .eq('owner_id', user.id)
     .maybeSingle();
   if (sessionRow?.project_id) {
-    await requireCan(user.id, 'copilot.delete_session', {
+    await requireCan(user.id, 'copilot.delete', {
       type: 'project',
       projectId: sessionRow.project_id,
     });
@@ -200,7 +200,7 @@ export async function startFreshCopilotSession(
   projectId: string
 ): Promise<CopilotSession | null> {
   const user = await requireAuth();
-  await requireCan(user.id, 'copilot.create_session', {
+  await requireCan(user.id, 'copilot.create', {
     type: 'project',
     projectId,
   });
@@ -245,7 +245,7 @@ export async function updateSessionTitle(
     .eq('owner_id', user.id)
     .maybeSingle();
   if (sessionRow?.project_id) {
-    await requireCan(user.id, 'copilot.archive_session', {
+    await requireCan(user.id, 'copilot.update', {
       type: 'project',
       projectId: sessionRow.project_id,
     });
@@ -351,7 +351,7 @@ export async function saveCopilotMessage(
   tokenCount?: number
 ): Promise<SaveCopilotMessageResult> {
   const user = await requireAuth();
-  await requireCan(user.id, 'copilot.send_message', {
+  await requireCan(user.id, 'copilot.create', {
     type: 'project',
     projectId,
   });

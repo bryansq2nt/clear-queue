@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getUser } from '@/lib/auth';
 import { getProjectsList } from '@/app/actions/projects';
 import { getProfileOptional } from '@/app/profile/actions';
+import { getMyNotificationsCount } from '@/app/actions/notifications';
 import LoginForm from '@/components/auth/LoginForm';
 import AuthCallbackHandler from '@/components/auth/AuthCallbackHandler';
 import ContextProjectPicker from '@/app/context/ContextProjectPicker';
@@ -25,6 +26,7 @@ async function HomeProjectsContent({
     getProjectsList(),
     getProfileOptional(),
   ]);
+  const notificationsCount = await getMyNotificationsCount();
   const userDisplayName =
     profile?.display_name?.trim() || user.email?.split('@')[0] || 'User';
   const returningFromProject = searchParams.from === 'project';
@@ -34,6 +36,7 @@ async function HomeProjectsContent({
       showBackButton={false}
       userDisplayName={userDisplayName}
       returningFromProject={returningFromProject}
+      notificationsCount={notificationsCount}
     />
   );
 }

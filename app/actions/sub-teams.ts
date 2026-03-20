@@ -16,6 +16,7 @@ export type ProjectTeam = {
   project_id: string;
   name: string;
   description: string | null;
+  allowed_modules: string[] | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -61,7 +62,7 @@ export const listProjectTeams = cache(
     const { data: teams, error } = await (supabase as any)
       .from('project_teams')
       .select(
-        'id, project_id, name, description, created_by, created_at, updated_at'
+        'id, project_id, name, description, allowed_modules, created_by, created_at, updated_at'
       )
       .eq('project_id', projectId)
       .order('name', { ascending: true });
@@ -131,7 +132,7 @@ export async function getSubTeamsPermissions(
 
   // Find which teams this user manages
   let managedTeamIds: string[] = [];
-  if (granted.has('project_teams.manage_members')) {
+  if (granted.has('project_teams.update')) {
     const { data: managedRows } = await (supabase as any)
       .from('project_team_members')
       .select('team_id, project_teams!inner(project_id)')
@@ -149,7 +150,7 @@ export async function getSubTeamsPermissions(
     canCreate: granted.has('project_teams.create'),
     canUpdate: granted.has('project_teams.update'),
     canDelete: granted.has('project_teams.delete'),
-    canManageMembers: granted.has('project_teams.manage_members'),
+    canManageMembers: granted.has('project_teams.update'),
     managedTeamIds,
   };
 }
@@ -161,7 +162,8 @@ export async function getSubTeamsPermissions(
 export async function createProjectTeam(
   projectId: string,
   name: string,
-  description?: string
+  description?: string,
+  allowedModules?: string[]
 ): Promise<{ data?: ProjectTeam; error?: string }> {
   try {
     const user = await requireAuth();
@@ -182,10 +184,12 @@ export async function createProjectTeam(
         project_id: projectId,
         name: trimmedName,
         description: description?.trim() || null,
+        allowed_modules:
+          allowedModules && allowedModules.length > 0 ? allowedModules : null,
         created_by: user.id,
       })
       .select(
-        'id, project_id, name, description, created_by, created_at, updated_at'
+        'id, project_id, name, description, allowed_modules, created_by, created_at, updated_at'
       )
       .single();
 
@@ -215,9 +219,10 @@ export async function createProjectTeam(
 export async function updateProjectTeam(
   teamId: string,
   name: string,
-  description?: string
+  description?: string,
+  allowedModules?: string[]
 ): Promise<{
-  data?: Pick<ProjectTeam, 'id' | 'name' | 'description'>;
+  data?: Pick<ProjectTeam, 'id' | 'name' | 'description' | 'allowed_modules'>;
   error?: string;
 }> {
   try {
@@ -275,9 +280,11 @@ export async function updateProjectTeam(
       .update({
         name: trimmedName,
         description: description?.trim() || null,
+        allowed_modules:
+          allowedModules && allowedModules.length > 0 ? allowedModules : null,
       })
       .eq('id', teamId)
-      .select('id, name, description')
+      .select('id, name, description, allowed_modules')
       .single();
 
     if (error) {
@@ -524,10 +531,8 @@ async function _requireCanManageTeam(
 
   // Check if user has broad manage permission (project_manager tier)
   const granted = await getGrantedActions(userId, projectId, true);
-  if (!granted.has('project_teams.manage_members')) {
-    throw new Error(
-      "Forbidden: missing permission 'project_teams.manage_members'"
-    );
+  if (!granted.has('project_teams.update')) {
+    throw new Error("Forbidden: missing permission 'project_teams.update'");
   }
 
   // If they have create permission, they're project_manager or higher → allow
