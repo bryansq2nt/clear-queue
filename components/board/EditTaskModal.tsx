@@ -47,6 +47,8 @@ interface EditTaskModalProps {
   onEditError?: (params: EditTaskErrorParams) => void;
   /** When provided, delete success removes the task from parent state without a refresh */
   onTaskDeleted?: (taskId: string) => void;
+  /** Whether the current user can assign tasks to other members. */
+  canAssign?: boolean;
   /** Project members available for assignment. */
   projectMembers?: TaskAssignee[];
   /** Current user's ID — shown as "Me" and sorted first in the assignee dropdown. */
@@ -67,6 +69,7 @@ export function EditTaskModal({
   onTaskUpdated,
   onEditError,
   onTaskDeleted,
+  canAssign = false,
   projectMembers,
   currentUserId,
   canEditFull = true,
@@ -126,7 +129,9 @@ export function EditTaskModal({
     formData.append('notes', notes || '');
     formData.append('tags', normalizeTagsForSave(tags));
     if (milestoneId) formData.append('milestone_id', milestoneId);
-    formData.append('assigned_to', assignedTo || '');
+    if (canAssign) {
+      formData.append('assigned_to', assignedTo || '');
+    }
     return formData;
   }
 
@@ -147,7 +152,9 @@ export function EditTaskModal({
         notes: notes || '',
         tags: normalizeTagsForSave(tags) || null,
         milestone_id: milestoneId || null,
-        assigned_to: assignedTo || null,
+        assigned_to: canAssign
+          ? assignedTo || null
+          : ((task as any).assigned_to ?? null),
       } as any;
       onTaskUpdated(optimisticTask);
       onClose();
@@ -437,7 +444,7 @@ export function EditTaskModal({
                 </SelectContent>
               </Select>
             </div>
-            {projectMembers && projectMembers.length > 0 && (
+            {canAssign && projectMembers && projectMembers.length > 0 && (
               <div className="space-y-2">
                 <Label htmlFor="assignee">{t('tasks.assignee_label')}</Label>
                 <Select

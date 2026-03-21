@@ -87,6 +87,8 @@ interface KanbanBoardProps {
   }) => void;
   /** Whether the current user can create tasks (controls per-column add buttons). */
   canAdd?: boolean;
+  /** Whether the current user can assign tasks to other members. */
+  canAssign?: boolean;
   /** Project members available for task assignment. */
   projectMembers?: Array<{ user_id: string; display_name: string }>;
   /** Current user's ID — passed to modals for "Me" label. */
@@ -108,6 +110,7 @@ function TaskListForStatus({
   onTaskDeleted,
   onEditError,
   footer,
+  canAssign,
   projectMembers,
   currentUserId,
   readScope,
@@ -128,6 +131,7 @@ function TaskListForStatus({
     retry: () => Promise<{ data?: Task; error?: string }>;
   }) => void;
   footer?: React.ReactNode;
+  canAssign?: boolean;
   projectMembers?: Array<{ user_id: string; display_name: string }>;
   currentUserId?: string;
   readScope?: 'own' | 'team' | 'project';
@@ -157,6 +161,7 @@ function TaskListForStatus({
                   onTaskUpdated={onTaskUpdated}
                   onTaskDeleted={onTaskDeleted}
                   onEditError={onEditError}
+                  canAssign={canAssign}
                   projectMembers={projectMembers}
                   currentUserId={currentUserId}
                   readScope={readScope}
@@ -198,6 +203,7 @@ export default function KanbanBoard({
   onTaskConfirmed,
   onAddTaskError,
   canAdd = true,
+  canAssign = false,
   projectMembers,
   currentUserId,
   readScope,
@@ -406,6 +412,7 @@ export default function KanbanBoard({
                       onTaskUpdated={onTaskUpdated}
                       onTaskDeleted={onTaskDeleted}
                       onEditError={onEditError}
+                      canAssign={canAssign}
                       projectMembers={projectMembers}
                       currentUserId={currentUserId}
                       readScope={readScope}
@@ -467,6 +474,7 @@ export default function KanbanBoard({
                 onTaskConfirmed={onTaskConfirmed}
                 onAddTaskError={onAddTaskError}
                 canAdd={canAdd}
+                canAssign={canAssign}
                 projectMembers={projectMembers}
                 currentUserId={currentUserId}
                 readScope={readScope}

@@ -10,6 +10,11 @@ import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 import {
+  canAssignTasksToOtherMembers,
+  isTeamManagerTaskAssignmentRole,
+  type TaskAssignmentRoleName,
+} from '@/lib/rbac/task-assignment';
+import {
   BOARD_STATUSES,
   INITIAL_TASKS_PER_COLUMN,
   type TaskStatus,
@@ -29,6 +34,13 @@ type TaskActivityAction =
   | 'assigned'
   | 'unassigned'
   | 'deleted';
+
+type TaskAssigneeOption = { user_id: string; display_name: string };
+type TaskAssignmentAccess = {
+  roleName: TaskAssignmentRoleName;
+  canAssignOthers: boolean;
+  assignableUserIds: Set<string>;
+};
 
 /** Fire-and-forget audit log write. Never throws; captures errors via Sentry. */
 async function logTaskActivity(
@@ -55,6 +67,155 @@ async function logTaskActivity(
       extra: { taskId, action },
     });
   }
+}
+
+const getTaskAssignmentRoleName = cache(
+  async (
+    projectId: string,
+    userId: string
+  ): Promise<TaskAssignmentRoleName> => {
+    const supabase = await createClient();
+
+    const [{ data: project }, { data: assignment }, { data: membership }] =
+      await Promise.all([
+        (supabase as any)
+          .from('projects')
+          .select('owner_id')
+          .eq('id', projectId)
+          .maybeSingle(),
+        (supabase as any)
+          .from('user_role_assignments')
+          .select('rbac_roles!inner(name)')
+          .eq('user_id', userId)
+          .eq('project_id', projectId)
+          .maybeSingle(),
+        (supabase as any)
+          .from('project_members')
+          .select('id')
+          .eq('project_id', projectId)
+          .eq('user_id', userId)
+          .maybeSingle(),
+      ]);
+
+    if (project?.owner_id === userId) {
+      return 'owner';
+    }
+
+    const roleName = assignment?.rbac_roles?.name as
+      | TaskAssignmentRoleName
+      | undefined;
+    if (roleName) {
+      return roleName;
+    }
+
+    return membership ? 'team_member' : null;
+  }
+);
+
+const getManagedTeamMemberIds = cache(
+  async (projectId: string, userId: string): Promise<string[]> => {
+    const supabase = await createClient();
+
+    const { data: managedTeams } = await (supabase as any)
+      .from('project_team_members')
+      .select('team_id, project_teams!inner(project_id)')
+      .eq('user_id', userId)
+      .eq('role', 'manager')
+      .eq('project_teams.project_id', projectId);
+
+    if (!managedTeams?.length) return [userId];
+
+    const teamIds = managedTeams.map((team: any) => team.team_id as string);
+    const { data: members } = await (supabase as any)
+      .from('project_team_members')
+      .select('user_id, project_teams!inner(project_id)')
+      .in('team_id', teamIds)
+      .eq('project_teams.project_id', projectId);
+
+    const ids = new Set<string>([userId]);
+    for (const member of members ?? []) {
+      ids.add(member.user_id as string);
+    }
+    return [...ids];
+  }
+);
+
+const getTaskAssignmentAccess = cache(
+  async (projectId: string, userId: string): Promise<TaskAssignmentAccess> => {
+    const supabase = await createClient();
+    const roleName = await getTaskAssignmentRoleName(projectId, userId);
+
+    if (!canAssignTasksToOtherMembers(roleName)) {
+      return {
+        roleName,
+        canAssignOthers: false,
+        assignableUserIds: new Set([userId]),
+      };
+    }
+
+    if (isTeamManagerTaskAssignmentRole(roleName)) {
+      return {
+        roleName,
+        canAssignOthers: true,
+        assignableUserIds: new Set(
+          await getManagedTeamMemberIds(projectId, userId)
+        ),
+      };
+    }
+
+    const [{ data: project }, { data: members }] = await Promise.all([
+      (supabase as any)
+        .from('projects')
+        .select('owner_id')
+        .eq('id', projectId)
+        .maybeSingle(),
+      (supabase as any)
+        .from('project_members')
+        .select('user_id')
+        .eq('project_id', projectId),
+    ]);
+
+    const ids = new Set<string>([userId]);
+    if (project?.owner_id) ids.add(project.owner_id as string);
+    for (const member of members ?? []) {
+      ids.add(member.user_id as string);
+    }
+
+    return {
+      roleName,
+      canAssignOthers: true,
+      assignableUserIds: ids,
+    };
+  }
+);
+
+async function validateTaskAssignmentRequest(params: {
+  projectId: string;
+  userId: string;
+  requestedAssignedTo: string | null | undefined;
+  previousAssignedTo?: string | null;
+}): Promise<string | null> {
+  const normalizedRequested = params.requestedAssignedTo?.trim() || null;
+  const normalizedPrevious = params.previousAssignedTo?.trim() || null;
+
+  if (normalizedRequested === normalizedPrevious) {
+    return null;
+  }
+
+  if (normalizedRequested === null || normalizedRequested === params.userId) {
+    return null;
+  }
+
+  const access = await getTaskAssignmentAccess(params.projectId, params.userId);
+  if (!access.canAssignOthers) {
+    return "You don't have permission to assign tasks to other members.";
+  }
+
+  if (!access.assignableUserIds.has(normalizedRequested)) {
+    return 'You can only assign tasks to eligible members in your assignment scope.';
+  }
+
+  return null;
 }
 
 export async function createTask(formData: FormData) {
@@ -92,6 +253,15 @@ export async function createTask(formData: FormData) {
   // Default to creator when no assignee is chosen so the task always appears
   // in the creator's own-scope view.
   const assignedTo = (formData.get('assigned_to') as string) || user.id;
+
+  const assignmentError = await validateTaskAssignmentRequest({
+    projectId,
+    userId: user.id,
+    requestedAssignedTo: assignedTo,
+  });
+  if (assignmentError) {
+    return { error: assignmentError };
+  }
 
   const { data, error } = await supabase.rpc(
     'create_task_atomic' as never,
@@ -206,11 +376,23 @@ export async function updateTask(id: string, formData: FormData) {
   if (assignedTo !== undefined)
     (updates as any).assigned_to = assignedTo || null;
 
+  if (resolvedProjectId && assignedTo !== undefined) {
+    const assignmentError = await validateTaskAssignmentRequest({
+      projectId: resolvedProjectId,
+      userId: user.id,
+      requestedAssignedTo: assignedTo,
+      previousAssignedTo: taskMeta?.assigned_to ?? null,
+    });
+    if (assignmentError) {
+      return { error: assignmentError };
+    }
+  }
+
   const { data, error } = await supabase
     .from('tasks')
     .update(updates as never)
     .eq('id', id)
-    .select()
+    .select(TASK_COLS)
     .single();
 
   if (error) {
@@ -714,7 +896,6 @@ const getTeamColleagueIds = cache(
 export const getBoardPermissions = cache(
   async (projectId: string): Promise<BoardPermissions> => {
     const user = await requireAuth();
-    const supabase = await createClient();
 
     const allFalse: BoardPermissions = {
       canCreate: false,
@@ -723,26 +904,53 @@ export const getBoardPermissions = cache(
     };
     if (!projectId?.trim()) return allFalse;
 
-    const { data: project } = await (supabase as any)
-      .from('projects')
-      .select('owner_id')
-      .eq('id', projectId)
-      .maybeSingle();
-
-    if (project?.owner_id === user.id) {
-      return { canCreate: true, canAssign: true, readScope: 'project' };
-    }
-
     const [granted, readScope, memberUse] = await Promise.all([
       getGrantedActions(user.id, projectId, true),
       getReadScope(user.id, projectId),
       getCanUseModuleMemberContent(projectId, 'board'),
     ]);
+    const assignmentAccess = await getTaskAssignmentAccess(projectId, user.id);
+
     return {
-      canCreate: granted.has('tasks.create') || memberUse,
-      canAssign: granted.has('tasks.update') || memberUse,
+      canCreate:
+        assignmentAccess.roleName === 'owner' ||
+        granted.has('tasks.create') ||
+        memberUse,
+      canAssign: assignmentAccess.canAssignOthers,
       readScope: readScope as TaskReadScope,
     };
+  }
+);
+
+export const listTaskAssignableMembers = cache(
+  async (projectId: string): Promise<TaskAssigneeOption[]> => {
+    const user = await requireAuth();
+    const supabase = await createClient();
+    const access = await getTaskAssignmentAccess(projectId, user.id);
+
+    if (!access.canAssignOthers) {
+      return [];
+    }
+
+    const { data, error } = await supabase.rpc(
+      'get_project_members_with_profile' as never,
+      { p_project_id: projectId } as never
+    );
+
+    if (error) {
+      captureWithContext(error, {
+        module: 'tasks',
+        action: 'listTaskAssignableMembers',
+        userIntent: 'Load eligible assignee options for the board',
+        expected: 'Eligible project members returned for assignee selectors',
+        extra: { projectId },
+      });
+      return [];
+    }
+
+    return ((data || []) as TaskAssigneeOption[]).filter((member) =>
+      access.assignableUserIds.has(member.user_id)
+    );
   }
 );
 

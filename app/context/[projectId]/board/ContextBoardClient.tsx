@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Database } from '@/lib/supabase/types';
 import KanbanBoard from '@/components/board/KanbanBoard';
@@ -49,6 +49,40 @@ function groupTasksByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
   return out;
 }
 
+function reconcileStatusCounts(
+  prevCounts: Record<TaskStatus, number>,
+  prevTasksByStatus: Record<TaskStatus, Task[]>,
+  nextTasksByStatus: Record<TaskStatus, Task[]>
+): Record<TaskStatus, number> {
+  const nextCounts = { ...prevCounts };
+  for (const status of BOARD_STATUSES) {
+    const delta =
+      nextTasksByStatus[status].length - prevTasksByStatus[status].length;
+    if (delta !== 0) {
+      nextCounts[status] = Math.max(0, (nextCounts[status] ?? 0) + delta);
+    }
+  }
+  return nextCounts;
+}
+
+function replaceTaskById(
+  prev: Record<TaskStatus, Task[]>,
+  realTask: Task,
+  optimisticId: string
+): Record<TaskStatus, Task[]> {
+  const next = {} as Record<TaskStatus, Task[]>;
+  for (const status of BOARD_STATUSES) {
+    next[status] = prev[status].filter(
+      (task) => task.id !== optimisticId && task.id !== realTask.id
+    );
+  }
+  next[realTask.status] = sortTasksByOrder([
+    ...next[realTask.status],
+    realTask,
+  ]);
+  return next;
+}
+
 interface ContextBoardClientProps {
   projectId: string;
   initialProject: Project;
@@ -84,10 +118,35 @@ export default function ContextBoardClient({
   const [selectedTab, setSelectedTab] = useState<TaskStatus>('next');
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [errorDialog, setErrorDialog] = useState<ErrorDialogState | null>(null);
+  const tasksByStatusRef = useRef(tasksByStatus);
+  const countsRef = useRef(counts);
 
   const flatTasks = useMemo(
     () => sortTasksByOrder(Object.values(tasksByStatus).flat()),
     [tasksByStatus]
+  );
+
+  useEffect(() => {
+    tasksByStatusRef.current = tasksByStatus;
+  }, [tasksByStatus]);
+
+  useEffect(() => {
+    countsRef.current = counts;
+  }, [counts]);
+
+  const commitBoardState = useCallback(
+    (
+      nextTasksByStatus: Record<TaskStatus, Task[]>,
+      nextCounts?: Record<TaskStatus, number>
+    ) => {
+      tasksByStatusRef.current = nextTasksByStatus;
+      setTasksByStatus(nextTasksByStatus);
+      if (nextCounts) {
+        countsRef.current = nextCounts;
+        setCounts(nextCounts);
+      }
+    },
+    []
   );
 
   // ── Realtime subscription slot (empty until Realtime phase) ───────────────
@@ -109,7 +168,8 @@ export default function ContextBoardClient({
 
   const loadMoreForStatus = useCallback(
     async (status: TaskStatus) => {
-      const current = tasksByStatus[status];
+      const currentTasksByStatus = tasksByStatusRef.current;
+      const current = currentTasksByStatus[status];
       const offset = current.length;
       setLoadingMore(status);
       try {
@@ -119,15 +179,26 @@ export default function ContextBoardClient({
           offset,
           LOAD_MORE_TASKS_PER_COLUMN
         );
-        setTasksByStatus((prev) => ({
-          ...prev,
-          [status]: sortTasksByOrder([...prev[status], ...more]),
-        }));
+        const nextTasksByStatus = {
+          ...currentTasksByStatus,
+          [status]: sortTasksByOrder([
+            ...currentTasksByStatus[status],
+            ...more,
+          ]),
+        };
+        const nextCounts =
+          more.length === 0
+            ? {
+                ...countsRef.current,
+                [status]: Math.min(countsRef.current[status], current.length),
+              }
+            : undefined;
+        commitBoardState(nextTasksByStatus, nextCounts);
       } finally {
         setLoadingMore(null);
       }
     },
-    [projectId, tasksByStatus]
+    [commitBoardState, projectId]
   );
 
   const openMoveErrorDialog = useCallback(
@@ -152,60 +223,84 @@ export default function ContextBoardClient({
     [t]
   );
 
-  const handleTasksChange = useCallback((newTasks: Task[]) => {
-    setTasksByStatus(groupTasksByStatus(newTasks));
-  }, []);
+  const handleTasksChange = useCallback(
+    (newTasks: Task[]) => {
+      const prevTasksByStatus = tasksByStatusRef.current;
+      const nextTasksByStatus = groupTasksByStatus(newTasks);
+      const nextCounts = reconcileStatusCounts(
+        countsRef.current,
+        prevTasksByStatus,
+        nextTasksByStatus
+      );
+      commitBoardState(nextTasksByStatus, nextCounts);
+    },
+    [commitBoardState]
+  );
 
-  const handleTaskUpdated = useCallback((updatedTask: Task) => {
-    setTasksByStatus((prev) => {
-      const next = { ...prev };
+  const handleTaskUpdated = useCallback(
+    (updatedTask: Task) => {
+      const prevTasksByStatus = tasksByStatusRef.current;
+      const nextTasksByStatus = { ...prevTasksByStatus };
       for (const s of BOARD_STATUSES) {
-        const idx = next[s].findIndex((t) => t.id === updatedTask.id);
+        const idx = nextTasksByStatus[s].findIndex(
+          (t) => t.id === updatedTask.id
+        );
         if (idx >= 0) {
           if (updatedTask.status === s) {
-            next[s] = next[s].map((t) =>
+            nextTasksByStatus[s] = nextTasksByStatus[s].map((t) =>
               t.id === updatedTask.id ? updatedTask : t
             );
-            next[s] = sortTasksByOrder(next[s]);
+            nextTasksByStatus[s] = sortTasksByOrder(nextTasksByStatus[s]);
           } else {
-            next[s] = next[s].filter((t) => t.id !== updatedTask.id);
-            next[updatedTask.status] = sortTasksByOrder([
-              ...next[updatedTask.status],
+            nextTasksByStatus[s] = nextTasksByStatus[s].filter(
+              (t) => t.id !== updatedTask.id
+            );
+            nextTasksByStatus[updatedTask.status] = sortTasksByOrder([
+              ...nextTasksByStatus[updatedTask.status].filter(
+                (t) => t.id !== updatedTask.id
+              ),
               updatedTask,
             ]);
-            setCounts((c) => ({
-              ...c,
-              [s]: c[s] - 1,
-              [updatedTask.status]: c[updatedTask.status] + 1,
-            }));
           }
-          return next;
+          const nextCounts = reconcileStatusCounts(
+            countsRef.current,
+            prevTasksByStatus,
+            nextTasksByStatus
+          );
+          commitBoardState(nextTasksByStatus, nextCounts);
+          return;
         }
       }
-      return prev;
-    });
-  }, []);
+    },
+    [commitBoardState]
+  );
 
-  const handleTaskDeleted = useCallback((taskId: string) => {
-    let removedStatus: TaskStatus | null = null;
-    setTasksByStatus((prev) => {
-      const next = { ...prev };
+  const handleTaskDeleted = useCallback(
+    (taskId: string) => {
+      const prevTasksByStatus = tasksByStatusRef.current;
+      const nextTasksByStatus = { ...prevTasksByStatus };
+      let removed = false;
       for (const s of BOARD_STATUSES) {
-        if (next[s].some((t) => t.id === taskId)) {
-          next[s] = next[s].filter((t) => t.id !== taskId);
-          removedStatus = s;
+        if (nextTasksByStatus[s].some((t) => t.id === taskId)) {
+          nextTasksByStatus[s] = nextTasksByStatus[s].filter(
+            (t) => t.id !== taskId
+          );
+          removed = true;
           break;
         }
       }
-      return next;
-    });
-    if (removedStatus !== null) {
-      setCounts((c) => ({
-        ...c,
-        [removedStatus!]: Math.max(0, c[removedStatus!] - 1),
-      }));
-    }
-  }, []);
+      if (!removed) {
+        return;
+      }
+      const nextCounts = reconcileStatusCounts(
+        countsRef.current,
+        prevTasksByStatus,
+        nextTasksByStatus
+      );
+      commitBoardState(nextTasksByStatus, nextCounts);
+    },
+    [commitBoardState]
+  );
 
   const openEditErrorDialog = useCallback(
     (params: {
@@ -222,19 +317,20 @@ export default function ContextBoardClient({
           if (result?.error) throw new Error(result.error);
         },
         onCancel: () => {
-          setTasksByStatus((prev) => {
-            const s = params.previousTask.status;
-            const next = { ...prev };
-            next[s] = next[s].map((t) =>
-              t.id === params.previousTask.id ? params.previousTask : t
-            );
-            next[s] = sortTasksByOrder(next[s]);
-            return next;
-          });
+          const prevTasksByStatus = tasksByStatusRef.current;
+          const nextTasksByStatus = { ...prevTasksByStatus };
+          const status = params.previousTask.status;
+          nextTasksByStatus[status] = nextTasksByStatus[status].map((task) =>
+            task.id === params.previousTask.id ? params.previousTask : task
+          );
+          nextTasksByStatus[status] = sortTasksByOrder(
+            nextTasksByStatus[status]
+          );
+          commitBoardState(nextTasksByStatus);
         },
       });
     },
-    [t]
+    [commitBoardState, t]
   );
 
   return (
@@ -254,6 +350,7 @@ export default function ContextBoardClient({
             permissions.canCreate ? () => setIsAddTaskOpen(true) : undefined
           }
           canAdd={permissions.canCreate}
+          canAssign={permissions.canAssign}
           projectMembers={permissions.canAssign ? projectMembers : undefined}
           currentUserId={currentUserId}
           readScope={permissions.readScope}
@@ -264,31 +361,36 @@ export default function ContextBoardClient({
           onEditError={openEditErrorDialog}
           skipRevalidateOnMove
           onTaskAdded={(task) => {
-            const s = task.status;
-            setTasksByStatus((prev) => ({
-              ...prev,
-              [s]: sortTasksByOrder([...prev[s], task]),
-            }));
-            setCounts((c) => ({ ...c, [s]: c[s] + 1 }));
+            const prevTasksByStatus = tasksByStatusRef.current;
+            const nextTasksByStatus = { ...prevTasksByStatus };
+            const status = task.status;
+            nextTasksByStatus[status] = sortTasksByOrder([
+              ...nextTasksByStatus[status].filter(
+                (item) => item.id !== task.id
+              ),
+              task,
+            ]);
+            const nextCounts = reconcileStatusCounts(
+              countsRef.current,
+              prevTasksByStatus,
+              nextTasksByStatus
+            );
+            commitBoardState(nextTasksByStatus, nextCounts);
           }}
           onTaskConfirmed={(realTask, optimisticId) => {
-            setTasksByStatus((prev) => {
-              const next = { ...prev };
-              const s = realTask.status;
-              for (const status of BOARD_STATUSES) {
-                const idx = next[status].findIndex(
-                  (t) => t.id === optimisticId
-                );
-                if (idx >= 0) {
-                  next[status] = next[status]
-                    .filter((t) => t.id !== optimisticId)
-                    .concat(realTask);
-                  next[status] = sortTasksByOrder(next[status]);
-                  return next;
-                }
-              }
-              return prev;
-            });
+            const prevTasksByStatus = tasksByStatusRef.current;
+            if (
+              !BOARD_STATUSES.some((status) =>
+                prevTasksByStatus[status].some(
+                  (task) => task.id === optimisticId
+                )
+              )
+            ) {
+              return;
+            }
+            commitBoardState(
+              replaceTaskById(prevTasksByStatus, realTask, optimisticId)
+            );
           }}
           onAddTaskError={(params) => {
             setErrorDialog({
@@ -300,46 +402,27 @@ export default function ContextBoardClient({
                 const result = await params.retry();
                 if (result?.error) throw new Error(result.error);
                 if (result?.data && params.optimisticId) {
-                  setTasksByStatus((prev) => {
-                    const next = { ...prev };
-                    const s = result.data!.status;
-                    const id = params.optimisticId!;
-                    for (const status of BOARD_STATUSES) {
-                      const idx = next[status].findIndex((t) => t.id === id);
-                      if (idx >= 0) {
-                        next[status] = next[status]
-                          .filter((t) => t.id !== id)
-                          .concat(result.data!);
-                        next[status] = sortTasksByOrder(next[status]);
-                        return next;
-                      }
-                    }
-                    return prev;
-                  });
+                  const prevTasksByStatus = tasksByStatusRef.current;
+                  if (
+                    BOARD_STATUSES.some((status) =>
+                      prevTasksByStatus[status].some(
+                        (task) => task.id === params.optimisticId
+                      )
+                    )
+                  ) {
+                    commitBoardState(
+                      replaceTaskById(
+                        prevTasksByStatus,
+                        result.data,
+                        params.optimisticId
+                      )
+                    );
+                  }
                 }
               },
               onCancel: () => {
                 if (params.optimisticId) {
-                  const id = params.optimisticId;
-                  let removedStatus: TaskStatus | null = null;
-                  setTasksByStatus((prev) => {
-                    const next = { ...prev };
-                    for (const status of BOARD_STATUSES) {
-                      if (next[status].some((t) => t.id === id)) {
-                        next[status] = next[status].filter((t) => t.id !== id);
-                        next[status] = sortTasksByOrder(next[status]);
-                        removedStatus = status;
-                        break;
-                      }
-                    }
-                    return next;
-                  });
-                  if (removedStatus !== null) {
-                    setCounts((c) => ({
-                      ...c,
-                      [removedStatus!]: c[removedStatus!] - 1,
-                    }));
-                  }
+                  handleTaskDeleted(params.optimisticId);
                 }
               },
             });
@@ -351,32 +434,37 @@ export default function ContextBoardClient({
           isOpen={isAddTaskOpen}
           onClose={() => setIsAddTaskOpen(false)}
           onTaskAdded={(createdTask) => {
-            const s = createdTask.status;
-            setTasksByStatus((prev) => ({
-              ...prev,
-              [s]: sortTasksByOrder([...prev[s], createdTask]),
-            }));
-            setCounts((c) => ({ ...c, [s]: c[s] + 1 }));
+            const prevTasksByStatus = tasksByStatusRef.current;
+            const nextTasksByStatus = { ...prevTasksByStatus };
+            const status = createdTask.status;
+            nextTasksByStatus[status] = sortTasksByOrder([
+              ...nextTasksByStatus[status].filter(
+                (task) => task.id !== createdTask.id
+              ),
+              createdTask,
+            ]);
+            const nextCounts = reconcileStatusCounts(
+              countsRef.current,
+              prevTasksByStatus,
+              nextTasksByStatus
+            );
+            commitBoardState(nextTasksByStatus, nextCounts);
             setIsAddTaskOpen(false);
           }}
           onTaskConfirmed={(realTask, optimisticId) => {
-            setTasksByStatus((prev) => {
-              const next = { ...prev };
-              const s = realTask.status;
-              for (const status of BOARD_STATUSES) {
-                const idx = next[status].findIndex(
-                  (t) => t.id === optimisticId
-                );
-                if (idx >= 0) {
-                  next[status] = next[status]
-                    .filter((t) => t.id !== optimisticId)
-                    .concat(realTask);
-                  next[status] = sortTasksByOrder(next[status]);
-                  return next;
-                }
-              }
-              return prev;
-            });
+            const prevTasksByStatus = tasksByStatusRef.current;
+            if (
+              !BOARD_STATUSES.some((status) =>
+                prevTasksByStatus[status].some(
+                  (task) => task.id === optimisticId
+                )
+              )
+            ) {
+              return;
+            }
+            commitBoardState(
+              replaceTaskById(prevTasksByStatus, realTask, optimisticId)
+            );
           }}
           onAddError={(params) => {
             setErrorDialog({
@@ -388,52 +476,34 @@ export default function ContextBoardClient({
                 const result = await params.retry();
                 if (result?.error) throw new Error(result.error);
                 if (result?.data && params.optimisticId) {
-                  setTasksByStatus((prev) => {
-                    const next = { ...prev };
-                    const s = result.data!.status;
-                    const id = params.optimisticId!;
-                    for (const status of BOARD_STATUSES) {
-                      const idx = next[status].findIndex((t) => t.id === id);
-                      if (idx >= 0) {
-                        next[status] = next[status]
-                          .filter((t) => t.id !== id)
-                          .concat(result.data!);
-                        next[status] = sortTasksByOrder(next[status]);
-                        return next;
-                      }
-                    }
-                    return prev;
-                  });
+                  const prevTasksByStatus = tasksByStatusRef.current;
+                  if (
+                    BOARD_STATUSES.some((status) =>
+                      prevTasksByStatus[status].some(
+                        (task) => task.id === params.optimisticId
+                      )
+                    )
+                  ) {
+                    commitBoardState(
+                      replaceTaskById(
+                        prevTasksByStatus,
+                        result.data,
+                        params.optimisticId
+                      )
+                    );
+                  }
                 }
               },
               onCancel: () => {
                 if (params.optimisticId) {
-                  const id = params.optimisticId;
-                  let removedStatus: TaskStatus | null = null;
-                  setTasksByStatus((prev) => {
-                    const next = { ...prev };
-                    for (const status of BOARD_STATUSES) {
-                      if (next[status].some((t) => t.id === id)) {
-                        next[status] = next[status].filter((t) => t.id !== id);
-                        next[status] = sortTasksByOrder(next[status]);
-                        removedStatus = status;
-                        break;
-                      }
-                    }
-                    return next;
-                  });
-                  if (removedStatus !== null) {
-                    setCounts((c) => ({
-                      ...c,
-                      [removedStatus!]: c[removedStatus!] - 1,
-                    }));
-                  }
+                  handleTaskDeleted(params.optimisticId);
                 }
               },
             });
           }}
           defaultProjectId={projectId}
           defaultStatus={selectedTab}
+          canAssign={permissions.canAssign}
           projectMembers={permissions.canAssign ? projectMembers : undefined}
           currentUserId={currentUserId}
         />

@@ -46,6 +46,8 @@ interface AddTaskModalProps {
     retry: () => Promise<{ data?: Task; error?: string }>;
     optimisticId?: string;
   }) => void;
+  /** Whether the current user can assign tasks to other members. */
+  canAssign?: boolean;
   /** Project members available for assignment. */
   projectMembers?: TaskAssignee[];
   /** Current user's ID — shown as "Me" and sorted first in the assignee dropdown. */
@@ -60,6 +62,7 @@ export function AddTaskModal({
   defaultProjectId,
   defaultStatus = 'next',
   onAddError,
+  canAssign = false,
   projectMembers,
   currentUserId,
 }: AddTaskModalProps) {
@@ -112,7 +115,7 @@ export function AddTaskModal({
     const tagsNormalized = normalizeTagsForSave(tags);
     if (tagsNormalized) formData.append('tags', tagsNormalized);
     if (milestoneId) formData.append('milestone_id', milestoneId);
-    if (assignedTo) formData.append('assigned_to', assignedTo);
+    if (canAssign && assignedTo) formData.append('assigned_to', assignedTo);
 
     const optimisticMode = !!onTaskConfirmed;
 
@@ -132,7 +135,7 @@ export function AddTaskModal({
         created_at: now,
         updated_at: now,
         milestone_id: milestoneId || null,
-        assigned_to: assignedTo || null,
+        assigned_to: canAssign ? assignedTo || null : (currentUserId ?? null),
       } as any;
       onTaskAdded(optimisticTask);
       setTitle('');
@@ -300,7 +303,7 @@ export function AddTaskModal({
                 </SelectContent>
               </Select>
             </div>
-            {projectMembers && projectMembers.length > 0 && (
+            {canAssign && projectMembers && projectMembers.length > 0 && (
               <div className="space-y-2">
                 <Label htmlFor="assignee">{t('tasks.assignee_label')}</Label>
                 <Select

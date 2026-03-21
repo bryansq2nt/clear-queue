@@ -92,21 +92,23 @@ export async function getTeamMemberIds(
 ): Promise<string[]> {
   const supabase = await createClient();
 
-  const { data } = await (supabase as any)
+  const { data: myTeams } = await (supabase as any)
     .from('project_team_members')
-    .select('user_id, project_teams!inner(project_id)')
-    .eq('project_teams.project_id', projectId)
-    .in(
-      'team_id',
-      (supabase as any)
-        .from('project_team_members')
-        .select('team_id')
-        .eq('user_id', userId)
-    );
+    .select('team_id, project_teams!inner(project_id)')
+    .eq('user_id', userId)
+    .eq('project_teams.project_id', projectId);
 
-  if (!data || data.length === 0) return [userId];
+  if (!myTeams?.length) return [userId];
 
-  const ids = new Set<string>(data.map((r: { user_id: string }) => r.user_id));
-  ids.add(userId); // always include self
-  return Array.from(ids);
+  const teamIds = myTeams.map((team: { team_id: string }) => team.team_id);
+  const { data: members } = await (supabase as any)
+    .from('project_team_members')
+    .select('user_id')
+    .in('team_id', teamIds);
+
+  const ids = new Set<string>([userId]);
+  for (const member of members ?? []) {
+    ids.add(member.user_id as string);
+  }
+  return [...ids];
 }

@@ -46,6 +46,8 @@ interface ColumnProps {
   }) => void;
   /** Whether the current user can create tasks. Defaults to true. */
   canAdd?: boolean;
+  /** Whether the current user can assign tasks to other members. */
+  canAssign?: boolean;
   /** Project members available for task assignment. */
   projectMembers?: TaskAssignee[];
   /** Current user's ID — passed to modals for "Me" label. */
@@ -74,6 +76,7 @@ export default function Column({
   onTaskConfirmed,
   onAddTaskError,
   canAdd = true,
+  canAssign = false,
   projectMembers,
   currentUserId,
   readScope,
@@ -269,6 +272,7 @@ export default function Column({
                             onTaskUpdated={onTaskUpdated}
                             onTaskDeleted={onTaskDeleted}
                             onEditError={onEditError}
+                            canAssign={canAssign}
                             projectMembers={projectMembers}
                             currentUserId={currentUserId}
                             readScope={readScope}
@@ -314,6 +318,7 @@ export default function Column({
           onTaskConfirmed={onTaskConfirmed}
           onAddError={onAddTaskError}
           defaultProjectId={currentProjectId}
+          canAssign={canAssign}
           projectMembers={projectMembers}
           currentUserId={currentUserId}
           defaultStatus={id}

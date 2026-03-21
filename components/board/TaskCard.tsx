@@ -25,6 +25,7 @@ interface TaskCardProps {
   onTaskUpdated?: (updatedTask: Task) => void;
   onTaskDeleted?: (taskId: string) => void;
   onEditError?: (params: EditTaskErrorParams) => void;
+  canAssign?: boolean;
   projectMembers?: TaskAssignee[];
   currentUserId?: string;
   /** 'own' scope = team member; limits edit to their own tasks only. */
@@ -42,6 +43,7 @@ export default function TaskCard({
   onTaskUpdated,
   onTaskDeleted,
   onEditError,
+  canAssign = false,
   projectMembers,
   currentUserId,
   readScope,
@@ -232,6 +234,7 @@ export default function TaskCard({
         onTaskUpdated={onTaskUpdated}
         onTaskDeleted={onTaskDeleted}
         onEditError={onEditError}
+        canAssign={canAssign}
         projectMembers={projectMembers}
         currentUserId={currentUserId}
         canEditFull={
