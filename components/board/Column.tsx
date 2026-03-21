@@ -50,6 +50,8 @@ interface ColumnProps {
   projectMembers?: TaskAssignee[];
   /** Current user's ID — passed to modals for "Me" label. */
   currentUserId?: string;
+  /** Board read scope — determines full vs. limited task edit form. */
+  readScope?: 'own' | 'team' | 'project';
 }
 
 export default function Column({
@@ -74,6 +76,7 @@ export default function Column({
   canAdd = true,
   projectMembers,
   currentUserId,
+  readScope,
 }: ColumnProps) {
   const { t } = useI18n();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -268,6 +271,7 @@ export default function Column({
                             onEditError={onEditError}
                             projectMembers={projectMembers}
                             currentUserId={currentUserId}
+                            readScope={readScope}
                             {...selectionProps}
                           />
                         );

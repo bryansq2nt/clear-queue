@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
 import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
+import { getCanUseModuleMemberContent } from '@/app/actions/modules';
 import { revalidatePath } from 'next/cache';
 import { captureWithContext } from '@/lib/sentry';
 
@@ -495,11 +496,14 @@ export async function getBillingsPermissions(
     };
   }
 
-  const granted = await getGrantedActions(user.id, projectId, true);
+  const [granted, memberUse] = await Promise.all([
+    getGrantedActions(user.id, projectId, true),
+    getCanUseModuleMemberContent(projectId, 'billings'),
+  ]);
   return {
-    canCreate: granted.has('billings.create'),
-    canEdit: granted.has('billings.update'),
-    canDelete: granted.has('billings.delete'),
+    canCreate: granted.has('billings.create') || memberUse,
+    canEdit: granted.has('billings.update') || memberUse,
+    canDelete: granted.has('billings.delete') || memberUse,
     canManageCategories: granted.has('billings.update'),
   };
 }

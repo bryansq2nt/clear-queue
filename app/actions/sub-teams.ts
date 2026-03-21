@@ -447,45 +447,74 @@ export async function addTeamMember(
 
     await _requireCanManageTeam(user.id, teamId, team.project_id);
 
-    const { data, error } = await (supabase as any)
-      .from('project_team_members')
-      .insert({ team_id: teamId, user_id: userId, role: 'member' })
-      .select('id, team_id, user_id, role, joined_at')
-      .single();
+    const { error: rpcError } = await (supabase as any).rpc(
+      'move_sub_team_member_atomic',
+      {
+        p_project_id: team.project_id,
+        p_new_team_id: teamId,
+        p_user_id: userId,
+      }
+    );
 
-    if (error) {
-      if (error.code === '23505')
-        return { error: 'User is already a member of this sub-team.' };
-      if (error.code === '23503')
-        return { error: 'Invalid user or team reference.' };
-      if (
-        typeof error.message === 'string' &&
-        error.message.toLowerCase().includes('row-level security')
-      ) {
+    if (rpcError) {
+      const msg = String(rpcError.message ?? '');
+      if (msg.includes('not_authorized_to_manage_sub_team')) {
         return {
-          error: 'You do not have permission to add members to this sub-team.',
+          error:
+            'You do not have permission to manage members of this sub-team.',
         };
       }
-      throw error;
+      if (msg.includes('not_authorized_to_move_from_sub_team')) {
+        return {
+          error:
+            'You cannot reassign this member from their current sub-team. Ask a project manager or the manager of that sub-team.',
+        };
+      }
+      if (msg.includes('invalid_arguments')) {
+        return { error: 'Invalid sub-team or member.' };
+      }
+      captureWithContext(rpcError, {
+        module: 'sub-teams',
+        action: 'addTeamMember',
+        userIntent: 'Assign member to sub-team (move if needed)',
+        expected: 'move_sub_team_member_atomic completes',
+        extra: { teamId, userId },
+      });
+      return {
+        error: msg.trim() || 'Failed to update sub-team membership.',
+      };
+    }
+
+    const { data: row } = await (supabase as any)
+      .from('project_team_members')
+      .select('id, team_id, user_id, role, joined_at')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!row) {
+      return {
+        error: 'Sub-team membership could not be loaded after update.',
+      };
     }
 
     const { data: profile } = await (supabase as any)
       .from('profiles')
-      .select('display_name, email, avatar_url')
-      .eq('id', userId)
+      .select('display_name, avatar_asset_id')
+      .eq('user_id', userId)
       .maybeSingle();
 
     revalidatePath(`/context/${team.project_id}/team`);
     return {
       data: {
-        id: data.id,
-        team_id: data.team_id,
-        user_id: data.user_id,
-        role: data.role,
-        joined_at: data.joined_at,
+        id: row.id,
+        team_id: row.team_id,
+        user_id: row.user_id,
+        role: row.role,
+        joined_at: row.joined_at,
         display_name: profile?.display_name ?? null,
-        email: profile?.email ?? null,
-        avatar_url: profile?.avatar_url ?? null,
+        email: null,
+        avatar_url: null,
       },
     };
   } catch (err) {

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
 import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
+import { getCanUseModuleMemberContent } from '@/app/actions/modules';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -429,10 +430,13 @@ export async function getCalendarPermissions(
     return { canCreate: true, canUpdate: true, canDelete: true };
   }
 
-  const granted = await getGrantedActions(user.id, projectId, true);
+  const [granted, memberUse] = await Promise.all([
+    getGrantedActions(user.id, projectId, true),
+    getCanUseModuleMemberContent(projectId, 'calendar'),
+  ]);
   return {
-    canCreate: granted.has('calendar.create'),
-    canUpdate: granted.has('calendar.update'),
-    canDelete: granted.has('calendar.delete'),
+    canCreate: granted.has('calendar.create') || memberUse,
+    canUpdate: granted.has('calendar.update') || memberUse,
+    canDelete: granted.has('calendar.delete') || memberUse,
   };
 }

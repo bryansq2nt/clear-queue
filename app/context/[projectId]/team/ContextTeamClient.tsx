@@ -24,6 +24,8 @@ import {
   deleteProjectTeam,
   addTeamMember,
   removeTeamMember,
+  listProjectTeams,
+  listMySubTeamMemberships,
 } from '@/app/actions/sub-teams';
 import type {
   MySubTeamMembership,
@@ -318,6 +320,7 @@ export default function ContextTeamClient({
     useState<ProjectInvite | null>(null);
   const [confirmRemoveMember, setConfirmRemoveMember] =
     useState<ProjectMember | null>(null);
+  const [removeMemberReason, setRemoveMemberReason] = useState('');
   const [inviteSuccessDialog, setInviteSuccessDialog] = useState<{
     link: string;
     email: string;
@@ -777,23 +780,37 @@ export default function ContextTeamClient({
   );
 
   const handleRemoveMember = useCallback(
-    async (userId: string) => {
-      const result = await removeProjectMember(projectId, userId);
+    async (userId: string, reason?: string) => {
+      const result = await removeProjectMember(projectId, userId, reason);
       if (result.error) {
         setErrorDialog({
           open: true,
           title: t('teams.remove_error_title'),
           message: result.error,
-          retry: () => void handleRemoveMember(userId),
+          retry: () => void handleRemoveMember(userId, reason),
         });
         return;
       }
       setConfirmRemoveMember(null);
+      setRemoveMemberReason('');
       setMembers((prev) => prev.filter((m) => m.user_id !== userId));
+      // remove_project_member_atomic also deletes project_team_members; keep sub-team
+      // UI in sync or we show a ghost row with no project member to resolve the name.
+      setTeams((prev) =>
+        prev.map((team) => ({
+          ...team,
+          members: team.members.filter((m) => m.user_id !== userId),
+        }))
+      );
       router.refresh(); // background sync
     },
     [projectId, router, t]
   );
+
+  const closeRemoveMemberDialog = useCallback(() => {
+    setConfirmRemoveMember(null);
+    setRemoveMemberReason('');
+  }, []);
 
   const handleApplyRole = useCallback(
     async (userId: string, roleId: string) => {
@@ -982,10 +999,7 @@ export default function ContextTeamClient({
   const handleAddTeamMember = useCallback(async () => {
     if (!addMemberTeam || !addMemberUserId) return;
     setAddMemberSaving(true);
-    const { data, error } = await addTeamMember(
-      addMemberTeam.id,
-      addMemberUserId
-    );
+    const { error } = await addTeamMember(addMemberTeam.id, addMemberUserId);
     setAddMemberSaving(false);
     if (error) {
       setErrorDialog({
@@ -996,31 +1010,16 @@ export default function ContextTeamClient({
       });
       return;
     }
-    if (data) {
-      setTeams((prev) =>
-        prev.map((team) =>
-          team.id === addMemberTeam.id
-            ? { ...team, members: [...team.members, data] }
-            : team
-        )
-      );
-      if (addMemberUserId === currentUserId) {
-        setMySubTeamMemberships((prev) => {
-          if (prev.some((m) => m.teamId === addMemberTeam.id)) return prev;
-          return [
-            ...prev,
-            {
-              teamId: addMemberTeam.id,
-              teamName: addMemberTeam.name,
-              role: data.role,
-            },
-          ];
-        });
-      }
-    }
+    const [nextTeams, nextMine] = await Promise.all([
+      listProjectTeams(projectId),
+      listMySubTeamMemberships(projectId),
+    ]);
+    setTeams(nextTeams);
+    setMySubTeamMemberships(nextMine);
     setAddMemberTeam(null);
     setAddMemberUserId('');
-  }, [addMemberTeam, addMemberUserId, currentUserId, t]);
+    router.refresh();
+  }, [addMemberTeam, addMemberUserId, projectId, router, t]);
 
   const handleRemoveTeamMember = useCallback(
     async (teamId: string, userId: string) => {
@@ -2388,7 +2387,7 @@ export default function ContextTeamClient({
       {/* Remove member confirmation */}
       <Dialog
         open={!!confirmRemoveMember}
-        onOpenChange={(open) => !open && setConfirmRemoveMember(null)}
+        onOpenChange={(open) => !open && closeRemoveMemberDialog()}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -2403,11 +2402,28 @@ export default function ContextTeamClient({
                 : ''}
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-2 px-1">
+            <label
+              htmlFor="remove-member-reason"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              {t('teams.remove_reason_label')}
+            </label>
+            <textarea
+              id="remove-member-reason"
+              value={removeMemberReason}
+              onChange={(e) => setRemoveMemberReason(e.target.value)}
+              maxLength={2000}
+              rows={3}
+              placeholder={t('teams.remove_reason_placeholder')}
+              className="w-full text-sm rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-y min-h-[72px]"
+            />
+          </div>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={() => setConfirmRemoveMember(null)}
+              onClick={closeRemoveMemberDialog}
             >
               {t('common.cancel')}
             </Button>
@@ -2416,7 +2432,10 @@ export default function ContextTeamClient({
               variant="destructive"
               onClick={() =>
                 confirmRemoveMember &&
-                void handleRemoveMember(confirmRemoveMember.user_id)
+                void handleRemoveMember(
+                  confirmRemoveMember.user_id,
+                  removeMemberReason.trim() || undefined
+                )
               }
             >
               {t('teams.remove_confirm_btn')}

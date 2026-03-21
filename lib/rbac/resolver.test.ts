@@ -30,6 +30,8 @@ const USER_ID = 'user-abc';
 const PROJECT_ID = 'project-xyz';
 const ORG_ID = 'org-123';
 const ROLE_ID_EDITOR = 'role-editor';
+/** Non-owner project owner_id — must differ from USER_ID in membership tests */
+const OWNER_ID = 'owner-other';
 
 // ---------------------------------------------------------------------------
 // Helper — builds a chainable Supabase query stub that resolves to `data`
@@ -59,7 +61,7 @@ function buildChain(data: unknown) {
 // Tables queried in order across can() for a project-scope resource:
 //  1. project_members        → membership check (maybeSingle)
 //  2. user_role_assignments  → project role_ids (eq chain → resolved array)
-//  3. projects               → org_id (maybeSingle)
+//  3. projects               → org_id + owner_id (maybeSingle); may be queried twice
 //  4. user_role_assignments  → org role_ids (eq chain → resolved array)
 //  5. rbac_role_module_actions → expand roles to action keys (.in → resolved)
 // ---------------------------------------------------------------------------
@@ -94,7 +96,7 @@ function setupProjectScope(opts: {
       return buildChain(orgRoleIds.map((r) => ({ role_id: r })));
     }
     if (table === 'projects') {
-      return buildChain({ org_id: orgId });
+      return buildChain({ org_id: orgId, owner_id: OWNER_ID });
     }
     if (table === 'rbac_role_module_actions') {
       return buildChain(
@@ -220,6 +222,42 @@ describe('can() — granted path (project scope)', () => {
         projectId: PROJECT_ID,
       })
     ).toBe(false);
+  });
+
+  it('returns true when URA has no rows but user is project member (team_member fallback)', async () => {
+    const TM_ROLE_ID = 'role-team-member';
+    let uraCallCount = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'project_members') {
+        return buildChain({ id: 'member-row' });
+      }
+      if (table === 'projects') {
+        return buildChain({ org_id: ORG_ID, owner_id: OWNER_ID });
+      }
+      if (table === 'user_role_assignments') {
+        uraCallCount++;
+        if (uraCallCount === 1) {
+          return buildChain([]);
+        }
+        return buildChain([]);
+      }
+      if (table === 'rbac_roles') {
+        return buildChain({ id: TM_ROLE_ID });
+      }
+      if (table === 'rbac_role_module_actions') {
+        return buildChain([
+          { rbac_module_actions: { action_key: 'tasks.create' } },
+        ]);
+      }
+      return buildChain(null);
+    });
+
+    expect(
+      await can(USER_ID, 'tasks.create', {
+        type: 'task',
+        projectId: PROJECT_ID,
+      })
+    ).toBe(true);
   });
 
   it('returns false when role IDs exist but expand to no action keys', async () => {

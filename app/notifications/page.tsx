@@ -3,12 +3,7 @@ import { Bell, Inbox } from 'lucide-react';
 import { listMyNotifications } from '@/app/actions/notifications';
 import { getProfileOptional } from '@/app/profile/actions';
 import { t, type Locale } from '@/lib/i18n';
-
-function roleLabel(locale: Locale, role: string): string {
-  const key = `roles.${role}`;
-  const translated = t(locale, key);
-  return translated === key ? role.replaceAll('_', ' ') : translated;
-}
+import { NotificationsListClient } from './NotificationsListClient';
 
 export default async function NotificationsPage() {
   const [notifications, profile] = await Promise.all([
@@ -41,30 +36,10 @@ export default async function NotificationsPage() {
             </p>
           </div>
         ) : (
-          <ul className="space-y-2">
-            {notifications.map((n) => (
-              <li key={n.id}>
-                <Link
-                  href={n.href}
-                  className="block rounded-lg border border-border bg-card p-4 hover:bg-accent/30 transition-colors"
-                >
-                  <p className="text-sm font-medium text-foreground">
-                    {t(locale, 'notifications.invite_title', {
-                      project: n.projectName,
-                    })}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t(locale, 'notifications.invite_message', {
-                      role: roleLabel(locale, n.roleName),
-                    })}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mt-2">
-                    {new Date(n.created_at).toLocaleString()}
-                  </p>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <NotificationsListClient
+            notifications={notifications}
+            locale={locale}
+          />
         )}
       </div>
     </div>

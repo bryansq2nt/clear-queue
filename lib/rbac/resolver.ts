@@ -41,6 +41,86 @@ function getContextFromResource(resource: Resource): {
 }
 
 // ---------------------------------------------------------------------------
+// Role IDs for a project (project-scoped URA + org-scoped URA via parent org).
+// Shared by getGrantedActions and getCanUseModuleMemberContent so "member use"
+// UX stays aligned with permission expansion (org-inherited roles included).
+// ---------------------------------------------------------------------------
+
+export const getRoleIdsForUserInProject = cache(
+  async (userId: string, projectId: string): Promise<string[]> => {
+    const supabase = await createClient();
+    const roleIds: string[] = [];
+
+    const [{ data: projectRoles }, { data: project }] = await Promise.all([
+      (supabase as any)
+        .from('user_role_assignments')
+        .select('role_id')
+        .eq('user_id', userId)
+        .eq('project_id', projectId),
+      (supabase as any)
+        .from('projects')
+        .select('org_id, owner_id')
+        .eq('id', projectId)
+        .maybeSingle(),
+    ]);
+
+    if (projectRoles) {
+      for (const r of projectRoles) {
+        if (r.role_id) roleIds.push(r.role_id);
+      }
+    }
+
+    if (project?.org_id) {
+      const { data: orgRoles } = await (supabase as any)
+        .from('user_role_assignments')
+        .select('role_id')
+        .eq('user_id', userId)
+        .eq('org_id', project.org_id);
+
+      if (orgRoles) {
+        for (const r of orgRoles) {
+          if (r.role_id) roleIds.push(r.role_id);
+        }
+      }
+    }
+
+    const unique = [...new Set(roleIds)];
+
+    // If URA has no rows (legacy gap after migrations, or a bad write path) but
+    // the user is still in project_members, treat them as team_member so
+    // getGrantedActions / getCanUseModuleMemberContent match product intent.
+    // Guests always have a URA row with role "guest", so they never hit this.
+    if (
+      unique.length === 0 &&
+      project?.owner_id != null &&
+      project.owner_id !== userId
+    ) {
+      const { data: pm } = await (supabase as any)
+        .from('project_members')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (pm) {
+        const { data: teamMemberRole } = await (supabase as any)
+          .from('rbac_roles')
+          .select('id')
+          .eq('name', 'team_member')
+          .eq('is_system_role', true)
+          .maybeSingle();
+
+        if (teamMemberRole?.id) {
+          unique.push(teamMemberRole.id as string);
+        }
+      }
+    }
+
+    return unique;
+  }
+);
+
+// ---------------------------------------------------------------------------
 // getGrantedActions — the expensive DB lookup, cached per request.
 //
 // React's cache() deduplicates calls with the same (userId, contextId,
@@ -63,36 +143,7 @@ export const getGrantedActions = cache(
     const roleIds: string[] = [];
 
     if (isProjectScope) {
-      // Fetch project roles and the project's org_id in parallel
-      const [{ data: projectRoles }, { data: project }] = await Promise.all([
-        (supabase as any)
-          .from('user_role_assignments')
-          .select('role_id')
-          .eq('user_id', userId)
-          .eq('project_id', contextId),
-        (supabase as any)
-          .from('projects')
-          .select('org_id')
-          .eq('id', contextId)
-          .maybeSingle(),
-      ]);
-
-      if (projectRoles) {
-        for (const r of projectRoles) roleIds.push(r.role_id);
-      }
-
-      // Inherit org-level role assignments via the project's parent org
-      if (project?.org_id) {
-        const { data: orgRoles } = await (supabase as any)
-          .from('user_role_assignments')
-          .select('role_id')
-          .eq('user_id', userId)
-          .eq('org_id', project.org_id);
-
-        if (orgRoles) {
-          for (const r of orgRoles) roleIds.push(r.role_id);
-        }
-      }
+      roleIds.push(...(await getRoleIdsForUserInProject(userId, contextId)));
     } else {
       const { data: orgRoles } = await (supabase as any)
         .from('user_role_assignments')

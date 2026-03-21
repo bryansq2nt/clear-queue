@@ -4,7 +4,9 @@ import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
+import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
 import { captureWithContext } from '@/lib/sentry';
+import { getCanUseModuleMemberContent } from '@/app/actions/modules';
 import { revalidatePath } from 'next/cache';
 import type {
   Milestone,
@@ -14,18 +16,30 @@ import type {
 } from '@/lib/milestones/schema';
 
 const MILESTONE_COLS =
-  'id, project_id, title, description, sort_order, status, completed_at, created_at, updated_at';
+  'id, project_id, title, description, sort_order, status, completed_at, created_by, created_at, updated_at';
 
 export const listMilestones = cache(
   async (projectId: string): Promise<Milestone[]> => {
     const user = await requireAuth();
     const supabase = await createClient();
 
-    const { data, error } = await (supabase as any)
+    const readScope = await getReadScope(user.id, projectId);
+
+    let q = (supabase as any)
       .from('milestones')
       .select(MILESTONE_COLS)
       .eq('project_id', projectId)
       .order('sort_order', { ascending: true });
+
+    if (readScope === 'own') {
+      q = q.eq('created_by', user.id);
+    } else if (readScope === 'team') {
+      const memberIds = await getTeamMemberIds(user.id, projectId);
+      q = q.in('created_by', memberIds);
+    }
+    // 'project' scope: no additional filter — all milestones visible
+
+    const { data, error } = await q;
 
     if (error) {
       captureWithContext(error, {
@@ -47,11 +61,22 @@ export async function getMilestonesWithProgress(
   const user = await requireAuth();
   const supabase = await createClient();
 
-  const { data: milestones, error: milestonesError } = await (supabase as any)
+  const readScope = await getReadScope(user.id, projectId);
+
+  let mq = (supabase as any)
     .from('milestones')
     .select(MILESTONE_COLS)
     .eq('project_id', projectId)
     .order('sort_order', { ascending: true });
+
+  if (readScope === 'own') {
+    mq = mq.eq('created_by', user.id);
+  } else if (readScope === 'team') {
+    const memberIds = await getTeamMemberIds(user.id, projectId);
+    mq = mq.in('created_by', memberIds);
+  }
+
+  const { data: milestones, error: milestonesError } = await mq;
 
   if (milestonesError || !milestones?.length) {
     if (milestonesError) {
@@ -66,10 +91,20 @@ export async function getMilestonesWithProgress(
     return [];
   }
 
-  const { data: taskCounts } = await (supabase as any)
+  // Task counts: scoped to the same set of tasks the user can see.
+  let tq = (supabase as any)
     .from('tasks')
     .select('milestone_id, status')
     .eq('project_id', projectId);
+
+  if (readScope === 'own') {
+    tq = tq.eq('assigned_to', user.id);
+  } else if (readScope === 'team') {
+    const memberIds = await getTeamMemberIds(user.id, projectId);
+    tq = tq.in('assigned_to', memberIds);
+  }
+
+  const { data: taskCounts } = await tq;
 
   const countByMilestone = new Map<string, { total: number; done: number }>();
   for (const m of milestones as Milestone[]) {
@@ -124,6 +159,7 @@ export async function createMilestone(
       title,
       description: input.description?.trim() || null,
       sort_order,
+      created_by: user.id,
     })
     .select(MILESTONE_COLS)
     .single();
@@ -399,11 +435,14 @@ export async function getMilestonesPermissions(
     };
   }
 
-  const granted = await getGrantedActions(user.id, projectId, true);
+  const [granted, memberUse] = await Promise.all([
+    getGrantedActions(user.id, projectId, true),
+    getCanUseModuleMemberContent(projectId, 'milestones'),
+  ]);
   return {
-    canCreate: granted.has('milestones.create'),
-    canUpdate: granted.has('milestones.update'),
-    canComplete: granted.has('milestones.update'),
-    canDelete: granted.has('milestones.delete'),
+    canCreate: granted.has('milestones.create') || memberUse,
+    canUpdate: granted.has('milestones.update') || memberUse,
+    canComplete: granted.has('milestones.update') || memberUse,
+    canDelete: granted.has('milestones.delete') || memberUse,
   };
 }

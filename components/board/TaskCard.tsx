@@ -27,6 +27,8 @@ interface TaskCardProps {
   onEditError?: (params: EditTaskErrorParams) => void;
   projectMembers?: TaskAssignee[];
   currentUserId?: string;
+  /** 'own' scope = team member; limits edit to their own tasks only. */
+  readScope?: 'own' | 'team' | 'project';
 }
 
 export default function TaskCard({
@@ -42,6 +44,7 @@ export default function TaskCard({
   onEditError,
   projectMembers,
   currentUserId,
+  readScope,
 }: TaskCardProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
@@ -231,6 +234,13 @@ export default function TaskCard({
         onEditError={onEditError}
         projectMembers={projectMembers}
         currentUserId={currentUserId}
+        canEditFull={
+          // Own-scope users (team members) see the limited form for tasks
+          // they didn't create — they can only update the status + add a note.
+          readScope !== 'own' ||
+          (task as any).created_by === currentUserId ||
+          currentUserId === undefined
+        }
       />
     </>
   );

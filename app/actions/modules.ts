@@ -13,6 +13,8 @@ import {
   type ModuleKey,
   type SerializableResolvedModule,
 } from '@/lib/modules/registry';
+import { isNonGuestContributorRole } from '@/lib/rbac/member-module-use';
+import { getRoleIdsForUserInProject } from '@/lib/rbac/resolver';
 
 // ─────────────────────────────────────────────────────────────────
 // Read
@@ -114,6 +116,46 @@ export const getCanViewModule = cache(
         : 'no_access'
       : undefined;
     return { canView, reason };
+  }
+);
+
+/**
+ * True when the user sees this module tab and has a non-guest contributor role
+ * (team_member / team_manager / project_manager / owner). Used to show create /
+ * edit / delete UI for own content even if rbac_role_module_actions is stale.
+ * Server actions still call requireCan(); guests remain read-only.
+ */
+export const getCanUseModuleMemberContent = cache(
+  async (projectId: string, moduleKey: ModuleKey): Promise<boolean> => {
+    const { canView } = await getCanViewModule(projectId, moduleKey);
+    if (!canView) return false;
+
+    const user = await requireAuth();
+    const supabase = await createClient();
+
+    const { data: project } = await (supabase as any)
+      .from('projects')
+      .select('owner_id')
+      .eq('id', projectId)
+      .maybeSingle();
+    if (project?.owner_id === user.id) return true;
+
+    const roleIds = await getRoleIdsForUserInProject(user.id, projectId);
+    if (roleIds.length === 0) return false;
+
+    // Resolve names with an explicit select — avoids PostgREST embed edge cases
+    // and matches getGrantedActions role expansion (project + org URA).
+    const { data: roleRows } = await (supabase as any)
+      .from('rbac_roles')
+      .select('name')
+      .in('id', roleIds);
+
+    const roleNames: string[] = [];
+    for (const row of roleRows ?? []) {
+      const n = row?.name;
+      if (typeof n === 'string') roleNames.push(n);
+    }
+    return isNonGuestContributorRole(roleNames);
   }
 );
 

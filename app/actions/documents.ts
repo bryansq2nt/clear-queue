@@ -10,6 +10,7 @@ import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 import { getProjectById } from '@/app/actions/projects';
 import { getFolderForProject } from '@/app/actions/document-folders';
+import { getCanUseModuleMemberContent } from '@/app/actions/modules';
 import {
   DOCUMENT_MAX_SIZE_BYTES,
   DOCUMENT_EXT_MAP,
@@ -866,12 +867,15 @@ export async function getDocumentsPermissions(
     };
   }
 
-  const granted = await getGrantedActions(user.id, projectId, true);
+  const [granted, memberUse] = await Promise.all([
+    getGrantedActions(user.id, projectId, true),
+    getCanUseModuleMemberContent(projectId, 'documents'),
+  ]);
   return {
-    canUpload: granted.has('documents.create'),
-    canUpdateMetadata: granted.has('documents.update'),
-    canDelete: granted.has('documents.delete'),
-    canManageFolders: granted.has('documents.update'),
+    canUpload: granted.has('documents.create') || memberUse,
+    canUpdateMetadata: granted.has('documents.update') || memberUse,
+    canDelete: granted.has('documents.delete') || memberUse,
+    canManageFolders: granted.has('documents.update') || memberUse,
   };
 }
 

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
 import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
+import { getCanUseModuleMemberContent } from '@/app/actions/modules';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -463,10 +464,13 @@ export async function getNotesPermissions(
     return { canCreate: true, canDelete: true, canManageFolders: true };
   }
 
-  const granted = await getGrantedActions(user.id, projectId, true);
+  const [granted, memberUse] = await Promise.all([
+    getGrantedActions(user.id, projectId, true),
+    getCanUseModuleMemberContent(projectId, 'notes'),
+  ]);
   return {
-    canCreate: granted.has('notes.create'),
-    canDelete: granted.has('notes.delete'),
-    canManageFolders: granted.has('notes.update'),
+    canCreate: granted.has('notes.create') || memberUse,
+    canDelete: granted.has('notes.delete') || memberUse,
+    canManageFolders: granted.has('notes.update') || memberUse,
   };
 }

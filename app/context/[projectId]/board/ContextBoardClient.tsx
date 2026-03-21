@@ -256,6 +256,7 @@ export default function ContextBoardClient({
           canAdd={permissions.canCreate}
           projectMembers={permissions.canAssign ? projectMembers : undefined}
           currentUserId={currentUserId}
+          readScope={permissions.readScope}
           onTasksChange={handleTasksChange}
           onMoveError={openMoveErrorDialog}
           onTaskUpdated={handleTaskUpdated}

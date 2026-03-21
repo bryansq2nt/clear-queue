@@ -91,6 +91,8 @@ interface KanbanBoardProps {
   projectMembers?: Array<{ user_id: string; display_name: string }>;
   /** Current user's ID — passed to modals for "Me" label. */
   currentUserId?: string;
+  /** Board read scope — determines full vs. limited task edit form. */
+  readScope?: 'own' | 'team' | 'project';
 }
 
 function TaskListForStatus({
@@ -108,6 +110,7 @@ function TaskListForStatus({
   footer,
   projectMembers,
   currentUserId,
+  readScope,
 }: {
   status: Task['status'];
   tasks: Task[];
@@ -127,6 +130,7 @@ function TaskListForStatus({
   footer?: React.ReactNode;
   projectMembers?: Array<{ user_id: string; display_name: string }>;
   currentUserId?: string;
+  readScope?: 'own' | 'team' | 'project';
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const taskIds = tasks.map((t) => t.id);
@@ -155,6 +159,7 @@ function TaskListForStatus({
                   onEditError={onEditError}
                   projectMembers={projectMembers}
                   currentUserId={currentUserId}
+                  readScope={readScope}
                   {...selectionProps}
                 />
               );
@@ -195,6 +200,7 @@ export default function KanbanBoard({
   canAdd = true,
   projectMembers,
   currentUserId,
+  readScope,
 }: KanbanBoardProps) {
   const { t } = useI18n();
   const [selectedTabState, setSelectedTabState] =
@@ -402,6 +408,7 @@ export default function KanbanBoard({
                       onEditError={onEditError}
                       projectMembers={projectMembers}
                       currentUserId={currentUserId}
+                      readScope={readScope}
                       footer={
                         onLoadMore && hasMore ? (
                           isLoadingMore ? (
@@ -462,6 +469,7 @@ export default function KanbanBoard({
                 canAdd={canAdd}
                 projectMembers={projectMembers}
                 currentUserId={currentUserId}
+                readScope={readScope}
               />
             );
           })}

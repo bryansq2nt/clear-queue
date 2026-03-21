@@ -532,7 +532,8 @@ export async function revokeInvite(
 // ── removeProjectMember ───────────────────────────────────────────────
 export async function removeProjectMember(
   projectId: string,
-  targetUserId: string
+  targetUserId: string,
+  removalReason?: string | null
 ): Promise<{ success?: boolean; error?: string }> {
   const user = await requireAuth();
   await requireCan(user.id, 'teams.manage_members', {
@@ -555,15 +556,31 @@ export async function removeProjectMember(
     return { error: 'Cannot remove the project owner' };
   }
 
+  const reason =
+    typeof removalReason === 'string' && removalReason.trim().length > 0
+      ? removalReason.trim().slice(0, 2000)
+      : null;
+
   const { error } = await (supabase as any).rpc(
     'remove_project_member_atomic',
-    { p_project_id: projectId, p_target_user_id: targetUserId }
+    {
+      p_project_id: projectId,
+      p_target_user_id: targetUserId,
+      p_reason: reason,
+    }
   );
 
   if (error) {
     const msg: string = error.message ?? '';
     if (msg.includes('cannot_remove_self'))
       return { error: 'Cannot remove yourself from the project' };
+    if (msg.includes('cannot_remove_project_owner'))
+      return { error: 'Cannot remove the project owner' };
+    if (msg.includes('not_authorized_to_remove_member'))
+      return {
+        error:
+          'Not allowed to remove this member. Project owners and project managers can remove any member; team managers only members of sub-teams they manage.',
+      };
     captureWithContext(error, {
       module: 'teams',
       action: 'removeProjectMember',
@@ -903,6 +920,8 @@ export async function acceptInvite(
   });
 
   revalidatePath(`/context/${pid}/team`);
+  revalidatePath('/notifications');
+  revalidatePath('/');
   return { projectId: pid };
 }
 
@@ -940,5 +959,7 @@ export async function rejectInvite(
     return { error: rpcError.message };
   }
 
+  revalidatePath('/notifications');
+  revalidatePath('/');
   return { success: true };
 }

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
 import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
+import { getCanUseModuleMemberContent } from '@/app/actions/modules';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 import {
@@ -495,11 +496,14 @@ export async function getLinksPermissions(
     };
   }
 
-  const granted = await getGrantedActions(user.id, projectId, true);
+  const [granted, memberUse] = await Promise.all([
+    getGrantedActions(user.id, projectId, true),
+    getCanUseModuleMemberContent(projectId, 'links'),
+  ]);
   return {
-    canCreate: granted.has('links.create'),
-    canUpdate: granted.has('links.update'),
-    canDelete: granted.has('links.delete'),
+    canCreate: granted.has('links.create') || memberUse,
+    canUpdate: granted.has('links.update') || memberUse,
+    canDelete: granted.has('links.delete') || memberUse,
     canManageCategories: granted.has('links.update'),
   };
 }

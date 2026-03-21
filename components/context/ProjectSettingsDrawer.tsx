@@ -8,6 +8,7 @@ import type { SerializableResolvedModule } from '@/lib/modules/registry';
 import { ProjectModulesSettingsView } from './ProjectModulesSettingsView';
 import { deleteProject } from '@/app/actions/projects';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface ProjectSettingsDrawerProps {
   open: boolean;
@@ -36,6 +37,7 @@ export function ProjectSettingsDrawer({
     'menu'
   );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [confirmName, setConfirmName] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +45,7 @@ export function ProjectSettingsDrawer({
     if (open) {
       setMobileView('menu');
       setShowDeleteConfirm(false);
+      setConfirmName('');
       setIsDeleting(false);
       setError(null);
     }
@@ -204,6 +207,18 @@ export function ProjectSettingsDrawer({
                     <p className="text-sm text-muted-foreground">
                       {t('projects.delete_confirm', { name: projectName })}
                     </p>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">
+                        {t('projects.delete_confirm_name')}
+                      </label>
+                      <Input
+                        value={confirmName}
+                        onChange={(e) => setConfirmName(e.target.value)}
+                        placeholder={projectName}
+                        disabled={isDeleting}
+                        autoComplete="off"
+                      />
+                    </div>
                     {error && (
                       <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
                         {error}
@@ -215,6 +230,7 @@ export function ProjectSettingsDrawer({
                         variant="outline"
                         onClick={() => {
                           setShowDeleteConfirm(false);
+                          setConfirmName('');
                           setError(null);
                         }}
                         disabled={isDeleting}
@@ -225,7 +241,7 @@ export function ProjectSettingsDrawer({
                         type="button"
                         variant="destructive"
                         onClick={handleDeleteProject}
-                        disabled={isDeleting}
+                        disabled={isDeleting || confirmName !== projectName}
                       >
                         {isDeleting
                           ? t('projects.deleting')

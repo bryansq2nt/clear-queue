@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
 import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
+import { getCanUseModuleMemberContent } from '@/app/actions/modules';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 
@@ -443,10 +444,13 @@ export async function getBudgetsPermissions(
     return { canCreate: true, canDelete: true };
   }
 
-  const granted = await getGrantedActions(user.id, projectId, true);
+  const [granted, memberUse] = await Promise.all([
+    getGrantedActions(user.id, projectId, true),
+    getCanUseModuleMemberContent(projectId, 'budgets'),
+  ]);
   return {
-    canCreate: granted.has('budgets.create'),
-    canDelete: granted.has('budgets.delete'),
+    canCreate: granted.has('budgets.create') || memberUse,
+    canDelete: granted.has('budgets.delete') || memberUse,
   };
 }
 

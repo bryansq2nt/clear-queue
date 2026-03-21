@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useLayoutEffect } from 'react';
 import { useI18n } from '@/components/shared/I18nProvider';
-import { updateTask, deleteTask } from '@/app/actions/tasks';
+import { updateTask, deleteTask, updateTaskStatus } from '@/app/actions/tasks';
 import { listMilestones } from '@/app/actions/milestones';
 import type { Milestone } from '@/lib/milestones/schema';
 import type { TaskAssignee } from './AddTaskModal';
@@ -51,6 +51,12 @@ interface EditTaskModalProps {
   projectMembers?: TaskAssignee[];
   /** Current user's ID — shown as "Me" and sorted first in the assignee dropdown. */
   currentUserId?: string;
+  /**
+   * When false the user is an assignee (not creator) with own-scope permissions.
+   * They see a simplified form: status change + optional note only.
+   * Defaults to true (full edit form).
+   */
+  canEditFull?: boolean;
 }
 
 export function EditTaskModal({
@@ -63,6 +69,7 @@ export function EditTaskModal({
   onTaskDeleted,
   projectMembers,
   currentUserId,
+  canEditFull = true,
 }: EditTaskModalProps) {
   const { t } = useI18n();
   const [title, setTitle] = useState(task.title);
@@ -76,6 +83,7 @@ export function EditTaskModal({
   const [assignedTo, setAssignedTo] = useState<string>(
     (task as any).assigned_to ?? ''
   );
+  const [statusNote, setStatusNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
@@ -96,6 +104,7 @@ export function EditTaskModal({
       setTags(task.tags || '');
       setMilestoneId(taskWithMilestone.milestone_id ?? '');
       setAssignedTo((task as any).assigned_to ?? '');
+      setStatusNote('');
       setDeleteConfirmPending(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -168,6 +177,46 @@ export function EditTaskModal({
     }
   }
 
+  // Assignee-only path: update just the status + log an optional note.
+  async function handleStatusOnlySubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    if (onTaskUpdated) {
+      const optimisticTask: Task = { ...task, status };
+      onTaskUpdated(optimisticTask);
+      onClose();
+    }
+
+    try {
+      const result = await updateTaskStatus(
+        task.id,
+        status,
+        statusNote || undefined
+      );
+      if (result.error) {
+        if (onEditError) {
+          onEditError({
+            message: result.error,
+            previousTask: task,
+            retry: () =>
+              updateTaskStatus(task.id, status, statusNote || undefined),
+          });
+        } else {
+          setError(result.error);
+        }
+      } else {
+        if (!onTaskUpdated) {
+          onTaskUpdate();
+          onClose();
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   async function handleDelete() {
     setIsDeleting(true);
     const result = await deleteTask(task.id);
@@ -184,6 +233,84 @@ export function EditTaskModal({
       }
       onClose();
     }
+  }
+
+  // Assignee-only view: simplified dialog for tasks the user didn't create.
+  if (!canEditFull) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md max-h-[90vh] overflow-y-auto sm:w-full">
+          <DialogHeader>
+            <DialogTitle>{t('tasks.update_status_title')}</DialogTitle>
+            <DialogDescription>
+              {t('tasks.update_status_description')}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleStatusOnlySubmit}>
+            <div className="space-y-4 py-4">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {task.title}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t('tasks.created')}{' '}
+                  {new Date(task.created_at).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status-only">{t('tasks.status_label')}</Label>
+                <Select
+                  value={status}
+                  onValueChange={(v) => setStatus(v as Task['status'])}
+                >
+                  <SelectTrigger id="status-only">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="backlog">
+                      {t('kanban.backlog')}
+                    </SelectItem>
+                    <SelectItem value="next">{t('kanban.next')}</SelectItem>
+                    <SelectItem value="in_progress">
+                      {t('kanban.in_progress')}
+                    </SelectItem>
+                    <SelectItem value="blocked">
+                      {t('kanban.blocked')}
+                    </SelectItem>
+                    <SelectItem value="done">{t('kanban.done')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status-note">
+                  {t('tasks.status_note_label')}
+                </Label>
+                <Textarea
+                  id="status-note"
+                  value={statusNote}
+                  onChange={(e) => setStatusNote(e.target.value)}
+                  placeholder={t('tasks.status_note_placeholder')}
+                  rows={3}
+                />
+              </div>
+              {error && (
+                <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+                  {error}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>
+                {t('common.cancel')}
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? t('tasks.saving') : t('tasks.update_status_btn')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   return (

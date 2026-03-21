@@ -8,6 +8,7 @@ import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
 import { getProjectById } from '@/app/actions/projects';
+import { getCanUseModuleMemberContent } from '@/app/actions/modules';
 import {
   MEDIA_MAX_SIZE_BYTES,
   MEDIA_EXT_MAP,
@@ -84,15 +85,17 @@ export async function getMediaPermissions(
     };
   }
 
-  // Member: expand roles once, check all media actions
-  const granted = await getGrantedActions(user.id, pid, true);
+  const [granted, memberUse] = await Promise.all([
+    getGrantedActions(user.id, pid, true),
+    getCanUseModuleMemberContent(pid, 'media'),
+  ]);
   return {
-    canUpload: granted.has('media.create'),
-    canEdit: granted.has('media.update'),
-    canArchive: granted.has('media.update'),
-    canDelete: granted.has('media.delete'),
-    canShare: granted.has('media.create'),
-    canMarkFinal: granted.has('media.update'),
+    canUpload: granted.has('media.create') || memberUse,
+    canEdit: granted.has('media.update') || memberUse,
+    canArchive: granted.has('media.update') || memberUse,
+    canDelete: granted.has('media.delete') || memberUse,
+    canShare: granted.has('media.create') || memberUse,
+    canMarkFinal: granted.has('media.update') || memberUse,
   };
 }
 

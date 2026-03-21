@@ -2,6 +2,7 @@
 
 import { requireAuth } from '@/lib/auth';
 import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
+import { getCanUseModuleMemberContent } from '@/app/actions/modules';
 import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
 import { createClient } from '@/lib/supabase/server';
 import { captureWithContext } from '@/lib/sentry';
@@ -315,8 +316,11 @@ export async function getIdeasPermissions(
     return { canCreate: true };
   }
 
-  const granted = await getGrantedActions(user.id, projectId, true);
+  const [granted, memberUse] = await Promise.all([
+    getGrantedActions(user.id, projectId, true),
+    getCanUseModuleMemberContent(projectId, 'ideas'),
+  ]);
   return {
-    canCreate: granted.has('ideas.create'),
+    canCreate: granted.has('ideas.create') || memberUse,
   };
 }

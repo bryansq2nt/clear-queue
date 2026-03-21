@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
 import { getReadScope } from '@/lib/rbac/read-scope';
+import { getCanUseModuleMemberContent } from '@/app/actions/modules';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -732,14 +733,109 @@ export const getBoardPermissions = cache(
       return { canCreate: true, canAssign: true, readScope: 'project' };
     }
 
-    const [granted, readScope] = await Promise.all([
+    const [granted, readScope, memberUse] = await Promise.all([
       getGrantedActions(user.id, projectId, true),
       getReadScope(user.id, projectId),
+      getCanUseModuleMemberContent(projectId, 'board'),
     ]);
     return {
-      canCreate: granted.has('tasks.create'),
-      canAssign: granted.has('tasks.update'),
+      canCreate: granted.has('tasks.create') || memberUse,
+      canAssign: granted.has('tasks.update') || memberUse,
       readScope: readScope as TaskReadScope,
     };
   }
 );
+
+// ---------------------------------------------------------------------------
+// updateTaskStatus — status-only update for task assignees.
+//
+// Who can call this:
+//   • Project owner → always allowed.
+//   • Broader-scope roles (readScope != 'own') → allowed for any project task.
+//   • team_member (readScope 'own') → only for tasks they created or are
+//     assigned to.
+//
+// An optional status note is written to task_activity_log so the team
+// manager / owner can see the context behind the status change.
+// ---------------------------------------------------------------------------
+
+export async function updateTaskStatus(
+  taskId: string,
+  newStatus: TaskStatus,
+  statusNote?: string
+): Promise<{
+  data?: Database['public']['Tables']['tasks']['Row'];
+  error?: string;
+}> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { data: taskMeta } = await (supabase as any)
+    .from('tasks')
+    .select('project_id, created_by, assigned_to')
+    .eq('id', taskId)
+    .maybeSingle();
+
+  if (!taskMeta) return { error: 'Task not found' };
+
+  const { data: project } = await (supabase as any)
+    .from('projects')
+    .select('owner_id')
+    .eq('id', taskMeta.project_id)
+    .maybeSingle();
+
+  if (project?.owner_id !== user.id) {
+    const [granted, readScope] = await Promise.all([
+      getGrantedActions(user.id, taskMeta.project_id, true),
+      getReadScope(user.id, taskMeta.project_id),
+    ]);
+
+    const isCreator = taskMeta.created_by === user.id;
+    const isAssignee = taskMeta.assigned_to === user.id;
+
+    const canEdit =
+      granted.has('tasks.update') &&
+      (readScope !== 'own' || isCreator || isAssignee);
+
+    if (!canEdit) {
+      return {
+        error: "You don't have permission to update this task's status.",
+      };
+    }
+  }
+
+  const { data, error } = await (supabase as any)
+    .from('tasks')
+    .update({ status: newStatus })
+    .eq('id', taskId)
+    .select(TASK_COLS)
+    .single();
+
+  if (error) {
+    captureWithContext(error, {
+      module: 'tasks',
+      action: 'updateTaskStatus',
+      userIntent: 'Update task status with optional note',
+      expected: 'Task status field updated, activity log entry created',
+      extra: { taskId, newStatus },
+    });
+    return { error: error.message ?? 'Failed to update status' };
+  }
+
+  // Fire-and-forget activity log — includes the optional human note.
+  await logTaskActivity(
+    supabase,
+    taskId,
+    taskMeta.project_id,
+    user.id,
+    'status_changed',
+    { status: newStatus, status_note: statusNote?.trim() || null }
+  );
+
+  revalidatePath(`/context/${taskMeta.project_id}`);
+  revalidatePath(`/context/${taskMeta.project_id}/board`);
+
+  return {
+    data: data as Database['public']['Tables']['tasks']['Row'],
+  };
+}
