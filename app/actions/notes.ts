@@ -4,7 +4,11 @@ import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
-import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
+import {
+  getReadScope,
+  getScopedOwnerIds,
+  isOwnerInScope,
+} from '@/lib/rbac/read-scope';
 import { getCanUseModuleMemberContent } from '@/app/actions/modules';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
@@ -13,16 +17,38 @@ import { Database } from '@/lib/supabase/types';
 type Note = Database['public']['Tables']['notes']['Row'];
 type NoteLink = Database['public']['Tables']['note_links']['Row'];
 
+const NOTE_COLS =
+  'id, owner_id, project_id, title, content, folder_id, last_opened_at, created_at, updated_at';
+
+async function getAccessibleNote(noteId: string): Promise<Note | null> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const id = noteId?.trim();
+  if (!id) return null;
+
+  const { data, error } = await supabase
+    .from('notes')
+    .select(NOTE_COLS)
+    .eq('id', id)
+    .single();
+
+  if (error || !data) return null;
+  const row = data as Note;
+  if (!(await isOwnerInScope(user.id, row.project_id, row.owner_id, 'notes'))) {
+    return null;
+  }
+  return row;
+}
+
 export const getNotes = cache(
   async (options?: { projectId?: string }): Promise<Note[]> => {
     const user = await requireAuth();
     const supabase = await createClient();
 
-    const noteCols =
-      'id, owner_id, project_id, title, content, folder_id, last_opened_at, created_at, updated_at';
     let query = supabase
       .from('notes')
-      .select(noteCols)
+      .select(NOTE_COLS)
       .order('updated_at', { ascending: false });
 
     if (options?.projectId?.trim()) {
@@ -30,11 +56,11 @@ export const getNotes = cache(
       query = query.eq('project_id', pid);
 
       const scope = await getReadScope(user.id, pid, 'notes');
+      const scopedOwnerIds = await getScopedOwnerIds(user.id, pid, 'notes');
       if (scope === 'own') {
         query = query.eq('owner_id', user.id);
       } else if (scope === 'team') {
-        const teamIds = await getTeamMemberIds(user.id, pid);
-        query = query.in('owner_id', teamIds);
+        query = query.in('owner_id', scopedOwnerIds ?? [user.id]);
       }
       // scope === 'project': no owner filter
     } else {
@@ -52,25 +78,15 @@ export const getNotes = cache(
 );
 
 export async function getNoteById(noteId: string): Promise<Note | null> {
-  const user = await requireAuth();
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from('notes')
-    .select(
-      'id, owner_id, project_id, title, content, folder_id, last_opened_at, created_at, updated_at'
-    )
-    .eq('id', noteId)
-    .eq('owner_id', user.id)
-    .single();
-
-  if (error || !data) return null;
-  return data as Note;
+  return getAccessibleNote(noteId);
 }
 
 export async function touchNote(noteId: string): Promise<void> {
-  const user = await requireAuth();
+  await requireAuth();
   const supabase = await createClient();
+
+  const note = await getAccessibleNote(noteId);
+  if (!note) return;
 
   const updates: Database['public']['Tables']['notes']['Update'] = {
     last_opened_at: new Date().toISOString(),
@@ -78,8 +94,7 @@ export async function touchNote(noteId: string): Promise<void> {
   const { error } = await supabase
     .from('notes')
     .update(updates as never)
-    .eq('id', noteId)
-    .eq('owner_id', user.id);
+    .eq('id', noteId);
 
   if (error) {
     captureWithContext(error, {
@@ -162,14 +177,9 @@ export async function updateNote(
 ): Promise<{ error?: string; data?: Note }> {
   const user = await requireAuth();
   const supabase = await createClient();
-  const { data: noteRow } = await (supabase as any)
-    .from('notes')
-    .select('project_id')
-    .eq('id', noteId)
-    .eq('owner_id', user.id)
-    .maybeSingle();
-  const noteProjectId = (noteRow as { project_id?: string } | null)?.project_id;
-  if (noteProjectId) {
+  const noteRow = await getAccessibleNote(noteId);
+  const noteProjectId = noteRow?.project_id;
+  if (noteProjectId && noteRow) {
     await requireCan(user.id, 'notes.update', {
       type: 'note',
       projectId: noteProjectId,
@@ -196,10 +206,7 @@ export async function updateNote(
     .from('notes')
     .update(updates as never)
     .eq('id', noteId)
-    .eq('owner_id', user.id)
-    .select(
-      'id, owner_id, project_id, title, content, folder_id, last_opened_at, created_at, updated_at'
-    )
+    .select(NOTE_COLS)
     .single();
 
   if (error) {
@@ -223,25 +230,16 @@ export async function updateNote(
 export async function deleteNote(noteId: string): Promise<{ error?: string }> {
   const user = await requireAuth();
   const supabase = await createClient();
-  const { data: noteRow } = await (supabase as any)
-    .from('notes')
-    .select('project_id')
-    .eq('id', noteId)
-    .eq('owner_id', user.id)
-    .maybeSingle();
-  const noteProjectId = (noteRow as { project_id?: string } | null)?.project_id;
-  if (noteProjectId) {
+  const noteRow = await getAccessibleNote(noteId);
+  const noteProjectId = noteRow?.project_id;
+  if (noteProjectId && noteRow) {
     await requireCan(user.id, 'notes.delete', {
       type: 'note',
       projectId: noteProjectId,
     });
   }
 
-  const { error } = await supabase
-    .from('notes')
-    .delete()
-    .eq('id', noteId)
-    .eq('owner_id', user.id);
+  const { error } = await supabase.from('notes').delete().eq('id', noteId);
   if (error) {
     captureWithContext(error, {
       module: 'notes',
@@ -273,21 +271,25 @@ export async function deleteNotes(
 
   const { data: noteRows } = await (supabase as any)
     .from('notes')
-    .select('project_id')
-    .in('id', validIds)
-    .eq('owner_id', user.id)
-    .limit(1);
-  const projectId = (noteRows as { project_id: string | null }[] | null)?.[0]
-    ?.project_id;
+    .select('project_id, owner_id')
+    .in('id', validIds);
+  const noteRowsTyped =
+    (noteRows as { project_id: string | null; owner_id: string }[] | null) ??
+    [];
+  const projectId = noteRowsTyped[0]?.project_id;
   if (projectId) {
     await requireCan(user.id, 'notes.delete', { type: 'note', projectId });
+    if (noteRowsTyped.length !== validIds.length) {
+      return { error: 'One or more notes were not found' };
+    }
+    for (const note of noteRowsTyped) {
+      if (!(await isOwnerInScope(user.id, projectId, note.owner_id, 'notes'))) {
+        return { error: 'One or more notes are out of scope' };
+      }
+    }
   }
 
-  const { error } = await supabase
-    .from('notes')
-    .delete()
-    .in('id', validIds)
-    .eq('owner_id', user.id);
+  const { error } = await supabase.from('notes').delete().in('id', validIds);
 
   if (error) {
     captureWithContext(error, {
@@ -313,13 +315,7 @@ export async function getNoteLinks(noteId: string): Promise<NoteLink[]> {
   const user = await requireAuth();
   const supabase = await createClient();
 
-  // note_links has no owner_id; verify note ownership before fetching links.
-  const { data: note } = await supabase
-    .from('notes')
-    .select('id')
-    .eq('id', noteId)
-    .eq('owner_id', user.id)
-    .maybeSingle();
+  const note = await getAccessibleNote(noteId);
   if (!note) return [];
 
   const { data, error } = await supabase
@@ -342,18 +338,12 @@ export async function addNoteLink(
   const url = params.url?.trim();
   if (!url) return { error: 'URL is required' };
 
-  // note_links has no owner_id; verify note ownership before inserting.
-  const { data: note } = await supabase
-    .from('notes')
-    .select('id, project_id')
-    .eq('id', noteId)
-    .eq('owner_id', user.id)
-    .maybeSingle();
+  const note = await getAccessibleNote(noteId);
   if (!note) return { error: 'Note not found or access denied' };
-  if ((note as { project_id: string | null }).project_id) {
+  if (note.project_id) {
     await requireCan(user.id, 'notes.update', {
       type: 'note',
-      projectId: (note as unknown as { project_id: string }).project_id,
+      projectId: note.project_id,
     });
   }
 
@@ -400,17 +390,12 @@ export async function deleteNoteLink(
   const link = rawLink as NoteLink | null;
   if (!link) return {};
 
-  const { data: note } = await supabase
-    .from('notes')
-    .select('id, project_id')
-    .eq('id', link.note_id)
-    .eq('owner_id', user.id)
-    .maybeSingle();
+  const note = await getAccessibleNote(link.note_id);
   if (!note) return { error: 'Link not found or access denied' };
-  if ((note as { project_id: string | null }).project_id) {
+  if (note.project_id) {
     await requireCan(user.id, 'notes.update', {
       type: 'note',
-      projectId: (note as unknown as { project_id: string }).project_id,
+      projectId: note.project_id,
     });
   }
 

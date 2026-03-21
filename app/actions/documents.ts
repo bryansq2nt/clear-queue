@@ -4,7 +4,11 @@ import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { requireCan, getGrantedActions } from '@/lib/rbac/resolver';
-import { getReadScope, getTeamMemberIds } from '@/lib/rbac/read-scope';
+import {
+  getReadScope,
+  getScopedOwnerIds,
+  isOwnerInScope,
+} from '@/lib/rbac/read-scope';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -36,6 +40,39 @@ function revalidateDocumentPaths(projectId: string) {
 /** Max "recent" docs (opened or uploaded) shown first, like project picker. */
 const MAX_RECENT_DOCUMENTS = 5;
 
+async function getAccessibleDocument(
+  fileId: string,
+  options?: { allowDeleted?: boolean }
+): Promise<ProjectFile | null> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const id = fileId?.trim();
+  if (!id) return null;
+
+  let query = supabase
+    .from('project_files')
+    .select(PROJECT_FILE_COLS)
+    .eq('id', id)
+    .eq('kind', 'document');
+
+  if (!options?.allowDeleted) {
+    query = query.is('deleted_at', null);
+  }
+
+  const { data, error } = await query.single();
+  if (error || !data) return null;
+
+  const row = data as ProjectFile;
+  if (
+    !(await isOwnerInScope(user.id, row.project_id, row.owner_id, 'documents'))
+  ) {
+    return null;
+  }
+
+  return row;
+}
+
 // ------------------------------------------------------------
 // Reads
 // ------------------------------------------------------------
@@ -52,6 +89,7 @@ export const getDocuments = cache(
     if (!pid) return [];
 
     const scope = await getReadScope(user.id, pid, 'documents');
+    const scopedOwnerIds = await getScopedOwnerIds(user.id, pid, 'documents');
 
     let query = supabase
       .from('project_files')
@@ -64,8 +102,7 @@ export const getDocuments = cache(
     if (scope === 'own') {
       query = query.eq('owner_id', user.id);
     } else if (scope === 'team') {
-      const teamIds = await getTeamMemberIds(user.id, pid);
-      query = query.in('owner_id', teamIds);
+      query = query.in('owner_id', scopedOwnerIds ?? [user.id]);
     }
     // scope === 'project': no owner filter
 
@@ -441,20 +478,11 @@ export async function updateDocument(
   const id = fileId?.trim();
   if (!id) return { success: false, error: 'File ID is required' };
 
-  // Fetch row to verify ownership and kind
-  const { data: existing, error: fetchError } = await supabase
-    .from('project_files')
-    .select('id, project_id, owner_id, kind')
-    .eq('id', id)
-    .eq('owner_id', user.id)
-    .eq('kind', 'document')
-    .single();
-
-  if (fetchError || !existing) {
+  const existing = await getAccessibleDocument(id, { allowDeleted: true });
+  if (!existing) {
     return { success: false, error: 'Document not found or access denied' };
   }
-
-  const projectId = (existing as unknown as { project_id: string }).project_id;
+  const projectId = existing.project_id;
   await requireCan(user.id, 'documents.update', {
     type: 'document',
     projectId,
@@ -515,7 +543,6 @@ export async function updateDocument(
     .from('project_files')
     .update(updates as never)
     .eq('id', id)
-    .eq('owner_id', user.id)
     .select(PROJECT_FILE_COLS)
     .single();
 
@@ -544,27 +571,20 @@ export async function archiveDocument(
   const id = fileId?.trim();
   if (!id) return { success: false, error: 'File ID is required' };
 
-  const { data: existing, error: fetchError } = await supabase
-    .from('project_files')
-    .select('id, project_id, owner_id')
-    .eq('id', id)
-    .eq('owner_id', user.id)
-    .single();
-
-  if (fetchError || !existing) {
+  const existing = await getAccessibleDocument(id, { allowDeleted: true });
+  if (!existing) {
     return { success: false, error: 'Document not found or access denied' };
   }
 
   await requireCan(user.id, 'documents.update', {
     type: 'document',
-    projectId: (existing as unknown as { project_id: string }).project_id,
+    projectId: existing.project_id,
   });
 
   const { error } = await supabase
     .from('project_files')
     .update({ archived_at: new Date().toISOString() } as never)
-    .eq('id', id)
-    .eq('owner_id', user.id);
+    .eq('id', id);
 
   if (error) {
     captureWithContext(error, {
@@ -577,9 +597,7 @@ export async function archiveDocument(
     return { success: false, error: error.message };
   }
 
-  revalidateDocumentPaths(
-    (existing as unknown as { project_id: string }).project_id
-  );
+  revalidateDocumentPaths(existing.project_id);
   return { success: true };
 }
 
@@ -593,27 +611,20 @@ export async function markDocumentFinal(
   const id = fileId?.trim();
   if (!id) return { success: false, error: 'File ID is required' };
 
-  const { data: existing, error: fetchError } = await supabase
-    .from('project_files')
-    .select('id, project_id, owner_id')
-    .eq('id', id)
-    .eq('owner_id', user.id)
-    .single();
-
-  if (fetchError || !existing) {
+  const existing = await getAccessibleDocument(id, { allowDeleted: true });
+  if (!existing) {
     return { success: false, error: 'Document not found or access denied' };
   }
 
   await requireCan(user.id, 'documents.update', {
     type: 'document',
-    projectId: (existing as unknown as { project_id: string }).project_id,
+    projectId: existing.project_id,
   });
 
   const { error } = await supabase
     .from('project_files')
     .update({ is_final: isFinal } as never)
-    .eq('id', id)
-    .eq('owner_id', user.id);
+    .eq('id', id);
 
   if (error) {
     captureWithContext(error, {
@@ -626,9 +637,7 @@ export async function markDocumentFinal(
     return { success: false, error: error.message };
   }
 
-  revalidateDocumentPaths(
-    (existing as unknown as { project_id: string }).project_id
-  );
+  revalidateDocumentPaths(existing.project_id);
   return { success: true };
 }
 
@@ -641,27 +650,19 @@ export async function getDocumentSignedUrl(
   const id = fileId?.trim();
   if (!id) return { error: 'File ID is required' };
 
-  const { data: row, error: fetchError } = await supabase
-    .from('project_files')
-    .select('id, owner_id, bucket, path, project_id')
-    .eq('id', id)
-    .eq('owner_id', user.id)
-    .single();
-
-  if (fetchError || !row) {
+  const row = await getAccessibleDocument(id);
+  if (!row) {
     return { error: 'Document not found or access denied' };
   }
 
-  if ((row as { project_id: string | null }).project_id) {
-    await requireCan(user.id, 'documents.read', {
-      type: 'document',
-      projectId: (row as unknown as { project_id: string }).project_id,
-    });
-  }
+  await requireCan(user.id, 'documents.read', {
+    type: 'document',
+    projectId: row.project_id,
+  });
 
   const { data: signedData, error: signedError } = await supabase.storage
     .from(BUCKET)
-    .createSignedUrl((row as { path: string }).path, 3600);
+    .createSignedUrl(row.path, 3600);
 
   if (signedError || !signedData?.signedUrl) {
     captureWithContext(
@@ -689,27 +690,20 @@ export async function deleteDocument(
   const id = fileId?.trim();
   if (!id) return { success: false, error: 'File ID is required' };
 
-  const { data: existing, error: fetchError } = await supabase
-    .from('project_files')
-    .select('id, project_id, owner_id')
-    .eq('id', id)
-    .eq('owner_id', user.id)
-    .single();
-
-  if (fetchError || !existing) {
+  const existing = await getAccessibleDocument(id, { allowDeleted: true });
+  if (!existing) {
     return { success: false, error: 'Document not found or access denied' };
   }
 
   await requireCan(user.id, 'documents.delete', {
     type: 'document',
-    projectId: (existing as unknown as { project_id: string }).project_id,
+    projectId: existing.project_id,
   });
 
   const { error } = await supabase
     .from('project_files')
     .update({ deleted_at: new Date().toISOString() } as never)
-    .eq('id', id)
-    .eq('owner_id', user.id);
+    .eq('id', id);
 
   if (error) {
     captureWithContext(error, {
@@ -722,9 +716,7 @@ export async function deleteDocument(
     return { success: false, error: error.message };
   }
 
-  revalidateDocumentPaths(
-    (existing as unknown as { project_id: string }).project_id
-  );
+  revalidateDocumentPaths(existing.project_id);
   return { success: true };
 }
 
@@ -748,11 +740,29 @@ export async function deleteDocuments(
     .filter(Boolean) as string[];
   if (validIds.length === 0) return { error: 'No file IDs provided' };
 
+  const { data: existingRows } = await supabase
+    .from('project_files')
+    .select('id, owner_id')
+    .in('id', validIds)
+    .eq('project_id', pid)
+    .eq('kind', 'document');
+
+  const rows =
+    (existingRows as Array<{ id: string; owner_id: string }> | null) ?? [];
+  if (rows.length !== validIds.length) {
+    return { error: 'One or more documents were not found' };
+  }
+
+  for (const row of rows) {
+    if (!(await isOwnerInScope(user.id, pid, row.owner_id, 'documents'))) {
+      return { error: 'One or more documents are out of scope' };
+    }
+  }
+
   const { error } = await supabase
     .from('project_files')
     .update({ deleted_at: new Date().toISOString() } as never)
     .in('id', validIds)
-    .eq('owner_id', user.id)
     .eq('kind', 'document');
 
   if (error) {
@@ -779,34 +789,21 @@ export async function getDocumentDownloadUrl(
   const id = fileId?.trim();
   if (!id) return { error: 'File ID is required' };
 
-  const { data: row, error: fetchError } = await supabase
-    .from('project_files')
-    .select('id, owner_id, path, title, file_ext, project_id')
-    .eq('id', id)
-    .eq('owner_id', user.id)
-    .single();
-
-  if (fetchError || !row) {
+  const row = await getAccessibleDocument(id);
+  if (!row) {
     return { error: 'Document not found or access denied' };
   }
 
-  if ((row as { project_id: string | null }).project_id) {
-    await requireCan(user.id, 'documents.read', {
-      type: 'document',
-      projectId: (row as unknown as { project_id: string }).project_id,
-    });
-  }
+  await requireCan(user.id, 'documents.read', {
+    type: 'document',
+    projectId: row.project_id,
+  });
 
-  const { title, file_ext, path } = row as {
-    title: string;
-    file_ext: string | null;
-    path: string;
-  };
-  const filename = file_ext ? `${title}.${file_ext}` : title;
+  const filename = row.file_ext ? `${row.title}.${row.file_ext}` : row.title;
 
   const { data: signedData, error: signedError } = await supabase.storage
     .from(BUCKET)
-    .createSignedUrl(path, 3600, { download: filename });
+    .createSignedUrl(row.path, 3600, { download: filename });
 
   if (signedError || !signedData?.signedUrl) {
     captureWithContext(
@@ -887,11 +884,13 @@ export async function touchDocument(fileId: string): Promise<void> {
     const id = fileId?.trim();
     if (!id) return;
 
+    const row = await getAccessibleDocument(id);
+    if (!row) return;
+
     await supabase
       .from('project_files')
       .update({ last_opened_at: new Date().toISOString() } as never)
-      .eq('id', id)
-      .eq('owner_id', user.id);
+      .eq('id', id);
   } catch {
     // fire-and-forget: never throw
   }

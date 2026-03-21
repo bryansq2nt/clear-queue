@@ -112,3 +112,32 @@ export async function getTeamMemberIds(
   }
   return [...ids];
 }
+
+/**
+ * Returns the owner IDs visible/manageable to the caller for a project module.
+ *
+ * - 'project' scope → null (no owner filter)
+ * - 'team' scope    → team member ids including self
+ * - 'own' scope     → self only
+ */
+export async function getScopedOwnerIds(
+  userId: string,
+  projectId: string,
+  module?: string
+): Promise<string[] | null> {
+  const scope = await getReadScope(userId, projectId, module);
+  if (scope === 'project') return null;
+  if (scope === 'team') return getTeamMemberIds(userId, projectId);
+  return [userId];
+}
+
+export async function isOwnerInScope(
+  userId: string,
+  projectId: string,
+  ownerId: string | null | undefined,
+  module?: string
+): Promise<boolean> {
+  if (!ownerId) return false;
+  const scopedOwnerIds = await getScopedOwnerIds(userId, projectId, module);
+  return scopedOwnerIds === null || scopedOwnerIds.includes(ownerId);
+}

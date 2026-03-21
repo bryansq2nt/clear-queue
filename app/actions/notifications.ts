@@ -151,6 +151,21 @@ export async function listMyNotifications(): Promise<AppNotification[]> {
   const user = await requireAuth();
   const supabase = await createClient();
 
+  // Invites created before the invitee had an account never fired the invite_pending
+  // trigger; materialize matching rows now (idempotent).
+  const { error: syncError } = await (supabase as any).rpc(
+    'sync_invite_pending_notifications_for_current_user'
+  );
+  if (syncError) {
+    captureWithContext(syncError, {
+      module: 'notifications',
+      action: 'syncInvitePendingNotifications',
+      userIntent: 'Backfill invite inbox after signup',
+      expected:
+        'sync_invite_pending_notifications_for_current_user RPC succeeds',
+    });
+  }
+
   const { data: rows, error } = await (supabase as any)
     .from('user_in_app_notifications')
     .select('id, kind, payload, created_at, read_at')
@@ -189,6 +204,20 @@ export async function listMyNotifications(): Promise<AppNotification[]> {
 export async function getMyNotificationsCount(): Promise<number> {
   const user = await requireAuth();
   const supabase = await createClient();
+
+  const { error: syncError } = await (supabase as any).rpc(
+    'sync_invite_pending_notifications_for_current_user'
+  );
+  if (syncError) {
+    captureWithContext(syncError, {
+      module: 'notifications',
+      action: 'syncInvitePendingNotifications',
+      userIntent: 'Backfill invite inbox for unread count',
+      expected:
+        'sync_invite_pending_notifications_for_current_user RPC succeeds',
+    });
+  }
+
   const { count, error } = await (supabase as any)
     .from('user_in_app_notifications')
     .select('id', { count: 'exact', head: true })

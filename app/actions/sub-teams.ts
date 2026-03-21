@@ -37,8 +37,10 @@ export type ProjectTeamMember = {
 export type SubTeamsPermissions = {
   canRead: boolean;
   canCreate: boolean;
+  /** Edit sub-team definition (name, description, allowed modules). */
   canUpdate: boolean;
   canDelete: boolean;
+  /** Manage sub-team members and manager role within scoped teams. */
   canManageMembers: boolean;
   /** IDs of sub-teams the current user manages (for team_manager scoping) */
   managedTeamIds: string[];
@@ -204,9 +206,11 @@ export async function getSubTeamsPermissions(
 
   const granted = await getGrantedActions(user.id, projectId, true);
 
-  // Find which teams this user manages
+  // Sub-teams where this user is sub-team lead (project_team_members.role = manager).
+  // Do not gate on !project_teams.create: some DBs may still grant create to team_manager
+  // until migration applies; the list is still correct and PM/owner use canCreate for UI.
   let managedTeamIds: string[] = [];
-  if (granted.has('project_teams.update')) {
+  if (granted.has('project_teams.manage_members')) {
     const { data: managedRows } = await (supabase as any)
       .from('project_team_members')
       .select('team_id, project_teams!inner(project_id)')
@@ -224,7 +228,7 @@ export async function getSubTeamsPermissions(
     canCreate: granted.has('project_teams.create'),
     canUpdate: granted.has('project_teams.update'),
     canDelete: granted.has('project_teams.delete'),
-    canManageMembers: granted.has('project_teams.update'),
+    canManageMembers: granted.has('project_teams.manage_members'),
     managedTeamIds,
   };
 }
@@ -290,6 +294,23 @@ export async function createProjectTeam(
   }
 }
 
+function serializeClientDebugError(err: unknown): string {
+  if (err !== null && typeof err === 'object') {
+    const e = err as Record<string, unknown>;
+    return JSON.stringify(
+      {
+        message: e.message,
+        code: e.code,
+        details: e.details,
+        hint: e.hint,
+      },
+      null,
+      2
+    );
+  }
+  return String(err);
+}
+
 export async function updateProjectTeam(
   teamId: string,
   name: string,
@@ -298,6 +319,8 @@ export async function updateProjectTeam(
 ): Promise<{
   data?: Pick<ProjectTeam, 'id' | 'name' | 'description' | 'allowed_modules'>;
   error?: string;
+  /** PostgREST / Postgres payload for debugging (log in browser console). */
+  errorDetails?: string;
 }> {
   try {
     const user = await requireAuth();
@@ -312,75 +335,110 @@ export async function updateProjectTeam(
 
     if (!team) return { error: 'Sub-team not found.' };
 
-    // team_manager can only update teams they manage
+    // Only users with sub-team definition edit permission (PM/owner tier).
     const allowed = await can(user.id, 'project_teams.update', {
       type: 'project',
       projectId: team.project_id,
     });
     if (!allowed)
-      return { error: 'You do not have permission to update this sub-team.' };
-
-    // If team_manager (not project_manager/owner), verify they manage this specific team
-    const { data: projectRow } = await (supabase as any)
-      .from('projects')
-      .select('owner_id')
-      .eq('id', team.project_id)
-      .maybeSingle();
-
-    if (projectRow?.owner_id !== user.id) {
-      const granted = await getGrantedActions(user.id, team.project_id, true);
-      if (!granted.has('project_teams.create')) {
-        // team_manager tier — verify they manage this team
-        const { data: membership } = await (supabase as any)
-          .from('project_team_members')
-          .select('role')
-          .eq('team_id', teamId)
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (membership?.role !== 'manager') {
-          return { error: 'You can only update sub-teams you manage.' };
-        }
-      }
-    }
+      return {
+        error: 'You do not have permission to edit this sub-team.',
+      };
 
     const trimmedName = name.trim();
     if (!trimmedName || trimmedName.length > 100) {
       return { error: 'Team name must be between 1 and 100 characters.' };
     }
 
-    const { data, error } = await (supabase as any)
-      .from('project_teams')
-      .update({
-        name: trimmedName,
-        description: description?.trim() || null,
-        allowed_modules:
+    const { data, error } = await (supabase as any).rpc(
+      'update_project_team_atomic',
+      {
+        p_team_id: teamId,
+        p_name: trimmedName,
+        p_description: description?.trim() || null,
+        p_allowed_modules:
           allowedModules && allowedModules.length > 0 ? allowedModules : null,
-      })
-      .eq('id', teamId)
-      .select('id, name, description, allowed_modules')
-      .single();
+      }
+    );
 
     if (error) {
-      if (error.code === '23505') {
+      const msg = String(error.message ?? '');
+      const errorDetails = serializeClientDebugError(error);
+      console.error('[updateProjectTeam] RPC error', {
+        teamId,
+        userMessage: msg,
+        errorDetails,
+        raw: error,
+      });
+      captureWithContext(error, {
+        module: 'sub-teams',
+        action: 'updateProjectTeam',
+        userIntent: 'Update sub-team name, description, or allowed modules',
+        expected: 'update_project_team_atomic RPC succeeds',
+        extra: { teamId, code: (error as { code?: string }).code, msg },
+      });
+      if (msg.includes('not_authorized_to_edit_sub_team')) {
         return {
-          error: 'A sub-team with that name already exists in this project.',
+          error: 'You do not have permission to edit this sub-team.',
+          errorDetails,
         };
       }
-      throw error;
+      if (msg.includes('sub_team_not_found')) {
+        return { error: 'Sub-team not found.', errorDetails };
+      }
+      if (msg.includes('Access denied')) {
+        return {
+          error: 'You do not have access to update this sub-team.',
+          errorDetails,
+        };
+      }
+      if (msg.includes('invalid_team_name')) {
+        return {
+          error: 'Team name must be between 1 and 100 characters.',
+          errorDetails,
+        };
+      }
+      if ((error as { code?: string }).code === '23505') {
+        return {
+          error: 'A sub-team with that name already exists in this project.',
+          errorDetails,
+        };
+      }
+      return {
+        error: 'Failed to update sub-team. Please try again.',
+        errorDetails,
+      };
     }
 
     revalidatePath(`/context/${team.project_id}/team`);
     revalidatePath(`/context/${team.project_id}`);
-    return { data };
+    revalidatePath(`/context/${team.project_id}/media`);
+    return { data: Array.isArray(data) ? data[0] : data };
   } catch (err) {
+    const errorDetails =
+      err instanceof Error
+        ? JSON.stringify(
+            { message: err.message, name: err.name, stack: err.stack },
+            null,
+            2
+          )
+        : serializeClientDebugError(err);
+    console.error('[updateProjectTeam] unexpected error', {
+      teamId,
+      errorDetails,
+      raw: err,
+    });
     captureWithContext(err, {
       module: 'sub-teams',
       action: 'updateProjectTeam',
       userIntent: 'Rename or update a sub-team',
       expected: 'project_teams row updated',
+      extra: { teamId, errorDetails },
     });
-    return { error: 'Failed to update sub-team. Please try again.' };
+    return {
+      error: 'Failed to update sub-team. Please try again.',
+      errorDetails,
+    };
   }
 }
 
@@ -625,7 +683,7 @@ export async function updateTeamMemberRole(
 
 /**
  * Verifies the caller can manage members of a specific sub-team.
- * - project_manager / project_owner → always allowed (has project_teams.manage_members + create)
+ * - project_manager / project_owner → always allowed (PM tier has create + manage_members)
  * - team_manager → allowed only if they have role='manager' for this specific team
  */
 async function _requireCanManageTeam(
@@ -644,16 +702,17 @@ async function _requireCanManageTeam(
 
   if (project?.owner_id === userId) return;
 
-  // Check if user has broad manage permission (project_manager tier)
   const granted = await getGrantedActions(userId, projectId, true);
-  if (!granted.has('project_teams.update')) {
-    throw new Error("Forbidden: missing permission 'project_teams.update'");
+  if (!granted.has('project_teams.manage_members')) {
+    throw new Error(
+      "Forbidden: missing permission 'project_teams.manage_members'"
+    );
   }
 
-  // If they have create permission, they're project_manager or higher → allow
+  // Project-manager tier can manage any sub-team in the project.
   if (granted.has('project_teams.create')) return;
 
-  // team_manager tier — must manage this specific team
+  // Sub-team lead (team_manager): must manage this specific team
   const { data: membership } = await (supabase as any)
     .from('project_team_members')
     .select('role')

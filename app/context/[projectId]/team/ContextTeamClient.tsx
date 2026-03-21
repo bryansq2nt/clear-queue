@@ -1,23 +1,18 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/shared/I18nProvider';
 import {
   checkCanInviteEmail,
-  getMemberAccess,
   inviteProjectMember,
   removeProjectMember,
   revokeInvite,
   sendInviteEmail,
-  updateMemberAccessFull,
-  updateMemberRole,
-  type MemberAccess,
   type ProjectInvite,
   type ProjectMember,
   type RejectedInvite,
 } from '@/app/actions/teams';
-import { OWNER_ACCESS_NOT_EDITABLE } from '@/lib/teams/member-access-errors';
 import {
   createProjectTeam,
   updateProjectTeam,
@@ -44,12 +39,10 @@ import {
   ChevronLeft,
   ChevronDown,
   ChevronRight,
-  Shield,
   Pencil,
   Trash2,
   UserPlus,
 } from 'lucide-react';
-import { toastSuccess } from '@/lib/ui/toast';
 import { MutationErrorDialog } from '@/components/board/MutationErrorDialog';
 import {
   Dialog,
@@ -78,93 +71,6 @@ const ALL_MODULES: Array<{ key: string; label: string }> = [
   { key: 'copilot', label: 'Copilot' },
 ];
 
-// ── Permission catalogue per module ──────────────────────────────────────────
-// Keys are canonical action keys from rbac_module_actions.
-
-const MODULE_PERMISSIONS: Record<
-  string,
-  Array<{ key: string; label: string }>
-> = {
-  board: [
-    { key: 'tasks.read', label: 'View tasks' },
-    { key: 'tasks.create', label: 'Create tasks' },
-    { key: 'tasks.update', label: 'Edit tasks' },
-    { key: 'tasks.delete', label: 'Delete tasks' },
-  ],
-  notes: [
-    { key: 'notes.read', label: 'View notes' },
-    { key: 'notes.create', label: 'Create notes' },
-    { key: 'notes.update', label: 'Edit notes' },
-    { key: 'notes.delete', label: 'Delete notes' },
-  ],
-  documents: [
-    { key: 'documents.read', label: 'View documents' },
-    { key: 'documents.create', label: 'Upload documents' },
-    { key: 'documents.update', label: 'Edit document details' },
-    { key: 'documents.delete', label: 'Delete documents' },
-  ],
-  media: [
-    { key: 'media.read', label: 'View media' },
-    { key: 'media.create', label: 'Upload media' },
-    { key: 'media.update', label: 'Edit media details' },
-    { key: 'media.delete', label: 'Delete media' },
-  ],
-  links: [
-    { key: 'links.read', label: 'View links' },
-    { key: 'links.create', label: 'Add links' },
-    { key: 'links.update', label: 'Edit links' },
-    { key: 'links.delete', label: 'Delete links' },
-  ],
-  milestones: [
-    { key: 'milestones.read', label: 'View milestones' },
-    { key: 'milestones.create', label: 'Create milestones' },
-    { key: 'milestones.update', label: 'Edit milestones' },
-    { key: 'milestones.delete', label: 'Delete milestones' },
-  ],
-  budgets: [
-    { key: 'budgets.read', label: 'View budgets' },
-    { key: 'budgets.create', label: 'Create budgets' },
-    { key: 'budgets.update', label: 'Edit budgets' },
-    { key: 'budgets.delete', label: 'Delete budgets' },
-  ],
-  billings: [
-    { key: 'billings.read', label: 'View billing records' },
-    { key: 'billings.create', label: 'Create billing records' },
-    { key: 'billings.update', label: 'Edit billing records' },
-    { key: 'billings.delete', label: 'Delete billing records' },
-  ],
-  ideas: [
-    { key: 'ideas.read', label: 'View mind maps' },
-    { key: 'ideas.create', label: 'Create mind maps' },
-    { key: 'ideas.update', label: 'Edit mind maps' },
-    { key: 'ideas.delete', label: 'Delete mind maps' },
-  ],
-  calendar: [
-    { key: 'calendar.read', label: 'View events' },
-    { key: 'calendar.create', label: 'Create events' },
-    { key: 'calendar.update', label: 'Edit events' },
-    { key: 'calendar.delete', label: 'Delete events' },
-  ],
-  todos: [
-    { key: 'todos.read', label: 'View todo lists' },
-    { key: 'todos.create', label: 'Create todos' },
-    { key: 'todos.update', label: 'Edit todos' },
-    { key: 'todos.delete', label: 'Delete todos' },
-  ],
-  copilot: [
-    { key: 'copilot.read', label: 'View copilot sessions' },
-    { key: 'copilot.create', label: 'Create copilot sessions' },
-    { key: 'copilot.update', label: 'Update copilot content' },
-    { key: 'copilot.delete', label: 'Delete copilot content' },
-  ],
-  owner: [
-    { key: 'owner.read', label: 'View client & business info' },
-    { key: 'owner.create', label: 'Create owner data' },
-    { key: 'owner.update', label: 'Edit owner data' },
-    { key: 'owner.delete', label: 'Delete owner data' },
-  ],
-};
-
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function projectRoleLabel(
@@ -183,16 +89,6 @@ function projectRoleDescription(
   const key = `roles.description.${name}`;
   const translated = t(key);
   return translated === key ? undefined : translated;
-}
-
-function mapMemberAccessActionError(
-  t: (key: string, vars?: Record<string, string | number>) => string,
-  error: string
-): string {
-  if (error === OWNER_ACCESS_NOT_EDITABLE) {
-    return t('teams.owner_access_not_editable');
-  }
-  return error;
 }
 
 function subTeamRoleLabel(
@@ -332,25 +228,6 @@ export default function ContextTeamClient({
     string | null
   >(null);
 
-  // Edit member permissions dialog
-  const [editMember, setEditMember] = useState<ProjectMember | null>(null);
-  const [memberAccess, setMemberAccess] = useState<MemberAccess | null>(null);
-  const [memberAccessLoading, setMemberAccessLoading] = useState(false);
-  const [editMemberApplyValue, setEditMemberApplyValue] = useState<string>('');
-  const [editMemberDraftModules, setEditMemberDraftModules] = useState<
-    string[] | null
-  >(null);
-  const [editMemberDraftActions, setEditMemberDraftActions] = useState<
-    string[]
-  >([]);
-  const [editMemberExpandedModule, setEditMemberExpandedModule] = useState<
-    string | null
-  >(null);
-  const [editMemberSaving, setEditMemberSaving] = useState(false);
-  const [editMemberLoadError, setEditMemberLoadError] = useState<string | null>(
-    null
-  );
-
   // ── Realtime subscription slot (empty until Realtime phase) ───────────────
   // useEffect(() => {
   //   const channel = supabase
@@ -361,10 +238,6 @@ export default function ContextTeamClient({
   //     .subscribe();
   //   return () => { supabase.removeChannel(channel); };
   // }, [projectId]);
-
-  // Refs hold latest draft so Save uses current UI state even if React hasn't committed yet
-  const latestDraftModulesRef = useRef<string[] | null>(null);
-  const latestDraftActionsRef = useRef<string[]>([]);
 
   // ── Sub-teams state ───────────────────────────────────────────────
   const [teams, setTeams] = useState<ProjectTeam[]>(initialTeams);
@@ -416,6 +289,25 @@ export default function ContextTeamClient({
     return Array.from(map.values());
   }, [myTeamsFromFullList, mySubTeamMemberships]);
 
+  /**
+   * Sub-team for TM→TM/TMember invites without a pick step.
+   * `managedTeamIds` can be empty if RBAC still grants project_teams.create (migration not applied)
+   * or the server query differs from "Tu rol y equipos"; fall back to myTeams like the sidebar.
+   */
+  const teamManagerInviterAutoTeamId = useMemo(() => {
+    if (myRoleName !== 'team_manager') return null;
+
+    const fromPermissions = subTeamsPermissions.managedTeamIds;
+    if (fromPermissions.length === 1) return fromPermissions[0];
+
+    const asSubTeamManager = myTeams.filter((m) => m.role === 'manager');
+    if (asSubTeamManager.length === 1) return asSubTeamManager[0].teamId;
+
+    if (myTeams.length === 1) return myTeams[0].teamId;
+
+    return null;
+  }, [myRoleName, subTeamsPermissions.managedTeamIds, myTeams]);
+
   // Create sub-team dialog
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
   const [createTeamName, setCreateTeamName] = useState('');
@@ -427,6 +319,7 @@ export default function ContextTeamClient({
   const [editTeam, setEditTeam] = useState<ProjectTeam | null>(null);
   const [editTeamName, setEditTeamName] = useState('');
   const [editTeamDesc, setEditTeamDesc] = useState('');
+  const [editTeamModules, setEditTeamModules] = useState<string[]>([]);
   const [editTeamSaving, setEditTeamSaving] = useState(false);
 
   // Delete sub-team dialog
@@ -445,59 +338,6 @@ export default function ContextTeamClient({
   } | null>(null);
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-
-  // Load member access when edit-permissions dialog opens
-  useEffect(() => {
-    if (!editMember) {
-      setMemberAccess(null);
-      setEditMemberApplyValue('');
-      setEditMemberDraftModules(null);
-      setEditMemberDraftActions([]);
-      setEditMemberExpandedModule(null);
-      setEditMemberLoadError(null);
-      latestDraftModulesRef.current = null;
-      latestDraftActionsRef.current = [];
-      return;
-    }
-    let cancelled = false;
-    setMemberAccessLoading(true);
-    setMemberAccess(null);
-    setEditMemberLoadError(null);
-    getMemberAccess(projectId, editMember.user_id)
-      .then((res) => {
-        if (cancelled) return;
-        setMemberAccessLoading(false);
-        if (res.error) {
-          setEditMemberLoadError(res.error);
-          return;
-        }
-        if (res.data) {
-          setMemberAccess(res.data);
-          const modules =
-            res.data.allowedModules === null ||
-            res.data.allowedModules.length === 0
-              ? null
-              : [...res.data.allowedModules];
-          const actions = Array.isArray(res.data.grantedActions)
-            ? [...res.data.grantedActions]
-            : [];
-          setEditMemberDraftModules(modules);
-          setEditMemberDraftActions(actions);
-          latestDraftModulesRef.current = modules;
-          latestDraftActionsRef.current = actions;
-        }
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setMemberAccessLoading(false);
-        setEditMemberLoadError(
-          err instanceof Error ? err.message : 'Failed to load permissions'
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId, editMember]);
 
   const handleCopyLink = useCallback((link: string) => {
     void navigator.clipboard.writeText(link).then(() => {
@@ -654,111 +494,124 @@ export default function ContextTeamClient({
     );
   }, []);
 
-  const handleInvite = useCallback(async () => {
-    if (!selectedRoleId) return;
-    setInviteSaving(true);
+  const handleInvite = useCallback(
+    async (opts?: { teamId?: string | null }) => {
+      if (!selectedRoleId) return;
+      const teamIdForInvite =
+        opts?.teamId !== undefined && opts.teamId !== null && opts.teamId !== ''
+          ? opts.teamId
+          : (selectedTeamId ?? null);
+      setInviteSaving(true);
 
-    // project_manager always has full access to active project modules.
-    // Passing null keeps access unrestricted at member grant level.
-    const moduleSelection =
-      selectedRoleName === 'project_manager'
-        ? null
-        : selectedRoleName === 'team_manager' ||
-            selectedRoleName === 'team_member'
-          ? null
-          : selectedModules.length > 0
-            ? selectedModules
-            : null;
-
-    const result = await inviteProjectMember(
-      projectId,
-      inviteEmail.trim(),
-      selectedRoleId,
-      moduleSelection,
-      selectedTeamId ?? undefined,
-      projectName || undefined
-    );
-    setInviteSaving(false);
-
-    if (result.error) {
-      const message =
-        result.error === 'invite_already_pending'
-          ? t('teams.invite_already_pending')
-          : result.error === 'user_already_member'
-            ? t('teams.user_already_member')
-            : result.error === 'team_required_for_role'
-              ? t('teams.invite_team_required')
-              : result.error === 'team_not_found'
-                ? t('teams.invite_team_not_found')
-                : result.error;
-      setErrorDialog({
-        open: true,
-        title: t('teams.invite_error_title'),
-        message,
-        retry: handleInvite,
-      });
-      return;
-    }
-    const token = result.token;
-    if (token) {
-      const link = `${baseUrl}/invite/${token}`;
-      const email = inviteEmail.trim();
-      const nowIso = new Date().toISOString();
-      const expiresAtIso = new Date(
-        Date.now() + 7 * 24 * 60 * 60 * 1000
-      ).toISOString();
-      const selectedTeam = selectedTeamId
-        ? teams.find((t) => t.id === selectedTeamId)
-        : null;
-      const localAllowedModules =
+      // project_manager always has full access to active project modules.
+      // Passing null keeps access unrestricted at member grant level.
+      const moduleSelection =
         selectedRoleName === 'project_manager'
           ? null
           : selectedRoleName === 'team_manager' ||
               selectedRoleName === 'team_member'
-            ? (selectedTeam?.allowed_modules ?? null)
+            ? null
             : selectedModules.length > 0
               ? selectedModules
               : null;
-      const inviterName =
-        members.find((m) => m.user_id === currentUserId)?.display_name ?? 'You';
 
-      setInvites((prev) => [
-        {
-          id: token,
+      const result = await inviteProjectMember(
+        projectId,
+        inviteEmail.trim(),
+        selectedRoleId,
+        moduleSelection,
+        teamIdForInvite ?? undefined,
+        projectName || undefined
+      );
+      setInviteSaving(false);
+
+      if (result.error) {
+        const message =
+          result.error === 'invite_already_pending'
+            ? t('teams.invite_already_pending')
+            : result.error === 'user_already_member'
+              ? t('teams.user_already_member')
+              : result.error === 'team_required_for_role'
+                ? t('teams.invite_team_required')
+                : result.error === 'team_not_found'
+                  ? t('teams.invite_team_not_found')
+                  : result.error;
+        setErrorDialog({
+          open: true,
+          title: t('teams.invite_error_title'),
+          message,
+          retry: () =>
+            void handleInvite(
+              opts?.teamId != null && opts.teamId !== ''
+                ? { teamId: opts.teamId }
+                : undefined
+            ),
+        });
+        return;
+      }
+      const token = result.token;
+      if (token) {
+        const link = `${baseUrl}/invite/${token}`;
+        const email = inviteEmail.trim();
+        const nowIso = new Date().toISOString();
+        const expiresAtIso = new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000
+        ).toISOString();
+        const selectedTeam = teamIdForInvite
+          ? teams.find((t) => t.id === teamIdForInvite)
+          : null;
+        const localAllowedModules =
+          selectedRoleName === 'project_manager'
+            ? null
+            : selectedRoleName === 'team_manager' ||
+                selectedRoleName === 'team_member'
+              ? (selectedTeam?.allowed_modules ?? null)
+              : selectedModules.length > 0
+                ? selectedModules
+                : null;
+        const inviterName =
+          members.find((m) => m.user_id === currentUserId)?.display_name ??
+          'You';
+
+        setInvites((prev) => [
+          {
+            id: token,
+            email,
+            role_id: selectedRoleId,
+            role_name: selectedRoleName ?? '',
+            allowed_modules: localAllowedModules,
+            guest_scope: selectedRoleName === 'guest' ? 'project' : null,
+            status: 'pending',
+            invited_by_name: inviterName,
+            expires_at: expiresAtIso,
+            created_at: nowIso,
+            token,
+          },
+          ...prev,
+        ]);
+        setInviteSuccessDialog({
+          link,
           email,
-          role_id: selectedRoleId,
-          role_name: selectedRoleName ?? '',
-          allowed_modules: localAllowedModules,
-          guest_scope: selectedRoleName === 'guest' ? 'project' : null,
-          status: 'pending',
-          invited_by_name: inviterName,
-          expires_at: expiresAtIso,
-          created_at: nowIso,
-          token,
-        },
-        ...prev,
-      ]);
-      setInviteSuccessDialog({
-        link,
-        email,
-        emailSent: result.emailSent,
-        emailError: result.emailError,
-      });
-    }
-  }, [
-    selectedRoleId,
-    selectedRoleName,
-    selectedTeamId,
-    selectedModules,
-    projectId,
-    projectName,
-    inviteEmail,
-    baseUrl,
-    teams,
-    members,
-    currentUserId,
-    t,
-  ]);
+          emailSent: result.emailSent,
+          emailError: result.emailError,
+        });
+      }
+    },
+    [
+      selectedRoleId,
+      selectedRoleName,
+      selectedTeamId,
+      selectedModules,
+      projectId,
+      projectName,
+      inviteEmail,
+      baseUrl,
+      teams,
+      members,
+      currentUserId,
+      t,
+    ]
+  );
 
   const handleRevoke = useCallback(
     async (inviteId: string) => {
@@ -812,104 +665,6 @@ export default function ContextTeamClient({
     setRemoveMemberReason('');
   }, []);
 
-  const handleApplyRole = useCallback(
-    async (userId: string, roleId: string) => {
-      if (!roleId) return;
-      setEditMemberSaving(true);
-      const result = await updateMemberRole(projectId, userId, roleId);
-      setEditMemberSaving(false);
-      if (result.error) {
-        setErrorDialog({
-          open: true,
-          title: t('teams.edit_permissions_error_title'),
-          message: mapMemberAccessActionError(t, result.error),
-          retry: () => handleApplyRole(userId, roleId),
-        });
-        return;
-      }
-      setEditMemberApplyValue('');
-      const next = await getMemberAccess(projectId, userId);
-      if (next.data) {
-        setMemberAccess(next.data);
-        const modules =
-          next.data.allowedModules === null ||
-          next.data.allowedModules.length === 0
-            ? null
-            : [...next.data.allowedModules];
-        const actions = [...next.data.grantedActions];
-        setEditMemberDraftModules(modules);
-        setEditMemberDraftActions(actions);
-        latestDraftModulesRef.current = modules;
-        latestDraftActionsRef.current = actions;
-      }
-      router.refresh(); // background sync — update member role display in list
-    },
-    [projectId, router, t]
-  );
-
-  const handleToggleEditMemberModuleDraft = useCallback(
-    (moduleKey: string, currentlyHasAccess: boolean) => {
-      setEditMemberDraftModules((prev) => {
-        const nextList =
-          prev === null
-            ? ALL_MODULES.map((m) => m.key).filter((k) => k !== moduleKey)
-            : currentlyHasAccess
-              ? prev.filter((k) => k !== moduleKey)
-              : [...prev, moduleKey];
-        const next =
-          nextList.length === 0 || nextList.length === ALL_MODULES.length
-            ? null
-            : nextList;
-        latestDraftModulesRef.current = next;
-        return next;
-      });
-    },
-    []
-  );
-
-  const handleToggleEditMemberPermissionDraft = useCallback(
-    (actionKey: string) => {
-      setEditMemberDraftActions((prev) => {
-        const next = prev.includes(actionKey)
-          ? prev.filter((k) => k !== actionKey)
-          : [...prev, actionKey];
-        latestDraftActionsRef.current = next;
-        return next;
-      });
-    },
-    []
-  );
-
-  const handleSaveEditMember = useCallback(
-    async (userId: string) => {
-      setEditMemberSaving(true);
-      const modulesToSave =
-        latestDraftModulesRef.current ?? editMemberDraftModules;
-      const actionsToSave =
-        latestDraftActionsRef.current ?? editMemberDraftActions;
-      const result = await updateMemberAccessFull(
-        projectId,
-        userId,
-        modulesToSave,
-        actionsToSave
-      );
-      setEditMemberSaving(false);
-      if (result.error) {
-        setErrorDialog({
-          open: true,
-          title: t('teams.edit_permissions_error_title'),
-          message: mapMemberAccessActionError(t, result.error),
-          retry: () => handleSaveEditMember(userId),
-        });
-        return;
-      }
-      toastSuccess(t('teams.permissions_saved_toast'));
-      setEditMember(null);
-      router.refresh(); // background sync — update member role display in list
-    },
-    [projectId, editMemberDraftModules, editMemberDraftActions, router, t]
-  );
-
   // Derived: can proceed from modules step (at least one module selected)?
   const canProceedFromModules = selectedModules.length > 0;
 
@@ -944,17 +699,26 @@ export default function ContextTeamClient({
   const handleEditTeam = useCallback(async () => {
     if (!editTeam || !editTeamName.trim()) return;
     setEditTeamSaving(true);
-    const { data, error } = await updateProjectTeam(
+    const result = await updateProjectTeam(
       editTeam.id,
       editTeamName,
-      editTeamDesc || undefined
+      editTeamDesc || undefined,
+      editTeamModules
     );
+    const { data, error, errorDetails } = result;
     setEditTeamSaving(false);
     if (error) {
+      console.error('[ContextTeamClient] updateProjectTeam failed', {
+        userMessage: error,
+        errorDetails,
+        teamId: editTeam.id,
+        name: editTeamName,
+        allowedModules: editTeamModules,
+      });
       setErrorDialog({
         open: true,
         title: t('teams.edit_sub_team_error_title'),
-        message: error,
+        message: errorDetails ? `${error}\n\n---\n${errorDetails}` : error,
         retry: () => void handleEditTeam(),
       });
       return;
@@ -967,7 +731,7 @@ export default function ContextTeamClient({
                 ...t,
                 name: data.name,
                 description: data.description,
-                allowed_modules: data.allowed_modules ?? t.allowed_modules,
+                allowed_modules: data.allowed_modules ?? [],
               }
             : t
         )
@@ -976,7 +740,9 @@ export default function ContextTeamClient({
     setEditTeam(null);
     setEditTeamName('');
     setEditTeamDesc('');
-  }, [editTeam, editTeamName, editTeamDesc, t]);
+    setEditTeamModules([]);
+    router.refresh();
+  }, [editTeam, editTeamName, editTeamDesc, editTeamModules, router, t]);
 
   const handleDeleteTeam = useCallback(async () => {
     if (!deleteTeam) return;
@@ -1321,6 +1087,12 @@ export default function ContextTeamClient({
                       selectedRoleName === 'team_manager' ||
                       selectedRoleName === 'team_member'
                     ) {
+                      if (teamManagerInviterAutoTeamId) {
+                        void handleInvite({
+                          teamId: teamManagerInviterAutoTeamId,
+                        });
+                        return;
+                      }
                       setStep('team');
                       return;
                     }
@@ -1329,7 +1101,10 @@ export default function ContextTeamClient({
                   disabled={inviteSaving || !selectedRoleId}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                  {selectedRoleName === 'project_manager' ? (
+                  {selectedRoleName === 'project_manager' ||
+                  (teamManagerInviterAutoTeamId &&
+                    (selectedRoleName === 'team_manager' ||
+                      selectedRoleName === 'team_member')) ? (
                     <>
                       <Mail className="w-4 h-4" />
                       {inviteSaving
@@ -1536,7 +1311,6 @@ export default function ContextTeamClient({
               const isSelf = m.user_id === currentUserId;
               const canRemoveThisMember =
                 canManageMembers && !isOwner && !isSelf;
-              const canEditThisMemberAccess = canManageMembers && !isOwner;
               return (
                 <li
                   key={m.user_id}
@@ -1562,17 +1336,6 @@ export default function ContextTeamClient({
                         {projectRoleLabel(t, r.name)}
                       </span>
                     ))}
-                    {canEditThisMemberAccess && (
-                      <button
-                        type="button"
-                        onClick={() => setEditMember(m)}
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        aria-label={t('teams.edit_permissions')}
-                        title={t('teams.edit_permissions')}
-                      >
-                        <Shield className="w-4 h-4" />
-                      </button>
-                    )}
                     {canRemoveThisMember && (
                       <button
                         type="button"
@@ -1749,10 +1512,8 @@ export default function ContextTeamClient({
                   subTeamsPermissions.canManageMembers &&
                   (subTeamsPermissions.canCreate ||
                     subTeamsPermissions.managedTeamIds.includes(team.id));
-                const canEditThisTeam =
-                  subTeamsPermissions.canUpdate &&
-                  (subTeamsPermissions.canCreate ||
-                    subTeamsPermissions.managedTeamIds.includes(team.id));
+                const canEditThisTeam = subTeamsPermissions.canUpdate;
+                const canDeleteThisTeam = subTeamsPermissions.canDelete;
                 const memberCount = team.members.length;
                 return (
                   <li
@@ -1801,6 +1562,7 @@ export default function ContextTeamClient({
                             setEditTeam(team);
                             setEditTeamName(team.name);
                             setEditTeamDesc(team.description ?? '');
+                            setEditTeamModules(team.allowed_modules ?? []);
                           }}
                           className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                           aria-label={t('teams.edit_sub_team_dialog_title')}
@@ -1809,7 +1571,7 @@ export default function ContextTeamClient({
                           <Pencil className="w-4 h-4" />
                         </button>
                       )}
-                      {subTeamsPermissions.canDelete && (
+                      {canDeleteThisTeam && (
                         <button
                           type="button"
                           onClick={() => setDeleteTeam(team)}
@@ -2033,6 +1795,7 @@ export default function ContextTeamClient({
             setEditTeam(null);
             setEditTeamName('');
             setEditTeamDesc('');
+            setEditTeamModules([]);
           }
         }}
       >
@@ -2068,6 +1831,47 @@ export default function ContextTeamClient({
                 maxLength={500}
               />
             </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                {t('teams.team_modules_label')}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {inviteModules.map(({ key, label }) => {
+                  const checked = editTeamModules.includes(key);
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() =>
+                        setEditTeamModules((prev) =>
+                          prev.includes(key)
+                            ? prev.filter((k) => k !== key)
+                            : [...prev, key]
+                        )
+                      }
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md border text-xs ${
+                        checked
+                          ? 'border-primary bg-primary/5 text-foreground'
+                          : 'border-border text-muted-foreground'
+                      }`}
+                    >
+                      <span
+                        className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${
+                          checked
+                            ? 'bg-primary border-primary'
+                            : 'border-muted-foreground/40'
+                        }`}
+                      >
+                        {checked && (
+                          <Check className="w-2.5 h-2.5 text-primary-foreground" />
+                        )}
+                      </span>
+                      <span className="truncate">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -2077,6 +1881,7 @@ export default function ContextTeamClient({
                 setEditTeam(null);
                 setEditTeamName('');
                 setEditTeamDesc('');
+                setEditTeamModules([]);
               }}
             >
               {t('common.cancel')}
@@ -2084,7 +1889,11 @@ export default function ContextTeamClient({
             <Button
               type="button"
               onClick={() => void handleEditTeam()}
-              disabled={editTeamSaving || !editTeamName.trim()}
+              disabled={
+                editTeamSaving ||
+                !editTeamName.trim() ||
+                editTeamModules.length === 0
+              }
             >
               {editTeamSaving
                 ? t('common.saving')
@@ -2441,255 +2250,6 @@ export default function ContextTeamClient({
               {t('teams.remove_confirm_btn')}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit member permissions dialog */}
-      <Dialog
-        open={!!editMember}
-        onOpenChange={(open) => !open && setEditMember(null)}
-      >
-        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>
-              {editMember
-                ? t('teams.edit_permissions_title', {
-                    name: editMember.display_name,
-                  })
-                : t('teams.edit_permissions_title_fallback')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('teams.edit_permissions_description')}
-            </DialogDescription>
-          </DialogHeader>
-          {memberAccessLoading ? (
-            <div className="py-6 text-sm text-muted-foreground animate-pulse">
-              {t('common.loading')}
-            </div>
-          ) : editMemberLoadError ? (
-            <div className="py-6 space-y-3">
-              <p className="text-sm text-destructive">
-                {editMemberLoadError === OWNER_ACCESS_NOT_EDITABLE
-                  ? t('teams.owner_access_not_editable')
-                  : t('teams.edit_permissions_load_error')}
-              </p>
-              {editMemberLoadError !== OWNER_ACCESS_NOT_EDITABLE && (
-                <p className="text-xs text-muted-foreground font-mono break-all">
-                  {editMemberLoadError}
-                </p>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setEditMemberLoadError(null);
-                  if (editMember) {
-                    setMemberAccessLoading(true);
-                    getMemberAccess(projectId, editMember.user_id).then(
-                      (res) => {
-                        setMemberAccessLoading(false);
-                        if (res.data) {
-                          setMemberAccess(res.data);
-                          setEditMemberLoadError(null);
-                          setEditMemberDraftModules(
-                            res.data.allowedModules === null ||
-                              res.data.allowedModules.length === 0
-                              ? null
-                              : [...res.data.allowedModules]
-                          );
-                          setEditMemberDraftActions(
-                            Array.isArray(res.data.grantedActions)
-                              ? [...res.data.grantedActions]
-                              : []
-                          );
-                        } else if (res.error) {
-                          setEditMemberLoadError(res.error);
-                        }
-                      }
-                    );
-                  }
-                }}
-              >
-                {t('mutation_error.try_again')}
-              </Button>
-            </div>
-          ) : editMember && memberAccess ? (
-            <div className="space-y-4 overflow-y-auto min-h-0">
-              {/* Apply role (one-click replace) */}
-              <div>
-                <label
-                  htmlFor="edit-member-apply"
-                  className="text-xs font-medium text-muted-foreground block mb-2"
-                >
-                  {t('teams.apply_role_or_profile')}
-                </label>
-                <select
-                  id="edit-member-apply"
-                  value={editMemberApplyValue}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setEditMemberApplyValue(v);
-                    if (v && editMember)
-                      void handleApplyRole(editMember.user_id, v);
-                  }}
-                  disabled={editMemberSaving}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                >
-                  <option value="">{t('teams.select_role_or_profile')}</option>
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {projectRoleLabel(t, r.name)}
-                      {r.description ? ` — ${r.description}` : ''}
-                    </option>
-                  ))}
-                </select>
-                {editMemberSaving && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t('common.saving')}
-                  </p>
-                )}
-              </div>
-
-              {/* Current role summary */}
-              <p className="text-xs text-muted-foreground">
-                {t('teams.current_roles')}:{' '}
-                {memberAccess.roleNames.length > 0
-                  ? memberAccess.roleNames
-                      .map((name) => projectRoleLabel(t, name))
-                      .join(', ')
-                  : '—'}
-                {' · '}
-                {t('teams.determined_by_role')}
-              </p>
-
-              {/* Visible modules: list with checkbox + expandable permissions (draft only; Save applies) */}
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">
-                  {t('teams.visible_modules')}
-                </p>
-                <ul className="space-y-0 border border-border rounded-lg divide-y divide-border overflow-hidden">
-                  {ALL_MODULES.map((mod) => {
-                    const hasAccess =
-                      editMemberDraftModules === null ||
-                      editMemberDraftModules.includes(mod.key);
-                    const perms = MODULE_PERMISSIONS[mod.key] ?? [];
-                    const expanded = editMemberExpandedModule === mod.key;
-                    return (
-                      <li key={mod.key} className="bg-card">
-                        <div className="flex items-center gap-2 p-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setEditMemberExpandedModule((prev) =>
-                                prev === mod.key ? null : mod.key
-                              )
-                            }
-                            className="p-1 rounded hover:bg-accent shrink-0 text-muted-foreground"
-                            aria-expanded={expanded}
-                          >
-                            {expanded ? (
-                              <ChevronDown className="w-4 h-4" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4" />
-                            )}
-                          </button>
-                          <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={hasAccess}
-                              onChange={() =>
-                                handleToggleEditMemberModuleDraft(
-                                  mod.key,
-                                  hasAccess
-                                )
-                              }
-                              className="rounded border-input"
-                            />
-                            <span className="text-sm font-medium text-foreground truncate">
-                              {mod.label}
-                            </span>
-                          </label>
-                        </div>
-                        {expanded && (
-                          <div className="px-3 pb-3 pt-0 pl-10 border-t border-border bg-muted/30">
-                            <p className="text-xs text-muted-foreground mb-2 mt-2">
-                              {t('teams.permissions_in_module')} ({perms.length}
-                              )
-                            </p>
-                            <ul className="space-y-1.5">
-                              {perms.map((perm) => {
-                                const hasPerm = editMemberDraftActions.includes(
-                                  perm.key
-                                );
-                                return (
-                                  <li
-                                    key={perm.key}
-                                    className="flex items-center gap-2 text-sm"
-                                  >
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={hasPerm}
-                                        onChange={() =>
-                                          handleToggleEditMemberPermissionDraft(
-                                            perm.key
-                                          )
-                                        }
-                                        className="rounded border-input"
-                                      />
-                                      <span
-                                        className={
-                                          hasPerm
-                                            ? 'text-foreground'
-                                            : 'text-muted-foreground'
-                                        }
-                                      >
-                                        {perm.label}
-                                      </span>
-                                    </label>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </div>
-          ) : null}
-          {editMember && editMemberLoadError ? (
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditMember(null)}
-              >
-                {t('common.close')}
-              </Button>
-            </DialogFooter>
-          ) : null}
-          {editMember && !memberAccessLoading && memberAccess ? (
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditMember(null)}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => handleSaveEditMember(editMember.user_id)}
-                disabled={editMemberSaving}
-              >
-                {editMemberSaving ? t('common.saving') : t('common.save')}
-              </Button>
-            </DialogFooter>
-          ) : null}
         </DialogContent>
       </Dialog>
 

@@ -4,6 +4,7 @@ import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { requireCan } from '@/lib/rbac/resolver';
+import { getScopedOwnerIds, isOwnerInScope } from '@/lib/rbac/read-scope';
 import { captureWithContext } from '@/lib/sentry';
 import { revalidatePath } from 'next/cache';
 import { Database } from '@/lib/supabase/types';
@@ -31,13 +32,19 @@ export const listFolders = cache(
     const pid = projectId?.trim();
     if (!pid) return [];
 
-    const { data, error } = await supabase
+    const scopedOwnerIds = await getScopedOwnerIds(user.id, pid, 'documents');
+
+    let query = supabase
       .from('project_document_folders')
       .select(FOLDER_COLS)
       .eq('project_id', pid)
-      .eq('owner_id', user.id)
       .order('sort_order', { ascending: true })
       .order('name', { ascending: true });
+    if (scopedOwnerIds) {
+      query = query.in('owner_id', scopedOwnerIds);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       captureWithContext(error, {
@@ -54,7 +61,7 @@ export const listFolders = cache(
   }
 );
 
-/** Returns the folder if it exists and belongs to the project and user. */
+/** Returns the folder if it exists, belongs to the project, and is in scope. */
 export async function getFolderForProject(
   folderId: string,
   projectId: string
@@ -71,10 +78,19 @@ export async function getFolderForProject(
     .select(FOLDER_COLS)
     .eq('id', fid)
     .eq('project_id', pid)
-    .eq('owner_id', user.id)
     .single();
 
   if (error || !data) return null;
+  if (
+    !(await isOwnerInScope(
+      user.id,
+      pid,
+      (data as DocumentFolder).owner_id,
+      'documents'
+    ))
+  ) {
+    return null;
+  }
   return data as DocumentFolder;
 }
 
@@ -104,7 +120,6 @@ export async function createFolder(
     .from('project_document_folders')
     .select('sort_order')
     .eq('project_id', pid)
-    .eq('owner_id', user.id)
     .order('sort_order', { ascending: false })
     .limit(1)
     .single();
@@ -153,15 +168,28 @@ export async function updateFolder(
 
   const { data: folderRow } = await (supabase as any)
     .from('project_document_folders')
-    .select('project_id')
+    .select('project_id, owner_id')
     .eq('id', fid)
-    .eq('owner_id', user.id)
     .maybeSingle();
-  if ((folderRow as { project_id?: string } | null)?.project_id) {
+  const folderMeta = folderRow as {
+    project_id?: string;
+    owner_id?: string | null;
+  } | null;
+  if (folderMeta?.project_id) {
     await requireCan(user.id, 'documents.update', {
       type: 'document',
-      projectId: (folderRow as { project_id: string }).project_id,
+      projectId: folderMeta.project_id,
     });
+    if (
+      !(await isOwnerInScope(
+        user.id,
+        folderMeta.project_id,
+        folderMeta.owner_id,
+        'documents'
+      ))
+    ) {
+      return { success: false, error: 'Folder not found or access denied' };
+    }
   }
 
   const updates: Database['public']['Tables']['project_document_folders']['Update'] =
@@ -181,7 +209,6 @@ export async function updateFolder(
       .from('project_document_folders')
       .select(FOLDER_COLS)
       .eq('id', fid)
-      .eq('owner_id', user.id)
       .single();
     return {
       success: true,
@@ -193,7 +220,6 @@ export async function updateFolder(
     .from('project_document_folders')
     .update(updates as never)
     .eq('id', fid)
-    .eq('owner_id', user.id)
     .select(FOLDER_COLS)
     .single();
 
@@ -234,12 +260,29 @@ export async function deleteFolders(
   if (validIds.length === 0)
     return { success: false, error: 'No folder IDs provided' };
 
+  const { data: existingRows } = await supabase
+    .from('project_document_folders')
+    .select('id, owner_id')
+    .in('id', validIds)
+    .eq('project_id', pid);
+
+  const rows =
+    (existingRows as Array<{ id: string; owner_id: string }> | null) ?? [];
+  if (rows.length !== validIds.length) {
+    return { success: false, error: 'One or more folders were not found' };
+  }
+
+  for (const row of rows) {
+    if (!(await isOwnerInScope(user.id, pid, row.owner_id, 'documents'))) {
+      return { success: false, error: 'One or more folders are out of scope' };
+    }
+  }
+
   const { error } = await supabase
     .from('project_document_folders')
     .delete()
     .in('id', validIds)
-    .eq('project_id', pid)
-    .eq('owner_id', user.id);
+    .eq('project_id', pid);
 
   if (error) {
     captureWithContext(error, {
@@ -269,7 +312,6 @@ export async function deleteFolder(
     .from('project_document_folders')
     .select('id, project_id, owner_id')
     .eq('id', fid)
-    .eq('owner_id', user.id)
     .single();
 
   if (fetchError || !existing) {
@@ -280,12 +322,21 @@ export async function deleteFolder(
     type: 'document',
     projectId: (existing as unknown as { project_id: string }).project_id,
   });
+  if (
+    !(await isOwnerInScope(
+      user.id,
+      (existing as unknown as { project_id: string }).project_id,
+      (existing as unknown as { owner_id?: string | null }).owner_id,
+      'documents'
+    ))
+  ) {
+    return { success: false, error: 'Folder not found or access denied' };
+  }
 
   const { error } = await supabase
     .from('project_document_folders')
     .delete()
-    .eq('id', fid)
-    .eq('owner_id', user.id);
+    .eq('id', fid);
 
   if (error) {
     captureWithContext(error, {

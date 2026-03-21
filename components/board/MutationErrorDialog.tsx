@@ -49,10 +49,12 @@ export function MutationErrorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{message}</DialogDescription>
+          <DialogDescription className="whitespace-pre-wrap break-words text-left">
+            {message}
+          </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button type="button" variant="outline" onClick={handleCancel}>

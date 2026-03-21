@@ -285,9 +285,10 @@ export default function ContextMediaClient({
 
   // --- Upload ---
 
-  const handleUploadSuccess = (file: ProjectFile) => {
+  const handleUploadSuccess = (uploaded: ProjectFile[]) => {
     setUploadOpen(false);
-    setMedia((prev) => [file, ...prev]);
+    if (uploaded.length === 0) return;
+    setMedia((prev) => [...uploaded, ...prev]);
   };
 
   return (
