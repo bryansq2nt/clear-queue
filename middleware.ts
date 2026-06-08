@@ -1,5 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isLocalDataProvider } from '@/lib/data-provider/config';
+import { LOCAL_SESSION_COOKIE } from '@/lib/data-provider/local/constants';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -8,32 +10,40 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          );
-          response = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
+  let user: { id: string } | null = null;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  if (isLocalDataProvider()) {
+    const sessionUserId = request.cookies.get(LOCAL_SESSION_COOKIE)?.value;
+    user = sessionUserId ? { id: sessionUserId } : null;
+  } else {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              request.cookies.set(name, value)
+            );
+            response = NextResponse.next({
+              request,
+            });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    const {
+      data: { user: supabaseUser },
+    } = await supabase.auth.getUser();
+    user = supabaseUser;
+  }
 
   const pathname = request.nextUrl.pathname;
   const protectedPrefixes = [

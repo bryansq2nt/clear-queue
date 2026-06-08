@@ -1,9 +1,18 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { isLocalDataProvider } from '@/lib/data-provider/config';
+import { createLocalSupabaseClient } from '@/lib/data-provider/local/client';
 import { Database } from './types';
 
 export const createClient = async () => {
   const cookieStore = await cookies();
+
+  if (isLocalDataProvider()) {
+    // Cast keeps existing server actions typed; swap DATA_PROVIDER to use Supabase again.
+    return createLocalSupabaseClient(cookieStore) as unknown as ReturnType<
+      typeof createServerClient<Database>
+    >;
+  }
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

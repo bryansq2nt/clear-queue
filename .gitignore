@@ -28,6 +28,9 @@ yarn-error.log*
 .env*.local
 .env
 
+# local JSON data store (DATA_PROVIDER=local)
+.local-data/
+
 # vercel
 .vercel
 

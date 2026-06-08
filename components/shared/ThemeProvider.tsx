@@ -2,7 +2,12 @@
 
 import { useEffect } from 'react';
 import type { getPreferencesOptional } from '@/app/settings/appearance/actions';
-import { applyTheme, loadFromStorage, saveToStorage } from '@/lib/theme';
+import {
+  applyTheme,
+  DEFAULT_PREFS,
+  loadFromStorage,
+  saveToStorage,
+} from '@/lib/theme';
 
 type UserPreferences = Awaited<ReturnType<typeof getPreferencesOptional>>;
 
@@ -17,10 +22,13 @@ export default function ThemeProvider({
     const stored = loadFromStorage();
     if (initialPreferences) {
       const next = {
-        theme_mode: initialPreferences.theme_mode,
-        primary_color: initialPreferences.primary_color,
-        secondary_color: initialPreferences.secondary_color,
-        third_color: initialPreferences.third_color,
+        theme_mode: initialPreferences.theme_mode ?? DEFAULT_PREFS.theme_mode,
+        primary_color:
+          initialPreferences.primary_color ?? DEFAULT_PREFS.primary_color,
+        secondary_color:
+          initialPreferences.secondary_color ?? DEFAULT_PREFS.secondary_color,
+        third_color:
+          initialPreferences.third_color ?? DEFAULT_PREFS.third_color,
       };
       saveToStorage(next);
       applyTheme(next);
